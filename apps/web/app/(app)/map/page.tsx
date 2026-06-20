@@ -2,7 +2,13 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { createRoutingProvider, type LatLng, type RouteResult } from "@e-logistic/maps";
+import {
+  createRoutingProvider,
+  fetchPois,
+  type LatLng,
+  type Poi,
+  type RouteResult,
+} from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, StyleSpecification } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
@@ -47,6 +53,17 @@ function routeFeature(coords: [number, number][]) {
   };
 }
 
+function poiFeatures(pois: Poi[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: pois.map((p) => ({
+      type: "Feature" as const,
+      properties: { name: p.name ?? "", type: p.type },
+      geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] as [number, number] },
+    })),
+  };
+}
+
 export default function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -60,6 +77,8 @@ export default function MapPage() {
   const [avoidCH, setAvoidCH] = useState(false);
   const [result, setResult] = useState<RouteResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [poiBusy, setPoiBusy] = useState(false);
+  const [poiCount, setPoiCount] = useState<number | null>(null);
 
   useEffect(() => {
     let map: MlMap | undefined;
@@ -107,6 +126,80 @@ export default function MapPage() {
     if (!first) return;
     const bounds = coords.reduce((b, c) => b.extend(c), new ml.LngLatBounds(first, first));
     map.fitBounds(bounds, { padding: 60, duration: 600 });
+  }
+
+  function drawPois(pois: Poi[]) {
+    const map = mapRef.current;
+    const ml = mlRef.current;
+    if (!map || !ml) return;
+    const data = poiFeatures(pois);
+
+    const existing = map.getSource("pois");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+      return;
+    }
+
+    map.addSource("pois", { type: "geojson", data });
+    map.addLayer({
+      id: "pois-layer",
+      type: "circle",
+      source: "pois",
+      paint: {
+        "circle-radius": 6,
+        "circle-color": [
+          "match",
+          ["get", "type"],
+          "fuel_station",
+          palette.red,
+          "parking",
+          "#22c55e",
+          "#9ca3af",
+        ],
+        "circle-stroke-width": 1,
+        "circle-stroke-color": palette.black,
+      },
+    } as import("maplibre-gl").AddLayerObject);
+
+    map.on("click", "pois-layer", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      if (f.geometry.type !== "Point") return;
+      const props = f.properties as { name?: string; type?: string } | null;
+      const [lng, lat] = f.geometry.coordinates as [number, number];
+      const label = props?.type === "fuel_station" ? "Stacja" : "Parking";
+      new ml.Popup()
+        .setLngLat([lng, lat])
+        .setHTML(`<strong>${props?.name || label}</strong><br/>${label}`)
+        .addTo(map);
+    });
+    map.on("mouseenter", "pois-layer", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "pois-layer", () => {
+      map.getCanvas().style.cursor = "";
+    });
+  }
+
+  async function loadPois() {
+    const map = mapRef.current;
+    if (!map) return;
+    setPoiBusy(true);
+    try {
+      const b = map.getBounds();
+      const pois = await fetchPois({
+        south: b.getSouth(),
+        west: b.getWest(),
+        north: b.getNorth(),
+        east: b.getEast(),
+      });
+      setPoiCount(pois.length);
+      drawPois(pois);
+    } catch {
+      setPoiCount(0);
+    } finally {
+      setPoiBusy(false);
+    }
   }
 
   async function plan() {
@@ -192,6 +285,17 @@ export default function MapPage() {
             {busy ? "Liczę…" : "Wytycz trasę"}
           </button>
 
+          <button type="button" style={styles.ghost} onClick={loadPois} disabled={poiBusy}>
+            {poiBusy ? "Szukam…" : "📍 POI w widoku (OSM)"}
+          </button>
+          {poiCount != null && (
+            <div style={{ fontSize: 12, color: palette.smoke }}>
+              Znaleziono: <strong>{poiCount}</strong> ·{" "}
+              <span style={{ color: palette.red }}>● stacje</span>{" "}
+              <span style={{ color: "#22c55e" }}>● parkingi</span>
+            </div>
+          )}
+
           {result && (
             <div style={styles.result}>
               <Row k="Dystans" v={`${result.distanceKm} km`} />
@@ -257,6 +361,14 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     padding: "11px",
     fontWeight: 700,
+    cursor: "pointer",
+  },
+  ghost: {
+    background: "transparent",
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "10px",
     cursor: "pointer",
   },
   result: {

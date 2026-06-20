@@ -8,4 +8,5 @@ export * from "./geo";
 export * from "./graphhopper";
 export * from "./here";
 export * from "./mock";
+export * from "./poi";
 export * from "./types";
