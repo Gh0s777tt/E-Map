@@ -1,6 +1,6 @@
 "use client";
 
-import { insertVehicle } from "@e-logistic/api";
+import { getActiveMembership, insertVehicle } from "@e-logistic/api";
 import { VEHICLE_TYPES, type VehicleInput, vehicleSchema } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -48,18 +48,15 @@ export default function VehiclesPage() {
     setHeightCm("");
     setMaxPayloadKg("");
 
-    // Best-effort zapis do bazy (gdy skonfigurowane Supabase + sesja).
+    // Best-effort zapis do bazy (gdy skonfigurowane Supabase + sesja + firma).
     try {
       const supabase = getBrowserSupabase();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const companyId = (user.user_metadata?.company_id as string | undefined) ?? user.id;
-        await insertVehicle(supabase, parsed.data, companyId);
+      const membership = await getActiveMembership(supabase);
+      if (membership) {
+        await insertVehicle(supabase, parsed.data, membership.companyId);
         setStatus("✅ Dodano i zapisano w bazie.");
       } else {
-        setStatus("📥 Dodano lokalnie (zaloguj się, by zapisać w bazie).");
+        setStatus("📥 Dodano lokalnie (utwórz firmę w panelu, by zapisać w bazie).");
       }
     } catch {
       setStatus("📥 Dodano lokalnie (skonfiguruj Supabase, by zapisać w bazie).");

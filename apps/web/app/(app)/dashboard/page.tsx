@@ -1,5 +1,6 @@
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
+import { CompanyBanner } from "@/components/CompanyBanner";
 
 const CARDS = [
   {
@@ -28,7 +29,11 @@ export default function DashboardPage() {
   return (
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Pulpit</h1>
-      <p style={{ color: palette.smoke }}>Faza 1 · v0.6.0 — formularze operacyjne i statystyki.</p>
+      <p style={{ color: palette.smoke }}>
+        E-Logistic · formularze, mapa i statystyki — offline-first + Supabase.
+      </p>
+
+      <CompanyBanner />
 
       <div style={{ display: "flex", gap: 16, marginTop: 24, flexWrap: "wrap" }}>
         {CARDS.map((c) => (
