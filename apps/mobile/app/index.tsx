@@ -20,7 +20,13 @@ export default function Home() {
         </Pressable>
       </Link>
 
-      <Text style={styles.note}>Faza 1 · mobile · v0.5.0</Text>
+      <Link href="/trip" asChild>
+        <Pressable style={styles.ctaSecondary}>
+          <Text style={styles.ctaText}>🚚 {t("form.trip.title")}</Text>
+        </Pressable>
+      </Link>
+
+      <Text style={styles.note}>Faza 1 · mobile · v0.6.0</Text>
     </View>
   );
 }
@@ -41,6 +47,14 @@ const styles = StyleSheet.create({
   cta: {
     marginTop: 18,
     backgroundColor: palette.red,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  ctaSecondary: {
+    marginTop: 10,
+    borderColor: palette.graphite,
+    borderWidth: 1,
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 10,

@@ -1,18 +1,22 @@
 "use client";
 
-import { insertFuelLog } from "@e-logistic/api";
-import { type FuelLogInput, newId } from "@e-logistic/core";
+import { insertFuelLog, insertTripEvent } from "@e-logistic/api";
+import { type FuelLogInput, newId, type TripEventInput } from "@e-logistic/core";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 /**
- * Prosty outbox offline-first (localStorage) — fundament pod PowerSync.
+ * Outbox offline-first (localStorage) — fundament pod PowerSync.
  * Zapis trafia najpierw lokalnie (status `queued`), potem best-effort sync.
+ * Obsługuje formularze: paliwo, AdBlue i Trip.
  */
-const KEY = "el-fuel-outbox";
+const KEY = "el-outbox";
+
+export type OutboxKind = "fuel" | "adblue" | "trip";
 
 export interface OutboxItem {
   id: string;
-  input: FuelLogInput;
+  kind: OutboxKind;
+  input: FuelLogInput | TripEventInput;
   status: "queued" | "synced" | "error";
   createdAt: string;
   error?: string;
@@ -31,13 +35,18 @@ function write(items: OutboxItem[]): void {
   window.localStorage.setItem(KEY, JSON.stringify(items));
 }
 
-export function listOutbox(): OutboxItem[] {
-  return read();
+export function listOutbox(kind?: OutboxKind): OutboxItem[] {
+  const all = read();
+  return kind ? all.filter((i) => i.kind === kind) : all;
 }
 
 /** Dodaje wpis do outboxu (zawsze lokalnie) i próbuje od razu zsynchronizować. */
-export async function enqueueFuelLog(input: FuelLogInput, createdAt: string): Promise<OutboxItem> {
-  const item: OutboxItem = { id: newId(), input, status: "queued", createdAt };
+export async function enqueue(
+  kind: OutboxKind,
+  input: FuelLogInput | TripEventInput,
+  createdAt: string,
+): Promise<OutboxItem> {
+  const item: OutboxItem = { id: newId(), kind, input, status: "queued", createdAt };
   const items = read();
   items.unshift(item);
   write(items);
@@ -58,13 +67,19 @@ export async function trySync(itemId: string): Promise<void> {
     } = await supabase.auth.getUser();
     if (!user) throw new Error("Brak sesji — wpis czeka w kolejce.");
 
-    // companyId pochodzi z membership użytkownika (uproszczenie etapu: z metadanych).
     const companyId = (user.user_metadata?.company_id as string | undefined) ?? user.id;
-    await insertFuelLog(supabase, item.input, {
-      id: item.id,
-      companyId,
-      driverId: user.id,
-    });
+    const ctx = { id: item.id, companyId, driverId: user.id };
+
+    if (item.kind === "trip") {
+      await insertTripEvent(supabase, item.input as TripEventInput, ctx);
+    } else {
+      await insertFuelLog(
+        supabase,
+        item.input as FuelLogInput,
+        ctx,
+        item.kind === "adblue" ? "adblue_logs" : "fuel_logs",
+      );
+    }
     item.status = "synced";
   } catch (e) {
     item.status = "error";

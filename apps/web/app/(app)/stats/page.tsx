@@ -1,6 +1,6 @@
 "use client";
 
-import { type FuelStatsEntry, summarizeFuel } from "@e-logistic/core";
+import { type FuelLogInput, type FuelStatsEntry, summarizeFuel } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
@@ -10,28 +10,26 @@ import { listOutbox, type OutboxItem } from "@/lib/outbox";
 const t = createTranslator("pl");
 
 export default function StatsPage() {
+  // Statystyki paliwowe: tylko formularze paliwo + AdBlue (bez Trip).
   const [items, setItems] = useState<OutboxItem[]>([]);
 
   useEffect(() => {
-    setItems(listOutbox());
+    setItems(listOutbox().filter((i) => i.kind !== "trip"));
   }, []);
 
-  const entries: FuelStatsEntry[] = items.map((i) => ({
-    odometerKm: i.input.odometerKm,
-    liters: i.input.liters,
-    priceTotal: i.input.priceTotal,
+  const fuelInputs = items.map((i) => i.input as FuelLogInput);
+  const entries: FuelStatsEntry[] = fuelInputs.map((i) => ({
+    odometerKm: i.odometerKm,
+    liters: i.liters,
+    priceTotal: i.priceTotal,
   }));
   const overall = summarizeFuel(entries);
 
   const byVehicle = new Map<string, FuelStatsEntry[]>();
-  for (const i of items) {
-    const arr = byVehicle.get(i.input.vehicleId) ?? [];
-    arr.push({
-      odometerKm: i.input.odometerKm,
-      liters: i.input.liters,
-      priceTotal: i.input.priceTotal,
-    });
-    byVehicle.set(i.input.vehicleId, arr);
+  for (const i of fuelInputs) {
+    const arr = byVehicle.get(i.vehicleId) ?? [];
+    arr.push({ odometerKm: i.odometerKm, liters: i.liters, priceTotal: i.priceTotal });
+    byVehicle.set(i.vehicleId, arr);
   }
 
   return (
