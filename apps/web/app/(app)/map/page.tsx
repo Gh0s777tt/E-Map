@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 
 type MaplibreModule = typeof import("maplibre-gl");
 type RouteResponse = RouteResult & { tollEstimated?: boolean; fallback?: boolean };
-type Stop = { key: string; city: string };
+type Stop = { key: string; label: string; lat: number; lng: number; cityId?: string };
 
 const CITIES = [
   { id: "berlin", label: "Berlin", lat: 52.52, lng: 13.405 },
@@ -21,9 +21,9 @@ const CITIES = [
   { id: "zurych", label: "Zurych", lat: 47.3769, lng: 8.5417 },
 ] as const;
 
-function city(id: string): LatLng {
-  const c = CITIES.find((x) => x.id === id) ?? CITIES[0];
-  return { lat: c.lat, lng: c.lng };
+function cityStop(key: string, cityId: string): Stop {
+  const c = CITIES.find((x) => x.id === cityId) ?? CITIES[0];
+  return { key, cityId, label: c.label, lat: c.lat, lng: c.lng };
 }
 
 const OSM_STYLE: StyleSpecification = {
@@ -72,8 +72,8 @@ export default function MapPage() {
   const mlRef = useRef<MaplibreModule | null>(null);
 
   const [stops, setStops] = useState<Stop[]>([
-    { key: "s-start", city: "berlin" },
-    { key: "s-end", city: "warszawa" },
+    cityStop("s-start", "berlin"),
+    cityStop("s-end", "warszawa"),
   ]);
   const [kindHeavy, setKindHeavy] = useState(true);
   const [avoidTolls, setAvoidTolls] = useState(false);
@@ -101,13 +101,20 @@ export default function MapPage() {
     return () => map?.remove();
   }, []);
 
-  function setStopCity(key: string, value: string) {
-    setStops((s) => s.map((st) => (st.key === key ? { ...st, city: value } : st)));
+  function setStopCity(key: string, cityId: string) {
+    setStops((s) => s.map((st) => (st.key === key ? cityStop(key, cityId) : st)));
   }
   function addStop() {
     setStops((s) => {
       const next = [...s];
-      next.splice(next.length - 1, 0, { key: newId(), city: "wieden" });
+      next.splice(next.length - 1, 0, cityStop(newId(), "wieden"));
+      return next;
+    });
+  }
+  function addPoiStop(label: string, lat: number, lng: number) {
+    setStops((s) => {
+      const next = [...s];
+      next.splice(next.length - 1, 0, { key: newId(), label, lat, lng });
       return next;
     });
   }
@@ -180,11 +187,21 @@ export default function MapPage() {
       if (f.geometry.type !== "Point") return;
       const props = f.properties as { name?: string; type?: string } | null;
       const [lng, lat] = f.geometry.coordinates as [number, number];
-      const label = props?.type === "fuel_station" ? "Stacja" : "Parking";
-      new ml.Popup()
+      const kindLabel = props?.type === "fuel_station" ? "Stacja" : "Parking";
+      const name = props?.name || kindLabel;
+      const popup = new ml.Popup()
         .setLngLat([lng, lat])
-        .setHTML(`<strong>${props?.name || label}</strong><br/>${label}`)
+        .setHTML(
+          `<strong>${name}</strong><br/>${kindLabel}<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ Dodaj jako przystanek</button>`,
+        )
         .addTo(map);
+      popup
+        .getElement()
+        ?.querySelector("[data-add-stop]")
+        ?.addEventListener("click", () => {
+          addPoiStop(name, lat, lng);
+          popup.remove();
+        });
     });
     map.on("mouseenter", "pois-layer", () => {
       map.getCanvas().style.cursor = "pointer";
@@ -222,7 +239,7 @@ export default function MapPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          waypoints: stops.map((st) => city(st.city)),
+          waypoints: stops.map((st) => ({ lat: st.lat, lng: st.lng })),
           profile: { kind: kindHeavy ? "truck" : "van", weightKg: kindHeavy ? 24000 : 3000 },
           options: { avoidTolls, avoidFerries, avoidCountries: avoidCH ? ["CH"] : [] },
         }),
@@ -250,20 +267,26 @@ export default function MapPage() {
             const removable = i > 0 && i < stops.length - 1;
             return (
               <div key={st.key} style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
-                <label style={{ ...styles.field, flex: 1 }}>
+                <div style={{ ...styles.field, flex: 1 }}>
                   <span style={styles.label}>{role}</span>
-                  <select
-                    style={styles.input}
-                    value={st.city}
-                    onChange={(e) => setStopCity(st.key, e.target.value)}
-                  >
-                    {CITIES.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  {st.cityId !== undefined ? (
+                    <select
+                      style={styles.input}
+                      value={st.cityId}
+                      onChange={(e) => setStopCity(st.key, e.target.value)}
+                    >
+                      {CITIES.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div style={{ ...styles.input, paddingTop: 11, paddingBottom: 11 }}>
+                      📍 {st.label}
+                    </div>
+                  )}
+                </div>
                 {removable && (
                   <button type="button" style={styles.remove} onClick={() => removeStop(st.key)}>
                     ✕
