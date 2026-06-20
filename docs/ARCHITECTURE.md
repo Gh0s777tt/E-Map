@@ -1,0 +1,217 @@
+# 🧠 Architektura — E‑Logistic
+
+> Status: **propozycja do akceptacji** · wersja 0.1.0 · 2026-06-20
+> Decyzje wstępne: dokumentacja przed kodem · mapa = hybryda MapLibre+HERE/GraphHopper · web+mobile równolegle.
+
+---
+
+## 1. Cele architektoniczne
+
+| Cel | Konsekwencja projektowa |
+|:--|:--|
+| **Offline-first** (kierowca bez zasięgu) | lokalny SQLite + kolejka sync (PowerSync), zapis natychmiastowy, sync po sieci |
+| **Web + mobile równolegle** | monorepo, współdzielony `packages/core` (logika+typy) zasila obie apki |
+| **Spójność danych „na bieżąco"** | jedno źródło prawdy (Supabase/Postgres), SemVer+changelog, migracje wersjonowane |
+| **Niezależność od vendora map** | render (MapLibre) odseparowany od routingu; routing za abstrakcją `RoutingProvider` |
+| **Multi-tenant + role** | RLS w Postgres; Owner/Spedytor/Kierowca/Developer |
+| **Najnowocześniejszy, ale stabilny rdzeń** | świeże wersje frameworków; konserwatyzm w sync/security/rozliczeniach |
+
+---
+
+## 2. Monorepo
+
+**Turborepo + pnpm workspaces.** Jedno repo = brak rozjazdów między web a mobile (Twój wymóg synchronizacji).
+
+```
+apps/
+  web/      → Next.js 16 (App Router, RSC, Server Actions) — dashboard
+  mobile/   → Expo + React Native (New Architecture) — apka kierowcy
+packages/
+  core/     → domena: typy, schematy Zod, silnik rozliczeń (czysty TS, 0 zależności UI)
+  api/      → klient Supabase, repozytoria danych, warstwa sync
+  ui/       → tokeny motywu (red/black), współdzielone prymitywy/ikony
+  maps/     → RoutingProvider (interfejs) + adaptery HERE/GraphHopper + typy geo
+  i18n/     → tłumaczenia ×14 + helpery
+  config/   → tsconfig bazowy, konfiguracja Biome, współdzielone ustawienia
+supabase/
+  migrations/  → SQL (schema, RLS, PostGIS, indeksy)
+  functions/   → Edge Functions (Deno): zaproszenia, OCR, agregacje, webhooki providerów
+```
+
+**Zasada:** logika biznesowa (rozliczenia, walidacja, konwersje) żyje wyłącznie w `packages/core`
+i jest testowana jednostkowo. Apki to „cienkie" warstwy prezentacji.
+
+---
+
+## 3. Warstwy aplikacji
+
+```mermaid
+flowchart TB
+  subgraph Klient
+    WEB["🖥️ apps/web<br/>Next.js 16 · React 19 · Tailwind 4 · shadcn/ui"]
+    MOB["📱 apps/mobile<br/>Expo · RN New Arch · Expo Router"]
+  end
+  subgraph Współdzielone
+    CORE["📦 core — typy · Zod · rozliczenia"]
+    API["📦 api — Supabase client · repo · sync"]
+    MAPS["📦 maps — RoutingProvider"]
+    UI["📦 ui — motyw red/black"]
+    I18N["📦 i18n ×14"]
+  end
+  subgraph Backend
+    SB[("🟢 Supabase<br/>Postgres 17 · PostGIS · Auth · Realtime · Storage")]
+    EDGE["⚡ Edge Functions (Deno)"]
+  end
+  subgraph Zewnętrzne
+    ROUTE{{"🧭 HERE / GraphHopper<br/>routing TIR + myto"}}
+    GEO{{"📍 Geokodowanie GPS→adres"}}
+    TILES{{"🗺️ Tile provider (MapTiler/self-host)"}}
+    MSG{{"✉️ E-mail · SMS · WhatsApp"}}
+  end
+
+  WEB --> CORE & API & MAPS & UI & I18N
+  MOB --> CORE & API & MAPS & UI & I18N
+  MOB -->|lokalny SQLite| PS["🔁 PowerSync"]
+  PS <--> SB
+  WEB --> SB
+  API --> SB
+  EDGE --> SB
+  MAPS --> ROUTE
+  MAPS --> GEO
+  WEB & MOB --> TILES
+  EDGE --> MSG
+```
+
+---
+
+## 4. Offline-first i synchronizacja
+
+**Najtrudniejszy element. Wybór: PowerSync (lokalny SQLite ↔ Supabase).**
+
+- Każdy formularz zapisuje się **najpierw lokalnie** → kierowca pracuje bez sieci.
+- **Outbox/sync rules**: PowerSync wgrywa zmiany po odzyskaniu połączenia; pobiera tylko
+  podzbiór danych dla danej firmy/kierowcy (mniej danych na telefonie, RLS po stronie serwera).
+- **Idempotencja i konflikty:**
+  - klucze rekordów = **UUIDv7** generowane na kliencie (sortowalne czasowo),
+  - kolumny `created_at`, `updated_at`, `synced_at`, `device_id`, `revision`,
+  - formularze są **append-mostly**: wysłany formularz jest niemutowalny; „edycja" tworzy
+    nową rewizję w `*_revisions` (spełnia wymóg **historii edycji** i audytu).
+- **Konflikt edycji**: ostatni zapis wygrywa per-pole + zachowana pełna historia rewizji.
+- Stany w UI: `szkic → w kolejce → zsynchronizowany → błąd (retry)`.
+
+Alternatywy rozważane: WatermelonDB, RxDB. PowerSync wybrany za natywne wsparcie Supabase
+i reguły synchronizacji per-tenant.
+
+---
+
+## 5. Warstwa map (hybryda)
+
+Render **odseparowany** od routingu — kluczowe dla niezależności i kosztów.
+
+```mermaid
+flowchart LR
+  APP["Apka (web/mobile)"] --> RENDER["🗺️ MapLibre GL<br/>styl wektorowy red/black"]
+  APP --> RP["🧭 RoutingProvider (interfejs)"]
+  RP --> HERE["adapter: HERE"]
+  RP --> GH["adapter: GraphHopper"]
+  RP -.->|później| VALHALLA["adapter: self-host Valhalla"]
+  RENDER --> TILES["Tile provider<br/>MapTiler / self-host"]
+  POI["📍 POI pipeline"] --> PG[("PostGIS")]
+  OSM["OSM · Truck Parking EU"] --> POI
+  CROWD["Crowd: formularze + zgłoszenia"] --> POI
+```
+
+- **Render:** MapLibre GL JS (web) + MapLibre Native (mobile), własny styl wektorowy red/black,
+  tryb dzień/noc = dwa warianty stylu.
+- **Routing TIR + myto:** interfejs `RoutingProvider` z metodami `route()`, `tollCost()`,
+  `geocode()`, `reverseGeocode()`. Adaptery: **HERE** (start, dobry truck+toll+free tier) i
+  **GraphHopper** (alternatywa/tańsza). Zmiana dostawcy = zmiana adaptera, nie apki.
+- **Parametry pojazdu** (wysokość/szerokość/długość/waga/typ, omijanie krajów/myta/promów/dróg
+  gruntowych) mapowane na profil providera.
+- **POI** (parkingi, stacje, promy, lotniska, firmy): pipeline ingest **OSM + Truck Parking
+  Europe** → PostGIS, wzbogacany danymi crowd. Udogodnienia, oceny, akceptacja kart/SNAP/Travis.
+- **Wyliczanie kosztu trasy z podziałem na odcinki**: z odpowiedzi toll API + własne stawki.
+- **Satelita/3D, asystent pasa**: Faza 4 (Navigation SDK / tiles 3D).
+
+> Szczegółowe porównanie kosztów dostawców → [`ANALIZA.md`](ANALIZA.md).
+
+---
+
+## 6. Dane społecznościowe (budowane samodzielnie)
+
+Tego nie kupujemy — to przewaga produktu (dane są nasze):
+
+- **Zgłoszenia realtime** (wypadek/policja/waga/korek/zamknięcie): tabela + PostGIS +
+  **Supabase Realtime** (broadcast do kierowców w pobliżu), wygasanie i zanik pewności w czasie,
+  głosy potwierdzające.
+- **Ceny paliw**: agregowane z **Formularza Paliwowego** kierowców → własna, rosnąca baza.
+  Seed: OSM `amenity=fuel` (+ otwarte feedy tam, gdzie istnieją).
+- **Oceny/udogodnienia parkingów**: z ocen kierowców (bez zależności od ocen Google).
+
+---
+
+## 7. Uwierzytelnianie i role
+
+**Supabase Auth** pokrywa większość wymagań natywnie:
+
+| Wymóg | Realizacja |
+|:--|:--|
+| E-mail + hasło | ✅ natywnie |
+| Google / Apple / Microsoft(Azure) | ✅ OAuth |
+| Passkey (WebAuthn) | ✅ |
+| Logowanie/rejestracja bez hasła | ✅ magic link / OTP |
+| 2FA | ✅ TOTP (MFA) |
+| **Samsung Account** | ⚠️ niszowe — oznaczone jako „później/opcjonalne" (Apple+Google pokrywają telefony) |
+
+- **Role**: `developer`, `owner`, `dispatcher` (spedytor), `driver` — w tabeli `memberships` per firma.
+- **Zaproszenie kierowcy**: właściciel generuje **podpisany token** → link + **QR** (deep link / universal links),
+  wysyłka e-mail (Supabase) / SMS (Twilio/MessageBird) / WhatsApp (Business API lub `wa.me`).
+  Token przy rejestracji od razu przypisuje kierowcę do firmy i pojazdu.
+
+---
+
+## 8. Bezpieczeństwo
+
+- **RLS** na wszystkich tabelach multi-tenant: kierowca widzi tylko swoje formularze; spedytor/owner
+  tylko swoją firmę; developer ma wgląd diagnostyczny (audytowany).
+- **PIN-y kart paliwowych / dane wrażliwe**: szyfrowane (Supabase Vault / pgcrypto), widoczne tylko
+  dla roli `owner`, pełny **audit log** dostępu. Rozważane: czy kierowca w ogóle potrzebuje PIN-u w apce.
+- Sekrety w env (`.env.example` szablon), skan `gitleaks` + `codeql` w CI.
+- Storage (dokumenty, zdjęcia paragonów): polityki dostępu per firma.
+
+---
+
+## 9. Stan, walidacja, i18n
+
+- **Walidacja**: Zod w `packages/core` — te same schematy w formularzach web i mobile oraz w Edge Functions.
+- **Stan serwera**: TanStack Query; **stan klienta**: Zustand; lokalna baza PowerSync jest reaktywna.
+- **i18n ×14** (jak w ekosystemie), parytet kluczy pilnowany w CI.
+
+---
+
+## 10. CI/CD i obserwowalność
+
+- **GitHub Actions**: `ci.yml` (biome, tsc, testy, build web, typecheck mobile), `codeql.yml`, Dependabot.
+- **Web**: Vercel. **Mobile**: EAS Build + EAS Update (OTA). **Migracje**: Supabase CLI w pipeline.
+- **Sentry** (web+mobile), logi Edge Functions.
+- **Wydania**: tag `vX.Y.Z` + GitHub Release generowany z `CHANGELOG.md`.
+
+---
+
+## 11. Pojazdy i platformy docelowe
+
+| Platforma | Technologia | Priorytet |
+|:--|:--|:--|
+| Web (dashboard) | Next.js 16 | Faza 1 (równolegle) |
+| iOS / Android (kierowca) | Expo | Faza 1 (równolegle) |
+| macOS | PWA / Tauri 2 (shell weba) | Faza 4 / wg popytu |
+
+---
+
+## 12. Decyzje otwarte (do potwierdzenia)
+
+1. Nazwa repo: zostawić `E-Map` czy zmienić na `E-Logistic`?
+2. Tile provider do renderu: **MapTiler** (szybki start) vs self-host tiles (taniej przy skali)?
+3. Dostawca SMS/WhatsApp: Twilio vs MessageBird vs inny?
+4. Czy PIN kart ma być dostępny w apce kierowcy, czy tylko właściciela?
+5. Zakres i18n od startu: 14 języków od razu czy PL+EN, reszta dokładana?
