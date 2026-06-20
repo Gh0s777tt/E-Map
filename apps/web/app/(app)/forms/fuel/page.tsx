@@ -3,20 +3,12 @@
 import { fuelLogSchema, PAYMENT_METHODS } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useState } from "react";
+import { DEMO_CARDS as CARDS, DEMO_VEHICLES as VEHICLES } from "@/lib/demo";
 import { enqueueFuelLog } from "@/lib/outbox";
 
 const t = createTranslator("pl");
-
-// Dane zastępcze do czasu wpięcia listVehicles/fuel_cards z Supabase.
-const VEHICLES = [
-  { id: "11111111-1111-4111-8111-111111111111", registration: "WL5145U" },
-  { id: "22222222-2222-4222-8222-222222222222", registration: "WP5652R" },
-];
-const CARDS = [
-  { id: "33333333-3333-4333-8333-333333333333", label: "DKV ****1234" },
-  { id: "44444444-4444-4444-8444-444444444444", label: "Shell ****9876" },
-];
 
 export default function FuelFormPage() {
   const [vehicleId, setVehicleId] = useState(VEHICLES[0]?.id ?? "");
@@ -96,7 +88,10 @@ export default function FuelFormPage() {
     <div style={{ maxWidth: 520 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("form.fuel.title")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Walidacja na współdzielonym schemacie Zod (offline-first).
+        Walidacja na współdzielonym schemacie Zod (offline-first).{" "}
+        <Link href="/forms/fuel/history" style={{ color: palette.red }}>
+          {t("common.history")} →
+        </Link>
       </p>
 
       <div style={styles.form}>

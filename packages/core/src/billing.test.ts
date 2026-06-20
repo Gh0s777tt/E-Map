@@ -6,6 +6,7 @@ import {
   effectiveFuelPrice,
   fuelConsumptionSeries,
   fuelCost,
+  summarizeFuel,
   tripCost,
   tripDistanceKm,
   tripProfit,
@@ -90,5 +91,26 @@ describe("ekonomia trasy", () => {
       costs: { fuel: 147, adblue: 20 },
     });
     expect(s).toMatchObject({ distanceKm: 500, revenue: 600, cost: 167, profit: 433 });
+  });
+});
+
+describe("summarizeFuel", () => {
+  it("liczy litry, dystans, średnie spalanie i wydatek", () => {
+    const s = summarizeFuel([
+      { odometerKm: 1000, liters: 50, priceTotal: 75 },
+      { odometerKm: 1500, liters: 175, priceTotal: 260 },
+      { odometerKm: 2000, liters: 160, priceTotal: 240 },
+    ]);
+    expect(s.count).toBe(3);
+    expect(s.totalLiters).toBe(385);
+    expect(s.totalDistanceKm).toBe(1000);
+    expect(s.avgConsumptionLPer100km).toBe(33.5);
+    expect(s.totalSpend).toBe(575);
+  });
+
+  it("obsługuje pusty zestaw", () => {
+    const s = summarizeFuel([]);
+    expect(s).toMatchObject({ count: 0, totalLiters: 0, totalDistanceKm: 0, totalSpend: 0 });
+    expect(s.avgConsumptionLPer100km).toBeNull();
   });
 });

@@ -11,7 +11,9 @@ const t = createTranslator("pl");
 
 const NAV = [
   { href: "/dashboard", key: "nav.dashboard" },
+  { href: "/vehicles", key: "nav.vehicles" },
   { href: "/forms/fuel", key: "form.fuel.title" },
+  { href: "/stats", key: "nav.stats" },
 ] as const;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {

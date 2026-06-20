@@ -44,3 +44,18 @@ export async function insertFuelLog(
   if (error) throw error;
   return data;
 }
+
+/** Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy). */
+export async function listFuelLogs(
+  client: SupabaseClient,
+  opts?: { vehicleId?: string; table?: "fuel_logs" | "adblue_logs" },
+) {
+  let query = client
+    .from(opts?.table ?? "fuel_logs")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
