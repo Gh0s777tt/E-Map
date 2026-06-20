@@ -15,17 +15,22 @@ export function graphHopperProfile(kind?: VehicleKind): string {
   }
 }
 
+export interface GraphHopperOptions {
+  /** Włącz profile TIR (truck/small_truck) — wymaga planu płatnego GraphHopper. */
+  truckProfile?: boolean;
+}
+
 /** Buduje ciało żądania GraphHopper Routing API (czyste, testowalne). */
-export function buildGraphHopperBody(req: RouteRequest): Record<string, unknown> {
+export function buildGraphHopperBody(
+  req: RouteRequest,
+  opts: GraphHopperOptions = {},
+): Record<string, unknown> {
   return {
-    profile: graphHopperProfile(req.profile?.kind),
+    profile: opts.truckProfile ? graphHopperProfile(req.profile?.kind) : "car",
     points: req.waypoints.map((p) => [p.lng, p.lat]),
     points_encoded: false,
     locale: "pl",
     instructions: false,
-    ...(req.options?.avoidFerries
-      ? { custom_model: { priority: [{ if: "ferry", multiply_by: "0" }] } }
-      : {}),
   };
 }
 
@@ -43,7 +48,10 @@ interface GhPath {
 export class GraphHopperRoutingProvider implements RoutingProvider {
   readonly name = "graphhopper";
 
-  constructor(private readonly apiKey: string) {}
+  constructor(
+    private readonly apiKey: string,
+    private readonly opts: GraphHopperOptions = {},
+  ) {}
 
   async route(req: RouteRequest): Promise<RouteResult> {
     if (req.waypoints.length < 2) throw new RangeError("Trasa wymaga co najmniej 2 punktów.");
@@ -51,7 +59,7 @@ export class GraphHopperRoutingProvider implements RoutingProvider {
     const res = await fetch(`https://graphhopper.com/api/1/route?key=${this.apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildGraphHopperBody(req)),
+      body: JSON.stringify(buildGraphHopperBody(req, this.opts)),
     });
     if (!res.ok) throw new Error(`GraphHopper API: ${res.status}`);
 

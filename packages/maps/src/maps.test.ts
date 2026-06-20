@@ -4,6 +4,7 @@ import { haversineKm } from "./geo";
 import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
 import { MockRoutingProvider } from "./mock";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
+import { estimateTollEur } from "./toll";
 import type { LatLng } from "./types";
 
 const BERLIN: LatLng = { lat: 52.52, lng: 13.405 };
@@ -60,13 +61,32 @@ describe("GraphHopper builder", () => {
     expect(graphHopperProfile(undefined)).toBe("car");
   });
 
-  it("buduje punkty w kolejności [lng, lat]", () => {
-    const body = buildGraphHopperBody({ waypoints: [BERLIN, WARSAW] }) as {
-      points: [number, number][];
-      profile: string;
-    };
+  it("buduje punkty w kolejności [lng, lat], domyślnie profil car (free tier)", () => {
+    const body = buildGraphHopperBody({
+      waypoints: [BERLIN, WARSAW],
+      profile: { kind: "truck" },
+    }) as { points: [number, number][]; profile: string };
     expect(body.points[0]).toEqual([13.405, 52.52]);
     expect(body.profile).toBe("car");
+  });
+
+  it("włącza profil truck gdy truckProfile=true", () => {
+    const body = buildGraphHopperBody(
+      { waypoints: [BERLIN, WARSAW], profile: { kind: "truck" } },
+      { truckProfile: true },
+    ) as { profile: string };
+    expect(body.profile).toBe("truck");
+  });
+});
+
+describe("estimateTollEur", () => {
+  it("liczy myto proporcjonalnie do dystansu i masy", () => {
+    expect(estimateTollEur(100)).toBe(18);
+    expect(estimateTollEur(100, { weightKg: 24000 })).toBe(27);
+  });
+
+  it("zeruje myto przy omijaniu płatnych dróg", () => {
+    expect(estimateTollEur(100, { avoidTolls: true })).toBe(0);
   });
 });
 
