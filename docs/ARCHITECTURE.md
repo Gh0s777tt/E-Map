@@ -174,8 +174,9 @@ Tego nie kupujemy — to przewaga produktu (dane są nasze):
 
 - **RLS** na wszystkich tabelach multi-tenant: kierowca widzi tylko swoje formularze; spedytor/owner
   tylko swoją firmę; developer ma wgląd diagnostyczny (audytowany).
-- **PIN-y kart paliwowych / dane wrażliwe**: szyfrowane (Supabase Vault / pgcrypto), widoczne tylko
-  dla roli `owner`, pełny **audit log** dostępu. Rozważane: czy kierowca w ogóle potrzebuje PIN-u w apce.
+- **PIN-y kart paliwowych / dane wrażliwe**: szyfrowane (Supabase Vault / pgcrypto). **Ustawia** `owner`;
+  **odczyt** dla aktywnych członków firmy — kierowca musi znać PIN, by zapłacić w automacie na stacji.
+  Każdy odczyt zapisywany w **audit_log**.
 - Sekrety w env (`.env.example` szablon), skan `gitleaks` + `codeql` w CI.
 - Storage (dokumenty, zdjęcia paragonów): polityki dostępu per firma.
 

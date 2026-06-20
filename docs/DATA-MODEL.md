@@ -78,7 +78,7 @@ Kierowca: dane w `users` + `driver_profiles` (poniżej).
 `id` · `company_id` · `provider` (enum: DKV, Eurowag, Shell, BP, Circle K, E100, UTA,
 AS24, Aral, OMV, Routex, …) · `card_number_masked` · `pin_encrypted` (Vault/pgcrypto) ·
 `valid_until` · `discount_percent` (rabat ustawiany przez ownera) · `notes`.
-> **Bezpieczeństwo:** `pin_encrypted` widoczny tylko dla `owner` (RLS + szyfrowanie), audyt dostępu.
+> **Bezpieczeństwo:** `pin_encrypted` (Vault/pgcrypto). Ustawia `owner` (`fuel_card_set_pin`); odczyt dla członków firmy (`fuel_card_pin` — kierowca płaci w automacie), audytowany.
 
 ### `card_assignments`
 `id` · `fuel_card_id` · `user_id` (osoba) · `vehicle_id` · `active`.
