@@ -1,4 +1,4 @@
-<!-- SYNC: v0.6.0 · #006 · 2026-06-20 — utrzymywane ręcznie do czasu `pnpm docs:check` (badge wersji + blurb „Najnowsze") -->
+<!-- SYNC: v0.7.0 · #007 · 2026-06-20 — utrzymywane ręcznie do czasu `pnpm docs:check` (badge wersji + blurb „Najnowsze") -->
 <!-- ╔══════════════════════════════════════════════════════════════════╗ -->
 <!-- ║                       E - L O G I S T I C                         ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->
@@ -12,8 +12,8 @@
 
 <br/>
 
-![Wersja](https://img.shields.io/badge/wersja-0.6.0-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Status](https://img.shields.io/badge/status-Faza_1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.7.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Status](https://img.shields.io/badge/status-Faza_2-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Licencja](https://img.shields.io/badge/licencja-PROPRIETARY-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Repo](https://img.shields.io/badge/repo-publiczne-E50914?style=for-the-badge&labelColor=0a0a0a)
 
@@ -62,7 +62,7 @@ Trzy filary produktu:
 | 🚚 **Flota** | Pojazdy (wymiary, przeglądy, ubezpieczenia, leasing), kierowcy, zaproszenia (link/QR/SMS/WhatsApp) | ![](https://img.shields.io/badge/-w_toku-E50914?labelColor=0a0a0a) |
 | ⛽ **Formularze** | Paliwo · AdBlue · Trip (załadunek/rozładunek/serwis/start/koniec), offline-first, historia+edycja | ![](https://img.shields.io/badge/-w_toku-E50914?labelColor=0a0a0a) |
 | 📊 **Statystyki** | Spalanie, koszt po rabatach, AdBlue, uszkodzenia, stawka/km, zysk z trasy | ![](https://img.shields.io/badge/-w_toku-E50914?labelColor=0a0a0a) |
-| 🗺️ **Mapa TIR** | Routing wg wymiarów + myto, omijanie krajów/promów/myta, profil pojazdu, dzień/noc | ![](https://img.shields.io/badge/-planowany-E50914?labelColor=0a0a0a) |
+| 🗺️ **Mapa TIR** | Routing wg wymiarów + myto, omijanie krajów/promów/myta, profil pojazdu, dzień/noc | ![](https://img.shields.io/badge/-w_toku-E50914?labelColor=0a0a0a) |
 | 📍 **POI** | Parkingi/stacje (miejsca TIR, prysznic, WC, woda, kompresor), oceny, SNAP/Travis, karty paliwowe | ![](https://img.shields.io/badge/-planowany-E50914?labelColor=0a0a0a) |
 | 📡 **Społeczność** | Zgłoszenia realtime (wypadki/policja/wagi/korki), crowd-ceny paliw z formularzy | ![](https://img.shields.io/badge/-planowany-E50914?labelColor=0a0a0a) |
 | 🔐 **Konta i role** | Owner / Spedytor / Kierowca / Developer · OAuth · passkey · magic link · 2FA · RLS | ![](https://img.shields.io/badge/-w_toku-E50914?labelColor=0a0a0a) |
