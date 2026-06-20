@@ -8,6 +8,7 @@ export * from "./geo";
 export * from "./graphhopper";
 export * from "./here";
 export * from "./mock";
+export * from "./multileg";
 export * from "./poi";
 export * from "./toll";
 export * from "./types";

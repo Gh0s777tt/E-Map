@@ -1,12 +1,19 @@
-import { createRoutingProvider, estimateTollEur, type RouteRequest } from "@e-logistic/maps";
+import { round2 } from "@e-logistic/core";
+import {
+  createRoutingProvider,
+  estimateTollEur,
+  type RouteRequest,
+  routeMultiLeg,
+} from "@e-logistic/maps";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Serwerowe wytyczanie trasy. Klucz GraphHopper czytany z env po stronie serwera
- * (nigdy w bundlu klienta). Bez klucza → provider mock. GraphHopper free nie zwraca
- * myta, więc doszacowujemy je z dystansu (flaga `tollEstimated`).
+ * Serwerowe wytyczanie trasy przez przystanki. Klucz GraphHopper czytany z env
+ * po stronie serwera (nigdy w bundlu). Bez klucza → provider mock. Trasa liczona
+ * odcinkami (routeMultiLeg) → myto/dystans z podziałem na odcinki. GraphHopper free
+ * nie zwraca myta, więc doszacowujemy je per odcinek (flaga `tollEstimated`).
  */
 export async function POST(request: Request) {
   const body = (await request.json()) as RouteRequest;
@@ -20,19 +27,22 @@ export async function POST(request: Request) {
     : createRoutingProvider();
 
   try {
-    const result = await provider.route(body);
+    const result = await routeMultiLeg(provider, body);
 
-    let { tollCost } = result;
+    let { segments, tollCost } = result;
     let tollEstimated = false;
     if (tollCost === 0 && !body.options?.avoidTolls && provider.name !== "mock") {
-      tollCost = estimateTollEur(result.distanceKm, { weightKg: body.profile?.weightKg });
+      segments = result.segments.map((s) => ({
+        ...s,
+        tollCost: estimateTollEur(s.distanceKm, { weightKg: body.profile?.weightKg }),
+      }));
+      tollCost = round2(segments.reduce((acc, s) => acc + s.tollCost, 0));
       tollEstimated = true;
     }
 
-    return NextResponse.json({ ...result, tollCost, tollEstimated });
+    return NextResponse.json({ ...result, segments, tollCost, tollEstimated });
   } catch (e) {
-    // Fallback na mock, gdy dostawca zawiedzie (np. limit/sieć).
-    const mock = await createRoutingProvider().route(body);
+    const mock = await routeMultiLeg(createRoutingProvider(), body);
     return NextResponse.json({
       ...mock,
       tollEstimated: false,
