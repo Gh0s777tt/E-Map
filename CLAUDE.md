@@ -34,7 +34,7 @@ było zawsze spójne, zsynchronizowane i w jednej stylistyce z resztą (np. `E-B
 
 ## Bezpieczeństwo
 - Multi-tenant przez RLS — kierowca widzi tylko swoje dane, właściciel tylko swoją firmę.
-- **PIN-y kart paliwowych i dane wrażliwe**: szyfrowane (Supabase Vault/pgcrypto), dostęp tylko dla roli owner, audyt. Nigdy w logach, nigdy w repo.
+- **PIN-y kart paliwowych i dane wrażliwe**: szyfrowane (Supabase Vault/pgcrypto). **Ustawia** owner; **odczyt** dla aktywnych członków firmy (kierowca musi znać PIN, by zapłacić w automacie) — każdy odczyt audytowany. Nigdy w logach, nigdy w repo.
 - Sekrety wyłącznie w env (`.env.example` jako szablon). `gitleaks`/scan w CI.
 
 ## Git

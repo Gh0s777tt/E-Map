@@ -12,6 +12,7 @@ const t = createTranslator("pl");
 const NAV = [
   { href: "/dashboard", key: "nav.dashboard" },
   { href: "/vehicles", key: "nav.vehicles" },
+  { href: "/cards", key: "nav.cards" },
   { href: "/forms/fuel", key: "form.fuel.title" },
   { href: "/forms/adblue", key: "form.adblue.title" },
   { href: "/forms/trip", key: "form.trip.title" },

@@ -27,28 +27,30 @@ supabase db reset
 ## Stan wdrożenia
 
 - **Projekt:** `E-Logistic` (ref `jcmqbqvsvtjtxvmopcxp`, region `eu-central-1`) — `ACTIVE_HEALTHY`.
-- **Migracje 0001 + 0002:** ✅ zastosowane na żywej bazie (przez Management API, **24 tabele** w `public`, RLS aktywne).
+- **Migracje 0001–0004:** ✅ zastosowane na żywej bazie (przez Management API, **24 tabele** w `public`, RLS aktywne).
 - **Realtime:** ✅ `map_reports` w publikacji `supabase_realtime`.
-- **Zweryfikowane E2E:** rejestracja usera → trigger `handle_new_user` (profil) → logowanie → RPC `bootstrap_company` (firma + membership `owner`).
+- **Vault:** ✅ sekret `card_key` (klucz szyfrowania PIN-ów) utworzony jednorazowo w Supabase Vault.
+- **Zweryfikowane E2E:** rejestracja → trigger profilu → login → `bootstrap_company` → zapis tankowania (RLS) → **PIN: owner ustawia, kierowca odczytuje (audytowane)**.
 - **Env:** klucze (URL + anon + service_role) w `apps/web/.env.local` (gitignored). Token zarządczy i `service_role` **nie trafiają do repo**.
-- ⏳ **TODO `app.card_key`:** Management API odmawia `alter database ... set` własnego parametru — klucz szyfrowania PIN-ów wdrożymy przez **Supabase Vault** lub prywatną tabelę config przy budowie UI kart paliwowych.
 
-## Klucz szyfrowania PIN-ów
+## Klucz szyfrowania PIN-ów (Vault)
 
-PIN-y kart paliwowych są szyfrowane (`pgp_sym_encrypt`) i odszyfrowywane wyłącznie przez
-funkcję `fuel_card_pin()` — dostęp tylko dla roli `owner`, z wpisem do `audit_log`.
+PIN-y kart są szyfrowane `pgp_sym_encrypt` (pgcrypto w schemacie `extensions`). Klucz trzymany
+w **Supabase Vault**; `public._card_key()` czyta go z `vault.decrypted_secrets`.
 
-- **Produkcja:** klucz w **Supabase Vault**; funkcję `_card_key()` podmienić na odczyt z Vault.
-- **Dev:** ustaw klucz sesyjnie/bazowo:
+- **Sekret (jednorazowo, wartość NIE w repo):**
   ```sql
-  alter database postgres set app.card_key = '<silny-losowy-klucz>';
+  select vault.create_secret('<silny-losowy-klucz>', 'card_key', 'E-Logistic PIN key');
   ```
+- **Dostęp do PIN-u:** `fuel_card_pin(card)` — **każdy aktywny członek firmy** (kierowca musi znać
+  PIN, by zapłacić w automacie) + developer; każdy odczyt zapisywany w `audit_log`.
+- **Ustawianie PIN-u:** `fuel_card_set_pin(card, pin)` — tylko `owner`.
 
 ## Role i RLS (skrót)
 
 - `developer` — globalny wgląd (audytowany).
-- `owner` — pełen dostęp do swojej firmy (w tym PIN-y kart).
-- `dispatcher` — firma bez PIN-ów kart.
+- `owner` — pełen dostęp; **ustawia** PIN-y kart.
+- `dispatcher` / `driver` — firma; **odczyt** PIN-ów kart (kierowca płaci w automacie), audytowany.
 - `driver` — tylko własne formularze + przypisany pojazd.
 
 Nowa firma powstaje przez RPC `bootstrap_company(name)` (tworzy firmę + członkostwo `owner`).

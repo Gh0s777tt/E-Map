@@ -1,7 +1,8 @@
-/** Warstwa danych: karty paliwowe (kolumny bezpieczne — bez PIN-u). */
+/** Warstwa danych: karty paliwowe. PIN szyfrowany; odczyt/zapis przez RPC. */
+import type { FuelCardInput } from "@e-logistic/core";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Lista kart bez danych wrażliwych. PIN dostępny wyłącznie przez RPC `fuel_card_pin`. */
+/** Lista kart bez danych wrażliwych (PIN poza wynikiem — tylko przez `getFuelCardPin`). */
 export async function listFuelCardsSafe(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
     .from("fuel_cards")
@@ -10,4 +11,39 @@ export async function listFuelCardsSafe(client: SupabaseClient, companyId: strin
     .order("provider");
   if (error) throw error;
   return data ?? [];
+}
+
+/** Dodaje kartę (bez PIN-u — PIN ustawiany osobno przez `setFuelCardPin`). RLS: owner. */
+export async function insertFuelCard(
+  client: SupabaseClient,
+  input: FuelCardInput,
+  companyId: string,
+) {
+  const { data, error } = await client
+    .from("fuel_cards")
+    .insert({
+      company_id: companyId,
+      provider: input.provider,
+      card_number_masked: input.cardNumberMasked,
+      valid_until: input.validUntil ?? null,
+      discount_percent: input.discountPercent,
+      notes: input.notes ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+/** Ustawia (szyfruje) PIN karty — RPC, tylko owner. */
+export async function setFuelCardPin(client: SupabaseClient, cardId: string, pin: string) {
+  const { error } = await client.rpc("fuel_card_set_pin", { p_card: cardId, p_pin: pin });
+  if (error) throw error;
+}
+
+/** Odczytuje (deszyfruje) PIN karty — RPC, członek firmy; audytowane. */
+export async function getFuelCardPin(client: SupabaseClient, cardId: string): Promise<string> {
+  const { data, error } = await client.rpc("fuel_card_pin", { p_card: cardId });
+  if (error) throw error;
+  return (data as string | null) ?? "";
 }
