@@ -1,6 +1,7 @@
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
-import { StyleSheet, Text, View } from "react-native";
+import { Link } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 const t = createTranslator("pl");
 
@@ -12,7 +13,14 @@ export default function Home() {
         <Text style={styles.accent}>E</Text>-Logistic
       </Text>
       <Text style={styles.subtitle}>{t("app.tagline")}</Text>
-      <Text style={styles.note}>{t("sync.offline")} · Faza 0 · v0.2.0</Text>
+
+      <Link href="/fuel" asChild>
+        <Pressable style={styles.cta}>
+          <Text style={styles.ctaText}>⛽ {t("form.fuel.title")}</Text>
+        </Pressable>
+      </Link>
+
+      <Text style={styles.note}>Faza 1 · mobile · v0.5.0</Text>
     </View>
   );
 }
@@ -23,11 +31,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: palette.black,
-    gap: 8,
+    gap: 10,
+    padding: 24,
   },
   brand: { color: palette.smoke, letterSpacing: 4, fontSize: 12 },
   title: { color: palette.offWhite, fontSize: 44, fontWeight: "800" },
   accent: { color: palette.red },
   subtitle: { color: palette.smoke, fontSize: 16 },
-  note: { color: palette.smoke, fontSize: 12, marginTop: 12 },
+  cta: {
+    marginTop: 18,
+    backgroundColor: palette.red,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  ctaText: { color: palette.white, fontWeight: "700", fontSize: 16 },
+  note: { color: palette.smoke, fontSize: 12, marginTop: 16 },
 });
