@@ -1,6 +1,6 @@
 "use client";
 
-import { insertFuelLog, insertTripEvent } from "@e-logistic/api";
+import { getActiveMembership, insertFuelLog, insertTripEvent } from "@e-logistic/api";
 import { type FuelLogInput, newId, type TripEventInput } from "@e-logistic/core";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -67,8 +67,9 @@ export async function trySync(itemId: string): Promise<void> {
     } = await supabase.auth.getUser();
     if (!user) throw new Error("Brak sesji — wpis czeka w kolejce.");
 
-    const companyId = (user.user_metadata?.company_id as string | undefined) ?? user.id;
-    const ctx = { id: item.id, companyId, driverId: user.id };
+    const membership = await getActiveMembership(supabase);
+    if (!membership) throw new Error("Brak firmy — utwórz firmę (onboarding), by zsynchronizować.");
+    const ctx = { id: item.id, companyId: membership.companyId, driverId: user.id };
 
     if (item.kind === "trip") {
       await insertTripEvent(supabase, item.input as TripEventInput, ctx);
