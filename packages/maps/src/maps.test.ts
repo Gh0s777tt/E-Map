@@ -3,6 +3,7 @@ import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
 import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
 import { MockRoutingProvider } from "./mock";
+import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
 import type { LatLng } from "./types";
 
 const BERLIN: LatLng = { lat: 52.52, lng: 13.405 };
@@ -76,5 +77,41 @@ describe("createRoutingProvider", () => {
 
   it("wymaga klucza dla graphhopper", () => {
     expect(() => createRoutingProvider({ provider: "graphhopper" })).toThrow();
+  });
+});
+
+describe("POI (Overpass)", () => {
+  const bbox: BBox = { south: 52, west: 13, north: 53, east: 14 };
+
+  it("buduje zapytanie z bbox i klauzulami amenity", () => {
+    const q = buildOverpassQuery(bbox, ["parking", "fuel_station"]);
+    expect(q).toContain("52,13,53,14");
+    expect(q).toContain('["amenity"="parking"]["hgv"="yes"]');
+    expect(q).toContain('["amenity"="fuel"]');
+    expect(q).toContain("out center");
+  });
+
+  it("pomija typy spoza wyboru", () => {
+    const q = buildOverpassQuery(bbox, ["fuel_station"]);
+    expect(q).not.toContain('"amenity"="parking"');
+  });
+
+  it("parsuje node i way(center), pomija elementy bez współrzędnych i nie-POI", () => {
+    const pois = parseOverpass({
+      elements: [
+        { type: "node", id: 1, lat: 52.5, lon: 13.4, tags: { amenity: "fuel", name: "Shell" } },
+        {
+          type: "way",
+          id: 2,
+          center: { lat: 52.6, lon: 13.5 },
+          tags: { amenity: "parking", hgv: "yes" },
+        },
+        { type: "node", id: 3, tags: { amenity: "fuel" } }, // brak współrzędnych
+        { type: "node", id: 4, lat: 52.7, lon: 13.6, tags: { amenity: "cafe" } }, // nie-POI
+      ],
+    });
+    expect(pois).toHaveLength(2);
+    expect(pois[0]).toMatchObject({ type: "fuel_station", name: "Shell", lat: 52.5, lng: 13.4 });
+    expect(pois[1]).toMatchObject({ type: "parking", lat: 52.6, lng: 13.5 });
   });
 });
