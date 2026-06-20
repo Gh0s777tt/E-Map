@@ -24,8 +24,14 @@ supabase start
 supabase db reset
 ```
 
-> Migracje są napisane i zrecenzowane, ale **nie zostały jeszcze zastosowane na żywej instancji**
-> (brak podlinkowanego projektu). Zostaną wgrane przez `supabase db push` po utworzeniu projektu.
+## Stan wdrożenia
+
+- **Projekt:** `E-Logistic` (ref `jcmqbqvsvtjtxvmopcxp`, region `eu-central-1`) — `ACTIVE_HEALTHY`.
+- **Migracje 0001 + 0002:** ✅ zastosowane na żywej bazie (przez Management API, **24 tabele** w `public`, RLS aktywne).
+- **Realtime:** ✅ `map_reports` w publikacji `supabase_realtime`.
+- **Zweryfikowane E2E:** rejestracja usera → trigger `handle_new_user` (profil) → logowanie → RPC `bootstrap_company` (firma + membership `owner`).
+- **Env:** klucze (URL + anon + service_role) w `apps/web/.env.local` (gitignored). Token zarządczy i `service_role` **nie trafiają do repo**.
+- ⏳ **TODO `app.card_key`:** Management API odmawia `alter database ... set` własnego parametru — klucz szyfrowania PIN-ów wdrożymy przez **Supabase Vault** lub prywatną tabelę config przy budowie UI kart paliwowych.
 
 ## Klucz szyfrowania PIN-ów
 
