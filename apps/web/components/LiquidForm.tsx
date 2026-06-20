@@ -4,9 +4,9 @@ import { fuelLogSchema, PAYMENT_METHODS } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
-import { useState } from "react";
-import { DEMO_CARDS as CARDS, DEMO_VEHICLES as VEHICLES } from "@/lib/demo";
+import { useEffect, useState } from "react";
 import { enqueue } from "@/lib/outbox";
+import { useFleet } from "@/lib/useFleet";
 
 const t = createTranslator("pl");
 
@@ -14,19 +14,27 @@ const t = createTranslator("pl");
 export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const title = kind === "fuel" ? t("form.fuel.title") : t("form.adblue.title");
 
-  const [vehicleId, setVehicleId] = useState(VEHICLES[0]?.id ?? "");
+  const { vehicles, cards } = useFleet();
+  const [vehicleId, setVehicleId] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [liters, setLiters] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<(typeof PAYMENT_METHODS)[number]>("card");
-  const [fuelCardId, setFuelCardId] = useState(CARDS[0]?.id ?? "");
+  const [fuelCardId, setFuelCardId] = useState("");
   const [priceTotal, setPriceTotal] = useState("");
   const [comment, setComment] = useState("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
+  }, [vehicles, vehicleId]);
+  useEffect(() => {
+    if (!fuelCardId && cards[0]) setFuelCardId(cards[0].id);
+  }, [cards, fuelCardId]);
 
   function fillGps() {
     if (!navigator.geolocation) {
@@ -97,7 +105,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
             value={vehicleId}
             onChange={(e) => setVehicleId(e.target.value)}
           >
-            {VEHICLES.map((v) => (
+            {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.registration}
               </option>
@@ -173,7 +181,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
               value={fuelCardId}
               onChange={(e) => setFuelCardId(e.target.value)}
             >
-              {CARDS.map((c) => (
+              {cards.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
                 </option>

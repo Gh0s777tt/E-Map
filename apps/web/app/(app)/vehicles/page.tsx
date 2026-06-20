@@ -1,11 +1,13 @@
 "use client";
 
-import { getActiveMembership, insertVehicle } from "@e-logistic/api";
+import { getActiveMembership, insertVehicle, listVehicles } from "@e-logistic/api";
 import { VEHICLE_TYPES, type VehicleInput, vehicleSchema } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+
+type DbVehicle = { id: string; registration: string; model: string; vehicle_type: string };
 
 const t = createTranslator("pl");
 
@@ -19,6 +21,26 @@ export default function VehiclesPage() {
   const [maxPayloadKg, setMaxPayloadKg] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
+
+  const loadVehicles = useCallback(async () => {
+    try {
+      const supabase = getBrowserSupabase();
+      const membership = await getActiveMembership(supabase);
+      if (!membership) {
+        setDbVehicles([]);
+        return;
+      }
+      const vs = await listVehicles(supabase, membership.companyId);
+      setDbVehicles(vs as DbVehicle[]);
+    } catch {
+      setDbVehicles([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadVehicles();
+  }, [loadVehicles]);
 
   async function add() {
     setErrors({});
@@ -55,6 +77,7 @@ export default function VehiclesPage() {
       if (membership) {
         await insertVehicle(supabase, parsed.data, membership.companyId);
         setStatus("✅ Dodano i zapisano w bazie.");
+        await loadVehicles();
       } else {
         setStatus("📥 Dodano lokalnie (utwórz firmę w panelu, by zapisać w bazie).");
       }
@@ -153,20 +176,35 @@ export default function VehiclesPage() {
         {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
       </div>
 
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Dodane w tej sesji</h2>
-      {list.length === 0 ? (
-        <p style={{ color: palette.smoke }}>Brak — dodaj pojazd powyżej.</p>
-      ) : (
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Flota</h2>
+
+      {dbVehicles.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {dbVehicles.map((v) => (
+            <div key={v.id} style={styles.row}>
+              <strong style={{ minWidth: 110 }}>{v.registration}</strong>
+              <span style={styles.cell}>{v.model}</span>
+              <span style={styles.cell}>{v.vehicle_type}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {dbVehicles.length === 0 && list.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           {list.map((v) => (
             <div key={`${v.registration}-${v.year}`} style={styles.row}>
               <strong style={{ minWidth: 110 }}>{v.registration}</strong>
               <span style={styles.cell}>{v.model}</span>
               <span style={styles.cell}>{v.year}</span>
-              <span style={styles.cell}>{v.vehicleType}</span>
+              <span style={{ ...styles.cell, color: palette.warning }}>lokalnie</span>
             </div>
           ))}
         </div>
+      )}
+
+      {dbVehicles.length === 0 && list.length === 0 && (
+        <p style={{ color: palette.smoke }}>Brak pojazdów — dodaj powyżej.</p>
       )}
     </div>
   );
