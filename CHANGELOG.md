@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-3-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.3.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-4-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.4.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.4.0] — 📊 Faza 1: statystyki, historia formularzy, pojazdy (web)
+
+- `[#004]` 📊 **Domknięcie weba Fazy 1 — statystyki na silniku rozliczeń, historia formularzy i zarządzanie pojazdami.**
+  - **`packages/core`** — [`summarizeFuel`](packages/core/src/billing.ts) (litry, dystans, śr. spalanie, wydatek) + 2 testy (**razem 25 testów w core**).
+  - **`packages/api`** — [`listFuelLogs`](packages/api/src/data/fuelLogs.ts), [`insertVehicle`/`vehicleToRow`](packages/api/src/data/vehicles.ts), [`listFuelCardsSafe`](packages/api/src/data/fuelCards.ts) (bez PIN-u).
+  - **Statystyki** ([`/stats`](apps/web/app/(app)/stats/page.tsx)) — spalanie/wydatek per pojazd liczone silnikiem `core` na danych z outboxu (działa offline).
+  - **Historia formularzy** ([`/forms/fuel/history`](apps/web/app/(app)/forms/fuel/history/page.tsx)) — lista wysłanych formularzy ze statusem + ponowna synchronizacja (wymóg podglądu własnych formularzy).
+  - **Pojazdy** ([`/vehicles`](apps/web/app/(app)/vehicles/page.tsx)) — dodawanie z walidacją `vehicleSchema`, best-effort zapis do Supabase, lista sesyjna.
+  - **Wspólne dane demo** wydzielone do [`lib/demo.ts`](apps/web/lib/demo.ts); nawigacja dashboardu rozszerzona (pojazdy, statystyki).
+  - **Bramki:** biome czysto (58 plików) · `tsc` exit 0 (×5) · **27 testów** · `next build` ✓ (9 tras).
+  - **Następne (#005):** inicjalizacja Expo (mobile), `supabase db push`, lista pojazdów/kart z bazy zamiast danych demo, formularze AdBlue/Trip, zarządzanie kartami + PIN (RPC).
 
 ## [0.3.0] — 🔐 Faza 1: logowanie + Formularz Paliwowy end-to-end (web)
 

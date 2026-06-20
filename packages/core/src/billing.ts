@@ -150,3 +150,42 @@ export function computeTripSettlement(input: TripSettlementInput): TripSettlemen
   const cost = tripCost(input.costs);
   return { distanceKm, ...tripProfit(revenue, cost) };
 }
+
+// ── Podsumowanie paliwa (statystyki) ────────────────────────────────
+
+export interface FuelStatsEntry {
+  odometerKm: number;
+  liters: number;
+  priceTotal?: number;
+}
+
+export interface FuelStats {
+  count: number;
+  totalLiters: number;
+  totalDistanceKm: number;
+  avgConsumptionLPer100km: number | null;
+  totalSpend: number;
+}
+
+/** Zbiorcze statystyki paliwa dla zestawu tankowań (np. jednego pojazdu). */
+export function summarizeFuel(entries: FuelStatsEntry[]): FuelStats {
+  const totalLiters = round2(entries.reduce((sum, e) => sum + e.liters, 0));
+  const totalSpend = round2(entries.reduce((sum, e) => sum + (e.priceTotal ?? 0), 0));
+  const avgConsumptionLPer100km = aggregateConsumptionLPer100km(entries);
+
+  let totalDistanceKm = 0;
+  if (entries.length >= 2) {
+    const sorted = [...entries].sort((a, b) => a.odometerKm - b.odometerKm);
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    if (first && last) totalDistanceKm = Math.max(0, last.odometerKm - first.odometerKm);
+  }
+
+  return {
+    count: entries.length,
+    totalLiters,
+    totalDistanceKm,
+    avgConsumptionLPer100km,
+    totalSpend,
+  };
+}
