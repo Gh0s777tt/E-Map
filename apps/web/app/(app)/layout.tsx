@@ -20,12 +20,21 @@ const NAV = [
 ] as const;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await getServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Gdy Supabase jest skonfigurowane → wymuszamy logowanie.
+  // Gdy nie → tryb offline/dev (apka użyteczna bez backendu: formularze, mapa, statystyki).
+  const supabaseConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
 
-  if (!user) redirect("/login");
+  let email = "tryb offline";
+  if (supabaseConfigured) {
+    const supabase = await getServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
+    email = user.email ?? "—";
+  }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -59,7 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Link>
           ))}
         </nav>
-        <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{user.email}</div>
+        <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{email}</div>
         <SignOutButton />
       </aside>
       <main style={{ flex: 1, padding: 32 }}>{children}</main>

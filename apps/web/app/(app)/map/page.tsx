@@ -2,18 +2,13 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import {
-  createRoutingProvider,
-  fetchPois,
-  type LatLng,
-  type Poi,
-  type RouteResult,
-} from "@e-logistic/maps";
+import { fetchPois, type LatLng, type Poi, type RouteResult } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, StyleSpecification } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
 type MaplibreModule = typeof import("maplibre-gl");
+type RouteResponse = RouteResult & { tollEstimated?: boolean; fallback?: boolean };
 
 const CITIES = [
   { id: "berlin", label: "Berlin", lat: 52.52, lng: 13.405 },
@@ -75,7 +70,7 @@ export default function MapPage() {
   const [avoidTolls, setAvoidTolls] = useState(false);
   const [avoidFerries, setAvoidFerries] = useState(false);
   const [avoidCH, setAvoidCH] = useState(false);
-  const [result, setResult] = useState<RouteResult | null>(null);
+  const [result, setResult] = useState<RouteResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [poiBusy, setPoiBusy] = useState(false);
   const [poiCount, setPoiCount] = useState<number | null>(null);
@@ -205,12 +200,16 @@ export default function MapPage() {
   async function plan() {
     setBusy(true);
     try {
-      const provider = createRoutingProvider(); // mock (bez klucza)
-      const r = await provider.route({
-        waypoints: [city(start), city(end)],
-        profile: { kind: kindHeavy ? "truck" : "van", weightKg: kindHeavy ? 24000 : 3000 },
-        options: { avoidTolls, avoidFerries, avoidCountries: avoidCH ? ["CH"] : [] },
+      const res = await fetch("/api/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          waypoints: [city(start), city(end)],
+          profile: { kind: kindHeavy ? "truck" : "van", weightKg: kindHeavy ? 24000 : 3000 },
+          options: { avoidTolls, avoidFerries, avoidCountries: avoidCH ? ["CH"] : [] },
+        }),
       });
+      const r = (await res.json()) as RouteResponse;
       setResult(r);
       drawRoute(r.geometry);
     } finally {
@@ -222,7 +221,8 @@ export default function MapPage() {
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Mapa</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Render MapLibre + routing przez <code>RoutingProvider</code> (mock — bez klucza).
+        Render MapLibre + routing serwerowy (GraphHopper). Profil samochodowy — TIR wymaga planu
+        płatnego; myto doszacowane.
       </p>
 
       <div style={{ display: "flex", gap: 16, marginTop: 16, flexWrap: "wrap" }}>
@@ -300,7 +300,10 @@ export default function MapPage() {
             <div style={styles.result}>
               <Row k="Dystans" v={`${result.distanceKm} km`} />
               <Row k="Czas" v={`${Math.round(result.durationMin)} min`} />
-              <Row k="Myto" v={`${result.tollCost} ${result.currency}`} />
+              <Row
+                k="Myto"
+                v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
+              />
               <Row k="Dostawca" v={result.provider} />
             </div>
           )}
