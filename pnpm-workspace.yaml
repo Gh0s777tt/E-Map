@@ -1,0 +1,9 @@
+packages:
+  - "apps/web"
+  - "packages/*"
+  # apps/mobile dołączamy do instalacji w przyrostku #003 (inicjalizacja Expo
+  # przez `expo install`, konfiguracja Metro + pnpm hoisting, EAS). Szkielet już w repo.
+
+# Skrypty buildów natywnych zależności dozwolone jawnie (pnpm 11).
+allowBuilds:
+  sharp: true

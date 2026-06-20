@@ -1,4 +1,4 @@
-<!-- SYNC: v0.1.0 · #001 · 2026-06-20 — utrzymywane ręcznie do czasu `pnpm docs:check` (badge wersji + blurb „Najnowsze") -->
+<!-- SYNC: v0.2.0 · #002 · 2026-06-20 — utrzymywane ręcznie do czasu `pnpm docs:check` (badge wersji + blurb „Najnowsze") -->
 <!-- ╔══════════════════════════════════════════════════════════════════╗ -->
 <!-- ║                       E - L O G I S T I C                         ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->
@@ -12,8 +12,8 @@
 
 <br/>
 
-![Wersja](https://img.shields.io/badge/wersja-0.1.0-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Status](https://img.shields.io/badge/status-projektowanie-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.2.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Status](https://img.shields.io/badge/status-fundament-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Licencja](https://img.shields.io/badge/licencja-PROPRIETARY-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Repo](https://img.shields.io/badge/repo-publiczne-E50914?style=for-the-badge&labelColor=0a0a0a)
 
