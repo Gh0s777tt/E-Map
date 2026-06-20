@@ -20,6 +20,7 @@ const CARDS = [
     title: "Trip 🚚",
     desc: "Załadunek / rozładunek / serwis…",
   },
+  { href: "/map", tag: "MAPA", title: "Mapa 🗺️", desc: "Routing TIR + myto (mock)" },
   { href: "/stats", tag: "RAPORT", title: "Statystyki 📊", desc: "Spalanie i koszty per pojazd" },
 ];
 

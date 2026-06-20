@@ -1,6 +1,6 @@
 {
   "name": "@e-logistic/web",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,9 @@
     "@e-logistic/api": "workspace:*",
     "@e-logistic/core": "workspace:*",
     "@e-logistic/i18n": "workspace:*",
+    "@e-logistic/maps": "workspace:*",
     "@e-logistic/ui": "workspace:*",
+    "maplibre-gl": "5.24.0",
     "next": "16.2.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",
