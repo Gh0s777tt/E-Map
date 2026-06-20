@@ -3,6 +3,7 @@ import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
 import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
 import { MockRoutingProvider } from "./mock";
+import { routeMultiLeg } from "./multileg";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
 import { estimateTollEur } from "./toll";
 import type { LatLng } from "./types";
@@ -76,6 +77,25 @@ describe("GraphHopper builder", () => {
       { truckProfile: true },
     ) as { profile: string };
     expect(body.profile).toBe("truck");
+  });
+});
+
+describe("routeMultiLeg", () => {
+  const WIEN: LatLng = { lat: 48.2082, lng: 16.3738 };
+  const provider = new MockRoutingProvider();
+
+  it("liczy trasę przez przystanek jako sumę odcinków", async () => {
+    const r = await routeMultiLeg(provider, { waypoints: [BERLIN, WIEN, WARSAW] });
+    expect(r.segments).toHaveLength(2);
+    expect(r.geometry).toHaveLength(3);
+    const sum = (r.segments[0]?.distanceKm ?? 0) + (r.segments[1]?.distanceKm ?? 0);
+    expect(sum).toBeGreaterThan(0);
+    expect(r.distanceKm).toBeCloseTo(sum, 1);
+    expect(r.tollCost).toBeGreaterThan(0);
+  });
+
+  it("rzuca przy mniej niż 2 punktach", async () => {
+    await expect(routeMultiLeg(provider, { waypoints: [BERLIN] })).rejects.toThrow(RangeError);
   });
 });
 

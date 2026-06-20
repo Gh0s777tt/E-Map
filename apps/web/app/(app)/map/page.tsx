@@ -2,6 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { newId } from "@e-logistic/core";
 import { fetchPois, type LatLng, type Poi, type RouteResult } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, StyleSpecification } from "maplibre-gl";
@@ -9,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 
 type MaplibreModule = typeof import("maplibre-gl");
 type RouteResponse = RouteResult & { tollEstimated?: boolean; fallback?: boolean };
+type Stop = { key: string; city: string };
 
 const CITIES = [
   { id: "berlin", label: "Berlin", lat: 52.52, lng: 13.405 },
@@ -18,6 +20,11 @@ const CITIES = [
   { id: "madryt", label: "Madryt", lat: 40.4168, lng: -3.7038 },
   { id: "zurych", label: "Zurych", lat: 47.3769, lng: 8.5417 },
 ] as const;
+
+function city(id: string): LatLng {
+  const c = CITIES.find((x) => x.id === id) ?? CITIES[0];
+  return { lat: c.lat, lng: c.lng };
+}
 
 const OSM_STYLE: StyleSpecification = {
   version: 8,
@@ -64,8 +71,10 @@ export default function MapPage() {
   const mapRef = useRef<MlMap | null>(null);
   const mlRef = useRef<MaplibreModule | null>(null);
 
-  const [start, setStart] = useState("berlin");
-  const [end, setEnd] = useState("warszawa");
+  const [stops, setStops] = useState<Stop[]>([
+    { key: "s-start", city: "berlin" },
+    { key: "s-end", city: "warszawa" },
+  ]);
   const [kindHeavy, setKindHeavy] = useState(true);
   const [avoidTolls, setAvoidTolls] = useState(false);
   const [avoidFerries, setAvoidFerries] = useState(false);
@@ -92,9 +101,18 @@ export default function MapPage() {
     return () => map?.remove();
   }, []);
 
-  function city(id: string): LatLng {
-    const c = CITIES.find((x) => x.id === id) ?? CITIES[0];
-    return { lat: c.lat, lng: c.lng };
+  function setStopCity(key: string, value: string) {
+    setStops((s) => s.map((st) => (st.key === key ? { ...st, city: value } : st)));
+  }
+  function addStop() {
+    setStops((s) => {
+      const next = [...s];
+      next.splice(next.length - 1, 0, { key: newId(), city: "wieden" });
+      return next;
+    });
+  }
+  function removeStop(key: string) {
+    setStops((s) => (s.length > 2 ? s.filter((st) => st.key !== key) : s));
   }
 
   function drawRoute(geometry: LatLng[]) {
@@ -204,7 +222,7 @@ export default function MapPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          waypoints: [city(start), city(end)],
+          waypoints: stops.map((st) => city(st.city)),
           profile: { kind: kindHeavy ? "truck" : "van", weightKg: kindHeavy ? 24000 : 3000 },
           options: { avoidTolls, avoidFerries, avoidCountries: avoidCH ? ["CH"] : [] },
         }),
@@ -221,32 +239,43 @@ export default function MapPage() {
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Mapa</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Render MapLibre + routing serwerowy (GraphHopper). Profil samochodowy — TIR wymaga planu
-        płatnego; myto doszacowane.
+        Routing serwerowy (GraphHopper) z przystankami. Profil samochodowy — TIR wymaga planu
+        płatnego; myto doszacowane per odcinek.
       </p>
 
       <div style={{ display: "flex", gap: 16, marginTop: 16, flexWrap: "wrap" }}>
         <div style={styles.panel}>
-          <label style={styles.field}>
-            <span style={styles.label}>Start</span>
-            <select style={styles.input} value={start} onChange={(e) => setStart(e.target.value)}>
-              {CITIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={styles.field}>
-            <span style={styles.label}>Cel</span>
-            <select style={styles.input} value={end} onChange={(e) => setEnd(e.target.value)}>
-              {CITIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          {stops.map((st, i) => {
+            const role = i === 0 ? "Start" : i === stops.length - 1 ? "Cel" : `Przystanek ${i}`;
+            const removable = i > 0 && i < stops.length - 1;
+            return (
+              <div key={st.key} style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
+                <label style={{ ...styles.field, flex: 1 }}>
+                  <span style={styles.label}>{role}</span>
+                  <select
+                    style={styles.input}
+                    value={st.city}
+                    onChange={(e) => setStopCity(st.key, e.target.value)}
+                  >
+                    {CITIES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {removable && (
+                  <button type="button" style={styles.remove} onClick={() => removeStop(st.key)}>
+                    ✕
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          <button type="button" style={styles.ghost} onClick={addStop}>
+            ➕ Dodaj przystanek
+          </button>
 
           <label style={styles.check}>
             <input
@@ -305,6 +334,32 @@ export default function MapPage() {
                 v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
               />
               <Row k="Dostawca" v={result.provider} />
+              {result.segments.length > 1 && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    borderTop: `1px solid ${palette.graphite}`,
+                    paddingTop: 6,
+                  }}
+                >
+                  <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 4 }}>
+                    Odcinki:
+                  </div>
+                  {result.segments.map((s, i) => (
+                    <div
+                      key={`${s.from.lat},${s.from.lng}->${s.to.lat},${s.to.lng}`}
+                      style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}
+                    >
+                      <span style={{ color: palette.smoke }}>
+                        #{i + 1} · {s.distanceKm} km
+                      </span>
+                      <span>
+                        {s.tollCost} {result.currency}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -336,7 +391,7 @@ function Row({ k, v }: { k: string; v: string }) {
 
 const styles: Record<string, React.CSSProperties> = {
   panel: {
-    width: 260,
+    width: 280,
     display: "flex",
     flexDirection: "column",
     gap: 10,
@@ -354,6 +409,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     padding: "9px 10px",
     color: palette.offWhite,
+    width: "100%",
+  },
+  remove: {
+    background: "transparent",
+    color: palette.smoke,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "9px 11px",
+    cursor: "pointer",
   },
   check: { color: palette.offWhite, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
   primary: {
