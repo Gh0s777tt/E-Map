@@ -15,8 +15,8 @@
     "@e-logistic/i18n": "workspace:*",
     "@e-logistic/ui": "workspace:*",
     "next": "16.2.9",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "server-only": "0.0.1"
   },
   "devDependencies": {
