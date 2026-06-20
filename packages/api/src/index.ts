@@ -5,4 +5,5 @@
 export * from "./client";
 export * from "./data/fuelCards";
 export * from "./data/fuelLogs";
+export * from "./data/tripEvents";
 export * from "./data/vehicles";
