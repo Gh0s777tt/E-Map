@@ -4,15 +4,16 @@ import { TRIP_ACTIONS, tripEventSchema } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field, fieldInputStyle as input } from "@/components/Field";
-import { DEMO_VEHICLES as VEHICLES } from "@/lib/demo";
 import { enqueue } from "@/lib/outbox";
+import { useFleet } from "@/lib/useFleet";
 
 const t = createTranslator("pl");
 
 export default function TripFormPage() {
-  const [vehicleId, setVehicleId] = useState(VEHICLES[0]?.id ?? "");
+  const { vehicles } = useFleet();
+  const [vehicleId, setVehicleId] = useState("");
   const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
   const [country, setCountry] = useState("");
   const [location, setLocation] = useState("");
@@ -23,6 +24,10 @@ export default function TripFormPage() {
   const [comment, setComment] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
+  }, [vehicles, vehicleId]);
 
   const needsWeight = action === "load" || action === "unload";
   const needsAmount = action === "service" || action === "other";
@@ -90,7 +95,7 @@ export default function TripFormPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
         <Field label={t("form.field.vehicle")} error={errors.vehicleId}>
           <select style={input} value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-            {VEHICLES.map((v) => (
+            {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.registration}
               </option>
