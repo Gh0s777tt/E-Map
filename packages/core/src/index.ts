@@ -5,6 +5,7 @@
 
 export * from "./billing";
 export * from "./enums";
+export * from "./expiry";
 export * from "./ids";
 export * from "./money";
 export * from "./schemas";
