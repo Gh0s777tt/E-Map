@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-76-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.57.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-77-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.57.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.57.1] — 🔐 Utwardzenie polityki haseł (Auth)
+
+- `[#077]` 🔐 **Domknięcie audytu P1 #6** — silniejsza polityka haseł w Supabase Auth (Management API):
+  - `password_min_length`: **6 → 12**.
+  - `password_hibp_enabled`: **true** — odrzucanie haseł z wycieków (Have I Been Pwned).
+  - Bez wymogu klas znaków — zgodnie z NIST (długość + sprawdzanie wycieków skuteczniejsze niż reguły kompozycji).
+  - Zweryfikowane na żywym projekcie (PATCH 200 → GET potwierdza). Reprodukowalne polecenie + opis w [supabase/README.md](supabase/README.md). Zmiana konfiguracji chmury (bez kodu).
+  - **Bramki:** biome czysto (docs). Bez zmian w kodzie.
 
 ## [0.57.0] — 🔎 Filtry w Historii formularzy
 

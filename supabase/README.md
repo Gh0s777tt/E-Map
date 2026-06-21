@@ -62,6 +62,21 @@ w **Supabase Vault**; `public._card_key()` czyta go z `vault.decrypted_secrets`.
   PIN, by zapłacić w automacie); **developer NIE** (odcięty w 0013); każdy odczyt w `audit_log`.
 - **Ustawianie PIN-u:** `fuel_card_set_pin(card, pin)` — tylko `owner`.
 
+## Polityka haseł (Auth)
+
+Utwardzona (audyt P1 #6, #077) — ustawiana przez Management API (token `sbp_`, **NIE w repo**):
+
+```bash
+curl -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"password_min_length":12,"password_hibp_enabled":true}' \
+  "https://api.supabase.com/v1/projects/<PROJECT_REF>/config/auth"
+```
+
+- `password_min_length = 12` (było 6).
+- `password_hibp_enabled = true` — odrzucanie haseł z wycieków (Have I Been Pwned).
+- Bez wymogu klas znaków — zgodnie z NIST (długość + sprawdzanie wycieków > reguły kompozycji).
+
 ## Role i RLS (skrót)
 
 - `developer` — tylko diagnostyka (`dev_stats`); **odcięty od danych firm i PIN-ów** (0013).
