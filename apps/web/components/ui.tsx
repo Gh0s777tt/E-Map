@@ -55,6 +55,81 @@ export function Button({
   return <button type="button" style={{ ...buttonStyles[variant], ...style }} {...props} />;
 }
 
+/**
+ * Lekki wykres słupkowy (CSS, bez zależności). Responsywny, motyw red/black.
+ * Dane: lista `{ label, value }`; wysokość słupka proporcjonalna do maksimum.
+ */
+export function BarChart({
+  data,
+  unit = "",
+  color = palette.red,
+  height = 160,
+}: {
+  data: { label: string; value: number }[];
+  unit?: string;
+  color?: string;
+  height?: number;
+}) {
+  if (data.length === 0) {
+    return <p style={{ color: palette.smoke, fontSize: 13 }}>Brak danych do wykresu.</p>;
+  }
+  const max = Math.max(...data.map((d) => d.value), 1);
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-end",
+        gap: 8,
+        height,
+        padding: "8px 4px",
+        borderBottom: `1px solid ${palette.graphite}`,
+      }}
+    >
+      {data.map((d) => (
+        <div
+          key={d.label}
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            height: "100%",
+            minWidth: 0,
+          }}
+          title={`${d.label}: ${d.value}${unit}`}
+        >
+          <span style={{ fontSize: 11, color: palette.smoke }}>
+            {d.value}
+            {unit}
+          </span>
+          <div
+            style={{
+              width: "70%",
+              background: color,
+              height: `${Math.max((d.value / max) * 100, 2)}%`,
+              borderRadius: "4px 4px 0 0",
+            }}
+          />
+          <span
+            style={{
+              fontSize: 11,
+              color: palette.smoke,
+              marginTop: 4,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "100%",
+            }}
+          >
+            {d.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Kolorowy „pill" statusu/etykiety (np. severity, status). */
 export function Badge({
   color = palette.smoke,
