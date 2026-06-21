@@ -4,6 +4,7 @@
  */
 export * from "./client";
 export * from "./data/dev";
+export * from "./data/drivers";
 export * from "./data/fuelCards";
 export * from "./data/fuelLogs";
 export * from "./data/invites";

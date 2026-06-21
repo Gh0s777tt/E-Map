@@ -64,6 +64,21 @@ export const fuelCardSchema = z.object({
 });
 export type FuelCardInput = z.infer<typeof fuelCardSchema>;
 
+// ── Kierowca (kartoteka kadrowa) ────────────────────────────────────
+
+export const driverSchema = z.object({
+  firstName: z.string().min(1).max(60),
+  lastName: z.string().min(1).max(60),
+  birthDate: isoDate.optional(),
+  licenseNumber: z.string().max(40).optional(),
+  idCardNumber: z.string().max(40).optional(),
+  passportNumber: z.string().max(40).optional(),
+  licenseCategories: z.array(z.string()).default([]),
+  qualifications: z.array(z.string()).default([]),
+  notes: z.string().max(2000).optional(),
+});
+export type DriverInput = z.infer<typeof driverSchema>;
+
 // ── Formularz Paliwo / AdBlue ───────────────────────────────────────
 
 export const fuelLogSchema = z
