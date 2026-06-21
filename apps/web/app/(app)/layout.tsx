@@ -6,6 +6,7 @@ import { createTranslator, type MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { NotificationBell } from "@/components/NotificationBell";
 import { SignOutButton } from "@/components/SignOutButton";
 import { getServerSupabase } from "@/lib/supabase/server";
 
@@ -99,6 +100,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Link>
           )}
         </nav>
+        {supabaseConfigured && (
+          <div style={{ marginBottom: 8 }}>
+            <NotificationBell />
+          </div>
+        )}
         <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{email}</div>
         <SignOutButton />
       </aside>

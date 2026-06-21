@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-34-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.34.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-35-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.35.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.35.0] — 🔔 Powiadomienia w aplikacji (przeładowanie + terminy)
+
+- `[#035]` 🔔 **Centrum powiadomień: dzwonek + realtime, alert przeładowania, wygasające terminy.**
+  - **DB** [`0017`](supabase/migrations/0017_notifications.sql) + [`0018`](supabase/migrations/0018_fix_expiry_onconflict.sql): tabela `notifications` + RLS (czytasz tylko swoje), realtime; RPC `notify_company` (powiadom kadrę) i `generate_expiry_notifications` (idempotentne, OC/przegląd/leasing/karta ≤30 dni).
+  - **`packages/api`** — [`listNotifications`, `markNotificationsRead`, `notifyCompany`, `generateExpiryNotifications`](packages/api/src/data/notifications.ts).
+  - **Web** — [`NotificationBell`](apps/web/components/NotificationBell.tsx) w menu (badge + realtime + oznaczanie przeczytanych); **alert przeładowania** w [formularzu Trip](apps/web/app/(app)/forms/trip/page.tsx) (waga > ładowność → powiadomienie dla kadry); terminy generowane przy wejściu (owner/dispatcher).
+  - **Weryfikacja E2E na żywej bazie:** `notify_company` 204 ×3, `generate_expiry` 204 + powiadomienie + idempotencja (2× → 1). ✅
+  - **Bramki:** biome czysto (113) · `tsc` (×7) · `next build` ✓.
+  - ⏳ Web push (telefon przy zamkniętej apce) jako kolejny krok.
 
 ## [0.34.0] — 🧩 Uprawnienia modułowe + panel Zespół
 

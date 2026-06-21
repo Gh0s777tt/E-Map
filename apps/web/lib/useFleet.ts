@@ -9,6 +9,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 export interface FleetVehicle {
   id: string;
   registration: string;
+  maxPayloadKg?: number | null;
 }
 export interface FleetCard {
   id: string;
@@ -36,10 +37,13 @@ export function useFleet() {
           listFuelCardsForUser(sb),
         ]);
         setVehicles(
-          (vs as { id: string; registration: string }[]).map((v) => ({
-            id: v.id,
-            registration: v.registration,
-          })),
+          (vs as { id: string; registration: string; max_payload_kg?: number | null }[]).map(
+            (v) => ({
+              id: v.id,
+              registration: v.registration,
+              maxPayloadKg: v.max_payload_kg ?? null,
+            }),
+          ),
         );
         setCards(
           (
