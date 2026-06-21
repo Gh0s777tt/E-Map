@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-53-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.51.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-54-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.51.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.51.2] — 🧰 Infra: wyrównanie rygoru TS w mobile
+
+- `[#054]` 🧰 **Mobile dziedziczy ostrzejsze reguły TS** (P z audytu — infra). [`apps/mobile/tsconfig.json`](apps/mobile/tsconfig.json): dodane `noUncheckedIndexedAccess`, `noImplicitOverride`, `noFallthroughCasesInSwitch` (parytet jakości z web). Typecheck mobile zielony.
+  - **Świadomie zostawione:** `engines.node ">=22"` (floor zgodny z Vercelem; `.nvmrc 26` to pin dev — nie zmieniamy, by nie ryzykować deployu). Rate‑limiting endpointów oraz większy refaktor UI (`packages/ui`, responsywność, modale, `useMembership`) — kolejny zaplanowany etap (wymaga weryfikacji z uruchomioną apką).
+  - **Bramki:** biome czysto · `tsc` ×7 (web+mobile) · 71 testów.
 
 ## [0.51.1] — 📚 Synchronizacja dokumentacji ze stanem kodu
 
