@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-86-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.62.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-87-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.63.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.63.0] — 📱 Mobilny drawer nawigacji (P2)
+
+- `[#087]` 📱 **Hamburger + drawer na telefonie** ([AppSidebar](apps/web/components/AppSidebar.tsx)):
+  - Desktop (>820px): pełny sidebar boczny (bez zmian).
+  - Mobile (≤820px): kompaktowy pasek z logo + **hamburger ☰**; menu (nawigacja + konto) rozwijane po kliknięciu, **zwijane po wyborze pozycji** (`onNavigate` w [SidebarNav](apps/web/components/SidebarNav.tsx)). Zamiast wcześniejszego poziomego paska, który zajmował dużo wysokości przy wielu pozycjach.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.62.0] — ⬇️ Eksport CSV w Historii (P2 #9)
 

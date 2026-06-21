@@ -31,6 +31,28 @@ body {
   flex-direction: column;
   gap: 6px;
 }
+.app-sidebar-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.app-sidebar-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.app-burger {
+  display: none;
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  color: #f5f5f5;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
 .app-nav {
   display: flex;
   flex-direction: column;
@@ -71,13 +93,18 @@ body {
     border-bottom: 1px solid #2a2a2a;
     padding: 12px 16px;
   }
-  .app-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
+  .app-sidebar-head {
+    margin-bottom: 0;
   }
-  .app-navlink {
-    padding: 7px 10px;
-    font-size: 14px;
+  .app-burger {
+    display: block;
+  }
+  .app-sidebar-body {
+    display: none;
+  }
+  .app-sidebar.open .app-sidebar-body {
+    display: flex;
+    margin-top: 12px;
   }
   .app-main {
     padding: 16px;

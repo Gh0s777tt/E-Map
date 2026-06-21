@@ -9,7 +9,7 @@ export interface NavItem {
 }
 
 /** Nawigacja boczna z podświetleniem aktywnej pozycji (klient — zna bieżącą ścieżkę). */
-export function SidebarNav({ items }: { items: NavItem[] }) {
+export function SidebarNav({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <nav className="app-nav">
@@ -23,6 +23,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
             href={i.href}
             className={active ? "app-navlink app-navlink-active" : "app-navlink"}
             aria-current={active ? "page" : undefined}
+            onClick={onNavigate}
           >
             {i.label}
           </Link>
