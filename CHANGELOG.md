@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-50-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.49.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-51-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.50.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.50.0] — ⚡ Wydajność: filtry zakresu dat + limity zapytań
+
+- `[#051]` ⚡ **Koniec ładowania całych tabel do pamięci** (P z audytu — wydajność).
+  - **`packages/api`** — [`listFuelLogs`](packages/api/src/data/fuelLogs.ts)/[`listTripEvents`](packages/api/src/data/tripEvents.ts) przyjmują `from`/`to` (zakres `created_at`) i `limit`; [`listDefects`](packages/api/src/data/defects.ts) przyjmuje `limit`. Wstecznie kompatybilne.
+  - **Web** — [Rozliczenia](apps/web/app/(app)/settlements/page.tsx) filtrują **zakres dat po stronie bazy** (zamiast w JS); [Statystyki](apps/web/app/(app)/stats/page.tsx)/[Historia](apps/web/app/(app)/forms/history/page.tsx)/[Usterki](apps/web/app/(app)/reports/page.tsx) ograniczone limitem (2000/1000/500) — mniejszy transfer i szybsze wejście na stronę.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.49.0] — 🔒 Szyfrowanie tożsamości kierowcy (PII at‑rest)
 

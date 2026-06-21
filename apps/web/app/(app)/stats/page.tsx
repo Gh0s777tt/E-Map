@@ -66,9 +66,9 @@ export default function StatsPage() {
         const m = await getActiveMembership(sb);
         if (!m) return;
         const [f, a, tr, vs] = await Promise.all([
-          listFuelLogs(sb),
-          listFuelLogs(sb, { table: "adblue_logs" }),
-          listTripEvents(sb),
+          listFuelLogs(sb, { limit: 2000 }),
+          listFuelLogs(sb, { table: "adblue_logs", limit: 2000 }),
+          listTripEvents(sb, { limit: 2000 }),
           listVehicles(sb, m.companyId),
         ]);
         setFuel(f as FuelRaw[]);

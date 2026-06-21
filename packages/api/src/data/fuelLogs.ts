@@ -71,16 +71,29 @@ export async function updateFuelLog(
   if (error) throw error;
 }
 
-/** Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy). */
+/**
+ * Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy).
+ * Filtry `from`/`to` (zakres `created_at`, ISO) i `limit` ograniczają transfer —
+ * statystyki/rozliczenia/historia nie ładują całej tabeli do pamięci.
+ */
 export async function listFuelLogs(
   client: SupabaseClient,
-  opts?: { vehicleId?: string; table?: "fuel_logs" | "adblue_logs" },
+  opts?: {
+    vehicleId?: string;
+    table?: "fuel_logs" | "adblue_logs";
+    from?: string;
+    to?: string;
+    limit?: number;
+  },
 ) {
   let query = client
     .from(opts?.table ?? "fuel_logs")
     .select("*")
     .order("created_at", { ascending: false });
   if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  if (opts?.to) query = query.lte("created_at", opts.to);
+  if (opts?.limit) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
