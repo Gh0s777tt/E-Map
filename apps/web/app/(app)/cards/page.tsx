@@ -19,6 +19,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { CardArt } from "@/components/CardArt";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { ListStatus } from "@/components/ListStatus";
 import { PageHeader } from "@/components/ui";
@@ -42,6 +43,7 @@ const providerLabel = (p: string) =>
   FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
 
 export default function CardsPage() {
+  const confirm = useConfirm();
   const [cards, setCards] = useState<Card[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isOwner, setIsOwner] = useState(false);
@@ -164,7 +166,7 @@ export default function CardsPage() {
   }
 
   async function remove(cardId: string) {
-    if (!window.confirm("Usunąć tę kartę? Tej operacji nie można cofnąć.")) return;
+    if (!(await confirm("Usunąć tę kartę? Tej operacji nie można cofnąć."))) return;
     try {
       await deleteFuelCard(getBrowserSupabase(), cardId);
       setPins((p) => {

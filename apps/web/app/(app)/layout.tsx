@@ -5,6 +5,7 @@ import { type AppModule, effectiveModules } from "@e-logistic/core";
 import { createTranslator, type MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { redirect } from "next/navigation";
+import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { HelpCenter } from "@/components/HelpCenter";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SidebarNav } from "@/components/SidebarNav";
@@ -89,7 +90,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{email}</div>
         <SignOutButton />
       </aside>
-      <main className="app-main">{children}</main>
+      <main className="app-main">
+        <ConfirmProvider>{children}</ConfirmProvider>
+      </main>
       <HelpCenter />
     </div>
   );

@@ -12,6 +12,7 @@ import {
 import { DRIVER_QUALIFICATIONS, driverSchema, LICENSE_CATEGORIES } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Driver = {
@@ -29,6 +30,7 @@ const toggle = (arr: string[], v: string) =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
 export function DriverRoster() {
+  const confirm = useConfirm();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [allowed, setAllowed] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export function DriverRoster() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm("Usunąć tego kierowcę z kartoteki?")) return;
+    if (!(await confirm("Usunąć tego kierowcę z kartoteki?"))) return;
     try {
       await deleteDriver(getBrowserSupabase(), id);
       if (editingId === id) resetForm();
