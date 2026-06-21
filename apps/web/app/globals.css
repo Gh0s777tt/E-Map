@@ -16,3 +16,62 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* ── Powłoka aplikacji (responsywna; properties w CSS, by media query nadpisywał) ── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+.app-sidebar {
+  width: 240px;
+  background: #141414;
+  border-right: 1px solid #2a2a2a;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.app-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.app-navlink {
+  color: #f5f5f5;
+  text-decoration: none;
+  padding: 9px 12px;
+  border-radius: 8px;
+}
+.app-navlink:hover {
+  background: #1f1f1f;
+}
+.app-main {
+  flex: 1;
+  min-width: 0;
+  padding: 32px;
+}
+
+/* Telefon/tablet: sidebar → górny pasek, nawigacja pozioma (zawijana) */
+@media (max-width: 820px) {
+  .app-shell {
+    flex-direction: column;
+  }
+  .app-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #2a2a2a;
+    padding: 12px 16px;
+  }
+  .app-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .app-navlink {
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+  .app-main {
+    padding: 16px;
+  }
+}

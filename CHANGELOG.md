@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-54-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.51.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-55-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.0] — 📱 Responsywna powłoka aplikacji (mobile)
+
+- `[#055]` 📱 **Aplikacja działa na telefonie** (UX z audytu — wcześniej 0 media queries, sidebar 240px zasłaniał ekran).
+  - [`globals.css`](apps/web/app/globals.css): klasy powłoki `app-shell/app-sidebar/app-nav/app-navlink/app-main` + **media query ≤820px** — sidebar zmienia się w górny pasek, nawigacja pozioma (zawijana), mniejsze paddingi; `min-width:0` na `main` (koniec przepełnień flexa).
+  - [`layout`](apps/web/app/(app)/layout.tsx) przepięty z inline‑styli na klasy (CSS może nadpisać w media query) + hover na linkach nawigacji.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.51.2] — 🧰 Infra: wyrównanie rygoru TS w mobile
 

@@ -71,46 +71,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const items = NAV.filter((i) => i.mod === null || allowed.includes(i.mod));
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <aside
-        style={{
-          width: 240,
-          background: palette.nearBlack,
-          borderRight: `1px solid ${palette.graphite}`,
-          padding: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
+    <div className="app-shell">
+      <aside className="app-sidebar">
         <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 16 }}>
           <span style={{ color: palette.red }}>E</span>-Logistic
         </div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+        <nav className="app-nav">
           {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                color: palette.offWhite,
-                textDecoration: "none",
-                padding: "9px 12px",
-                borderRadius: 8,
-              }}
-            >
+            <Link key={item.href} href={item.href} className="app-navlink">
               {t(item.key)}
             </Link>
           ))}
           {isOwner && (
-            <Link
-              href="/team"
-              style={{
-                color: palette.offWhite,
-                textDecoration: "none",
-                padding: "9px 12px",
-                borderRadius: 8,
-              }}
-            >
+            <Link href="/team" className="app-navlink">
               Zespół
             </Link>
           )}
@@ -123,7 +96,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{email}</div>
         <SignOutButton />
       </aside>
-      <main style={{ flex: 1, padding: 32 }}>{children}</main>
+      <main className="app-main">{children}</main>
       <HelpCenter />
     </div>
   );
