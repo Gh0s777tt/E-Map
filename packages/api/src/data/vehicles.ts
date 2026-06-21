@@ -12,6 +12,17 @@ export async function listVehicles(client: SupabaseClient, companyId: string) {
   return data ?? [];
 }
 
+/** Pojazdy z datami ważności (przegląd/OC/leasing) — do przypomnień. */
+export async function listVehiclesExpiry(client: SupabaseClient, companyId: string) {
+  const { data, error } = await client
+    .from("vehicles")
+    .select("id, registration, inspection_expiry, insurance_expiry, leasing_end")
+    .eq("company_id", companyId)
+    .order("registration");
+  if (error) throw error;
+  return data ?? [];
+}
+
 /** Mapuje zwalidowany input pojazdu na wiersz tabeli (snake_case). */
 export function vehicleToRow(input: VehicleInput, companyId: string) {
   return {

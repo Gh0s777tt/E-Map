@@ -20,13 +20,19 @@ export default function Home() {
         </Pressable>
       </Link>
 
+      <Link href="/adblue" asChild>
+        <Pressable style={styles.ctaSecondary}>
+          <Text style={styles.ctaText}>💧 {t("form.adblue.title")}</Text>
+        </Pressable>
+      </Link>
+
       <Link href="/trip" asChild>
         <Pressable style={styles.ctaSecondary}>
           <Text style={styles.ctaText}>🚚 {t("form.trip.title")}</Text>
         </Pressable>
       </Link>
 
-      <Text style={styles.note}>Faza 1 · mobile · v0.6.0</Text>
+      <Text style={styles.note}>E-Logistic · mobile</Text>
     </View>
   );
 }
