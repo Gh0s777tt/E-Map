@@ -1,89 +1,184 @@
 "use client";
 
+import { getActiveMembership, listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
 import type { FuelLogInput, TripEventInput } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { vehicleLabel } from "@/lib/demo";
 import { listOutbox, type OutboxItem, trySync } from "@/lib/outbox";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
 
-const STATUS: Record<OutboxItem["status"], { label: string; color: string }> = {
+type Kind = "fuel" | "adblue" | "trip";
+type Status = "queued" | "synced" | "error";
+
+type Row = {
+  key: string;
+  kind: Kind;
+  title: string;
+  sub: string;
+  status: Status;
+  error?: string;
+  outboxId?: string;
+};
+
+const STATUS: Record<Status, { label: string; color: string }> = {
   queued: { label: "W kolejce", color: palette.warning },
   synced: { label: "Zsynchronizowano", color: palette.success },
   error: { label: "Błąd", color: palette.red },
 };
-
-const KIND_LABEL: Record<OutboxItem["kind"], string> = {
-  fuel: "Paliwo",
-  adblue: "AdBlue",
-  trip: "Trip",
+const KIND_LABEL: Record<Kind, string> = { fuel: "Paliwo", adblue: "AdBlue", trip: "Trip" };
+const ACTION_PL: Record<string, string> = {
+  load: "Załadunek",
+  unload: "Rozładunek",
+  start: "Rozpoczęcie",
+  end: "Zakończenie",
+  service: "Serwis",
+  other: "Inne",
 };
 
-function summary(item: OutboxItem): { vehicleId: string; country: string; line: string } {
+function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
+  const when = new Date(item.createdAt).toLocaleString("pl-PL");
   if (item.kind === "trip") {
     const i = item.input as TripEventInput;
     const w = "weightKg" in i ? ` · ${i.weightKg} kg` : "";
     return {
-      vehicleId: i.vehicleId,
-      country: i.place.country,
-      line: `${t(`trip.action.${i.action}`)} · ${i.odometerKm} km${w}`,
+      key: `local/${item.id}`,
+      kind: "trip",
+      title: `${labelOf(i.vehicleId)} · ${ACTION_PL[i.action] ?? i.action} · ${i.odometerKm} km${w}`,
+      sub: `${i.place.country} · ${when}`,
+      status: item.status,
+      error: item.error,
+      outboxId: item.id,
     };
   }
   const i = item.input as FuelLogInput;
   return {
-    vehicleId: i.vehicleId,
-    country: i.station.country,
-    line: `${i.liters} L · ${i.odometerKm} km`,
+    key: `local/${item.id}`,
+    kind: item.kind,
+    title: `${labelOf(i.vehicleId)} · ${i.liters} L · ${i.odometerKm} km`,
+    sub: `${i.station.country} · ${when}`,
+    status: item.status,
+    error: item.error,
+    outboxId: item.id,
   };
 }
 
 export default function FormsHistoryPage() {
-  const [items, setItems] = useState<OutboxItem[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [source, setSource] = useState<"baza" | "lokalne">("lokalne");
 
-  useEffect(() => {
-    setItems(listOutbox());
+  const load = useCallback(async () => {
+    const outbox = listOutbox();
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getActiveMembership(sb);
+      if (m) {
+        const [fuel, adblue, trips, vehicles] = await Promise.all([
+          listFuelLogs(sb),
+          listFuelLogs(sb, { table: "adblue_logs" }),
+          listTripEvents(sb),
+          listVehicles(sb, m.companyId),
+        ]);
+        const map = new Map(
+          (vehicles as { id: string; registration: string }[]).map((v) => [v.id, v.registration]),
+        );
+        const labelOf = (id: string) => map.get(id) ?? vehicleLabel(id);
+        const fuelRows = (kind: Kind, logs: unknown[]) =>
+          (
+            logs as {
+              id: string;
+              vehicle_id: string;
+              liters: number;
+              odometer_km: number;
+              station_country: string;
+              created_at: string;
+            }[]
+          ).map<Row>((r) => ({
+            key: `${kind}/${r.id}`,
+            kind,
+            title: `${labelOf(r.vehicle_id)} · ${r.liters} L · ${r.odometer_km} km`,
+            sub: `${r.station_country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
+            status: "synced",
+          }));
+        const tripRows = (
+          trips as {
+            id: string;
+            vehicle_id: string;
+            action: string;
+            odometer_km: number;
+            weight_kg: number | null;
+            country: string;
+            created_at: string;
+          }[]
+        ).map<Row>((r) => ({
+          key: `trip/${r.id}`,
+          kind: "trip",
+          title: `${labelOf(r.vehicle_id)} · ${ACTION_PL[r.action] ?? r.action} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
+          sub: `${r.country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
+          status: "synced",
+        }));
+
+        const pending = outbox
+          .filter((i) => i.status !== "synced")
+          .map((i) => localRow(i, labelOf));
+
+        setRows(
+          [...pending, ...fuelRows("fuel", fuel), ...fuelRows("adblue", adblue), ...tripRows].sort(
+            (a, b) => b.sub.localeCompare(a.sub),
+          ),
+        );
+        setSource("baza");
+        return;
+      }
+    } catch {
+      // offline → lokalne
+    }
+    setRows(outbox.map((i) => localRow(i, vehicleLabel)));
+    setSource("lokalne");
   }, []);
 
-  async function resync(id: string) {
-    await trySync(id);
-    setItems(listOutbox());
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function resync(outboxId: string) {
+    await trySync(outboxId);
+    await load();
   }
 
   return (
     <div style={{ maxWidth: 760 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("common.history")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Twoje wysłane formularze (offline-first). Status i ponowna synchronizacja.
+        Wysłane formularze · źródło: <strong>{source}</strong> (offline-first).
       </p>
 
-      {items.length === 0 ? (
+      {rows.length === 0 ? (
         <p style={{ color: palette.smoke, marginTop: 24 }}>Brak zapisanych formularzy.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
-          {items.map((item) => {
-            const st = STATUS[item.status];
-            const s = summary(item);
+          {rows.map((r) => {
+            const st = STATUS[r.status];
             return (
-              <div key={item.id} style={styles.row}>
-                <span style={styles.kind}>{KIND_LABEL[item.kind]}</span>
+              <div key={r.key} style={styles.row}>
+                <span style={styles.kind}>{KIND_LABEL[r.kind]}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700 }}>
-                    {vehicleLabel(s.vehicleId)} · {s.line}
-                  </div>
-                  <div style={{ color: palette.smoke, fontSize: 13 }}>
-                    {s.country} · {new Date(item.createdAt).toLocaleString("pl-PL")}
-                  </div>
-                  {item.error && (
-                    <div style={{ color: palette.red, fontSize: 12 }}>{item.error}</div>
-                  )}
+                  <div style={{ fontWeight: 700 }}>{r.title}</div>
+                  <div style={{ color: palette.smoke, fontSize: 13 }}>{r.sub}</div>
+                  {r.error && <div style={{ color: palette.red, fontSize: 12 }}>{r.error}</div>}
                 </div>
                 <span style={{ ...styles.badge, color: st.color, borderColor: st.color }}>
                   {st.label}
                 </span>
-                {item.status !== "synced" && (
-                  <button type="button" style={styles.btn} onClick={() => resync(item.id)}>
+                {r.status !== "synced" && r.outboxId && (
+                  <button
+                    type="button"
+                    style={styles.btn}
+                    onClick={() => resync(r.outboxId as string)}
+                  >
                     Ponów
                   </button>
                 )}
