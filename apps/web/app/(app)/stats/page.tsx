@@ -11,7 +11,7 @@ import {
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BarChart, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -107,6 +107,25 @@ export default function StatsPage() {
     return rows.filter((r) => r.vehicle_id === id);
   }
 
+  // Agregaty per pojazd liczone raz na zmianę danych (nie co render — przy wyborze
+  // pojazdu nie przeliczamy spalania wszystkich kafelków).
+  const tiles = useMemo(
+    () =>
+      vehicles.map((v) => {
+        const fEntries = fuel.filter((r) => r.vehicle_id === v.id).map(entry);
+        const s = summarizeFuel(fEntries);
+        return {
+          id: v.id,
+          registration: v.registration,
+          count: s.count,
+          totalLiters: s.totalLiters,
+          cons: consumptionFullToFull(fEntries),
+          tripCount: trips.filter((r) => r.vehicle_id === v.id).length,
+        };
+      }),
+    [vehicles, fuel, trips],
+  );
+
   return (
     <div>
       <PageHeader
@@ -122,31 +141,25 @@ export default function StatsPage() {
 
       {!selected ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
-          {vehicles.map((v) => {
-            const fEntries = byV(fuel, v.id).map(entry);
-            const s = summarizeFuel(fEntries);
-            const cons = consumptionFullToFull(fEntries);
-            const tripCount = byV(trips, v.id).length;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setSelected(v.id)}
-                style={styles.tile}
-              >
-                <div style={{ fontSize: 18, fontWeight: 800 }}>{v.registration}</div>
-                <div style={{ color: palette.smoke, fontSize: 13, marginTop: 8 }}>
-                  ⛽ {s.count} tank. · {s.totalLiters} L
-                </div>
-                <div style={{ color: palette.red, fontWeight: 700, marginTop: 4 }}>
-                  {cons != null ? `${cons} L/100km` : "— L/100km"}
-                </div>
-                <div style={{ color: palette.smoke, fontSize: 12, marginTop: 4 }}>
-                  🚚 {tripCount} zdarzeń trasy
-                </div>
-              </button>
-            );
-          })}
+          {tiles.map((tile) => (
+            <button
+              key={tile.id}
+              type="button"
+              onClick={() => setSelected(tile.id)}
+              style={styles.tile}
+            >
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{tile.registration}</div>
+              <div style={{ color: palette.smoke, fontSize: 13, marginTop: 8 }}>
+                ⛽ {tile.count} tank. · {tile.totalLiters} L
+              </div>
+              <div style={{ color: palette.red, fontWeight: 700, marginTop: 4 }}>
+                {tile.cons != null ? `${tile.cons} L/100km` : "— L/100km"}
+              </div>
+              <div style={{ color: palette.smoke, fontSize: 12, marginTop: 4 }}>
+                🚚 {tile.tripCount} zdarzeń trasy
+              </div>
+            </button>
+          ))}
         </div>
       ) : (
         <VehicleDetail
@@ -174,10 +187,14 @@ function VehicleDetail({
   trips: TripRaw[];
   onBack: () => void;
 }) {
-  const cost = monthlyCost([...fuel, ...adblue]);
-  const consSeries = fuelConsumptionSeries(fuel.map(entry))
-    .slice(-8)
-    .map((s, i) => ({ label: String(i + 1), value: s.lPer100km }));
+  const cost = useMemo(() => monthlyCost([...fuel, ...adblue]), [fuel, adblue]);
+  const consSeries = useMemo(
+    () =>
+      fuelConsumptionSeries(fuel.map(entry))
+        .slice(-8)
+        .map((s, i) => ({ label: String(i + 1), value: s.lPer100km })),
+    [fuel],
+  );
   return (
     <div style={{ marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

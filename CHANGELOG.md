@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-78-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.58.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-79-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.58.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.58.1] — ⚡ Wydajność: memoizacja statystyk (P1)
+
+- `[#079]` ⚡ **Optymalizacja statystyk i rozliczeń** (backlog P1):
+  - [Statystyki](apps/web/app/(app)/stats/page.tsx): agregaty per pojazd (spalanie/litry/zdarzenia) liczone w `useMemo` — raz na zmianę danych, nie przy każdym renderze (wybór pojazdu nie przelicza wszystkich kafelków). Wykresy detalu (koszty miesięczne, seria spalania) też w `useMemo`.
+  - [Rozliczenia](apps/web/app/(app)/settlements/page.tsx): usunięty redundantny filtr dat w JS — zakres `created_at` już zawężany w zapytaniu (`gte`/`lte`).
+  - Uwaga: filtry `from`/`to`/`limit` w `listFuelLogs`/`listTripEvents` były już dostępne; ten release domyka wykorzystanie + memoizację.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.58.0] — ⛽ Ceny diesla w Europie (OpenVan.camp, darmowe)
 
