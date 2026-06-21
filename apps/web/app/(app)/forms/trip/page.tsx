@@ -1,5 +1,6 @@
 "use client";
 
+import { getActiveMembership, notifyCompany } from "@e-logistic/api";
 import { TRIP_ACTIONS, tripEventSchema } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -7,6 +8,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { enqueue } from "@/lib/outbox";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 const t = createTranslator("pl");
@@ -71,10 +73,36 @@ export default function TripFormPage() {
     }
 
     const item = await enqueue("trip", parsed.data, new Date().toISOString());
+
+    // Kontrola przeładowania: waga załadunku > maks. ładowność pojazdu.
+    const veh = vehicles.find((v) => v.id === vehicleId);
+    const maxKg = veh?.maxPayloadKg ?? null;
+    const w = weightKg ? Number(weightKg) : 0;
+    let overloadMsg = "";
+    if (action === "load" && maxKg && w > maxKg) {
+      const over = w - maxKg;
+      overloadMsg = ` ⚠️ PRZEŁADOWANIE: ${w} kg > ładowność ${maxKg} kg (o ${over} kg)!`;
+      try {
+        const sb = getBrowserSupabase();
+        const m = await getActiveMembership(sb);
+        if (m) {
+          await notifyCompany(sb, {
+            companyId: m.companyId,
+            type: "overload",
+            title: `Przeładowanie ${veh?.registration ?? "pojazdu"}`,
+            body: `Załadunek ${w} kg przekracza ładowność ${maxKg} kg o ${over} kg.`,
+            severity: "danger",
+          });
+        }
+      } catch {
+        // brak firmy/sesji — pomijamy powiadomienie
+      }
+    }
+
     setStatus(
-      item.status === "synced"
+      (item.status === "synced"
         ? "✅ Zapisano i zsynchronizowano."
-        : "📥 Zapisano lokalnie — synchronizacja po połączeniu.",
+        : "📥 Zapisano lokalnie — synchronizacja po połączeniu.") + overloadMsg,
     );
     setOdometerKm("");
     setWeightKg("");
