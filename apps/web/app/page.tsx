@@ -1,6 +1,7 @@
 import { ROLES } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import Link from "next/link";
 
 const t = createTranslator("pl");
 
@@ -35,6 +36,22 @@ export default function Home() {
         <p style={{ color: palette.smoke, marginTop: 8 }}>{t("app.tagline")}</p>
       </div>
 
+      <Link
+        href="/login"
+        style={{
+          background: palette.red,
+          color: "#fff",
+          padding: "14px 36px",
+          borderRadius: 10,
+          fontWeight: 700,
+          fontSize: 16,
+          textDecoration: "none",
+          boxShadow: `0 0 24px ${palette.red}55`,
+        }}
+      >
+        Wejdź do aplikacji →
+      </Link>
+
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
         {ROLES.map((role) => (
           <div
@@ -54,7 +71,7 @@ export default function Home() {
       </div>
 
       <p style={{ color: palette.smoke, fontSize: 13 }}>
-        Faza 0 · fundament · v0.2.0 — panele i logowanie w kolejnych przyrostkach.
+        Kierowcy · Spedytorzy · Firmy transportowe — trasy TIR, paliwo, AdBlue, floty i karty.
       </p>
     </main>
   );
