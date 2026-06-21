@@ -27,7 +27,13 @@ const t = createTranslator("pl");
 export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const title = kind === "fuel" ? t("form.fuel.title") : t("form.adblue.title");
 
-  const { vehicles, cards } = useFleet();
+  const { vehicles, cards, source } = useFleet();
+  const setupMsg =
+    source === "no-company"
+      ? "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze."
+      : source === "no-vehicles"
+        ? "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz."
+        : null;
   const [vehicleId, setVehicleId] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
@@ -64,6 +70,10 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   }
 
   async function submit() {
+    if (setupMsg) {
+      setStatus(`⚠️ ${setupMsg}`);
+      return;
+    }
     setErrors({});
     setStatus(null);
 
@@ -110,6 +120,29 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           {t("common.history")} →
         </Link>
       </p>
+
+      {setupMsg && (
+        <div
+          style={{
+            margin: "12px 0",
+            padding: 12,
+            borderRadius: 10,
+            background: palette.nearBlack,
+            border: `1px solid ${palette.red}`,
+            color: palette.offWhite,
+            fontSize: 14,
+          }}
+        >
+          ⚠️ {setupMsg}{" "}
+          <Link href="/dashboard" style={{ color: palette.red }}>
+            Pulpit
+          </Link>{" "}
+          ·{" "}
+          <Link href="/vehicles" style={{ color: palette.red }}>
+            Pojazdy
+          </Link>
+        </div>
+      )}
 
       <div style={styles.form}>
         <Field label={t("form.field.vehicle")} error={errors.vehicleId}>
@@ -232,7 +265,12 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           />
         </Field>
 
-        <button type="button" style={styles.primary} onClick={submit}>
+        <button
+          type="button"
+          style={{ ...styles.primary, opacity: setupMsg ? 0.5 : 1 }}
+          onClick={submit}
+          disabled={!!setupMsg}
+        >
           {t("common.save")}
         </button>
 

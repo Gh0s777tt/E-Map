@@ -40,6 +40,11 @@ export function listOutbox(kind?: OutboxKind): OutboxItem[] {
   return kind ? all.filter((i) => i.kind === kind) : all;
 }
 
+/** Usuwa wpis z kolejki (np. błędny, oparty o nieistniejący pojazd demo). */
+export function removeOutbox(itemId: string): void {
+  write(read().filter((i) => i.id !== itemId));
+}
+
 /** Dodaje wpis do outboxu (zawsze lokalnie) i próbuje od razu zsynchronizować. */
 export async function enqueue(
   kind: OutboxKind,
@@ -84,7 +89,17 @@ export async function trySync(itemId: string): Promise<void> {
     item.status = "synced";
   } catch (e) {
     item.status = "error";
-    item.error = e instanceof Error ? e.message : "Błąd synchronizacji";
+    item.error = errorMessage(e);
   }
   write(items);
+}
+
+/** Wyciąga czytelny komunikat z błędu (Supabase/PostgREST zwraca obiekt, nie Error). */
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const o = e as { message?: string; details?: string; hint?: string; code?: string };
+    return o.message || o.details || o.hint || o.code || "Błąd synchronizacji";
+  }
+  return "Błąd synchronizacji";
 }

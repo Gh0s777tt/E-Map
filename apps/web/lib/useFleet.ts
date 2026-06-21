@@ -16,35 +16,54 @@ export interface FleetCard {
   label: string;
 }
 
+/** Stan floty: skąd pochodzą dane / czego brakuje do zapisu w bazie. */
+export type FleetSource = "loading" | "db" | "no-company" | "no-vehicles" | "offline";
+
 /**
- * Flota użytkownika. Gdy zalogowany i ma firmę → pojazdy/karty z bazy (RLS).
- * W trybie offline / bez firmy → dane demo (apka pozostaje używalna).
+ * Flota użytkownika.
+ * - Zalogowany + firma + pojazdy → dane z bazy (`db`).
+ * - Zalogowany bez firmy → `no-company` (puste; trzeba utworzyć firmę).
+ * - Zalogowany, firma bez pojazdów → `no-vehicles`.
+ * - Brak sesji / Supabase niedostępne → tryb demo (`offline`).
+ * NIE podsuwamy demo-pojazdów zalogowanemu — fałszywe ID nigdy by się nie zsynchronizowały.
  */
 export function useFleet() {
-  const [vehicles, setVehicles] = useState<FleetVehicle[]>(DEMO_VEHICLES);
-  const [cards, setCards] = useState<FleetCard[]>(DEMO_CARDS);
-  const [source, setSource] = useState<"demo" | "db">("demo");
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [cards, setCards] = useState<FleetCard[]>([]);
+  const [source, setSource] = useState<FleetSource>("loading");
 
   useEffect(() => {
     (async () => {
       try {
         const sb = getBrowserSupabase();
+        const {
+          data: { user },
+        } = await sb.auth.getUser();
+        if (!user) {
+          setVehicles(DEMO_VEHICLES);
+          setCards(DEMO_CARDS);
+          setSource("offline");
+          return;
+        }
         const membership = await getActiveMembership(sb);
-        if (!membership) return; // brak firmy → zostaje demo
-
+        if (!membership) {
+          setVehicles([]);
+          setCards([]);
+          setSource("no-company");
+          return;
+        }
         const [vs, cs] = await Promise.all([
           listVehicles(sb, membership.companyId),
           listFuelCardsForUser(sb),
         ]);
-        setVehicles(
-          (vs as { id: string; registration: string; max_payload_kg?: number | null }[]).map(
-            (v) => ({
-              id: v.id,
-              registration: v.registration,
-              maxPayloadKg: v.max_payload_kg ?? null,
-            }),
-          ),
-        );
+        const mappedVehicles = (
+          vs as { id: string; registration: string; max_payload_kg?: number | null }[]
+        ).map((v) => ({
+          id: v.id,
+          registration: v.registration,
+          maxPayloadKg: v.max_payload_kg ?? null,
+        }));
+        setVehicles(mappedVehicles);
         setCards(
           (
             cs as {
@@ -63,9 +82,11 @@ export function useFleet() {
             };
           }),
         );
-        setSource("db");
+        setSource(mappedVehicles.length === 0 ? "no-vehicles" : "db");
       } catch {
-        // tryb offline / brak konfiguracji → demo
+        setVehicles(DEMO_VEHICLES);
+        setCards(DEMO_CARDS);
+        setSource("offline");
       }
     })();
   }, []);
