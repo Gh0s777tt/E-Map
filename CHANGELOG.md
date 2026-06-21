@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-65-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.54.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-66-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.54.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.54.1] — 🔌 Specyfikacja integracji partnerów
+
+- `[#066]` 🔌 **Plan podłączenia integracji zależnych od kluczy/umów** — [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Dla DKV/Eurowag (akceptacja kart) i Travis/SNAP (płatności) opisano dokładnie: wymagane env, punkty wpięcia w kodzie, model bezpieczeństwa. Bez martwych atrap — gotowe do realizacji, gdy dostarczysz dostępy (wzorzec env‑gated jak push/rate‑limiting). Tankerkönig (ceny DE) pozostaje wdrożone.
+  - **Bramki:** biome czysto (docs). Bez zmian w kodzie.
 
 ## [0.54.0] — 🚦 Rate‑limiting endpointów (Upstash, kod gotowy)
 
