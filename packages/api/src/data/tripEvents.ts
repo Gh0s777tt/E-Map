@@ -1,6 +1,6 @@
 /** Warstwa danych: formularz Trip (załadunek/rozładunek/serwis/start/koniec/inne). */
 import type { TripEventInput } from "@e-logistic/core";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export interface TripEventContext {
   /** UUID rekordu wygenerowany na kliencie (offline-first). */

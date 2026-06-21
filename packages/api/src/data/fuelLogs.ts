@@ -1,6 +1,6 @@
 /** Warstwa danych: formularze paliwowe (i AdBlue — ta sama struktura). */
 import type { FuelLogInput } from "@e-logistic/core";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export interface FuelLogContext {
   /** UUID rekordu wygenerowany na kliencie (offline-first). */

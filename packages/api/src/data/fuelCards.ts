@@ -1,6 +1,6 @@
 /** Warstwa danych: karty paliwowe. PIN szyfrowany; odczyt/zapis przez RPC. */
 import type { FuelCardInput } from "@e-logistic/core";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 /** Lista kart bez danych wrażliwych (PIN poza wynikiem — tylko przez `getFuelCardPin`). */
 export async function listFuelCardsSafe(client: SupabaseClient, companyId: string) {

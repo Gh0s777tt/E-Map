@@ -1,6 +1,6 @@
 /** Warstwa danych: usterki pojazdu (zgłoszenia kierowców → mechanik/owner). */
 import type { DefectInput, DefectStatus } from "@e-logistic/core";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export async function listDefects(
   client: SupabaseClient,
@@ -50,10 +50,14 @@ export async function updateDefectStatus(
   status: DefectStatus,
   resolvedBy?: string,
 ) {
-  const patch: Record<string, unknown> = { status };
-  patch.resolved_at = status === "resolved" ? new Date().toISOString() : null;
-  patch.resolved_by = status === "resolved" ? (resolvedBy ?? null) : null;
-  const { error } = await client.from("vehicle_defects").update(patch).eq("id", id);
+  const { error } = await client
+    .from("vehicle_defects")
+    .update({
+      status,
+      resolved_at: status === "resolved" ? new Date().toISOString() : null,
+      resolved_by: status === "resolved" ? (resolvedBy ?? null) : null,
+    })
+    .eq("id", id);
   if (error) throw error;
 }
 

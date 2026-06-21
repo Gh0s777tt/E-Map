@@ -19,17 +19,7 @@ import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-type Defect = {
-  id: string;
-  vehicle_id: string;
-  part: string;
-  side: string | null;
-  severity: string;
-  dashboard_light: boolean;
-  description: string;
-  status: string;
-  created_at: string;
-};
+type Defect = Awaited<ReturnType<typeof listDefects>>[number];
 
 const SEV_LABEL: Record<string, string> = { low: "niska", medium: "średnia", high: "wysoka" };
 const SEV_COLOR: Record<string, string> = {
@@ -80,7 +70,7 @@ export default function ReportsPage() {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       setCanManage(m?.role === "owner" || m?.role === "dispatcher");
-      if (m) setDefects((await listDefects(sb, { limit: 500 })) as Defect[]);
+      if (m) setDefects(await listDefects(sb, { limit: 500 }));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zgłoszeń.");
     } finally {

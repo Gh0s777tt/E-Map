@@ -76,7 +76,7 @@ export default function CardsPage() {
       setIsOwner(m.role === "owner");
       const [cs, vs] = await Promise.all([listFuelCardsForUser(sb), listVehicles(sb, m.companyId)]);
       setCards(cs as Card[]);
-      setVehicles((vs as Vehicle[]).map((v) => ({ id: v.id, registration: v.registration })));
+      setVehicles(vs.map((v) => ({ id: v.id, registration: v.registration })));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać kart.");
     } finally {

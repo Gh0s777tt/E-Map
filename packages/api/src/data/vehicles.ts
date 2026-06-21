@@ -1,6 +1,6 @@
 /** Warstwa danych: pojazdy. */
 import type { VehicleInput } from "@e-logistic/core";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export async function listVehicles(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
