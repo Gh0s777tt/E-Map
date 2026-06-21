@@ -6,6 +6,7 @@ import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { PushToggle } from "@/components/PushToggle";
+import { Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -209,9 +210,9 @@ export default function SettingsPage() {
         {state === "loading" && <p style={{ color: palette.smoke }}>Ładowanie…</p>}
 
         {state === "off" && (
-          <button type="button" style={styles.primary} onClick={startEnroll} disabled={busy}>
+          <Button onClick={startEnroll} disabled={busy}>
             Włącz 2FA
-          </button>
+          </Button>
         )}
 
         {state === "enrolling" && (
@@ -241,16 +242,16 @@ export default function SettingsPage() {
               placeholder="123456"
               autoComplete="one-time-code"
             />
-            <button type="button" style={styles.primary} onClick={confirmEnroll} disabled={busy}>
+            <Button onClick={confirmEnroll} disabled={busy}>
               {t("auth.twoFactorVerify")}
-            </button>
+            </Button>
           </div>
         )}
 
         {state === "on" && (
-          <button type="button" style={styles.danger} onClick={disable} disabled={busy}>
+          <Button variant="danger" onClick={disable} disabled={busy}>
             Wyłącz 2FA
-          </button>
+          </Button>
         )}
 
         {msg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{msg}</p>}
@@ -285,17 +286,17 @@ export default function SettingsPage() {
                 <span style={{ color: palette.smoke, fontSize: 12 }}>
                   {pk.created_at?.slice(0, 10)}
                 </span>
-                <button type="button" style={styles.danger} onClick={() => removePasskey(pk.id)}>
+                <Button variant="danger" onClick={() => removePasskey(pk.id)}>
                   🗑️
-                </button>
+                </Button>
               </div>
             ))}
           </div>
         )}
 
-        <button type="button" style={styles.primary} onClick={addPasskey} disabled={pkBusy}>
+        <Button onClick={addPasskey} disabled={pkBusy}>
           {t("auth.passkeyAdd")}
-        </button>
+        </Button>
         {pkMsg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{pkMsg}</p>}
       </div>
 

@@ -5,7 +5,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { DriverRoster } from "@/components/DriverRoster";
-import { PageHeader } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -95,9 +95,9 @@ export default function DriversPage() {
               ))}
             </select>
           </label>
-          <button type="button" style={styles.primary} onClick={generate} disabled={busy}>
+          <Button onClick={generate} disabled={busy}>
             {busy ? "Generuję…" : "Generuj zaproszenie"}
-          </button>
+          </Button>
           {error && <p style={{ color: palette.red, fontSize: 13 }}>{error}</p>}
         </div>
       )}
@@ -117,9 +117,9 @@ export default function DriversPage() {
           )}
           <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
             <input style={{ ...styles.input, flex: 1 }} readOnly value={link} />
-            <button type="button" style={styles.ghost} onClick={copy}>
+            <Button variant="ghost" onClick={copy}>
               Kopiuj
-            </button>
+            </Button>
           </div>
         </div>
       )}

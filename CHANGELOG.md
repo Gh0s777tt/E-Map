@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-70-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.54.5-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-71-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.54.6-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,19 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.54.6] — 🎨 Kosmetyka UI: Button na pozostałych stronach
+
+- `[#071]` 🎨 **Domknięcie adopcji `Button`** na ostatnich stronach z lokalnymi przyciskami — spójne warianty primary/ghost/danger w całym panelu:
+  - [Pojazdy](apps/web/app/(app)/vehicles/page.tsx) — zapis/anuluj/edycja/usuwanie.
+  - [Kierowcy](apps/web/app/(app)/drivers/page.tsx) — generowanie/kopiowanie linku.
+  - [Historia](apps/web/app/(app)/forms/history/page.tsx) — Ponów/Usuń.
+  - [Mapa](apps/web/app/(app)/map/page.tsx) — planowanie trasy.
+  - [Ustawienia](apps/web/app/(app)/settings/page.tsx) — 2FA (włącz/weryfikuj/wyłącz) + passkey (dodaj/usuń).
+  - [DriverRoster](apps/web/components/DriverRoster.tsx) — kwalifikacje/zapis/anuluj/dokumenty/edycja/usuwanie.
+  - [PushToggle](apps/web/components/PushToggle.tsx) — włącz/wyłącz powiadomienia.
+  - Osierocone style (`primary`/`ghost`/`danger`/`btn`) pozostawione w obiektach `styles` jako nieszkodliwe (niepodlinkowane); przyciski specjalne (segmenty mapy, chipy, rozwijanie) bez zmian — celowo.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.54.5] — 🎨 Kosmetyka UI: Button w Rozliczeniach i Zespole
 

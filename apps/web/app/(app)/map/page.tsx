@@ -25,6 +25,7 @@ import {
 import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -1038,9 +1039,9 @@ export default function MapPage() {
             />
           </div>
 
-          <button type="button" style={styles.primary} onClick={plan} disabled={busy}>
+          <Button onClick={plan} disabled={busy} style={{ marginTop: 6 }}>
             {busy ? "Liczę…" : "Wytycz trasę"}
-          </button>
+          </Button>
 
           <div style={{ display: "flex", gap: 6 }}>
             <button

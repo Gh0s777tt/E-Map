@@ -13,6 +13,7 @@ import { DRIVER_QUALIFICATIONS, driverSchema, LICENSE_CATEGORIES } from "@e-logi
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Driver = {
@@ -293,9 +294,8 @@ export function DriverRoster() {
               onChange={(e) => setCustomQual(e.target.value)}
               placeholder="Dodaj własne uprawnienie"
             />
-            <button
-              type="button"
-              style={styles.ghost}
+            <Button
+              variant="ghost"
               onClick={() => {
                 const v = customQual.trim();
                 if (v && !quals.includes(v)) setQuals((a) => [...a, v]);
@@ -303,7 +303,7 @@ export function DriverRoster() {
               }}
             >
               Dodaj
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -317,13 +317,11 @@ export function DriverRoster() {
         </label>
 
         <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" style={styles.primary} onClick={save}>
-            {editingId ? "Zapisz zmiany" : "Dodaj kierowcę"}
-          </button>
+          <Button onClick={save}>{editingId ? "Zapisz zmiany" : "Dodaj kierowcę"}</Button>
           {editingId && (
-            <button type="button" style={styles.ghost} onClick={resetForm}>
+            <Button variant="ghost" onClick={resetForm}>
               Anuluj
-            </button>
+            </Button>
           )}
         </div>
         {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
@@ -350,15 +348,15 @@ export function DriverRoster() {
                       {q}
                     </span>
                   ))}
-                  <button type="button" style={styles.ghost} onClick={() => revealDocs(d.id)}>
+                  <Button variant="ghost" onClick={() => revealDocs(d.id)}>
                     🔓 Dokumenty
-                  </button>
-                  <button type="button" style={styles.ghost} onClick={() => startEdit(d)}>
+                  </Button>
+                  <Button variant="ghost" onClick={() => startEdit(d)}>
                     ✏️
-                  </button>
-                  <button type="button" style={styles.danger} onClick={() => remove(d.id)}>
+                  </Button>
+                  <Button variant="danger" onClick={() => remove(d.id)}>
                     🗑️
-                  </button>
+                  </Button>
                 </div>
                 {doc && (
                   <div style={styles.docs}>

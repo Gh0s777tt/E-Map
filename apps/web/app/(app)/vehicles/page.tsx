@@ -20,7 +20,7 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
-import { PageHeader } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -480,13 +480,11 @@ export default function VehiclesPage() {
           </label>
 
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" style={styles.primary} onClick={save}>
-              {editingId ? "Zapisz zmiany" : t("common.save")}
-            </button>
+            <Button onClick={save}>{editingId ? "Zapisz zmiany" : t("common.save")}</Button>
             {editingId && (
-              <button type="button" style={styles.ghost} onClick={resetForm}>
+              <Button variant="ghost" onClick={resetForm}>
                 Anuluj
-              </button>
+              </Button>
             )}
           </div>
           {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
@@ -526,12 +524,12 @@ export default function VehiclesPage() {
                   <span style={styles.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
                   {canManage && (
                     <>
-                      <button type="button" style={styles.ghost} onClick={() => startEdit(v)}>
+                      <Button variant="ghost" onClick={() => startEdit(v)}>
                         ✏️
-                      </button>
-                      <button type="button" style={styles.danger} onClick={() => removeVehicle(v)}>
+                      </Button>
+                      <Button variant="danger" onClick={() => removeVehicle(v)}>
                         🗑️
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
