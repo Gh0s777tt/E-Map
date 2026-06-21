@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-66-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.54.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-67-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.54.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.54.2] — 🎨 Kosmetyka UI: Button/Badge (start adopcji)
+
+- `[#067]` 🎨 **Adopcja prymitywów `Button`/`Badge`** (porządkowa — koniec lokalnych `styles`). Strona [Usterki](apps/web/app/(app)/reports/page.tsx) przepięta w całości: badge'y pilności/statusu → `Badge`, przyciski akcji/usuwania/zgłaszania → `Button` (usunięte 4 osierocone style). Wzorzec ustalony; pozostałe strony przyrostowo.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.54.1] — 🔌 Specyfikacja integracji partnerów
 
