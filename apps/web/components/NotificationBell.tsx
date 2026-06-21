@@ -2,13 +2,13 @@
 
 import {
   generateExpiryNotifications,
-  getActiveMembership,
   listNotifications,
   markNotificationsRead,
   type Notification,
 } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const SEV: Record<string, string> = {
@@ -40,7 +40,7 @@ export function NotificationBell() {
         if (!user) return;
         // Best-effort: dogeneruj powiadomienia o terminach (tylko owner/dispatcher).
         try {
-          const m = await getActiveMembership(sb);
+          const m = await getCachedMembership(sb);
           if (m && (m.role === "owner" || m.role === "dispatcher")) {
             await generateExpiryNotifications(sb, m.companyId);
           }

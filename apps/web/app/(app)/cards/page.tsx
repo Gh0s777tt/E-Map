@@ -2,7 +2,6 @@
 
 import {
   deleteFuelCard,
-  getActiveMembership,
   getFuelCardPin,
   insertFuelCard,
   listFuelCardsForUser,
@@ -22,6 +21,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CardArt } from "@/components/CardArt";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { ListStatus } from "@/components/ListStatus";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -64,7 +64,7 @@ export default function CardsPage() {
     setLoadErr(null);
     try {
       const sb = getBrowserSupabase();
-      const m = await getActiveMembership(sb);
+      const m = await getCachedMembership(sb);
       if (!m) {
         setOffline(true);
         return;
@@ -141,7 +141,7 @@ export default function CardsPage() {
     }
     try {
       const sb = getBrowserSupabase();
-      const m = await getActiveMembership(sb);
+      const m = await getCachedMembership(sb);
       if (!m) {
         setStatus("Brak firmy — nie można zapisać.");
         return;

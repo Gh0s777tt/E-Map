@@ -1,9 +1,10 @@
 "use client";
 
-import { acceptInvite, getActiveMembership } from "@e-logistic/api";
+import { acceptInvite } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { clearMembershipCache } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type State =
@@ -32,9 +33,8 @@ export default function JoinPage() {
           setState({ kind: "needLogin" });
           return;
         }
-        // Jeśli już ma firmę, i tak spróbuj dołączyć (idempotentne).
-        await getActiveMembership(sb).catch(() => null);
         await acceptInvite(sb, token);
+        clearMembershipCache(); // dołączono do firmy → odśwież cache członkostwa
         setState({ kind: "ok" });
       } catch (e) {
         setState({ kind: "error", message: e instanceof Error ? e.message : "Błąd" });

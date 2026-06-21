@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-57-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-58-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.3-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.3] — 🚀 Cache członkostwa (mniej zapytań)
+
+- `[#058]` 🚀 **Mniej zbędnych zapytań o rolę/firmę** (wydajność z audytu — `getActiveMembership` bywało wołane 4–5× na jedno wejście). Nowy [`getCachedMembership`](apps/web/lib/membership.ts) (TTL 20 s + dedup zapytania w locie) wpięty w [`useFleet`](apps/web/lib/useFleet.ts) (większość stron), [NotificationBell](apps/web/components/NotificationBell.tsx) (layout), [Karty](apps/web/app/(app)/cards/page.tsx) i [Usterki](apps/web/app/(app)/reports/page.tsx). Unieważnianie cache po onboardingu firmy ([CompanyBanner](apps/web/components/CompanyBanner.tsx)) i po zaproszeniu ([join](apps/web/app/join/page.tsx)) — zachowuje świeżość. Pozostałe strony można przepiąć przyrostowo.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.2] — ⏳ Stany ładowania/błędu na listach
 

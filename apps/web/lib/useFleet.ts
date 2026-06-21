@@ -1,9 +1,10 @@
 "use client";
 
-import { getActiveMembership, listFuelCardsForUser, listVehicles } from "@e-logistic/api";
+import { listFuelCardsForUser, listVehicles } from "@e-logistic/api";
 import { FUEL_CARD_PROVIDER_LABELS, type FuelCardProvider } from "@e-logistic/core";
 import { useEffect, useState } from "react";
 import { DEMO_CARDS, DEMO_VEHICLES } from "@/lib/demo";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export interface FleetVehicle {
@@ -46,7 +47,7 @@ export function useFleet() {
           setSource("offline");
           return;
         }
-        const membership = await getActiveMembership(sb);
+        const membership = await getCachedMembership(sb);
         if (!membership) {
           setVehicles([]);
           setCards([]);
