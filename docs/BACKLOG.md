@@ -9,7 +9,9 @@ Otwarte zadania, priorytetyzowane. Źródło: audyt [`AUDIT-2026-06-21.md`](AUDI
 > [`INTEGRATIONS.md`](INTEGRATIONS.md) — podłączymy, gdy dostarczone będą dostępy.
 
 > **✅ Zrobione od utworzenia listy:** memoizacja statystyk + sprzątnięcie rozliczeń (#079) ·
-> test push + ikona `icon-192.png` (#080) · sync docs ARCHITECTURE/ROADMAP (#081).
+> test push + ikona `icon-192.png` (#080) · sync docs ARCHITECTURE/ROADMAP (#081) ·
+> mapa `cardOptions` memo + błąd rozliczeń (#082) · **settlements jako moduł uprawnień (#083)** ·
+> **SetupNotice + dedup Field (#084)** · **filtry + eksport CSV w Usterkach (#085)**.
 > **Zweryfikowane jako już‑gotowe / by‑design:** zakresy dat w API · `ListStatus` na cards/team ·
 > `.env.example` · DATA‑MODEL/README/DEPLOY w sync · `apps/mobile/tsconfig` (ma już strict flagi
 > obok `expo/tsconfig.base`) · Node `>=22` (celowy Vercel‑safe floor, `.nvmrc 26` to pin dev).

@@ -8,9 +8,10 @@ import {
   type DefectStatus,
   defectSchema,
   guessDefectPart,
+  toCsv,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, Button, PageHeader } from "@/components/ui";
@@ -37,6 +38,22 @@ const STATUS_COLOR: Record<string, string> = {
   in_progress: "#f59e0b",
   resolved: "#22c55e",
 };
+const STATUS_FILTERS: { value: "all" | DefectStatus; label: string }[] = [
+  { value: "all", label: "Wszystkie" },
+  { value: "open", label: "Zgłoszone" },
+  { value: "in_progress", label: "W naprawie" },
+  { value: "resolved", label: "Naprawione" },
+];
+
+function download(filename: string, text: string) {
+  const blob = new Blob([`﻿${text}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function ReportsPage() {
   const { vehicles, source } = useFleet();
@@ -55,6 +72,8 @@ export default function ReportsPage() {
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | DefectStatus>("all");
+  const [vehicleFilter, setVehicleFilter] = useState<string>("all");
 
   const setupMsg =
     source === "no-company"
@@ -105,6 +124,35 @@ export default function ReportsPage() {
   }
 
   const regOf = (id: string) => vehicles.find((v) => v.id === id)?.registration ?? id.slice(0, 8);
+
+  const vehicleOpts = useMemo(
+    () => Array.from(new Set(defects.map((d) => d.vehicle_id))),
+    [defects],
+  );
+  const filtered = useMemo(
+    () =>
+      defects.filter(
+        (d) =>
+          (statusFilter === "all" || d.status === statusFilter) &&
+          (vehicleFilter === "all" || d.vehicle_id === vehicleFilter),
+      ),
+    [defects, statusFilter, vehicleFilter],
+  );
+
+  function exportCsv() {
+    const headers = ["Pojazd", "Część", "Strona", "Pilność", "Status", "Kontrolka", "Opis", "Data"];
+    const rows = filtered.map((d) => [
+      regOf(d.vehicle_id),
+      d.part,
+      d.side ?? "",
+      SEV_LABEL[d.severity] ?? d.severity,
+      STATUS_LABEL[d.status] ?? d.status,
+      d.dashboard_light ? "tak" : "",
+      d.description,
+      d.created_at?.slice(0, 10) ?? "",
+    ]);
+    download(`usterki_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, rows));
+  }
 
   async function submit() {
     setErrors({});
@@ -293,50 +341,127 @@ export default function ReportsPage() {
         onRetry={load}
       />
       {!loading && !loadErr && defects.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {defects.map((d) => (
-            <div key={d.id} style={styles.row}>
-              <strong style={{ minWidth: 90 }}>{regOf(d.vehicle_id)}</strong>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700 }}>
-                  {d.part}
-                  {d.side ? ` · ${d.side}` : ""} {d.dashboard_light ? "💡" : ""}
-                </div>
-                <div style={{ color: palette.smoke, fontSize: 13 }}>{d.description}</div>
-              </div>
-              <Badge color={SEV_COLOR[d.severity]}>{SEV_LABEL[d.severity] ?? d.severity}</Badge>
-              <Badge color={STATUS_COLOR[d.status]}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
-              {canManage && (
-                <>
-                  {d.status !== "in_progress" && d.status !== "resolved" && (
-                    <Button variant="ghost" onClick={() => changeStatus(d.id, "in_progress")}>
-                      W naprawie
-                    </Button>
-                  )}
-                  {d.status !== "resolved" && (
-                    <Button variant="ghost" onClick={() => changeStatus(d.id, "resolved")}>
-                      Naprawione
-                    </Button>
-                  )}
-                  {d.status === "resolved" && (
-                    <Button variant="ghost" onClick={() => changeStatus(d.id, "open")}>
-                      Otwórz
-                    </Button>
-                  )}
-                  <Button variant="danger" onClick={() => remove(d.id)}>
-                    🗑️
-                  </Button>
-                </>
-              )}
+        <>
+          <div style={styles.filters}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {STATUS_FILTERS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setStatusFilter(s.value)}
+                  style={statusFilter === s.value ? styles.chipActive : styles.chip}
+                >
+                  {s.label}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
+            {vehicleOpts.length > 1 && (
+              <select
+                value={vehicleFilter}
+                onChange={(e) => setVehicleFilter(e.target.value)}
+                style={styles.select}
+              >
+                <option value="all">Wszystkie pojazdy</option>
+                {vehicleOpts.map((id) => (
+                  <option key={id} value={id}>
+                    {regOf(id)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <span style={{ flex: 1 }} />
+            <Button variant="ghost" onClick={exportCsv}>
+              ⬇️ CSV
+            </Button>
+            <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
+              {filtered.length} z {defects.length}
+            </span>
+          </div>
+          {filtered.length === 0 ? (
+            <p style={{ color: palette.smoke, marginTop: 16 }}>
+              Brak wyników dla wybranych filtrów.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+              {filtered.map((d) => (
+                <div key={d.id} style={styles.row}>
+                  <strong style={{ minWidth: 90 }}>{regOf(d.vehicle_id)}</strong>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700 }}>
+                      {d.part}
+                      {d.side ? ` · ${d.side}` : ""} {d.dashboard_light ? "💡" : ""}
+                    </div>
+                    <div style={{ color: palette.smoke, fontSize: 13 }}>{d.description}</div>
+                  </div>
+                  <Badge color={SEV_COLOR[d.severity]}>{SEV_LABEL[d.severity] ?? d.severity}</Badge>
+                  <Badge color={STATUS_COLOR[d.status]}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
+                  {canManage && (
+                    <>
+                      {d.status !== "in_progress" && d.status !== "resolved" && (
+                        <Button variant="ghost" onClick={() => changeStatus(d.id, "in_progress")}>
+                          W naprawie
+                        </Button>
+                      )}
+                      {d.status !== "resolved" && (
+                        <Button variant="ghost" onClick={() => changeStatus(d.id, "resolved")}>
+                          Naprawione
+                        </Button>
+                      )}
+                      {d.status === "resolved" && (
+                        <Button variant="ghost" onClick={() => changeStatus(d.id, "open")}>
+                          Otwórz
+                        </Button>
+                      )}
+                      <Button variant="danger" onClick={() => remove(d.id)}>
+                        🗑️
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  filters: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    flexWrap: "wrap",
+    marginTop: 16,
+  },
+  chip: {
+    background: "transparent",
+    color: palette.smoke,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "5px 12px",
+    fontSize: 13,
+    cursor: "pointer",
+  },
+  chipActive: {
+    background: palette.red,
+    color: palette.white,
+    border: `1px solid ${palette.red}`,
+    borderRadius: 999,
+    padding: "5px 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  select: {
+    background: palette.black,
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontSize: 13,
+  },
   form: {
     display: "flex",
     flexDirection: "column",
