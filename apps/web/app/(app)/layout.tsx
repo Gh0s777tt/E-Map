@@ -3,13 +3,10 @@ export const dynamic = "force-dynamic";
 import { getActiveMembership } from "@e-logistic/api";
 import { type AppModule, effectiveModules } from "@e-logistic/core";
 import { createTranslator, type MessageKey } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
 import { redirect } from "next/navigation";
+import { AppSidebar } from "@/components/AppSidebar";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { HelpCenter } from "@/components/HelpCenter";
-import { NotificationBell } from "@/components/NotificationBell";
-import { SidebarNav } from "@/components/SidebarNav";
-import { SignOutButton } from "@/components/SignOutButton";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 const t = createTranslator("pl");
@@ -78,19 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="app-shell">
-      <aside className="app-sidebar">
-        <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 16 }}>
-          <span style={{ color: palette.red }}>E</span>-Logistic
-        </div>
-        <SidebarNav items={navItems} />
-        {supabaseConfigured && (
-          <div style={{ marginBottom: 8 }}>
-            <NotificationBell />
-          </div>
-        )}
-        <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{email}</div>
-        <SignOutButton />
-      </aside>
+      <AppSidebar navItems={navItems} email={email} supabaseConfigured={supabaseConfigured} />
       <main className="app-main">
         <ConfirmProvider>{children}</ConfirmProvider>
       </main>
