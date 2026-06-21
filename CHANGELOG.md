@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-85-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.61.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-86-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.62.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.62.0] — ⬇️ Eksport CSV w Historii (P2 #9)
+
+- `[#086]` ⬇️ **Eksport CSV w Historii formularzy** ([forms/history](apps/web/app/(app)/forms/history/page.tsx)) — przycisk w pasku filtrów eksportuje **przefiltrowaną** listę (Typ, Pojazd, Opis, Szczegóły, Status) do CSV (BOM dla Excela). Domknięcie wzorca filtry+eksport (Usterki #085, Rozliczenia #045).
+  - Uwaga responsywność: app‑shell jest już responsywny (`@media ≤820px`: sidebar → górny pasek) — pozycja P2 „mobile" w praktyce dowieziona wcześniej.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.61.0] — 🔎 Filtry i eksport CSV w Usterkach (P2 #9)
 
