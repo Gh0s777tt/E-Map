@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-58-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.3-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-59-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.4-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.4] — 🧩 Wspólne prymitywy UI (start)
+
+- `[#059]` 🧩 **Fundament pod koniec duplikacji stylów** (z audytu — 21× własny `styles`). Nowy [`components/ui.tsx`](apps/web/components/ui.tsx): `PageHeader`, `Button` (primary/ghost/danger), `Badge` — motyw red/black, web/DOM (osobno od `packages/ui` współdzielonego z mobile). Adopcja `PageHeader` w [Usterki](apps/web/app/(app)/reports/page.tsx), [Rozliczenia](apps/web/app/(app)/settlements/page.tsx), [Karty](apps/web/app/(app)/cards/page.tsx); reszta przyrostowo (najlepiej z podglądem apki).
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.3] — 🚀 Cache członkostwa (mniej zapytań)
 
