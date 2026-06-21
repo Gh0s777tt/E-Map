@@ -45,6 +45,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     } = await supabase.auth.getUser();
     if (!user) redirect("/login");
     email = user.email ?? "—";
+
+    // Egzekwowanie 2FA serwerowo: konto z TOTP (nextLevel=aal2), ale sesja aal1 → wymuś krok 2FA.
+    // redirect() musi być POZA try (rzuca NEXT_REDIRECT, którego nie wolno połknąć).
+    let needsMfa = false;
+    try {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      needsMfa = aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2";
+    } catch {
+      // błąd odczytu AAL — nie blokujemy (unikamy masowego lockoutu)
+    }
+    if (needsMfa) redirect("/login?mfa=1");
+
     try {
       const m = await getActiveMembership(supabase);
       if (m) {
