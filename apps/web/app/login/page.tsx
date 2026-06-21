@@ -7,7 +7,10 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
 
+type Mode = "signin" | "signup";
+
 export default function LoginPage() {
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -27,10 +30,30 @@ export default function LoginPage() {
   }
 
   const signInPassword = () =>
-    run(() => getBrowserSupabase().auth.signInWithPassword({ email, password }), "Zalogowano.");
+    run(async () => {
+      const { data, error } = await getBrowserSupabase().auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (!error && data.session) window.location.href = "/dashboard";
+      return { error };
+    }, "Zalogowano.");
+
+  const signUpPassword = () =>
+    run(async () => {
+      const emailRedirectTo = `${window.location.origin}/auth/callback`;
+      const { data, error } = await getBrowserSupabase().auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo },
+      });
+      // Bez potwierdzenia e-mail → od razu sesja → na pulpit. Z potwierdzeniem → komunikat.
+      if (!error && data.session) window.location.href = "/dashboard";
+      return { error };
+    }, t("auth.checkEmail"));
 
   const magicLink = () =>
-    run(() => getBrowserSupabase().auth.signInWithOtp({ email }), "Wysłano link logujący.");
+    run(() => getBrowserSupabase().auth.signInWithOtp({ email }), t("auth.magicLink"));
 
   const oauth = (provider: "google" | "apple") =>
     run(async () => {
@@ -42,19 +65,27 @@ export default function LoginPage() {
       return { error };
     }, "Przekierowanie…");
 
+  const isSignup = mode === "signup";
+
+  function toggleMode() {
+    setMode(isSignup ? "signin" : "signup");
+    setMsg(null);
+  }
+
   return (
     <main style={styles.wrap}>
       <div style={styles.card}>
         <h1 style={styles.title}>
           <span style={{ color: palette.red }}>E</span>-Logistic
         </h1>
-        <p style={styles.sub}>{t("auth.signIn")}</p>
+        <p style={styles.sub}>{isSignup ? t("auth.signUpSub") : t("auth.signInSub")}</p>
 
         <label style={styles.field}>
           <span style={styles.label}>{t("auth.email")}</span>
           <input
             style={styles.input}
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="kierowca@firma.pl"
@@ -66,20 +97,30 @@ export default function LoginPage() {
           <input
             style={styles.input}
             type="password"
+            autoComplete={isSignup ? "new-password" : "current-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
 
-        <button type="button" style={styles.primary} onClick={signInPassword} disabled={busy}>
-          {t("auth.signIn")}
+        <button
+          type="button"
+          style={styles.primary}
+          onClick={isSignup ? signUpPassword : signInPassword}
+          disabled={busy}
+        >
+          {isSignup ? t("auth.createAccount") : t("auth.signIn")}
         </button>
-        <button type="button" style={styles.ghost} onClick={magicLink} disabled={busy}>
-          {t("auth.magicLink")}
+
+        <button type="button" style={styles.link} onClick={toggleMode} disabled={busy}>
+          {isSignup ? t("auth.toSignIn") : t("auth.toSignUp")}
         </button>
 
         <div style={styles.divider} />
 
+        <button type="button" style={styles.ghost} onClick={magicLink} disabled={busy}>
+          {t("auth.magicLink")}
+        </button>
         <button type="button" style={styles.oauth} onClick={() => oauth("google")} disabled={busy}>
           {t("auth.continueGoogle")}
         </button>
@@ -134,6 +175,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     padding: "10px 12px",
     cursor: "pointer",
+  },
+  link: {
+    background: "transparent",
+    color: palette.smoke,
+    border: "none",
+    padding: "6px 0 0",
+    fontSize: 13,
+    cursor: "pointer",
+    textAlign: "center",
   },
   divider: { height: 1, background: palette.graphite, margin: "12px 0" },
   oauth: {
