@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-47-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.46.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-48-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.47.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.47.0] — ⛽ Ceny paliwa na mapie (Tankerkönig, DE)
+
+- `[#048]` ⛽ **Realne ceny paliwa w okolicy (adapter Tankerkönig, Niemcy) za flagą env.**
+  - **`packages/maps`** — [fuelprice](packages/maps/src/fuelprice.ts): `buildTankerkonigUrl`/`parseTankerkonig`/`fetchFuelPrices` (normalizacja, ceny ≤ 0 → null, promień ≤ 25 km). **+3 testy**.
+  - **Web** [`/api/fuel-prices`](apps/web/app/api/fuel-prices/route.ts): klucz `FUEL_PRICE_API_KEY` czytany po stronie serwera; bez klucza `configured:false`. [`/map`](apps/web/app/(app)/map/page.tsx): przycisk **„⛽ Ceny paliwa (DE)"** → lista najtańszych stacji (diesel) wokół środka mapy, klik = lot do stacji.
+  - **Pozostałe integracje partnerów** (akceptacja kart DKV/Eurowag, Travis/SNAP) wymagają umów/API — udokumentowane w [DEPLOY.md §8](DEPLOY.md) jako gotowe do podpięcia.
+  - **Env** — `FUEL_PRICE_API_KEY` ([turbo.json](turbo.json)). **Bramki:** biome czysto · `tsc` ×7 · **71 testów** · build ✓.
 
 ## [0.46.0] — 🔔 Powiadomienia push (Web Push) — kod gotowy
 
