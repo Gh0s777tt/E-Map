@@ -40,6 +40,10 @@ export const en: Record<MessageKey, string> = {
   "auth.twoFactor": "Two-factor authentication (2FA)",
   "auth.twoFactorCode": "Authenticator app code",
   "auth.twoFactorVerify": "Verify code",
+  "auth.passkey": "Passkeys",
+  "auth.passkeyAdd": "Add passkey",
+  "auth.passkeyLogin": "Sign in with passkey",
+  "auth.passkeyNone": "No passkeys yet.",
 
   "form.fuel.title": "Fuel form",
   "form.adblue.title": "AdBlue form",
