@@ -11,6 +11,10 @@ export interface DriverRow {
   license_categories: string[];
   qualifications: string[];
   notes: string | null;
+  license_expiry: string | null;
+  code95_expiry: string | null;
+  medical_expiry: string | null;
+  adr_expiry: string | null;
 }
 
 /**
@@ -39,6 +43,10 @@ async function saveDriverIdentity(
     p_categories: input.licenseCategories,
     p_quals: input.qualifications,
     p_notes: input.notes ?? null,
+    p_license_expiry: input.licenseExpiry ?? null,
+    p_code95_expiry: input.code95Expiry ?? null,
+    p_medical_expiry: input.medicalExpiry ?? null,
+    p_adr_expiry: input.adrExpiry ?? null,
   });
   if (error) throw error;
   return data as string;

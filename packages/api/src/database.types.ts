@@ -258,6 +258,10 @@ export interface Database {
           first_name_enc: string | null;
           last_name_enc: string | null;
           birth_date_enc: string | null;
+          license_expiry: string | null;
+          code95_expiry: string | null;
+          medical_expiry: string | null;
+          adr_expiry: string | null;
         };
         Insert: {
           id?: string;
@@ -273,6 +277,10 @@ export interface Database {
           first_name_enc?: string | null;
           last_name_enc?: string | null;
           birth_date_enc?: string | null;
+          license_expiry?: string | null;
+          code95_expiry?: string | null;
+          medical_expiry?: string | null;
+          adr_expiry?: string | null;
         };
         Update: {
           id?: string;
@@ -288,6 +296,10 @@ export interface Database {
           first_name_enc?: string | null;
           last_name_enc?: string | null;
           birth_date_enc?: string | null;
+          license_expiry?: string | null;
+          code95_expiry?: string | null;
+          medical_expiry?: string | null;
+          adr_expiry?: string | null;
         };
         Relationships: [];
       };
