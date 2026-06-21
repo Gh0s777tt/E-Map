@@ -3,8 +3,10 @@
 import {
   deleteDriver,
   getActiveMembership,
+  getDriverDocuments,
   insertDriver,
   listDrivers,
+  setDriverDocuments,
   updateDriver,
 } from "@e-logistic/api";
 import { DRIVER_QUALIFICATIONS, driverSchema, LICENSE_CATEGORIES } from "@e-logistic/core";
@@ -17,13 +19,11 @@ type Driver = {
   first_name: string;
   last_name: string;
   birth_date: string | null;
-  license_number: string | null;
-  id_card_number: string | null;
-  passport_number: string | null;
   license_categories: string[];
   qualifications: string[];
   notes: string | null;
 };
+type Docs = { idCard: string | null; passport: string | null; license: string | null };
 
 const toggle = (arr: string[], v: string) =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
@@ -45,6 +45,7 @@ export function DriverRoster() {
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<Record<string, Docs>>({});
 
   const load = useCallback(async () => {
     try {
@@ -82,9 +83,11 @@ export function DriverRoster() {
     setFirstName(d.first_name);
     setLastName(d.last_name);
     setBirthDate(d.birth_date ?? "");
-    setLicenseNumber(d.license_number ?? "");
-    setIdCardNumber(d.id_card_number ?? "");
-    setPassportNumber(d.passport_number ?? "");
+    // Numery dokumentów są zaszyfrowane — nie pokazujemy ich w formularzu.
+    // Wpisz ponownie, by je zmienić; puste pola = bez zmian.
+    setLicenseNumber("");
+    setIdCardNumber("");
+    setPassportNumber("");
     setCategories(d.license_categories ?? []);
     setQuals(d.qualifications ?? []);
     setNotes(d.notes ?? "");
@@ -120,13 +123,23 @@ export function DriverRoster() {
         setStatus("Brak firmy.");
         return;
       }
+      let driverId = editingId;
       if (editingId) {
         await updateDriver(sb, editingId, parsed.data, m.companyId);
-        setStatus("✅ Zmiany zapisane.");
       } else {
-        await insertDriver(sb, parsed.data, m.companyId);
-        setStatus("✅ Kierowca dodany.");
+        driverId = await insertDriver(sb, parsed.data, m.companyId);
       }
+      const idCard = idCardNumber.trim();
+      const passport = passportNumber.trim();
+      const license = licenseNumber.trim();
+      if (driverId && (idCard || passport || license)) {
+        await setDriverDocuments(sb, driverId, {
+          idCard: idCard || undefined,
+          passport: passport || undefined,
+          license: license || undefined,
+        });
+      }
+      setStatus(editingId ? "✅ Zmiany zapisane." : "✅ Kierowca dodany.");
       resetForm();
       await load();
     } catch (e) {
@@ -142,6 +155,15 @@ export function DriverRoster() {
       await load();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Błąd usuwania.");
+    }
+  }
+
+  async function revealDocs(id: string) {
+    try {
+      const d = await getDriverDocuments(getBrowserSupabase(), id);
+      setRevealed((m) => ({ ...m, [id]: d }));
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Błąd odczytu dokumentów.");
     }
   }
 
@@ -307,28 +329,43 @@ export function DriverRoster() {
 
       {drivers.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
-          {drivers.map((d) => (
-            <div key={d.id} style={styles.row}>
-              <strong style={{ minWidth: 180 }}>
-                {d.last_name} {d.first_name}
-              </strong>
-              <span style={styles.cell}>
-                {d.license_categories.length > 0 ? d.license_categories.join(", ") : "—"}
-              </span>
-              <span style={{ flex: 1 }} />
-              {d.qualifications.slice(0, 3).map((q) => (
-                <span key={q} style={styles.tag}>
-                  {q}
-                </span>
-              ))}
-              <button type="button" style={styles.ghost} onClick={() => startEdit(d)}>
-                ✏️
-              </button>
-              <button type="button" style={styles.danger} onClick={() => remove(d.id)}>
-                🗑️
-              </button>
-            </div>
-          ))}
+          {drivers.map((d) => {
+            const doc = revealed[d.id];
+            return (
+              <div key={d.id} style={styles.card}>
+                <div style={styles.row}>
+                  <strong style={{ minWidth: 180 }}>
+                    {d.last_name} {d.first_name}
+                  </strong>
+                  <span style={styles.cell}>
+                    {d.license_categories.length > 0 ? d.license_categories.join(", ") : "—"}
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  {d.qualifications.slice(0, 3).map((q) => (
+                    <span key={q} style={styles.tag}>
+                      {q}
+                    </span>
+                  ))}
+                  <button type="button" style={styles.ghost} onClick={() => revealDocs(d.id)}>
+                    🔓 Dokumenty
+                  </button>
+                  <button type="button" style={styles.ghost} onClick={() => startEdit(d)}>
+                    ✏️
+                  </button>
+                  <button type="button" style={styles.danger} onClick={() => remove(d.id)}>
+                    🗑️
+                  </button>
+                </div>
+                {doc && (
+                  <div style={styles.docs}>
+                    🔒 Dowód: <strong>{doc.idCard ?? "—"}</strong> · Paszport:{" "}
+                    <strong>{doc.passport ?? "—"}</strong> · Prawo jazdy:{" "}
+                    <strong>{doc.license ?? "—"}</strong>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -386,14 +423,24 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "8px 10px",
     cursor: "pointer",
   },
+  card: {
+    borderRadius: 10,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    overflow: "hidden",
+  },
   row: {
     display: "flex",
     gap: 10,
     alignItems: "center",
     padding: "10px 16px",
-    borderRadius: 10,
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
+  },
+  docs: {
+    padding: "8px 16px",
+    borderTop: `1px solid ${palette.graphite}`,
+    background: palette.black,
+    color: palette.smoke,
+    fontSize: 13,
   },
   cell: { color: palette.smoke, fontSize: 14 },
   tag: {
