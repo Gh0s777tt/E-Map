@@ -3,6 +3,7 @@
 import { deletePushSubscription, savePushSubscription } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -149,14 +150,14 @@ export function PushToggle() {
         </p>
       )}
       {state === "off" && (
-        <button type="button" style={styles.primary} onClick={enable} disabled={busy}>
+        <Button onClick={enable} disabled={busy}>
           Włącz powiadomienia
-        </button>
+        </Button>
       )}
       {state === "on" && (
-        <button type="button" style={styles.danger} onClick={disable} disabled={busy}>
+        <Button variant="danger" onClick={disable} disabled={busy}>
           Wyłącz na tym urządzeniu
-        </button>
+        </Button>
       )}
       {msg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{msg}</p>}
     </div>

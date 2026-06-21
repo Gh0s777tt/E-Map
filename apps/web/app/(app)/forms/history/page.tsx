@@ -6,6 +6,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui";
 import { vehicleLabel } from "@/lib/demo";
 import { getCachedMembership } from "@/lib/membership";
 import { listOutbox, type OutboxItem, removeOutbox, trySync } from "@/lib/outbox";
@@ -193,20 +194,12 @@ export default function FormsHistoryPage() {
                 )}
                 {r.status !== "synced" && r.outboxId && (
                   <>
-                    <button
-                      type="button"
-                      style={styles.btn}
-                      onClick={() => resync(r.outboxId as string)}
-                    >
+                    <Button variant="ghost" onClick={() => resync(r.outboxId as string)}>
                       Ponów
-                    </button>
-                    <button
-                      type="button"
-                      style={{ ...styles.btn, color: palette.red, borderColor: palette.red }}
-                      onClick={() => remove(r.outboxId as string)}
-                    >
+                    </Button>
+                    <Button variant="danger" onClick={() => remove(r.outboxId as string)}>
                       Usuń
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
