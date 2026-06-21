@@ -7,11 +7,23 @@ import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field, fieldInputStyle as input } from "@/components/Field";
+import { PlaceSearch } from "@/components/PlaceSearch";
 import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 const t = createTranslator("pl");
+
+function splitPlace(label: string): { city: string; country: string } {
+  const parts = label
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return {
+    city: parts[0] ?? label,
+    country: parts.length > 1 ? (parts[parts.length - 1] ?? "") : "",
+  };
+}
 
 export default function TripFormPage() {
   const { vehicles } = useFleet();
@@ -144,6 +156,18 @@ export default function TripFormPage() {
             ))}
           </select>
         </Field>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 12, color: palette.smoke }}>Wyszukaj miejsce (adres → GPS)</span>
+          <PlaceSearch
+            onPick={(h) => {
+              const p = splitPlace(h.label);
+              setLocation(p.city);
+              if (p.country) setCountry(p.country);
+              setCoords({ lat: h.lat, lng: h.lng });
+            }}
+          />
+        </div>
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")} error={errors["place.country"]}>
