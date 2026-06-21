@@ -10,7 +10,7 @@ import {
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
-import { Button, PageHeader } from "@/components/ui";
+import { Button, PageHeader, SetupNotice } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -84,13 +84,6 @@ export default function SettlementsPage() {
       })
       .catch(() => {});
   }, []);
-
-  const setupMsg =
-    source === "no-company"
-      ? "Najpierw utwórz firmę na Pulpicie."
-      : source === "no-vehicles"
-        ? "Dodaj pojazd, aby rozliczyć trasy."
-        : null;
 
   useEffect(() => {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
@@ -199,7 +192,7 @@ export default function SettlementsPage() {
         subtitle="Podsumowanie kosztów (paliwo, AdBlue, serwis, myto) i zysku dla pojazdu w wybranym okresie. Eksport do CSV (Excel) i wydruk/PDF."
       />
 
-      {setupMsg && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {setupMsg}</p>}
+      <SetupNotice source={source} noVehicles="Dodaj pojazd, aby rozliczyć trasy." />
       {denied && (
         <p style={{ color: palette.red, marginTop: 16 }}>
           ⛔ Brak dostępu do modułu Rozliczenia. Poproś właściciela o nadanie uprawnień.
