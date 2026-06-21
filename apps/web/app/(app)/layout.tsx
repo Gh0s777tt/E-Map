@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
-import { createTranslator } from "@e-logistic/i18n";
+import { getActiveMembership } from "@e-logistic/api";
+import { type AppModule, effectiveModules } from "@e-logistic/core";
+import { createTranslator, type MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -9,27 +11,29 @@ import { getServerSupabase } from "@/lib/supabase/server";
 
 const t = createTranslator("pl");
 
-const NAV = [
-  { href: "/dashboard", key: "nav.dashboard" },
-  { href: "/vehicles", key: "nav.vehicles" },
-  { href: "/drivers", key: "nav.drivers" },
-  { href: "/cards", key: "nav.cards" },
-  { href: "/forms/fuel", key: "form.fuel.title" },
-  { href: "/forms/adblue", key: "form.adblue.title" },
-  { href: "/forms/trip", key: "form.trip.title" },
-  { href: "/map", key: "nav.map" },
-  { href: "/stats", key: "nav.stats" },
-  { href: "/settings", key: "nav.settings" },
-] as const;
+// `mod` = moduł wymagany do pokazania pozycji (null = zawsze widoczna).
+const NAV: { href: string; key: MessageKey; mod: AppModule | null }[] = [
+  { href: "/dashboard", key: "nav.dashboard", mod: null },
+  { href: "/vehicles", key: "nav.vehicles", mod: "vehicles" },
+  { href: "/drivers", key: "nav.drivers", mod: "drivers" },
+  { href: "/cards", key: "nav.cards", mod: "cards" },
+  { href: "/forms/fuel", key: "form.fuel.title", mod: "forms" },
+  { href: "/forms/adblue", key: "form.adblue.title", mod: "forms" },
+  { href: "/forms/trip", key: "form.trip.title", mod: "forms" },
+  { href: "/map", key: "nav.map", mod: "map" },
+  { href: "/stats", key: "nav.stats", mod: "stats" },
+  { href: "/settings", key: "nav.settings", mod: null },
+];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  // Gdy Supabase jest skonfigurowane → wymuszamy logowanie.
-  // Gdy nie → tryb offline/dev (apka użyteczna bez backendu: formularze, mapa, statystyki).
   const supabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 
   let email = "tryb offline";
+  let allowed: AppModule[] = ["vehicles", "drivers", "cards", "forms", "map", "stats"];
+  let isOwner = true;
+
   if (supabaseConfigured) {
     const supabase = await getServerSupabase();
     const {
@@ -37,7 +41,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     } = await supabase.auth.getUser();
     if (!user) redirect("/login");
     email = user.email ?? "—";
+    try {
+      const m = await getActiveMembership(supabase);
+      if (m) {
+        allowed = effectiveModules(m.role, m.modules);
+        isOwner = m.role === "owner";
+      }
+    } catch {
+      // brak firmy → domyślne (member zobaczy onboarding na pulpicie)
+    }
   }
+
+  const items = NAV.filter((i) => i.mod === null || allowed.includes(i.mod));
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -56,7 +71,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <span style={{ color: palette.red }}>E</span>-Logistic
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-          {NAV.map((item) => (
+          {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -70,6 +85,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {t(item.key)}
             </Link>
           ))}
+          {isOwner && (
+            <Link
+              href="/team"
+              style={{
+                color: palette.offWhite,
+                textDecoration: "none",
+                padding: "9px 12px",
+                borderRadius: 8,
+              }}
+            >
+              Zespół
+            </Link>
+          )}
         </nav>
         <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{email}</div>
         <SignOutButton />
