@@ -22,6 +22,7 @@ const NAV: { href: string; key: MessageKey; mod: AppModule | null }[] = [
   { href: "/forms/fuel", key: "form.fuel.title", mod: "forms" },
   { href: "/forms/adblue", key: "form.adblue.title", mod: "forms" },
   { href: "/forms/trip", key: "form.trip.title", mod: "forms" },
+  { href: "/reports", key: "nav.reports", mod: "reports" },
   { href: "/map", key: "nav.map", mod: "map" },
   { href: "/stats", key: "nav.stats", mod: "stats" },
   { href: "/settings", key: "nav.settings", mod: null },
@@ -33,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   );
 
   let email = "tryb offline";
-  let allowed: AppModule[] = ["vehicles", "drivers", "cards", "forms", "map", "stats"];
+  let allowed: AppModule[] = ["vehicles", "drivers", "cards", "forms", "reports", "map", "stats"];
   let isOwner = true;
 
   if (supabaseConfigured) {

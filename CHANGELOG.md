@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-42-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.41.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-43-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.42.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.42.0] — 🔧 Moduł usterek + graficzny schemat auta
+
+- `[#043]` 🔧 **Zgłaszanie usterek/uszkodzeń przez kierowców z auto‑zaznaczaniem na schemacie pojazdu.**
+  - **DB** [`0019`](supabase/migrations/0019_vehicle_defects.sql): tabela `vehicle_defects` (część, strona, pilność `low|medium|high`, kontrolka na desce, opis, status `open|in_progress|resolved`, autor/rozwiązujący). **RLS**: kierowca widzi/zgłasza usterki swojego auta i własne; **owner/spedytor (mechanik)** zmienia status i usuwa.
+  - **`packages/core`** — [enums](packages/core/src/enums.ts) `DEFECT_SEVERITIES`/`DEFECT_STATUSES`; [katalog](packages/core/src/catalog.ts) `DEFECT_PARTS` (hamulce/opony/zawieszenie/światła…), `DEFECT_SIDES`, **`guessDefectPart()`** (rozpoznaje układ z opisu — klocki/tarcze, opony, kontrolka…); [schema](packages/core/src/schemas.ts) `defectSchema`. Nowy moduł aplikacji **`reports`** (domyślnie dla kierowcy).
+  - **`packages/api`** — [defects](packages/api/src/data/defects.ts): `listDefects`/`insertDefect`/`updateDefectStatus`/`deleteDefect`.
+  - **Web** — [`/reports`](apps/web/app/(app)/reports/page.tsx): formularz (pojazd, część, strona, pilność, kontrolka, opis) + **interaktywny [schemat ciężarówki](apps/web/components/VehicleDiagram.tsx)** (widok z góry) — strefa **podświetla się automatycznie wg opisu** (np. „klocki z lewej” → koła + lewa strona), klik strefy ustawia stronę/koła. Lista zgłoszeń ze statusami; mechanik: **W naprawie / Naprawione / Otwórz / Usuń**. Pozycja **„Usterki”** w nawigacji + i18n.
+  - **Bramki:** biome czysto · `tsc` ×7 · 52 testy · build ✓.
 
 ## [0.41.0] — 📊 Statystyki per‑pojazd + pojemności zbiorników
 

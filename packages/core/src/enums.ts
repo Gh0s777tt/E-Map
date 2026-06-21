@@ -73,6 +73,14 @@ export const POI_TYPES = [
 ] as const;
 export type PoiType = (typeof POI_TYPES)[number];
 
+/** Pilność usterki pojazdu. */
+export const DEFECT_SEVERITIES = ["low", "medium", "high"] as const;
+export type DefectSeverity = (typeof DEFECT_SEVERITIES)[number];
+
+/** Status usterki (workflow: zgłoszone → w naprawie → naprawione). */
+export const DEFECT_STATUSES = ["open", "in_progress", "resolved"] as const;
+export type DefectStatus = (typeof DEFECT_STATUSES)[number];
+
 /** Typy zgłoszeń społecznościowych (warstwa realtime). */
 export const REPORT_TYPES = [
   "accident",

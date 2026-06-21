@@ -50,7 +50,15 @@ export const VEHICLE_MAKES: string[] = Array.from(
 ).sort();
 
 /** Moduły aplikacji, do których właściciel nadaje dostęp członkom. */
-export const APP_MODULES = ["vehicles", "drivers", "cards", "forms", "map", "stats"] as const;
+export const APP_MODULES = [
+  "vehicles",
+  "drivers",
+  "cards",
+  "forms",
+  "reports",
+  "map",
+  "stats",
+] as const;
 export type AppModule = (typeof APP_MODULES)[number];
 
 /** Czytelne nazwy modułów (UI). */
@@ -59,6 +67,7 @@ export const APP_MODULE_LABELS: Record<AppModule, string> = {
   drivers: "Kierowcy",
   cards: "Karty paliwowe",
   forms: "Formularze",
+  reports: "Usterki",
   map: "Mapa",
   stats: "Statystyki",
 };
@@ -68,7 +77,7 @@ export const DEFAULT_MODULES: Record<string, AppModule[]> = {
   owner: [...APP_MODULES],
   dispatcher: [...APP_MODULES],
   manager: [...APP_MODULES],
-  driver: ["forms", "map"],
+  driver: ["forms", "reports", "map"],
   developer: [],
 };
 
@@ -115,6 +124,60 @@ export const DRIVER_QUALIFICATIONS = [
   "Świadectwo kwalifikacji",
   "Pierwsza pomoc",
 ] as const;
+
+/** Układy/części pojazdu do zgłaszania usterek. */
+export const DEFECT_PARTS = [
+  "Hamulce (klocki/tarcze)",
+  "Opony / koła",
+  "Zawieszenie",
+  "Światła",
+  "Lusterka / szyby",
+  "Silnik",
+  "Skrzynia biegów",
+  "Układ AdBlue / wydech",
+  "Elektryka",
+  "Kabina / wnętrze",
+  "Naczepa / zabudowa",
+  "Inne",
+] as const;
+
+/** Strona/umiejscowienie usterki. */
+export const DEFECT_SIDES = [
+  "lewa",
+  "prawa",
+  "przód",
+  "tył",
+  "oś przednia",
+  "oś tylna",
+  "—",
+] as const;
+
+/**
+ * Mapowanie słów-kluczy z opisu kierowcy → układ pojazdu (auto-podświetlenie na schemacie).
+ * Dopasowanie po fragmencie (lowercase).
+ */
+export const DEFECT_KEYWORDS: { match: string[]; part: string }[] = [
+  { match: ["klock", "tarcz", "hamul"], part: "Hamulce (klocki/tarcze)" },
+  { match: ["opon", "koł", "ogumieni", "felg"], part: "Opony / koła" },
+  { match: ["zawiesz", "amortyz", "resor"], part: "Zawieszenie" },
+  { match: ["świat", "żarów", "lamp", "kierunkowsk"], part: "Światła" },
+  { match: ["lusterk", "szyb"], part: "Lusterka / szyby" },
+  { match: ["silnik", "olej", "turbo", "rozrząd"], part: "Silnik" },
+  { match: ["skrzyni", "biegów", "sprzęg"], part: "Skrzynia biegów" },
+  { match: ["adblue", "wydech", "dpf", "spalin"], part: "Układ AdBlue / wydech" },
+  { match: ["elektr", "akumulat", "bezpiecznik", "kontrolk"], part: "Elektryka" },
+  { match: ["kabin", "fotel", "klima"], part: "Kabina / wnętrze" },
+  { match: ["naczep", "plandek", "zabudow", "burt"], part: "Naczepa / zabudowa" },
+];
+
+/** Zgaduje układ na podstawie opisu (pierwsze trafienie) — do auto-podświetlenia. */
+export function guessDefectPart(description: string): string | null {
+  const d = description.toLowerCase();
+  for (const k of DEFECT_KEYWORDS) {
+    if (k.match.some((m) => d.includes(m))) return k.part;
+  }
+  return null;
+}
 
 /** Ubezpieczyciele komunikacyjni (PL) — do listy przy OC pojazdu. */
 export const INSURERS = [
