@@ -35,6 +35,27 @@ export async function insertFuelCard(
   return data.id as string;
 }
 
+/** Edytuje kartę (pola jawne — PIN ustawiany osobno przez `setFuelCardPin`). RLS: owner. */
+export async function updateFuelCard(client: SupabaseClient, cardId: string, input: FuelCardInput) {
+  const { error } = await client
+    .from("fuel_cards")
+    .update({
+      provider: input.provider,
+      card_number_masked: input.cardNumberMasked,
+      valid_until: input.validUntil ?? null,
+      discount_percent: input.discountPercent,
+      notes: input.notes ?? null,
+    })
+    .eq("id", cardId);
+  if (error) throw error;
+}
+
+/** Usuwa kartę (kaskadowo: przypisania). RLS: owner. */
+export async function deleteFuelCard(client: SupabaseClient, cardId: string) {
+  const { error } = await client.from("fuel_cards").delete().eq("id", cardId);
+  if (error) throw error;
+}
+
 /** Ustawia (szyfruje) PIN karty — RPC, tylko owner. */
 export async function setFuelCardPin(client: SupabaseClient, cardId: string, pin: string) {
   const { error } = await client.rpc("fuel_card_set_pin", { p_card: cardId, p_pin: pin });

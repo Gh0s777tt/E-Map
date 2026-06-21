@@ -32,9 +32,34 @@ export const FUEL_CARD_PROVIDERS = [
   "logpay",
   "esso",
   "totalenergies",
+  "tankpool24",
+  "morganfuels",
+  "iqcard",
   "other",
 ] as const;
 export type FuelCardProvider = (typeof FUEL_CARD_PROVIDERS)[number];
+
+/** Czytelne nazwy marek kart (do UI). Brak wpisu → wersja wielkimi literami. */
+export const FUEL_CARD_PROVIDER_LABELS: Record<FuelCardProvider, string> = {
+  dkv: "DKV",
+  eurowag: "Eurowag",
+  shell: "Shell",
+  bp: "BP",
+  circlek: "Circle K",
+  e100: "E100",
+  uta: "UTA",
+  as24: "AS24",
+  aral: "Aral",
+  omv: "OMV",
+  routex: "Routex",
+  logpay: "LogPay",
+  esso: "Esso",
+  totalenergies: "TotalEnergies",
+  tankpool24: "TankPool24",
+  morganfuels: "Morgan Fuels",
+  iqcard: "IQ Card",
+  other: "Inny",
+};
 
 /** Typy punktów POI na mapie. */
 export const POI_TYPES = [

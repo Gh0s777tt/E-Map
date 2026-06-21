@@ -1,13 +1,20 @@
 "use client";
 
 import {
+  deleteFuelCard,
   getActiveMembership,
   getFuelCardPin,
   insertFuelCard,
   listFuelCardsSafe,
   setFuelCardPin,
+  updateFuelCard,
 } from "@e-logistic/api";
-import { FUEL_CARD_PROVIDERS, fuelCardSchema } from "@e-logistic/core";
+import {
+  FUEL_CARD_PROVIDER_LABELS,
+  FUEL_CARD_PROVIDERS,
+  type FuelCardProvider,
+  fuelCardSchema,
+} from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
@@ -24,13 +31,17 @@ type Card = {
   discount_percent: number;
 };
 
+const providerLabel = (p: string) =>
+  FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
+
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [isOwner, setIsOwner] = useState(false);
   const [offline, setOffline] = useState(false);
   const [pins, setPins] = useState<Record<string, string>>({});
 
-  const [provider, setProvider] = useState<(typeof FUEL_CARD_PROVIDERS)[number]>("dkv");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [provider, setProvider] = useState<FuelCardProvider>("dkv");
   const [masked, setMasked] = useState("");
   const [pin, setPin] = useState("");
   const [validUntil, setValidUntil] = useState("");
@@ -57,6 +68,32 @@ export default function CardsPage() {
     load();
   }, [load]);
 
+  function resetForm() {
+    setEditingId(null);
+    setProvider("dkv");
+    setMasked("");
+    setPin("");
+    setValidUntil("");
+    setDiscount("");
+    setErrors({});
+  }
+
+  function startEdit(c: Card) {
+    setEditingId(c.id);
+    setProvider(
+      (FUEL_CARD_PROVIDERS as readonly string[]).includes(c.provider)
+        ? (c.provider as FuelCardProvider)
+        : "other",
+    );
+    setMasked(c.card_number_masked);
+    setPin("");
+    setValidUntil(c.valid_until ?? "");
+    setDiscount(String(c.discount_percent ?? ""));
+    setErrors({});
+    setStatus(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function reveal(cardId: string) {
     try {
       const value = await getFuelCardPin(getBrowserSupabase(), cardId);
@@ -66,7 +103,7 @@ export default function CardsPage() {
     }
   }
 
-  async function addCard() {
+  async function save() {
     setErrors({});
     setStatus(null);
     const parsed = fuelCardSchema.safeParse({
@@ -89,16 +126,36 @@ export default function CardsPage() {
         setStatus("Brak firmy — nie można zapisać.");
         return;
       }
-      const cardId = await insertFuelCard(sb, parsed.data, m.companyId);
-      if (parsed.data.pin) await setFuelCardPin(sb, cardId, parsed.data.pin);
-      setStatus("✅ Karta dodana.");
-      setMasked("");
-      setPin("");
-      setValidUntil("");
-      setDiscount("");
+      if (editingId) {
+        await updateFuelCard(sb, editingId, parsed.data);
+        if (parsed.data.pin) await setFuelCardPin(sb, editingId, parsed.data.pin);
+        setStatus("✅ Zmiany zapisane.");
+      } else {
+        const cardId = await insertFuelCard(sb, parsed.data, m.companyId);
+        if (parsed.data.pin) await setFuelCardPin(sb, cardId, parsed.data.pin);
+        setStatus("✅ Karta dodana.");
+      }
+      resetForm();
       await load();
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Błąd zapisu karty.");
+    }
+  }
+
+  async function remove(cardId: string) {
+    if (!window.confirm("Usunąć tę kartę? Tej operacji nie można cofnąć.")) return;
+    try {
+      await deleteFuelCard(getBrowserSupabase(), cardId);
+      setPins((p) => {
+        const next = { ...p };
+        delete next[cardId];
+        return next;
+      });
+      if (editingId === cardId) resetForm();
+      setStatus("🗑️ Karta usunięta.");
+      await load();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Błąd usuwania karty.");
     }
   }
 
@@ -118,18 +175,21 @@ export default function CardsPage() {
 
       {isOwner && (
         <div style={styles.form}>
+          {editingId && (
+            <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
+              ✏️ Edytujesz kartę — zostaw PIN pusty, by go nie zmieniać.
+            </div>
+          )}
           <div style={{ display: "flex", gap: 12 }}>
             <Field label="Dostawca" error={errors.provider}>
               <select
                 style={input}
                 value={provider}
-                onChange={(e) =>
-                  setProvider(e.target.value as (typeof FUEL_CARD_PROVIDERS)[number])
-                }
+                onChange={(e) => setProvider(e.target.value as FuelCardProvider)}
               >
                 {FUEL_CARD_PROVIDERS.map((p) => (
                   <option key={p} value={p}>
-                    {p.toUpperCase()}
+                    {providerLabel(p)}
                   </option>
                 ))}
               </select>
@@ -150,6 +210,7 @@ export default function CardsPage() {
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 inputMode="numeric"
+                placeholder={editingId ? "bez zmian" : ""}
               />
             </Field>
             <Field label="Ważna do" error={errors.validUntil}>
@@ -169,9 +230,16 @@ export default function CardsPage() {
               />
             </Field>
           </div>
-          <button type="button" style={styles.primary} onClick={addCard}>
-            {t("common.save")}
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" style={styles.primary} onClick={save}>
+              {editingId ? "Zapisz zmiany" : t("common.save")}
+            </button>
+            {editingId && (
+              <button type="button" style={styles.ghost} onClick={resetForm}>
+                Anuluj
+              </button>
+            )}
+          </div>
           {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
         </div>
       )}
@@ -183,7 +251,7 @@ export default function CardsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           {cards.map((c) => (
             <div key={c.id} style={styles.row}>
-              <strong style={{ minWidth: 90 }}>{c.provider.toUpperCase()}</strong>
+              <strong style={{ minWidth: 110 }}>{providerLabel(c.provider)}</strong>
               <span style={styles.cell}>{c.card_number_masked}</span>
               <span style={styles.cell}>{c.valid_until ?? "—"}</span>
               <span style={styles.cell}>{c.discount_percent}%</span>
@@ -192,8 +260,18 @@ export default function CardsPage() {
                 <strong style={{ color: palette.red, letterSpacing: 2 }}>{pins[c.id]}</strong>
               ) : (
                 <button type="button" style={styles.ghost} onClick={() => reveal(c.id)}>
-                  🔓 Pokaż PIN
+                  🔓 PIN
                 </button>
+              )}
+              {isOwner && (
+                <>
+                  <button type="button" style={styles.ghost} onClick={() => startEdit(c)}>
+                    ✏️ Edytuj
+                  </button>
+                  <button type="button" style={styles.danger} onClick={() => remove(c.id)}>
+                    🗑️
+                  </button>
+                </>
               )}
             </div>
           ))}
@@ -213,7 +291,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "11px",
     fontWeight: 700,
     cursor: "pointer",
-    alignSelf: "flex-start",
     minWidth: 140,
   },
   ghost: {
@@ -224,9 +301,17 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "7px 12px",
     cursor: "pointer",
   },
+  danger: {
+    background: "transparent",
+    color: palette.red,
+    border: `1px solid ${palette.red}`,
+    borderRadius: 8,
+    padding: "7px 11px",
+    cursor: "pointer",
+  },
   row: {
     display: "flex",
-    gap: 16,
+    gap: 12,
     alignItems: "center",
     padding: "10px 16px",
     borderRadius: 10,
