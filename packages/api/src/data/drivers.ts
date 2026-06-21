@@ -2,37 +2,50 @@
 import type { DriverInput } from "@e-logistic/core";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function listDrivers(client: SupabaseClient, companyId: string) {
-  const { data, error } = await client
-    .from("drivers")
-    .select("id, first_name, last_name, birth_date, license_categories, qualifications, notes")
-    .eq("company_id", companyId)
-    .order("last_name");
-  if (error) throw error;
-  return data ?? [];
+/** Wiersz kartoteki (tożsamość deszyfrowana po stronie bazy). */
+export interface DriverRow {
+  id: string;
+  first_name: string;
+  last_name: string;
+  birth_date: string | null;
+  license_categories: string[];
+  qualifications: string[];
+  notes: string | null;
 }
 
-/** Wiersz tabeli BEZ danych wrażliwych — dokumenty idą przez `setDriverDocuments` (szyfrowane). */
-function driverToRow(input: DriverInput, companyId: string) {
-  return {
-    company_id: companyId,
-    first_name: input.firstName,
-    last_name: input.lastName,
-    birth_date: input.birthDate ?? null,
-    license_categories: input.licenseCategories,
-    qualifications: input.qualifications,
-    notes: input.notes ?? null,
-  };
+/**
+ * Lista kierowców — tożsamość (imię/nazwisko/data ur.) jest szyfrowana at-rest,
+ * więc odczyt idzie przez RPC `list_drivers` (deszyfrowanie, owner/dispatcher).
+ */
+export async function listDrivers(client: SupabaseClient, companyId: string): Promise<DriverRow[]> {
+  const { data, error } = await client.rpc("list_drivers", { p_company: companyId });
+  if (error) throw error;
+  return (data ?? []) as DriverRow[];
+}
+
+/** Zapis tożsamości (szyfrowanie) przez RPC — owner/dispatcher, audytowane. */
+async function saveDriverIdentity(
+  client: SupabaseClient,
+  id: string | null,
+  input: DriverInput,
+  companyId: string,
+): Promise<string> {
+  const { data, error } = await client.rpc("driver_save", {
+    p_id: id,
+    p_company: companyId,
+    p_first: input.firstName,
+    p_last: input.lastName,
+    p_birth: input.birthDate ?? null,
+    p_categories: input.licenseCategories,
+    p_quals: input.qualifications,
+    p_notes: input.notes ?? null,
+  });
+  if (error) throw error;
+  return data as string;
 }
 
 export async function insertDriver(client: SupabaseClient, input: DriverInput, companyId: string) {
-  const { data, error } = await client
-    .from("drivers")
-    .insert(driverToRow(input, companyId))
-    .select("id")
-    .single();
-  if (error) throw error;
-  return data.id as string;
+  return saveDriverIdentity(client, null, input, companyId);
 }
 
 export async function updateDriver(
@@ -41,9 +54,7 @@ export async function updateDriver(
   input: DriverInput,
   companyId: string,
 ) {
-  const { company_id: _ignore, ...row } = driverToRow(input, companyId);
-  const { error } = await client.from("drivers").update(row).eq("id", driverId);
-  if (error) throw error;
+  await saveDriverIdentity(client, driverId, input, companyId);
 }
 
 /** Zapis (szyfrowanie) numerów dokumentów — RPC, owner/dispatcher, audytowane. */
