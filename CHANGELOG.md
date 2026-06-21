@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-88-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.64.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-89-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.65.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.65.0] — 📊 Anomalie spalania + pulpit floty
+
+- `[#089]` 📊 **Wykrywanie anomalii spalania + pulpit floty** (nowa funkcja, dane już były):
+  - Silnik [`detectFuelAnomalies`](packages/core/src/billing.ts) — flaguje odcinki istotnie powyżej **mediany** pojazdu (odporne na outliery; domyślnie ≥20% ponad). Możliwy wyciek/kradzież/usterka. **+3 testy** (łącznie 74).
+  - [Statystyki](apps/web/app/(app)/stats/page.tsx): **pasek floty** (pojazdy, paliwo, wydatek, śr. spalanie, trasy, liczba anomalii) nad kafelkami; badge „⚠️ N anomalii" na kafelku; **ostrzeżenie z listą odcinków** w widoku pojazdu (km, L/100km, +% vs mediana).
+  - Wszystko w `useMemo` (bez kosztu per render).
+  - **Bramki:** biome czysto · `tsc` ×7 · **74 testy** · build ✓.
 
 ## [0.64.0] — 🪪 Terminy dokumentów kierowcy (compliance)
 

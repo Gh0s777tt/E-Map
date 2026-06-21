@@ -55,6 +55,50 @@ export function fuelConsumptionSeries(entries: FuelEntry[]): ConsumptionSegment[
   return segments;
 }
 
+export interface FuelAnomaly {
+  fromKm: number;
+  toKm: number;
+  lPer100km: number;
+  medianLPer100km: number;
+  /** O ile % powyżej mediany pojazdu. */
+  deltaPct: number;
+}
+
+/**
+ * Wykrywa odcinki o spalaniu istotnie wyższym od mediany pojazdu — możliwy
+ * wyciek/kradzież paliwa lub usterka. Mediana jest odporna na pojedyncze outliery.
+ * Wymaga ≥ `minSegments` odcinków; `thresholdPct` = ile % ponad medianę (domyślnie 20).
+ */
+export function detectFuelAnomalies(
+  segments: ConsumptionSegment[],
+  opts?: { thresholdPct?: number; minSegments?: number },
+): FuelAnomaly[] {
+  const threshold = opts?.thresholdPct ?? 20;
+  const minSegments = opts?.minSegments ?? 3;
+  if (segments.length < minSegments) return [];
+  const values = segments.map((s) => s.lPer100km).sort((a, b) => a - b);
+  const mid = Math.floor(values.length / 2);
+  const median =
+    values.length % 2 === 0
+      ? ((values[mid - 1] ?? 0) + (values[mid] ?? 0)) / 2
+      : (values[mid] ?? 0);
+  if (median <= 0) return [];
+  const out: FuelAnomaly[] = [];
+  for (const s of segments) {
+    const deltaPct = round2(((s.lPer100km - median) / median) * 100);
+    if (deltaPct >= threshold) {
+      out.push({
+        fromKm: s.fromKm,
+        toKm: s.toKm,
+        lPer100km: s.lPer100km,
+        medianLPer100km: round2(median),
+        deltaPct,
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * Zagregowane spalanie [L/100km] dla serii tankowań.
  * Litry pierwszego wpisu są pomijane (to „pełny bak" startowy),
