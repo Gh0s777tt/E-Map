@@ -24,7 +24,7 @@ import {
 } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from "maplibre-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -197,8 +197,8 @@ export default function MapPage() {
   const [fuelPriceMsg, setFuelPriceMsg] = useState<string | null>(null);
   const [fuelPriceBusy, setFuelPriceBusy] = useState(false);
 
-  // Marki kart użytkownika (odduplikowane) — do filtra stacji.
-  const cardOptions = Array.from(new Set(cards.map((c) => c.provider)));
+  // Marki kart użytkownika (odduplikowane) — do filtra stacji. Memo: nowa tablica tylko gdy zmienią się karty.
+  const cardOptions = useMemo(() => Array.from(new Set(cards.map((c) => c.provider))), [cards]);
 
   useEffect(() => {
     reportModeRef.current = reportMode;

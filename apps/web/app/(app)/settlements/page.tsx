@@ -66,6 +66,7 @@ export default function SettlementsPage() {
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [settlement, setSettlement] = useState<Settlement | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
   const setupMsg =
     source === "no-company"
@@ -86,6 +87,7 @@ export default function SettlementsPage() {
   async function load() {
     if (!vehicleId) return;
     setBusy(true);
+    setLoadErr(null);
     try {
       const sb = getBrowserSupabase();
       // Zakres dat filtrowany po stronie bazy (mniej danych w transferze) — `to` do końca dnia.
@@ -117,6 +119,9 @@ export default function SettlementsPage() {
           tollCost: Number(tollCost) || 0,
         }),
       );
+    } catch (e) {
+      setSettlement(null);
+      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych do rozliczenia.");
     } finally {
       setBusy(false);
     }
@@ -238,6 +243,8 @@ export default function SettlementsPage() {
           {busy ? "Liczę…" : "Przelicz"}
         </Button>
       </div>
+
+      {loadErr && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {loadErr}</p>}
 
       {settlement && (
         <>

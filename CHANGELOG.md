@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-81-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.59.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-82-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.59.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.59.2] — ⚡ Mapa: memo + odporność rozliczeń (P1/P2)
+
+- `[#082]` ⚡ **Drobne optymalizacje i odporność:**
+  - [Mapa](apps/web/app/(app)/map/page.tsx): `cardOptions` (marki kart do filtra) w `useMemo` — nowa tablica tylko przy zmianie kart, nie co render.
+  - [Rozliczenia](apps/web/app/(app)/settlements/page.tsx): dodana obsługa błędu (`try/catch`) — nieudane „Przelicz" pokazuje komunikat zamiast cichej porażki.
+  - Weryfikacja pozostałych obaw P1 mapy: Overpass **już ograniczony** (`out center 120`), korytarz trasy **ograniczony** (≤120 POI × ≤300 próbek, on-demand) — bez realnego problemu, bez zmian.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.59.1] — 📄 Sync dokumentacji (ARCHITECTURE/ROADMAP) + backlog
 
