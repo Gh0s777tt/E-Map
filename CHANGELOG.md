@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-82-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.59.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-83-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.60.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.60.0] — 🔐 Rozliczenia jako osobny moduł uprawnień (P2 #12)
+
+- `[#083]` 🔐 **Wydzielenie modułu `settlements`** (dotąd gatowane modułem `stats`):
+  - [core](packages/core/src/catalog.ts): nowy moduł `settlements` (label „Rozliczenia") w `APP_MODULES`; owner/dispatcher/manager dostają go domyślnie (spread), kierowca nie.
+  - [Migracja 0026](supabase/migrations/0026_settlements_module.sql): istniejącym członkom z **własną** listą `modules` zawierającą `stats` dopisuje `settlements` (nikt nie traci dostępu). Zastosowano na prod — 0 wierszy (wszyscy na domyślnych, settlements już obejmuje).
+  - [Nawigacja](apps/web/app/(app)/layout.tsx): `/settlements` pod własny moduł.
+  - [Strona Rozliczenia](apps/web/app/(app)/settlements/page.tsx): **strażnik modułu** (nie tylko RLS) — brak modułu → „Brak dostępu". Zespół (UI zarządzania) automatycznie pokazuje nowy przełącznik.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.59.2] — ⚡ Mapa: memo + odporność rozliczeń (P1/P2)
 

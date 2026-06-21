@@ -60,6 +60,7 @@ export const APP_MODULES = [
   "reports",
   "map",
   "stats",
+  "settlements",
 ] as const;
 export type AppModule = (typeof APP_MODULES)[number];
 
@@ -72,6 +73,7 @@ export const APP_MODULE_LABELS: Record<AppModule, string> = {
   reports: "Usterki",
   map: "Mapa",
   stats: "Statystyki",
+  settlements: "Rozliczenia",
 };
 
 /** Domyślny zestaw modułów wg roli (gdy członek nie ma własnego `modules`). */
