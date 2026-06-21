@@ -19,6 +19,7 @@ const NAV = [
   { href: "/forms/trip", key: "form.trip.title" },
   { href: "/map", key: "nav.map" },
   { href: "/stats", key: "nav.stats" },
+  { href: "/settings", key: "nav.settings" },
 ] as const;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
