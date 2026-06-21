@@ -1,0 +1,237 @@
+"use client";
+
+import { createTranslator } from "@e-logistic/i18n";
+import { palette } from "@e-logistic/ui";
+import { useCallback, useEffect, useState } from "react";
+import { getBrowserSupabase } from "@/lib/supabase/client";
+
+const t = createTranslator("pl");
+
+type State = "loading" | "off" | "enrolling" | "on";
+
+export default function SettingsPage() {
+  const [state, setState] = useState<State>("loading");
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [qr, setQr] = useState<string>("");
+  const [secret, setSecret] = useState<string>("");
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const sb = getBrowserSupabase();
+      const { data, error } = await sb.auth.mfa.listFactors();
+      if (error) {
+        setState("off");
+        return;
+      }
+      const verified = data?.totp?.find((f) => f.status === "verified");
+      if (verified) {
+        setFactorId(verified.id);
+        setState("on");
+      } else {
+        setState("off");
+      }
+    } catch {
+      setState("off");
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  async function startEnroll() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const sb = getBrowserSupabase();
+      // Usuń ewentualny niezweryfikowany factor (np. po przerwanej próbie).
+      const { data: existing } = await sb.auth.mfa.listFactors();
+      for (const f of existing?.totp ?? []) {
+        if (f.status !== "verified") await sb.auth.mfa.unenroll({ factorId: f.id });
+      }
+      const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp" });
+      if (error || !data) {
+        setMsg(error?.message ?? "Nie udało się rozpocząć konfiguracji.");
+        return;
+      }
+      setFactorId(data.id);
+      setQr(data.totp.qr_code);
+      setSecret(data.totp.secret);
+      setState("enrolling");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmEnroll() {
+    if (!factorId) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const sb = getBrowserSupabase();
+      const { data: ch, error: chErr } = await sb.auth.mfa.challenge({ factorId });
+      if (chErr || !ch) {
+        setMsg(chErr?.message ?? "Błąd.");
+        return;
+      }
+      const { error } = await sb.auth.mfa.verify({
+        factorId,
+        challengeId: ch.id,
+        code: code.trim(),
+      });
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      setCode("");
+      setQr("");
+      setSecret("");
+      setMsg("✅ 2FA włączone.");
+      setState("on");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disable() {
+    if (!factorId) return;
+    if (!window.confirm("Wyłączyć weryfikację dwuetapową?")) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const { error } = await getBrowserSupabase().auth.mfa.unenroll({ factorId });
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      setFactorId(null);
+      setMsg("2FA wyłączone.");
+      setState("off");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const qrSrc = qr.startsWith("data:") ? qr : `data:image/svg+xml;utf8,${encodeURIComponent(qr)}`;
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.settings")}</h1>
+      <p style={{ color: palette.smoke, marginTop: 4 }}>
+        Bezpieczeństwo konta — weryfikacja dwuetapowa (2FA) kodem z aplikacji (Google Authenticator,
+        Authy, 1Password…).
+      </p>
+
+      <div style={styles.card}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <strong style={{ fontSize: 16 }}>{t("auth.twoFactor")}</strong>
+          <span
+            style={{
+              fontSize: 12,
+              padding: "2px 8px",
+              borderRadius: 999,
+              background: state === "on" ? "#16331c" : palette.coal,
+              color: state === "on" ? "#22c55e" : palette.smoke,
+              border: `1px solid ${state === "on" ? "#22c55e" : palette.graphite}`,
+            }}
+          >
+            {state === "on" ? "Aktywne" : "Wyłączone"}
+          </span>
+        </div>
+
+        {state === "loading" && <p style={{ color: palette.smoke }}>Ładowanie…</p>}
+
+        {state === "off" && (
+          <button type="button" style={styles.primary} onClick={startEnroll} disabled={busy}>
+            Włącz 2FA
+          </button>
+        )}
+
+        {state === "enrolling" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ color: palette.smoke, fontSize: 14, margin: 0 }}>
+              Zeskanuj kod QR w aplikacji uwierzytelniającej, potem wpisz 6-cyfrowy kod.
+            </p>
+            <div
+              style={{
+                background: palette.white,
+                padding: 12,
+                borderRadius: 8,
+                width: "fit-content",
+              }}
+            >
+              {/* biome-ignore lint/performance/noImgElement: QR jako data-URI/SVG, bez optymalizacji next/image */}
+              <img src={qrSrc} alt="Kod QR 2FA" width={180} height={180} />
+            </div>
+            <div style={{ fontSize: 12, color: palette.smoke }}>
+              Ręcznie: <code style={{ color: palette.offWhite }}>{secret}</code>
+            </div>
+            <input
+              style={styles.input}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              inputMode="numeric"
+              placeholder="123456"
+              autoComplete="one-time-code"
+            />
+            <button type="button" style={styles.primary} onClick={confirmEnroll} disabled={busy}>
+              {t("auth.twoFactorVerify")}
+            </button>
+          </div>
+        )}
+
+        {state === "on" && (
+          <button type="button" style={styles.danger} onClick={disable} disabled={busy}>
+            Wyłącz 2FA
+          </button>
+        )}
+
+        {msg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{msg}</p>}
+      </div>
+    </div>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  card: {
+    marginTop: 20,
+    padding: 20,
+    borderRadius: 12,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+    maxWidth: 420,
+  },
+  input: {
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "10px 12px",
+    color: palette.offWhite,
+    maxWidth: 200,
+  },
+  primary: {
+    background: palette.red,
+    color: palette.white,
+    border: "none",
+    borderRadius: 8,
+    padding: "11px 16px",
+    fontWeight: 700,
+    cursor: "pointer",
+    alignSelf: "flex-start",
+  },
+  danger: {
+    background: "transparent",
+    color: palette.red,
+    border: `1px solid ${palette.red}`,
+    borderRadius: 8,
+    padding: "10px 16px",
+    cursor: "pointer",
+    alignSelf: "flex-start",
+  },
+};

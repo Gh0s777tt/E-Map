@@ -16,6 +16,10 @@ export default function LoginPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Krok 2FA (po poprawnym haśle, gdy konto ma włączone TOTP).
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+
   async function run(fn: () => Promise<{ error: { message: string } | null }>, ok: string) {
     setBusy(true);
     setMsg(null);
@@ -29,15 +33,59 @@ export default function LoginPage() {
     }
   }
 
-  const signInPassword = () =>
-    run(async () => {
-      const { data, error } = await getBrowserSupabase().auth.signInWithPassword({
-        email,
-        password,
+  async function signInPassword() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const sb = getBrowserSupabase();
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal && aal.currentLevel === "aal1" && aal.nextLevel === "aal2") {
+        const { data: factors } = await sb.auth.mfa.listFactors();
+        const totp = factors?.totp?.[0];
+        if (totp) {
+          setMfaFactorId(totp.id);
+          setMsg(null);
+          return;
+        }
+      }
+      if (data.session) window.location.href = "/dashboard";
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Błąd");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyMfa() {
+    if (!mfaFactorId) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const sb = getBrowserSupabase();
+      const { data: ch, error: chErr } = await sb.auth.mfa.challenge({ factorId: mfaFactorId });
+      if (chErr || !ch) {
+        setMsg(chErr?.message ?? "Błąd weryfikacji.");
+        return;
+      }
+      const { error } = await sb.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: ch.id,
+        code: mfaCode.trim(),
       });
-      if (!error && data.session) window.location.href = "/dashboard";
-      return { error };
-    }, "Zalogowano.");
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      window.location.href = "/dashboard";
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const signUpPassword = () =>
     run(async () => {
@@ -47,13 +95,21 @@ export default function LoginPage() {
         password,
         options: { emailRedirectTo },
       });
-      // Bez potwierdzenia e-mail → od razu sesja → na pulpit. Z potwierdzeniem → komunikat.
       if (!error && data.session) window.location.href = "/dashboard";
       return { error };
     }, t("auth.checkEmail"));
 
   const magicLink = () =>
     run(() => getBrowserSupabase().auth.signInWithOtp({ email }), t("auth.magicLink"));
+
+  const forgotPassword = () =>
+    run(async () => {
+      const redirectTo = `${window.location.origin}/auth/callback?next=/reset`;
+      const { error } = await getBrowserSupabase().auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      return { error };
+    }, t("auth.resetSent"));
 
   const oauth = (provider: "google" | "apple") =>
     run(async () => {
@@ -70,6 +126,35 @@ export default function LoginPage() {
   function toggleMode() {
     setMode(isSignup ? "signin" : "signup");
     setMsg(null);
+  }
+
+  // ── Krok 2FA ──
+  if (mfaFactorId) {
+    return (
+      <main style={styles.wrap}>
+        <div style={styles.card}>
+          <h1 style={styles.title}>
+            <span style={{ color: palette.red }}>E</span>-Logistic
+          </h1>
+          <p style={styles.sub}>{t("auth.twoFactor")}</p>
+          <label style={styles.field}>
+            <span style={styles.label}>{t("auth.twoFactorCode")}</span>
+            <input
+              style={styles.input}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)}
+              inputMode="numeric"
+              placeholder="123456"
+              autoComplete="one-time-code"
+            />
+          </label>
+          <button type="button" style={styles.primary} onClick={verifyMfa} disabled={busy}>
+            {t("auth.twoFactorVerify")}
+          </button>
+          {msg && <p style={styles.msg}>{msg}</p>}
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -112,9 +197,16 @@ export default function LoginPage() {
           {isSignup ? t("auth.createAccount") : t("auth.signIn")}
         </button>
 
-        <button type="button" style={styles.link} onClick={toggleMode} disabled={busy}>
-          {isSignup ? t("auth.toSignIn") : t("auth.toSignUp")}
-        </button>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+          <button type="button" style={styles.link} onClick={toggleMode} disabled={busy}>
+            {isSignup ? t("auth.toSignIn") : t("auth.toSignUp")}
+          </button>
+          {!isSignup && (
+            <button type="button" style={styles.link} onClick={forgotPassword} disabled={busy}>
+              {t("auth.forgotPassword")}
+            </button>
+          )}
+        </div>
 
         <div style={styles.divider} />
 
@@ -183,7 +275,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "6px 0 0",
     fontSize: 13,
     cursor: "pointer",
-    textAlign: "center",
   },
   divider: { height: 1, background: palette.graphite, margin: "12px 0" },
   oauth: {
