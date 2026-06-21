@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-38-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.38.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-39-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.38.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.38.1] — 🐞 Fix: synchronizacja formularzy (demo-pojazdy + ukryty błąd)
+
+- `[#039]` 🐞 **Naprawa „Błąd synchronizacji" w formularzach (paliwo/AdBlue/Trasa).**
+  - Przyczyna: zalogowanemu bez firmy/pojazdu [`useFleet`](apps/web/lib/useFleet.ts) podsuwał **dane DEMO** (np. WL5145U), których ID nie istnieje w bazie → zapis nie mógł się zsynchronizować; dodatkowo prawdziwy błąd Supabase był ukryty (obiekt, nie `Error`).
+  - **Fix:** `useFleet` zwraca stan `no-company` / `no-vehicles` (bez demo dla zalogowanych); formularze [Paliwo/AdBlue](apps/web/components/LiquidForm.tsx) i [Trasa](apps/web/app/(app)/forms/trip/page.tsx) pokazują **baner „utwórz firmę / dodaj pojazd"** i blokują zapis; [outbox](apps/web/lib/outbox.ts) pokazuje **realny komunikat** błędu; w [Historii](apps/web/app/(app)/forms/history/page.tsx) przycisk **„Usuń"** czyści błędne wpisy z kolejki.
+  - **Weryfikacja:** wszystkie ścieżki zapisu (paliwo gotówka/karta, trasa, AdBlue) działają E2E jako właściciel z firmą+pojazdem. Bramki: biome czysto · `tsc` ×7 · build ✓.
 
 ## [0.38.0] — 🚛 Routing TIR przez HERE (wymiary/tonaż + realne myto + ruch)
 

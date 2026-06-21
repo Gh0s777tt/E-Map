@@ -6,7 +6,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { vehicleLabel } from "@/lib/demo";
-import { listOutbox, type OutboxItem, trySync } from "@/lib/outbox";
+import { listOutbox, type OutboxItem, removeOutbox, trySync } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -149,6 +149,11 @@ export default function FormsHistoryPage() {
     await load();
   }
 
+  function remove(outboxId: string) {
+    removeOutbox(outboxId);
+    void load();
+  }
+
   return (
     <div style={{ maxWidth: 760 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("common.history")}</h1>
@@ -174,13 +179,22 @@ export default function FormsHistoryPage() {
                   {st.label}
                 </span>
                 {r.status !== "synced" && r.outboxId && (
-                  <button
-                    type="button"
-                    style={styles.btn}
-                    onClick={() => resync(r.outboxId as string)}
-                  >
-                    Ponów
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      style={styles.btn}
+                      onClick={() => resync(r.outboxId as string)}
+                    >
+                      Ponów
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...styles.btn, color: palette.red, borderColor: palette.red }}
+                      onClick={() => remove(r.outboxId as string)}
+                    >
+                      Usuń
+                    </button>
+                  </>
                 )}
               </div>
             );

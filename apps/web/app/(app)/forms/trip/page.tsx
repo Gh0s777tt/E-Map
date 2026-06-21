@@ -26,7 +26,13 @@ function splitPlace(label: string): { city: string; country: string } {
 }
 
 export default function TripFormPage() {
-  const { vehicles } = useFleet();
+  const { vehicles, source } = useFleet();
+  const setupMsg =
+    source === "no-company"
+      ? "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze."
+      : source === "no-vehicles"
+        ? "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz."
+        : null;
   const [vehicleId, setVehicleId] = useState("");
   const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
   const [country, setCountry] = useState("");
@@ -59,6 +65,10 @@ export default function TripFormPage() {
   }
 
   async function submit() {
+    if (setupMsg) {
+      setStatus(`⚠️ ${setupMsg}`);
+      return;
+    }
     setErrors({});
     setStatus(null);
 
@@ -131,6 +141,29 @@ export default function TripFormPage() {
           {t("common.history")} →
         </Link>
       </p>
+
+      {setupMsg && (
+        <div
+          style={{
+            margin: "12px 0",
+            padding: 12,
+            borderRadius: 10,
+            background: palette.nearBlack,
+            border: `1px solid ${palette.red}`,
+            color: palette.offWhite,
+            fontSize: 14,
+          }}
+        >
+          ⚠️ {setupMsg}{" "}
+          <Link href="/dashboard" style={{ color: palette.red }}>
+            Pulpit
+          </Link>{" "}
+          ·{" "}
+          <Link href="/vehicles" style={{ color: palette.red }}>
+            Pojazdy
+          </Link>
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
         <Field label={t("form.field.vehicle")} error={errors.vehicleId}>
@@ -257,8 +290,10 @@ export default function TripFormPage() {
             padding: "12px",
             fontWeight: 700,
             cursor: "pointer",
+            opacity: setupMsg ? 0.5 : 1,
           }}
           onClick={submit}
+          disabled={!!setupMsg}
         >
           {t("common.save")}
         </button>
