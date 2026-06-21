@@ -1,7 +1,14 @@
 # 🗺️ Roadmapa — E‑Logistic
 
-> Status: **propozycja do akceptacji** · wersja 0.1.0 · 2026-06-20
+> Status: **w realizacji** · stan na v0.59.0 (#080) · 2026-06-22
 > Zasada: każda faza = działający przyrost. Część zarobkowa (Faza 1) **nie wymaga drogich API map**.
+>
+> **Stan dostarczenia** (autorytatywnie: [CHANGELOG](../CHANGELOG.md)):
+> - ✅ **Faza 0** (fundament) · ✅ **Faza 1** (rdzeń właściciela) · ✅ **Faza 2** (mapa podstawowa) — zrealizowane.
+> - ⚠️ Wyjątki vs pierwotny plan: offline‑first przez **outbox** (localStorage), nie PowerSync (planowane); zaproszenia **link/QR/e‑mail**, bez SMS/WhatsApp.
+> - ➕ Ponad plan: 2FA TOTP, passkeys, szyfrowanie PII, rate‑limiting, push web, ceny diesla EU, generowane typy DB.
+>
+> *Checkboxy poniżej = pierwotny plan (część pól z zastrzeżeniami wyżej pozostawiona dla historii zakresu).*
 
 ---
 
@@ -9,13 +16,13 @@
 
 **Cel:** szkielet repo gotowy do pracy, spójny z ekosystemem GH0ST EMPIRE.
 
-- [ ] Monorepo (Turborepo + pnpm), `apps/web`, `apps/mobile`, `packages/*`.
-- [ ] Konfiguracja: TypeScript 6 strict, Biome, tsconfig bazowy, `.env.example`.
-- [ ] Supabase: projekt, schema startowa + RLS (companies, users, memberships), PostGIS.
-- [ ] Auth: e-mail/hasło + Google/Apple + magic link.
-- [ ] Motyw red/black (`packages/ui` tokeny), i18n PL+EN (reszta dokładana).
-- [ ] CI: `ci.yml` (biome, tsc, build), `codeql.yml`, Dependabot, gitleaks.
-- [ ] README/CHANGELOG/CLAUDE + tagowanie `v0.x` + GitHub Releases.
+- [x] Monorepo (Turborepo + pnpm), `apps/web`, `apps/mobile`, `packages/*`.
+- [x] Konfiguracja: TypeScript 6 strict, Biome, tsconfig bazowy, `.env.example`.
+- [x] Supabase: projekt, schema startowa + RLS (companies, users, memberships), PostGIS.
+- [x] Auth: e-mail/hasło + magic link (passkeys + 2FA ponad plan; Google/Apple — opcjonalnie).
+- [x] Motyw red/black (`packages/ui` tokeny), i18n PL+EN (reszta dokładana).
+- [x] CI: `ci.yml` (biome, tsc, build), `codeql.yml`, gitleaks.
+- [x] README/CHANGELOG/CLAUDE + tagowanie `v0.x` + GitHub Releases.
 
 **Done gdy:** `pnpm install && pnpm build` przechodzi; logowanie działa; CI zielone.
 

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-80-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.59.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-81-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.59.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.59.1] — 📄 Sync dokumentacji (ARCHITECTURE/ROADMAP) + backlog
+
+- `[#081]` 📄 **Domknięcie rozbieżności dokumentacji (P5):**
+  - [ARCHITECTURE.md](docs/ARCHITECTURE.md): nagłówek „propozycja 0.1.0" → „w realizacji v0.59"; dodany blok **Stan implementacji** (zaimplementowane vs planowane — PowerSync/shadcn/TanStack/Zustand/Sentry/mobile jasno oznaczone jako plan).
+  - [ROADMAP.md](docs/ROADMAP.md): nagłówek zaktualizowany; banner **stanu dostarczenia** (Fazy 0–2 zrealizowane, wyjątki: offline przez outbox nie PowerSync, zaproszenia link/QR); Faza 0 odhaczona.
+  - [BACKLOG.md](docs/BACKLOG.md): odhaczone #079/#080/#081; oznaczone pozycje już‑gotowe/by‑design (mobile tsconfig ma strict flagi; Node `>=22` celowy Vercel‑safe floor; DATA‑MODEL/README/DEPLOY w sync).
+  - Weryfikacja: DATA‑MODEL/README/DEPLOY/`.env.example` sprawdzone — **już zgodne** z kodem (audyt był nieaktualny).
+  - **Bramki:** biome czysto (docs). Bez zmian w kodzie.
 
 ## [0.59.0] — 🔔 Test push + ikona powiadomień (P3 #11)
 

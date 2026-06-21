@@ -1,4 +1,4 @@
-<!-- SYNC: po v0.58.0 · #078 · 2026-06-21 -->
+<!-- SYNC: po v0.59.0 · #080 · 2026-06-22 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -7,6 +7,12 @@ Otwarte zadania, priorytetyzowane. Źródło: audyt [`AUDIT-2026-06-21.md`](AUDI
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
 > Czekają na dane/umowy/klucze (decyzja właściciela). Specyfikacja wpięcia gotowa w
 > [`INTEGRATIONS.md`](INTEGRATIONS.md) — podłączymy, gdy dostarczone będą dostępy.
+
+> **✅ Zrobione od utworzenia listy:** memoizacja statystyk + sprzątnięcie rozliczeń (#079) ·
+> test push + ikona `icon-192.png` (#080) · sync docs ARCHITECTURE/ROADMAP (#081).
+> **Zweryfikowane jako już‑gotowe / by‑design:** zakresy dat w API · `ListStatus` na cards/team ·
+> `.env.example` · DATA‑MODEL/README/DEPLOY w sync · `apps/mobile/tsconfig` (ma już strict flagi
+> obok `expo/tsconfig.base`) · Node `>=22` (celowy Vercel‑safe floor, `.nvmrc 26` to pin dev).
 
 ---
 
