@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-71-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.54.6-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-72-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.55.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.55.0] — 🔐 Szyfrowanie PII at-rest (profil, kierowcy, zaproszenia)
+
+- `[#072]` 🔐 **Domknięcie audytu P1 #4 — dane osobowe szyfrowane w bazie.** Migracja [0024](supabase/migrations/0024_pii_encryption.sql): kolumny PII w `profiles` (imię/telefon/e-mail), `driver_profiles` (telefon/e-mail/`company_data`) i `invites` (e-mail) zamienione na `*_enc` (pgcrypto `pgp_sym_encrypt` + Supabase Vault). Martwa kolumna `invites.phone` usunięta.
+  - **Osobny klucz `pii_key`** (≠ `card_key` dla PIN-ów kart) — segmentacja klas danych, częściowo adresuje też P1 #5.
+  - **Pisarze przepięci w migracji:** trigger rejestracji `handle_new_user` (e-mail szyfrowany od razu; `search_path` rozszerzony o `extensions`) oraz RPC `create_invite`. Nowy RPC `list_invites()` (owner/dispatcher, deszyfrowanie + audyt) na przyszły podgląd zaproszeń.
+  - **Zero zmian w kodzie web/api** — mapa kodu potwierdziła brak jakichkolwiek odczytów tych kolumn (kanoniczny e-mail żyje w `auth.users`). Brak wyszukiwania po e-mail/telefonie → blind-index (HMAC) zbędny.
+  - **Weryfikacja na produkcji:** migracja w transakcji (commit), brak jawnych kolumn PII, `pii_key` ≠ `card_key`, round-trip szyfrowania OK, **test triggera** (insert do `auth.users` → profil z `email_enc` odszyfrowany → rollback) — rejestracje działają.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓ (kod aplikacji bez zmian).
 
 ## [0.54.6] — 🎨 Kosmetyka UI: Button na pozostałych stronach
 
