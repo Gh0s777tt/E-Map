@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { buildSettlement } from "./billing";
+import { buildSettlement, latestUnitPrice } from "./billing";
 import { csvEscape, toCsv } from "./csv";
+
+describe("latestUnitPrice", () => {
+  it("zwraca cenę jednostkową najnowszego wpisu z kwotą", () => {
+    expect(
+      latestUnitPrice([
+        { liters: 0, priceTotal: null },
+        { liters: 100, priceTotal: 165 },
+        { liters: 50, priceTotal: 90 },
+      ]),
+    ).toBe(1.65);
+  });
+  it("zwraca null bez danych", () => {
+    expect(latestUnitPrice([{ liters: 0, priceTotal: 0 }])).toBeNull();
+  });
+});
 
 describe("buildSettlement", () => {
   it("liczy dystans, koszty, przychód i zysk", () => {

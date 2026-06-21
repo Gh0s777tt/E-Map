@@ -262,6 +262,22 @@ export function buildSettlement(input: SettlementInput): Settlement {
   };
 }
 
+/**
+ * Ostatnia cena jednostkowa [waluta/L] z historii tankowań (do podpowiedzi w formularzu).
+ * Wpisy zakładane jako od najnowszego; bierze pierwszy z dodatnią kwotą i litrami.
+ * Zwraca `null`, gdy brak danych do wyliczenia.
+ */
+export function latestUnitPrice(
+  entries: { liters: number; priceTotal?: number | null }[],
+): number | null {
+  for (const e of entries) {
+    if (e.priceTotal != null && e.priceTotal > 0 && e.liters > 0) {
+      return round2(e.priceTotal / e.liters);
+    }
+  }
+  return null;
+}
+
 // ── Podsumowanie paliwa (statystyki) ────────────────────────────────
 
 export interface FuelStatsEntry {

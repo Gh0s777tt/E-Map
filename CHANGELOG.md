@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-45-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.44.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-46-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.45.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.45.0] — 💸 Podpowiedź ceny paliwa/AdBlue z historii
+
+- `[#046]` 💸 **Auto‑podpowiedź ceny przy tankowaniu (paliwo i AdBlue) na bazie historii pojazdu.**
+  - **`packages/core`** — [`latestUnitPrice`](packages/core/src/billing.ts): ostatnia cena jednostkowa [waluta/L] z historii (pierwszy wpis z dodatnią kwotą i litrami). +2 testy.
+  - **Web** [Formularz Paliwo/AdBlue](apps/web/components/LiquidForm.tsx): pod polem kwoty pokazuje **„Ostatnia cena: X /l · stacja · data"** + przycisk **„Przelicz kwotę"** (kwota = litry × ostatnia cena). Bez zewnętrznych API — alternatywa dla zaciągania cen z partnera (Tankerkönig itp. pozostaje opcją na później).
+  - **Bramki:** biome czysto · `tsc` ×7 · **68 testów** · build ✓.
 
 ## [0.44.0] — 🧾 Rozliczenia tras + eksport CSV/PDF
 

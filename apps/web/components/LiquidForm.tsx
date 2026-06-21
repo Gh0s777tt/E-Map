@@ -1,7 +1,7 @@
 "use client";
 
-import { getFuelLog, updateFuelLog } from "@e-logistic/api";
-import { fuelLogSchema, PAYMENT_METHODS } from "@e-logistic/core";
+import { getFuelLog, listFuelLogs, updateFuelLog } from "@e-logistic/api";
+import { fuelLogSchema, latestUnitPrice, PAYMENT_METHODS, round2 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -51,6 +51,8 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  const [lastPrice, setLastPrice] = useState<number | null>(null);
+  const [lastPriceInfo, setLastPriceInfo] = useState("");
 
   const table = kind === "adblue" ? "adblue_logs" : "fuel_logs";
 
@@ -95,6 +97,39 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   useEffect(() => {
     if (!fuelCardId && cards[0]) setFuelCardId(cards[0].id);
   }, [cards, fuelCardId]);
+
+  // Podpowiedź ceny: ostatnia cena jednostkowa z historii pojazdu (paliwo/AdBlue).
+  useEffect(() => {
+    if (!vehicleId) {
+      setLastPrice(null);
+      setLastPriceInfo("");
+      return;
+    }
+    (async () => {
+      try {
+        const rows = (await listFuelLogs(getBrowserSupabase(), { vehicleId, table })) as {
+          liters: number;
+          price_total: number | null;
+          station_city: string | null;
+          station_country: string | null;
+          created_at: string;
+        }[];
+        const up = latestUnitPrice(
+          rows.map((r) => ({ liters: r.liters, priceTotal: r.price_total })),
+        );
+        setLastPrice(up);
+        const top = rows.find((r) => r.price_total != null && r.price_total > 0 && r.liters > 0);
+        setLastPriceInfo(
+          up != null && top
+            ? `${[top.station_city, top.station_country].filter(Boolean).join(", ")} · ${top.created_at.slice(0, 10)}`.trim()
+            : "",
+        );
+      } catch {
+        setLastPrice(null);
+        setLastPriceInfo("");
+      }
+    })();
+  }, [vehicleId, table]);
 
   function fillGps() {
     if (!navigator.geolocation) {
@@ -329,6 +364,23 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
             value={priceTotal}
             onChange={(e) => setPriceTotal(e.target.value)}
           />
+          {lastPrice != null && (
+            <span style={{ fontSize: 12, color: palette.smoke }}>
+              Ostatnia cena: <strong style={{ color: palette.offWhite }}>{lastPrice} /l</strong>
+              {lastPriceInfo ? ` · ${lastPriceInfo}` : ""}{" "}
+              <button
+                type="button"
+                style={styles.linkBtn}
+                onClick={() => {
+                  const l = Number(liters);
+                  if (l > 0 && lastPrice != null) setPriceTotal(String(round2(l * lastPrice)));
+                  else setStatus("Podaj najpierw litry, aby przeliczyć kwotę.");
+                }}
+              >
+                Przelicz kwotę
+              </button>
+            </span>
+          )}
         </Field>
 
         <Field label={t("form.field.comment")} error={errors.comment}>
@@ -401,5 +453,14 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "9px 12px",
     cursor: "pointer",
     alignSelf: "flex-start",
+  },
+  linkBtn: {
+    background: "transparent",
+    color: palette.red,
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    fontSize: 12,
+    textDecoration: "underline",
   },
 };
