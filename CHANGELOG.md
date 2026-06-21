@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-79-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.58.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-80-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.59.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.59.0] — 🔔 Test push + ikona powiadomień (P3 #11)
+
+- `[#080]` 🔔 **Domknięcie pętli powiadomień push:**
+  - **Ikona `icon-192.png`** ([apps/web/public/icon-192.png](apps/web/public/icon-192.png)) — była referowana w `sw.js` (`icon`/`badge`), ale plik nie istniał (404 → domyślna ikona). Wygenerowana brandowo (czerwone „E" na czerni, 192×192).
+  - **„Wyślij testowe powiadomienie"** w [PushToggle](apps/web/components/PushToggle.tsx) (Ustawienia) — dla owner/dispatcher, gdy push aktywny. POST do `/api/push/send` (zwalidowany w #073), komunikat z liczbą urządzeń.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.58.1] — ⚡ Wydajność: memoizacja statystyk (P1)
 
