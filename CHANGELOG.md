@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-69-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.54.4-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-70-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.54.5-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.54.5] — 🎨 Kosmetyka UI: Button w Rozliczeniach i Zespole
+
+- `[#070]` 🎨 **Adopcja `Button`** w [Rozliczeniach](apps/web/app/(app)/settlements/page.tsx) (Przelicz, Eksport CSV, Drukuj/PDF) i [Zespole](apps/web/app/(app)/team/page.tsx) (Zapisz). Kontynuacja porządkowania (po Usterkach i Kartach) — spójne przyciski w motywie. Pozostają jeszcze: Pojazdy, Kierowcy, Historia, Ustawienia, Mapa.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.54.4] — 🎨 Kosmetyka UI: Button w Kartach
 

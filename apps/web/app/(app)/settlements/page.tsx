@@ -4,7 +4,7 @@ import { listFuelLogs, listTripEvents } from "@e-logistic/api";
 import { buildSettlement, round2, type Settlement, toCsv } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
-import { PageHeader } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -237,9 +237,9 @@ export default function SettlementsPage() {
             placeholder="opcjonalnie"
           />
         </label>
-        <button type="button" style={styles.primary} onClick={load} disabled={busy || !vehicleId}>
+        <Button onClick={load} disabled={busy || !vehicleId}>
           {busy ? "Liczę…" : "Przelicz"}
-        </button>
+        </Button>
       </div>
 
       {settlement && (
@@ -278,12 +278,12 @@ export default function SettlementsPage() {
           </table>
 
           <div style={{ display: "flex", gap: 8, marginTop: 16 }} className="no-print">
-            <button type="button" style={styles.ghost} onClick={exportCsv}>
+            <Button variant="ghost" onClick={exportCsv}>
               ⬇️ Eksport CSV
-            </button>
-            <button type="button" style={styles.ghost} onClick={() => window.print()}>
+            </Button>
+            <Button variant="ghost" onClick={() => window.print()}>
               🖨️ Drukuj / PDF
-            </button>
+            </Button>
           </div>
 
           <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 28 }}>

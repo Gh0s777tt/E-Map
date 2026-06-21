@@ -5,7 +5,7 @@ import { APP_MODULE_LABELS, APP_MODULES, type AppModule, effectiveModules } from
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
-import { PageHeader } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -131,9 +131,9 @@ function MemberRow({
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-            <button type="button" style={styles.primary} onClick={save} disabled={busy}>
+            <Button onClick={save} disabled={busy}>
               Zapisz
-            </button>
+            </Button>
             {msg && <span style={{ color: palette.smoke, fontSize: 13 }}>{msg}</span>}
           </div>
         </>

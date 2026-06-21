@@ -1,6 +1,6 @@
 {
   "name": "@e-logistic/web",
-  "version": "0.54.4",
+  "version": "0.54.5",
   "private": true,
   "type": "module",
   "scripts": {
