@@ -72,6 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const items = NAV.filter((i) => i.mod === null || allowed.includes(i.mod));
   const navItems = [
     ...items.map((i) => ({ href: i.href, label: t(i.key) })),
+    { href: "/fuel-prices", label: "Ceny diesla" },
     ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
   ];
 
