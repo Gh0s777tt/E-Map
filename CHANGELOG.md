@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-75-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.56.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-76-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.57.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.57.0] — 🔎 Filtry w Historii formularzy
+
+- `[#076]` 🔎 **Filtrowanie listy historii** (funkcja produktowa z audytu, #9) na [stronie Historia](apps/web/app/(app)/forms/history/page.tsx):
+  - **Filtr typu** (chipy): Wszystkie / Paliwo / AdBlue / Trip — spójne z motywem (aktywny = czerwony).
+  - **Filtr pojazdu** (select, pojawia się przy >1 pojeździe) — po rejestracji.
+  - **Licznik** „N z M" pokazuje liczbę wyników; pusty wynik → czytelny komunikat.
+  - Filtrowanie po stronie klienta na już załadowanych danych (`useMemo`, zero dodatkowych zapytań). Pole `vehicle` dodane do wiersza.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.56.0] — 🧬 Generowane typy DB (koniec rozjazdu typ↔schemat)
 

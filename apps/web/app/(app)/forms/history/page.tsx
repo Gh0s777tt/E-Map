@@ -5,7 +5,7 @@ import type { FuelLogInput, TripEventInput } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui";
 import { vehicleLabel } from "@/lib/demo";
 import { getCachedMembership } from "@/lib/membership";
@@ -20,6 +20,7 @@ type Status = "queued" | "synced" | "error";
 type Row = {
   key: string;
   kind: Kind;
+  vehicle: string;
   title: string;
   sub: string;
   status: Status;
@@ -51,6 +52,7 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
     return {
       key: `local/${item.id}`,
       kind: "trip",
+      vehicle: labelOf(i.vehicleId),
       title: `${labelOf(i.vehicleId)} · ${ACTION_PL[i.action] ?? i.action} · ${i.odometerKm} km${w}`,
       sub: `${i.place.country} · ${when}`,
       status: item.status,
@@ -62,6 +64,7 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
   return {
     key: `local/${item.id}`,
     kind: item.kind,
+    vehicle: labelOf(i.vehicleId),
     title: `${labelOf(i.vehicleId)} · ${i.liters} L · ${i.odometerKm} km`,
     sub: `${i.station.country} · ${when}`,
     status: item.status,
@@ -73,6 +76,8 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
 export default function FormsHistoryPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [source, setSource] = useState<"baza" | "lokalne">("lokalne");
+  const [kindFilter, setKindFilter] = useState<Kind | "all">("all");
+  const [vehicleFilter, setVehicleFilter] = useState<string>("all");
 
   const load = useCallback(async () => {
     const outbox = listOutbox();
@@ -103,6 +108,7 @@ export default function FormsHistoryPage() {
           ).map<Row>((r) => ({
             key: `${kind}/${r.id}`,
             kind,
+            vehicle: labelOf(r.vehicle_id),
             title: `${labelOf(r.vehicle_id)} · ${r.liters} L · ${r.odometer_km} km`,
             sub: `${r.station_country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
             status: "synced",
@@ -121,6 +127,7 @@ export default function FormsHistoryPage() {
         ).map<Row>((r) => ({
           key: `trip/${r.id}`,
           kind: "trip",
+          vehicle: labelOf(r.vehicle_id),
           title: `${labelOf(r.vehicle_id)} · ${ACTION_PL[r.action] ?? r.action} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
           sub: `${r.country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
           status: "synced",
@@ -160,6 +167,28 @@ export default function FormsHistoryPage() {
     void load();
   }
 
+  const vehicleOptions = useMemo(
+    () =>
+      [...new Set(rows.map((r) => r.vehicle).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
+  const filtered = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (kindFilter === "all" || r.kind === kindFilter) &&
+          (vehicleFilter === "all" || r.vehicle === vehicleFilter),
+      ),
+    [rows, kindFilter, vehicleFilter],
+  );
+
+  const KIND_FILTERS: { value: Kind | "all"; label: string }[] = [
+    { value: "all", label: "Wszystkie" },
+    { value: "fuel", label: "Paliwo" },
+    { value: "adblue", label: "AdBlue" },
+    { value: "trip", label: "Trip" },
+  ];
+
   return (
     <div style={{ maxWidth: 760 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("common.history")}</h1>
@@ -170,42 +199,82 @@ export default function FormsHistoryPage() {
       {rows.length === 0 ? (
         <p style={{ color: palette.smoke, marginTop: 24 }}>Brak zapisanych formularzy.</p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
-          {rows.map((r) => {
-            const st = STATUS[r.status];
-            return (
-              <div key={r.key} style={styles.row}>
-                <span style={styles.kind}>{KIND_LABEL[r.kind]}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700 }}>{r.title}</div>
-                  <div style={{ color: palette.smoke, fontSize: 13 }}>{r.sub}</div>
-                  {r.error && <div style={{ color: palette.red, fontSize: 12 }}>{r.error}</div>}
-                </div>
-                <span style={{ ...styles.badge, color: st.color, borderColor: st.color }}>
-                  {st.label}
-                </span>
-                {r.status === "synced" && r.dbId && (
-                  <Link
-                    href={`/forms/${r.kind}?edit=${r.dbId}`}
-                    style={{ ...styles.btn, textDecoration: "none" }}
-                  >
-                    Edytuj
-                  </Link>
-                )}
-                {r.status !== "synced" && r.outboxId && (
-                  <>
-                    <Button variant="ghost" onClick={() => resync(r.outboxId as string)}>
-                      Ponów
-                    </Button>
-                    <Button variant="danger" onClick={() => remove(r.outboxId as string)}>
-                      Usuń
-                    </Button>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <>
+          <div style={styles.filters}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {KIND_FILTERS.map((k) => (
+                <button
+                  key={k.value}
+                  type="button"
+                  onClick={() => setKindFilter(k.value)}
+                  style={kindFilter === k.value ? styles.chipActive : styles.chip}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
+            {vehicleOptions.length > 1 && (
+              <select
+                value={vehicleFilter}
+                onChange={(e) => setVehicleFilter(e.target.value)}
+                style={styles.select}
+              >
+                <option value="all">Wszystkie pojazdy</option>
+                {vehicleOptions.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            )}
+            <span style={{ flex: 1 }} />
+            <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
+              {filtered.length} z {rows.length}
+            </span>
+          </div>
+          {filtered.length === 0 ? (
+            <p style={{ color: palette.smoke, marginTop: 20 }}>
+              Brak wyników dla wybranych filtrów.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
+              {filtered.map((r) => {
+                const st = STATUS[r.status];
+                return (
+                  <div key={r.key} style={styles.row}>
+                    <span style={styles.kind}>{KIND_LABEL[r.kind]}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700 }}>{r.title}</div>
+                      <div style={{ color: palette.smoke, fontSize: 13 }}>{r.sub}</div>
+                      {r.error && <div style={{ color: palette.red, fontSize: 12 }}>{r.error}</div>}
+                    </div>
+                    <span style={{ ...styles.badge, color: st.color, borderColor: st.color }}>
+                      {st.label}
+                    </span>
+                    {r.status === "synced" && r.dbId && (
+                      <Link
+                        href={`/forms/${r.kind}?edit=${r.dbId}`}
+                        style={{ ...styles.btn, textDecoration: "none" }}
+                      >
+                        Edytuj
+                      </Link>
+                    )}
+                    {r.status !== "synced" && r.outboxId && (
+                      <>
+                        <Button variant="ghost" onClick={() => resync(r.outboxId as string)}>
+                          Ponów
+                        </Button>
+                        <Button variant="danger" onClick={() => remove(r.outboxId as string)}>
+                          Usuń
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -238,5 +307,39 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     padding: "7px 12px",
     cursor: "pointer",
+  },
+  filters: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    flexWrap: "wrap",
+    marginTop: 20,
+  },
+  chip: {
+    background: "transparent",
+    color: palette.smoke,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "5px 12px",
+    fontSize: 13,
+    cursor: "pointer",
+  },
+  chipActive: {
+    background: palette.red,
+    color: palette.white,
+    border: `1px solid ${palette.red}`,
+    borderRadius: 999,
+    padding: "5px 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  select: {
+    background: palette.black,
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontSize: 13,
   },
 };
