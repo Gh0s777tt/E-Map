@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-77-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.57.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-78-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.58.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.58.0] — ⛽ Ceny diesla w Europie (OpenVan.camp, darmowe)
+
+- `[#078]` ⛽ **Nowa strona „Ceny diesla — Europa"** ([/fuel-prices](apps/web/app/(app)/fuel-prices/page.tsx)) — ranking średnich krajowych cen oleju napędowego, **przeliczonych na €/L** (porównywalne PL/CZ/HU vs strefa euro):
+  - Źródło: **[OpenVan.camp](https://openvan.camp)** — otwarte API, **bez klucza** (wzorzec env-free), licencja CC BY 4.0 (atrybucja w stopce).
+  - Serwerowy [/api/fuel-eu](apps/web/app/api/fuel-eu/route.ts): pobiera ceny + kursy, przelicza na EUR (`local / rate`), filtruje ~29 krajów europejskich, sortuje rosnąco. Cache 6 h (`next.revalidate`, TTL źródła) + rate-limit.
+  - UI: `BarChart` 12 najtańszych (€/L) + pełny ranking z ceną lokalną i walutą; `ListStatus` (ładowanie/błąd/Ponów); link w nawigacji.
+  - **Pierwsza zrealizowana integracja partnerska** (z 4 przeanalizowanych źródeł — DKV/Eurowag/SNAP wymagają umów/kluczy; OpenVAN otwarte).
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.57.1] — 🔐 Utwardzenie polityki haseł (Auth)
 

@@ -4,9 +4,16 @@ Stan i plan podłączenia integracji zależnych od API/umów partnerów. Wzorzec
 **kod za flagą env** (jak push/rate‑limiting) — bez klucza funkcja jest ukryta/no‑op, z kluczem działa.
 Nie tworzymy martwych atrap bez specyfikacji — poniżej dokładnie, co jest potrzebne do każdej.
 
-> Status v0.54.0: **Tankerkönig (ceny paliwa, DE) — wdrożone** (`FUEL_PRICE_API_KEY`). Reszta poniżej.
+> Status v0.58.0: **Tankerkönig (DE, per‑stacja)** oraz **OpenVan.camp (ceny diesla wg kraju, UE — darmowe)** — wdrożone. DKV/Eurowag/SNAP/Travis wymagają umów/kluczy (niżej).
 
 ---
+
+## 0. Ceny diesla wg kraju (Europa) — OpenVan.camp ✅ wdrożone (#078)
+
+- **Kod:** [`/api/fuel-eu`](../apps/web/app/api/fuel-eu/route.ts) + strona [`/fuel-prices`](../apps/web/app/(app)/fuel-prices/page.tsx).
+- **Źródło:** OpenVan.camp — **otwarte API, bez klucza** (`/api/fuel/prices` + `/api/currency/rates`), CC BY 4.0 (atrybucja w UI).
+- **Co daje:** średnia krajowa cena oleju napędowego przeliczona na **€/L** (~29 krajów EU/EEA), ranking „gdzie taniej". Cache 6 h + rate‑limit.
+- **Uwaga:** ceny orientacyjne (średnie krajowe), nie per‑stacja. Komplementarne do Tankerkönig (DE, per‑stacja).
 
 ## 1. Ceny paliwa — Tankerkönig (DE) ✅ wdrożone
 
