@@ -33,6 +33,7 @@ export const vehicleSchema = z.object({
   inspectionExpiry: isoDate.optional(),
   insuranceExpiry: isoDate.optional(),
   insurer: z.string().max(60).optional(),
+  licenseNumber: z.string().max(40).optional(),
   leasingEnd: isoDate.optional(),
   curbWeightKg: z.number().int().positive().optional(),
   maxPayloadKg: z.number().int().positive().optional(),
@@ -50,6 +51,8 @@ export type VehicleInput = z.infer<typeof vehicleSchema>;
 export const fuelCardSchema = z.object({
   provider: z.enum(FUEL_CARD_PROVIDERS),
   cardNumberMasked: z.string().min(1),
+  /** Karta przypisana do pojazdu (opcjonalnie) — dla widoczności która karta do którego auta. */
+  vehicleId: z.uuid().optional(),
   /** PIN tylko na wejściu — w bazie przechowywany zaszyfrowany (nigdy plaintext). */
   pin: z
     .string()

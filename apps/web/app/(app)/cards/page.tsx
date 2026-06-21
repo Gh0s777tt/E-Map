@@ -6,6 +6,7 @@ import {
   getFuelCardPin,
   insertFuelCard,
   listFuelCardsSafe,
+  listVehicles,
   setFuelCardPin,
   updateFuelCard,
 } from "@e-logistic/api";
@@ -23,19 +24,30 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
 
+type VehicleRef = { registration: string } | { registration: string }[] | null;
 type Card = {
   id: string;
   provider: string;
   card_number_masked: string;
   valid_until: string | null;
   discount_percent: number;
+  vehicle_id: string | null;
+  vehicles: VehicleRef;
 };
+type Vehicle = { id: string; registration: string };
 
 const providerLabel = (p: string) =>
   FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
 
+const cardReg = (c: Card): string | null => {
+  const v = c.vehicles;
+  if (!v) return null;
+  return Array.isArray(v) ? (v[0]?.registration ?? null) : v.registration;
+};
+
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isOwner, setIsOwner] = useState(false);
   const [offline, setOffline] = useState(false);
   const [pins, setPins] = useState<Record<string, string>>({});
@@ -46,6 +58,7 @@ export default function CardsPage() {
   const [pin, setPin] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [discount, setDiscount] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
 
@@ -58,7 +71,12 @@ export default function CardsPage() {
         return;
       }
       setIsOwner(m.role === "owner");
-      setCards((await listFuelCardsSafe(sb, m.companyId)) as Card[]);
+      const [cs, vs] = await Promise.all([
+        listFuelCardsSafe(sb, m.companyId),
+        listVehicles(sb, m.companyId),
+      ]);
+      setCards(cs as Card[]);
+      setVehicles((vs as Vehicle[]).map((v) => ({ id: v.id, registration: v.registration })));
     } catch {
       setOffline(true);
     }
@@ -75,6 +93,7 @@ export default function CardsPage() {
     setPin("");
     setValidUntil("");
     setDiscount("");
+    setVehicleId("");
     setErrors({});
   }
 
@@ -89,6 +108,7 @@ export default function CardsPage() {
     setPin("");
     setValidUntil(c.valid_until ?? "");
     setDiscount(String(c.discount_percent ?? ""));
+    setVehicleId(c.vehicle_id ?? "");
     setErrors({});
     setStatus(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -112,6 +132,7 @@ export default function CardsPage() {
       pin: pin || undefined,
       validUntil: validUntil || undefined,
       discountPercent: discount ? Number(discount) : undefined,
+      vehicleId: vehicleId || undefined,
     });
     if (!parsed.success) {
       const map: Record<string, string> = {};
@@ -160,11 +181,11 @@ export default function CardsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 760 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.cards")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
         PIN-y szyfrowane (Vault); kierowca może je odsłonić, by zapłacić w automacie. Każdy odczyt
-        jest audytowany.
+        jest audytowany. Kartę można przypisać do pojazdu.
       </p>
 
       {offline && (
@@ -230,6 +251,16 @@ export default function CardsPage() {
               />
             </Field>
           </div>
+          <Field label="Przypisz do pojazdu" error={errors.vehicleId}>
+            <select style={input} value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+              <option value="">— brak —</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.registration}
+                </option>
+              ))}
+            </select>
+          </Field>
           <div style={{ display: "flex", gap: 10 }}>
             <button type="button" style={styles.primary} onClick={save}>
               {editingId ? "Zapisz zmiany" : t("common.save")}
@@ -253,6 +284,7 @@ export default function CardsPage() {
             <div key={c.id} style={styles.row}>
               <strong style={{ minWidth: 110 }}>{providerLabel(c.provider)}</strong>
               <span style={styles.cell}>{c.card_number_masked}</span>
+              {cardReg(c) && <span style={styles.tag}>🚚 {cardReg(c)}</span>}
               <span style={styles.cell}>{c.valid_until ?? "—"}</span>
               <span style={styles.cell}>{c.discount_percent}%</span>
               <span style={{ flex: 1 }} />
@@ -319,4 +351,12 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.graphite}`,
   },
   cell: { color: palette.smoke, fontSize: 14 },
+  tag: {
+    color: palette.offWhite,
+    fontSize: 12,
+    background: palette.coal,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 6,
+    padding: "2px 8px",
+  },
 };
