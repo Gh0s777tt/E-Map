@@ -4,6 +4,7 @@
  */
 
 export * from "./factory";
+export * from "./fuelprice";
 export * from "./geo";
 export * from "./geocode";
 export * from "./graphhopper";

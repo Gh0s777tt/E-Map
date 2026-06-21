@@ -13,6 +13,7 @@ import {
   stationMatchesProviders,
 } from "@e-logistic/core";
 import {
+  type FuelStationPrice,
   fetchPois,
   type GeoHit,
   geocode,
@@ -191,6 +192,9 @@ export default function MapPage() {
   const [axles, setAxles] = useState("5");
   const [cardFilterOn, setCardFilterOn] = useState(false);
   const [cardProviders, setCardProviders] = useState<Set<FuelCardProvider>>(new Set());
+  const [fuelPrices, setFuelPrices] = useState<FuelStationPrice[]>([]);
+  const [fuelPriceMsg, setFuelPriceMsg] = useState<string | null>(null);
+  const [fuelPriceBusy, setFuelPriceBusy] = useState(false);
 
   // Marki kart użytkownika (odduplikowane) — do filtra stacji.
   const cardOptions = Array.from(new Set(cards.map((c) => c.provider)));
@@ -707,6 +711,34 @@ export default function MapPage() {
     }
   }
 
+  /** Ceny paliwa w okolicy środka mapy (Tankerkönig, DE) — wymaga klucza serwerowego. */
+  async function loadFuelPrices() {
+    const map = mapRef.current;
+    if (!map) return;
+    setFuelPriceBusy(true);
+    setFuelPriceMsg(null);
+    try {
+      const c = map.getCenter();
+      const res = await fetch(`/api/fuel-prices?lat=${c.lat}&lng=${c.lng}&radius=15`);
+      const data = (await res.json()) as { configured: boolean; stations: FuelStationPrice[] };
+      if (!data.configured) {
+        setFuelPriceMsg("Ceny paliwa: dodaj klucz FUEL_PRICE_API_KEY (Tankerkönig, DE).");
+        setFuelPrices([]);
+        return;
+      }
+      const withDiesel = data.stations
+        .filter((s) => s.diesel != null)
+        .sort((a, b) => (a.diesel ?? 0) - (b.diesel ?? 0))
+        .slice(0, 8);
+      setFuelPrices(withDiesel);
+      if (withDiesel.length === 0) setFuelPriceMsg("Brak cen w tej okolicy (działa dla Niemiec).");
+    } catch {
+      setFuelPriceMsg("Nie udało się pobrać cen paliwa.");
+    } finally {
+      setFuelPriceBusy(false);
+    }
+  }
+
   async function plan() {
     setBusy(true);
     try {
@@ -1037,6 +1069,35 @@ export default function MapPage() {
             </div>
           )}
 
+          <button
+            type="button"
+            style={{ ...styles.ghost }}
+            onClick={loadFuelPrices}
+            disabled={fuelPriceBusy}
+          >
+            {fuelPriceBusy ? "Pobieram ceny…" : "⛽ Ceny paliwa (DE)"}
+          </button>
+          {fuelPriceMsg && <div style={{ fontSize: 12, color: palette.smoke }}>{fuelPriceMsg}</div>}
+          {fuelPrices.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {fuelPrices.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  style={styles.priceRow}
+                  onClick={() => mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 13 })}
+                  title={s.name}
+                >
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {s.brand || s.name}
+                    {s.isOpen ? "" : " (zamkn.)"}
+                  </span>
+                  <strong style={{ color: palette.red }}>{s.diesel?.toFixed(3)} €</strong>
+                </button>
+              ))}
+            </div>
+          )}
+
           <label style={styles.check}>
             <input
               type="checkbox"
@@ -1244,5 +1305,18 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: 6,
     fontSize: 14,
+  },
+  priceRow: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "7px 10px",
+    cursor: "pointer",
+    color: palette.offWhite,
+    fontSize: 13,
+    textAlign: "left",
   },
 };
