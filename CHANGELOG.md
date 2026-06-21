@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-37-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.37.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-38-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.38.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.38.0] — 🚛 Routing TIR przez HERE (wymiary/tonaż + realne myto + ruch)
+
+- `[#038]` 🚛 **Prawdziwy routing ciężarowy: HERE Routing v8 jako `RoutingProvider`.**
+  - **`packages/maps`** — pełny [adapter HERE](packages/maps/src/here.ts): tryb `truck` z wymiarami (tonaż/wysokość/szerokość/długość/osie), omijanie myta/promów, `exclude[countries]`, ruch (`departureTime` ISO), **realne myto** (z normalizacją walut PLN/CZK/… → EUR) i dekoder **flexible polyline**.
+  - **Web** [`/api/route`](apps/web/app/api/route/route.ts): priorytet **HERE → GraphHopper → mock**; przy HERE myto jest realne (`tollEstimated:false`).
+  - **Env** — `HERE_API_KEY` (Vercel + `turbo.json`). 
+  - **Weryfikacja E2E na żywo:** TIR Berlin→Warszawa 574,5 km, myto **349 €** (Maut DE + PL), geometria 4163 pkt; auto myto 31,7 €. Testy: dekoder na wektorze referencyjnym + budowa URL TIR. **Bramki:** biome czysto (114) · `tsc` ×7 · **51 testów** · build ✓.
 
 ## [0.37.0] — 📍 Geokoder w formularzu Trasa
 

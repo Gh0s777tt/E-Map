@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
 import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
+import { buildHereUrl, decodeFlexiblePolyline } from "./here";
 import { MockRoutingProvider } from "./mock";
 import { routeMultiLeg } from "./multileg";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
@@ -153,5 +154,35 @@ describe("POI (Overpass)", () => {
     expect(pois).toHaveLength(2);
     expect(pois[0]).toMatchObject({ type: "fuel_station", name: "Shell", lat: 52.5, lng: 13.4 });
     expect(pois[1]).toMatchObject({ type: "parking", lat: 52.6, lng: 13.5 });
+  });
+});
+
+describe("HERE adapter", () => {
+  it("dekoduje flexible polyline (wektor referencyjny HERE)", () => {
+    const pts = decodeFlexiblePolyline("BFoz5xJ67i1B1B7PzIhaxL7Y");
+    expect(pts.length).toBe(4);
+    expect(pts[0]?.lat).toBeCloseTo(50.10228, 4);
+    expect(pts[0]?.lng).toBeCloseTo(8.69821, 4);
+  });
+
+  it("buduje URL TIR z wymiarami i omijaniem", () => {
+    const url = buildHereUrl(
+      {
+        waypoints: [BERLIN, WARSAW],
+        profile: { kind: "truck", weightKg: 40000, heightCm: 400 },
+        options: { avoidTolls: true, avoidCountries: ["CH"] },
+      },
+      "KEY",
+    );
+    expect(url).toContain("transportMode=truck");
+    expect(url).toContain("truck[grossWeight]=40000");
+    expect(url).toContain("truck[height]=400");
+    expect(url).toContain("avoid[features]=tollRoad");
+    expect(url).toContain("exclude[countries]=CHE");
+  });
+
+  it("dla vana używa trybu car", () => {
+    const url = buildHereUrl({ waypoints: [BERLIN, WARSAW], profile: { kind: "van" } }, "KEY");
+    expect(url).toContain("transportMode=car");
   });
 });

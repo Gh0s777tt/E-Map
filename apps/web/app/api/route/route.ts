@@ -10,10 +10,10 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Serwerowe wytyczanie trasy przez przystanki. Klucz GraphHopper czytany z env
- * po stronie serwera (nigdy w bundlu). Bez klucza → provider mock. Trasa liczona
- * odcinkami (routeMultiLeg) → myto/dystans z podziałem na odcinki. GraphHopper free
- * nie zwraca myta, więc doszacowujemy je per odcinek (flaga `tollEstimated`).
+ * Serwerowe wytyczanie trasy przez przystanki. Klucze czytane z env po stronie
+ * serwera (nigdy w bundlu). Priorytet dostawcy: HERE (realny routing TIR z wymiarami
+ * + prawdziwe myto + ruch) → GraphHopper (car; myto doszacowane) → mock (bez klucza).
+ * Trasa liczona odcinkami (routeMultiLeg) → myto/dystans z podziałem na odcinki.
  */
 export async function POST(request: Request) {
   const body = (await request.json()) as RouteRequest;
@@ -21,17 +21,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Wymagane min. 2 punkty trasy." }, { status: 400 });
   }
 
-  const key = process.env.GRAPHHOPPER_API_KEY;
-  const provider = key
-    ? createRoutingProvider({ provider: "graphhopper", apiKey: key })
-    : createRoutingProvider();
+  const hereKey = process.env.HERE_API_KEY;
+  const ghKey = process.env.GRAPHHOPPER_API_KEY;
+  const provider = hereKey
+    ? createRoutingProvider({ provider: "here", apiKey: hereKey })
+    : ghKey
+      ? createRoutingProvider({ provider: "graphhopper", apiKey: ghKey })
+      : createRoutingProvider();
 
   try {
     const result = await routeMultiLeg(provider, body);
 
     let { segments, tollCost } = result;
     let tollEstimated = false;
-    if (tollCost === 0 && !body.options?.avoidTolls && provider.name !== "mock") {
+    // Tylko GraphHopper nie zwraca myta → doszacowujemy. HERE podaje realne myto.
+    if (provider.name === "graphhopper" && tollCost === 0 && !body.options?.avoidTolls) {
       segments = result.segments.map((s) => ({
         ...s,
         tollCost: estimateTollEur(s.distanceKm, { weightKg: body.profile?.weightKg }),
