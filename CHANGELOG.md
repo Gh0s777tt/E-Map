@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-73-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.55.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-74-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.55.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.55.2] — 🧹 Porządki P3 z audytu (guard PIN, RLS, numeracja migracji)
+
+- `[#074]` 🧹 **Domknięcie pozycji porządkowych P3 audytu:**
+  - **P3 #12** — [`0025`](supabase/migrations/0025_fuel_card_pin_guard.sql): przywrócony guard `if cid is null` w `fuel_card_pin` (przy nieistniejącej karcie zwraca „Karta nie istnieje" zamiast mylącego „Brak uprawnień"). Polityki `drivers` bez `is_developer` **zweryfikowane na żywej bazie** (poprawnie nadpisane w 0013) — historycznych migracji nie edytowano (forward-only).
+  - **P3 #11** — już domknięte w `0021` (`to authenticated` na wszystkich politykach `push_subscriptions`).
+  - **P3 #13** — kolizja numeracji `0017`/`0018` (po 2 pliki) **udokumentowana** w [supabase/README.md](supabase/README.md): pliki dotykają różnych obiektów, kolejność alfabetyczna poprawna; dodana konwencja niezmienności migracji.
+  - 📄 Aktualizacja [supabase/README.md](supabase/README.md): migracje 0001–0025, `pii_key` obok `card_key`, sprostowanie dostępu do PIN-u (developer **odcięty** od 0013).
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓ (zmiana DB-only + docs).
 
 ## [0.55.1] — 🛡️ Walidacja wejścia API + ochrona przed open-redirect
 
