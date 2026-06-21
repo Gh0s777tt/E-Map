@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-87-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.63.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-88-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.64.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.64.0] — 🪪 Terminy dokumentów kierowcy (compliance)
+
+- `[#088]` 🪪 **Compliance kierowcy** — daty ważności **prawa jazdy / Kod 95 / badań lekarskich / ADR** z przypomnieniami (nowa funkcja produktowa):
+  - [Migracja 0027](supabase/migrations/0027_driver_document_expiry.sql): kolumny `*_expiry` (daty, jawne — sama data nie jest wrażliwa); rozszerzone RPC `list_drivers`/`driver_save`; **blok kierowców w `generate_expiry_notifications`** (powiadomienia + push przez istniejący cron).
+  - **PII-safe:** powiadomienia **bez nazwiska** (tylko „sprawdź kartotekę") — nazwiska szyfrowane; pokazywane tylko w [kartotece](apps/web/components/DriverRoster.tsx) (deszyfrowane w pamięci, owner/dispatcher).
+  - UI: 4 pola dat w formularzu kierowcy + **badge'e terminów** (po terminie/ile dni) na liście.
+  - Reszta (NotificationBell, cron push, `expiryStatus`) bez zmian — generyczna.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.63.0] — 📱 Mobilny drawer nawigacji (P2)
 

@@ -9,11 +9,16 @@ import {
   setDriverDocuments,
   updateDriver,
 } from "@e-logistic/api";
-import { DRIVER_QUALIFICATIONS, driverSchema, LICENSE_CATEGORIES } from "@e-logistic/core";
+import {
+  DRIVER_QUALIFICATIONS,
+  driverSchema,
+  expiryStatus,
+  LICENSE_CATEGORIES,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Driver = Awaited<ReturnType<typeof listDrivers>>[number];
@@ -21,6 +26,13 @@ type Docs = { idCard: string | null; passport: string | null; license: string | 
 
 const toggle = (arr: string[], v: string) =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
+
+const EXPIRY_DOCS = [
+  { key: "license_expiry", label: "Prawo jazdy" },
+  { key: "code95_expiry", label: "Kod 95" },
+  { key: "medical_expiry", label: "Badania" },
+  { key: "adr_expiry", label: "ADR" },
+] as const;
 
 export function DriverRoster() {
   const confirm = useConfirm();
@@ -38,6 +50,10 @@ export function DriverRoster() {
   const [quals, setQuals] = useState<string[]>([]);
   const [customQual, setCustomQual] = useState("");
   const [notes, setNotes] = useState("");
+  const [licenseExpiry, setLicenseExpiry] = useState("");
+  const [code95Expiry, setCode95Expiry] = useState("");
+  const [medicalExpiry, setMedicalExpiry] = useState("");
+  const [adrExpiry, setAdrExpiry] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, Docs>>({});
@@ -70,6 +86,10 @@ export function DriverRoster() {
     setQuals([]);
     setCustomQual("");
     setNotes("");
+    setLicenseExpiry("");
+    setCode95Expiry("");
+    setMedicalExpiry("");
+    setAdrExpiry("");
     setErrors({});
   }
 
@@ -86,6 +106,10 @@ export function DriverRoster() {
     setCategories(d.license_categories ?? []);
     setQuals(d.qualifications ?? []);
     setNotes(d.notes ?? "");
+    setLicenseExpiry(d.license_expiry ?? "");
+    setCode95Expiry(d.code95_expiry ?? "");
+    setMedicalExpiry(d.medical_expiry ?? "");
+    setAdrExpiry(d.adr_expiry ?? "");
     setStatus(null);
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -104,6 +128,10 @@ export function DriverRoster() {
       licenseCategories: categories,
       qualifications: quals,
       notes: notes.trim() || undefined,
+      licenseExpiry: licenseExpiry || undefined,
+      code95Expiry: code95Expiry || undefined,
+      medicalExpiry: medicalExpiry || undefined,
+      adrExpiry: adrExpiry || undefined,
     });
     if (!parsed.success) {
       const map: Record<string, string> = {};
@@ -163,6 +191,8 @@ export function DriverRoster() {
   }
 
   if (!allowed) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div style={{ marginTop: 40 }}>
@@ -235,6 +265,50 @@ export function DriverRoster() {
               onChange={(e) => setPassportNumber(e.target.value)}
             />
           </label>
+        </div>
+
+        <div>
+          <span style={styles.label}>Terminy dokumentów (przypomnienia)</span>
+          <div style={{ ...styles.grid, marginTop: 6 }}>
+            <label style={styles.field}>
+              <span style={styles.label}>Prawo jazdy do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={licenseExpiry}
+                onChange={(e) => setLicenseExpiry(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Kod 95 do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={code95Expiry}
+                onChange={(e) => setCode95Expiry(e.target.value)}
+              />
+            </label>
+          </div>
+          <div style={{ ...styles.grid, marginTop: 8 }}>
+            <label style={styles.field}>
+              <span style={styles.label}>Badania lekarskie do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={medicalExpiry}
+                onChange={(e) => setMedicalExpiry(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>ADR do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={adrExpiry}
+                onChange={(e) => setAdrExpiry(e.target.value)}
+              />
+            </label>
+          </div>
         </div>
 
         <div>
@@ -334,6 +408,17 @@ export function DriverRoster() {
                   <span style={styles.cell}>
                     {d.license_categories.length > 0 ? d.license_categories.join(", ") : "—"}
                   </span>
+                  {EXPIRY_DOCS.map((doc) => {
+                    const date = d[doc.key];
+                    if (!date) return null;
+                    const st = expiryStatus(date, today);
+                    if (st.level === "ok") return null;
+                    return (
+                      <Badge key={doc.key} color={st.level === "expired" ? palette.red : "#f59e0b"}>
+                        {doc.label}: {st.daysLeft < 0 ? "po terminie" : `${st.daysLeft} dni`}
+                      </Badge>
+                    );
+                  })}
                   <span style={{ flex: 1 }} />
                   {d.qualifications.slice(0, 3).map((q) => (
                     <span key={q} style={styles.tag}>

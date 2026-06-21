@@ -85,6 +85,11 @@ export const driverSchema = z.object({
   licenseCategories: z.array(z.string()).default([]),
   qualifications: z.array(z.string()).default([]),
   notes: z.string().max(2000).optional(),
+  // Terminy dokumentów (compliance) — daty ważności.
+  licenseExpiry: isoDate.optional(),
+  code95Expiry: isoDate.optional(),
+  medicalExpiry: isoDate.optional(),
+  adrExpiry: isoDate.optional(),
 });
 export type DriverInput = z.infer<typeof driverSchema>;
 
