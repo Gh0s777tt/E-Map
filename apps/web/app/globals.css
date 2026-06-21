@@ -46,6 +46,14 @@ body {
 .app-navlink:hover {
   background: #1f1f1f;
 }
+.app-navlink-active {
+  background: #e50914;
+  color: #fff;
+  font-weight: 700;
+}
+.app-navlink-active:hover {
+  background: #e50914;
+}
 .app-main {
   flex: 1;
   min-width: 0;

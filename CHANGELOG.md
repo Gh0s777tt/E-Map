@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-55-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-56-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.1] — 🎯 Podświetlenie aktywnej nawigacji
+
+- `[#056]` 🎯 **Aktywna pozycja menu jest podświetlona** (UX z audytu — wcześniej brak wskazania bieżącej strony). Nowy [`SidebarNav`](apps/web/components/SidebarNav.tsx) (klient, `usePathname`) z klasą `app-navlink-active` (czerwone tło) i `aria-current="page"` dla czytników ekranu. Layout przepięty na komponent.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.0] — 📱 Responsywna powłoka aplikacji (mobile)
 

@@ -4,10 +4,10 @@ import { getActiveMembership } from "@e-logistic/api";
 import { type AppModule, effectiveModules } from "@e-logistic/core";
 import { createTranslator, type MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HelpCenter } from "@/components/HelpCenter";
 import { NotificationBell } from "@/components/NotificationBell";
+import { SidebarNav } from "@/components/SidebarNav";
 import { SignOutButton } from "@/components/SignOutButton";
 import { getServerSupabase } from "@/lib/supabase/server";
 
@@ -69,6 +69,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const items = NAV.filter((i) => i.mod === null || allowed.includes(i.mod));
+  const navItems = [
+    ...items.map((i) => ({ href: i.href, label: t(i.key) })),
+    ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
+  ];
 
   return (
     <div className="app-shell">
@@ -76,18 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 16 }}>
           <span style={{ color: palette.red }}>E</span>-Logistic
         </div>
-        <nav className="app-nav">
-          {items.map((item) => (
-            <Link key={item.href} href={item.href} className="app-navlink">
-              {t(item.key)}
-            </Link>
-          ))}
-          {isOwner && (
-            <Link href="/team" className="app-navlink">
-              Zespół
-            </Link>
-          )}
-        </nav>
+        <SidebarNav items={navItems} />
         {supabaseConfigured && (
           <div style={{ marginBottom: 8 }}>
             <NotificationBell />
