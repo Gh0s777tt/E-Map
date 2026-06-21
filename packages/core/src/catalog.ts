@@ -129,6 +129,25 @@ export const DRIVER_QUALIFICATIONS = [
   "Pierwsza pomoc",
 ] as const;
 
+/** Statusy zlecenia transportowego. */
+export const ORDER_STATUSES = [
+  "new",
+  "assigned",
+  "in_progress",
+  "delivered",
+  "invoiced",
+  "cancelled",
+] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  new: "Nowe",
+  assigned: "Przypisane",
+  in_progress: "W trakcie",
+  delivered: "Dostarczone",
+  invoiced: "Zafakturowane",
+  cancelled: "Anulowane",
+};
+
 /** Układy/części pojazdu do zgłaszania usterek. */
 export const DEFECT_PARTS = [
   "Hamulce (klocki/tarcze)",

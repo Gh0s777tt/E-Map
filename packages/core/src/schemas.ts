@@ -93,6 +93,25 @@ export const driverSchema = z.object({
 });
 export type DriverInput = z.infer<typeof driverSchema>;
 
+// ── Zlecenie / ładunek ──────────────────────────────────────────────
+
+export const orderSchema = z.object({
+  referenceNo: z.string().max(60).optional(),
+  shipper: z.string().max(160).optional(),
+  consignee: z.string().max(160).optional(),
+  origin: z.string().max(160).optional(),
+  destination: z.string().max(160).optional(),
+  cargo: z.string().max(300).optional(),
+  weightKg: z.number().nonnegative().max(100000).optional(),
+  price: z.number().nonnegative().max(10000000).optional(),
+  currency: z.string().max(8).default("EUR"),
+  vehicleId: z.string().uuid().optional(),
+  loadDate: isoDate.optional(),
+  unloadDate: isoDate.optional(),
+  notes: z.string().max(2000).optional(),
+});
+export type OrderInput = z.infer<typeof orderSchema>;
+
 // ── Usterka pojazdu ─────────────────────────────────────────────────
 
 export const defectSchema = z.object({
