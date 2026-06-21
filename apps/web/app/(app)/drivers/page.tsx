@@ -4,6 +4,7 @@ import { createInvite, getActiveMembership } from "@e-logistic/api";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
+import { DriverRoster } from "@/components/DriverRoster";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -120,6 +121,8 @@ export default function DriversPage() {
           </div>
         </div>
       )}
+
+      <DriverRoster />
     </div>
   );
 }
