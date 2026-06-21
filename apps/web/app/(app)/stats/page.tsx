@@ -3,6 +3,7 @@
 import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
 import {
   consumptionFullToFull,
+  detectFuelAnomalies,
   type FuelStatsEntry,
   fuelConsumptionSeries,
   round2,
@@ -12,7 +13,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BarChart, PageHeader } from "@/components/ui";
+import { Badge, BarChart, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -119,12 +120,29 @@ export default function StatsPage() {
           registration: v.registration,
           count: s.count,
           totalLiters: s.totalLiters,
+          spend: s.totalSpend,
           cons: consumptionFullToFull(fEntries),
           tripCount: trips.filter((r) => r.vehicle_id === v.id).length,
+          anomalies: detectFuelAnomalies(fuelConsumptionSeries(fEntries)).length,
         };
       }),
     [vehicles, fuel, trips],
   );
+
+  // Pulpit floty — agregaty po wszystkich pojazdach (raz na zmianę danych).
+  const fleet = useMemo(() => {
+    const consVals = tiles.map((tl) => tl.cons).filter((c): c is number => c != null);
+    return {
+      vehicles: tiles.length,
+      totalLiters: round2(tiles.reduce((a, tl) => a + tl.totalLiters, 0)),
+      totalSpend: round2(tiles.reduce((a, tl) => a + tl.spend, 0)),
+      totalTrips: tiles.reduce((a, tl) => a + tl.tripCount, 0),
+      anomalies: tiles.reduce((a, tl) => a + tl.anomalies, 0),
+      avgCons: consVals.length
+        ? round2(consVals.reduce((a, c) => a + c, 0) / consVals.length)
+        : null,
+    };
+  }, [tiles]);
 
   return (
     <div>
@@ -140,27 +158,51 @@ export default function StatsPage() {
       )}
 
       {!selected ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
-          {tiles.map((tile) => (
-            <button
-              key={tile.id}
-              type="button"
-              onClick={() => setSelected(tile.id)}
-              style={styles.tile}
-            >
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{tile.registration}</div>
-              <div style={{ color: palette.smoke, fontSize: 13, marginTop: 8 }}>
-                ⛽ {tile.count} tank. · {tile.totalLiters} L
-              </div>
-              <div style={{ color: palette.red, fontWeight: 700, marginTop: 4 }}>
-                {tile.cons != null ? `${tile.cons} L/100km` : "— L/100km"}
-              </div>
-              <div style={{ color: palette.smoke, fontSize: 12, marginTop: 4 }}>
-                🚚 {tile.tripCount} zdarzeń trasy
-              </div>
-            </button>
-          ))}
-        </div>
+        <>
+          {fleet.vehicles > 0 && (
+            <div style={styles.fleet}>
+              <FleetStat label="Pojazdy" value={String(fleet.vehicles)} />
+              <FleetStat label="Paliwo łącznie" value={`${fleet.totalLiters} L`} />
+              <FleetStat label="Wydatek" value={`${fleet.totalSpend} €`} />
+              <FleetStat
+                label="Śr. spalanie floty"
+                value={fleet.avgCons != null ? `${fleet.avgCons} L/100km` : "—"}
+              />
+              <FleetStat label="Trasy" value={String(fleet.totalTrips)} />
+              <FleetStat
+                label="Anomalie spalania"
+                value={String(fleet.anomalies)}
+                accent={fleet.anomalies > 0 ? palette.red : "#22c55e"}
+              />
+            </div>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
+            {tiles.map((tile) => (
+              <button
+                key={tile.id}
+                type="button"
+                onClick={() => setSelected(tile.id)}
+                style={styles.tile}
+              >
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{tile.registration}</div>
+                <div style={{ color: palette.smoke, fontSize: 13, marginTop: 8 }}>
+                  ⛽ {tile.count} tank. · {tile.totalLiters} L
+                </div>
+                <div style={{ color: palette.red, fontWeight: 700, marginTop: 4 }}>
+                  {tile.cons != null ? `${tile.cons} L/100km` : "— L/100km"}
+                </div>
+                <div style={{ color: palette.smoke, fontSize: 12, marginTop: 4 }}>
+                  🚚 {tile.tripCount} zdarzeń trasy
+                </div>
+                {tile.anomalies > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <Badge color={palette.red}>⚠️ {tile.anomalies} anomalii spalania</Badge>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
       ) : (
         <VehicleDetail
           reg={vehicles.find((v) => v.id === selected)?.registration ?? "?"}
@@ -195,8 +237,26 @@ function VehicleDetail({
         .map((s, i) => ({ label: String(i + 1), value: s.lPer100km })),
     [fuel],
   );
+  const anomalies = useMemo(
+    () => detectFuelAnomalies(fuelConsumptionSeries(fuel.map(entry))),
+    [fuel],
+  );
   return (
     <div style={{ marginTop: 20 }}>
+      {anomalies.length > 0 && (
+        <div style={styles.anomalyBox}>
+          ⚠️ <strong>Wykryto anomalie spalania</strong> (powyżej mediany pojazdu) — możliwy wyciek,
+          kradzież lub usterka:
+          <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
+            {anomalies.map((a) => (
+              <li key={`${a.fromKm}-${a.toKm}`}>
+                {a.fromKm}–{a.toKm} km: <strong>{a.lPer100km} L/100km</strong> (+{a.deltaPct}% vs
+                mediana {a.medianLPer100km})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button type="button" style={styles.back} onClick={onBack}>
           ← Wszystkie pojazdy
@@ -319,7 +379,38 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function FleetStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        minWidth: 130,
+        padding: 14,
+        borderRadius: 12,
+        background: palette.nearBlack,
+        border: `1px solid ${palette.graphite}`,
+      }}
+    >
+      <div style={{ color: palette.smoke, fontSize: 12 }}>{label}</div>
+      <div
+        style={{ fontSize: 20, fontWeight: 800, marginTop: 4, color: accent ?? palette.offWhite }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 const styles: Record<string, React.CSSProperties> = {
+  fleet: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 },
+  anomalyBox: {
+    background: "#2a0d0d",
+    border: `1px solid ${palette.red}`,
+    borderRadius: 12,
+    padding: "12px 16px",
+    color: palette.offWhite,
+    fontSize: 14,
+  },
   tile: {
     minWidth: 200,
     textAlign: "left",

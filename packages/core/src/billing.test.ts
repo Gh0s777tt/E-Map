@@ -4,6 +4,7 @@ import {
   computeTripSettlement,
   consumptionFullToFull,
   consumptionLPer100km,
+  detectFuelAnomalies,
   effectiveFuelPrice,
   fuelConsumptionSeries,
   fuelCost,
@@ -13,6 +14,42 @@ import {
   tripProfit,
   tripRevenue,
 } from "./billing";
+
+describe("anomalie spalania", () => {
+  it("zwraca [] gdy za mało odcinków", () => {
+    const seg = fuelConsumptionSeries([
+      { odometerKm: 1000, liters: 50 },
+      { odometerKm: 1500, liters: 150 },
+    ]);
+    expect(detectFuelAnomalies(seg)).toEqual([]);
+  });
+
+  it("flaguje odcinek znacząco powyżej mediany", () => {
+    // 3 odcinki ~30 L/100km + 1 odcinek 60 (kradzież) → anomalia
+    const seg = fuelConsumptionSeries([
+      { odometerKm: 0, liters: 0 },
+      { odometerKm: 1000, liters: 300 }, // 30
+      { odometerKm: 2000, liters: 300 }, // 30
+      { odometerKm: 3000, liters: 600 }, // 60 ← anomalia
+      { odometerKm: 4000, liters: 300 }, // 30
+    ]);
+    const anomalies = detectFuelAnomalies(seg);
+    expect(anomalies).toHaveLength(1);
+    expect(anomalies[0]?.lPer100km).toBe(60);
+    expect(anomalies[0]?.deltaPct).toBeGreaterThanOrEqual(20);
+  });
+
+  it("nie flaguje równego spalania", () => {
+    const seg = fuelConsumptionSeries([
+      { odometerKm: 0, liters: 0 },
+      { odometerKm: 1000, liters: 300 },
+      { odometerKm: 2000, liters: 305 },
+      { odometerKm: 3000, liters: 298 },
+      { odometerKm: 4000, liters: 302 },
+    ]);
+    expect(detectFuelAnomalies(seg)).toEqual([]);
+  });
+});
 
 describe("spalanie", () => {
   it("liczy L/100km dla odcinka", () => {
