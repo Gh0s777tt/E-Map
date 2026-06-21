@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-60-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.5-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-61-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.6-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.6] — 🧩 PageHeader na wszystkich stronach + ListStatus (zespół)
+
+- `[#061]` 🧩 **Rollout wspólnych prymitywów UI.** `PageHeader` zastąpił powtarzany nagłówek (h1+podtytuł) na stronach: Statystyki, Pojazdy, Kierowcy, Zespół (łącznie z wcześniejszymi: Usterki, Rozliczenia, Karty = 7 stron). `ListStatus` (ładowanie/błąd/pusto + „Ponów") dodany w [Zespół](apps/web/app/(app)/team/page.tsx). Mniej duplikacji, spójniejszy wygląd.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.5] — 🚀 Cache członkostwa na wszystkich stronach
 

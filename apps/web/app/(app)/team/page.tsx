@@ -4,6 +4,8 @@ import { type CompanyMember, listCompanyMembers, updateMember } from "@e-logisti
 import { APP_MODULE_LABELS, APP_MODULES, type AppModule, effectiveModules } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { ListStatus } from "@/components/ListStatus";
+import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -12,16 +14,18 @@ export default function TeamPage() {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadErr(null);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       setIsOwner(m?.role === "owner");
       setCompanyId(m?.companyId ?? null);
       if (m) setMembers(await listCompanyMembers(sb));
-    } catch {
-      setMembers([]);
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zespołu.");
     } finally {
       setLoaded(true);
     }
@@ -33,11 +37,10 @@ export default function TeamPage() {
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Zespół i uprawnienia</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Nadawaj rolę i moduły. Spedytor ma pełny wgląd w dane firmy; kierowca widzi tylko swoje auto
-        i formularze. Moduły decydują, które panele widzi dana osoba.
-      </p>
+      <PageHeader
+        title="Zespół i uprawnienia"
+        subtitle="Nadawaj rolę i moduły. Spedytor ma pełny wgląd w dane firmy; kierowca widzi tylko swoje auto i formularze. Moduły decydują, które panele widzi dana osoba."
+      />
 
       {loaded && !isOwner && (
         <p style={{ color: palette.smoke, marginTop: 16 }}>
@@ -47,10 +50,16 @@ export default function TeamPage() {
 
       {isOwner && companyId && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 20 }}>
+          <ListStatus
+            loading={!loaded}
+            error={loadErr}
+            empty={members.length === 0}
+            emptyText="Brak członków."
+            onRetry={load}
+          />
           {members.map((m) => (
             <MemberRow key={m.user_id} member={m} companyId={companyId} onSaved={load} />
           ))}
-          {members.length === 0 && <p style={{ color: palette.smoke }}>Brak członków.</p>}
         </div>
       )}
     </div>

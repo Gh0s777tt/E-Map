@@ -11,6 +11,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -93,11 +94,12 @@ export default function StatsPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.stats")}</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Wybierz pojazd, by zobaczyć jego tankowania i trasy. Spalanie liczone „od pełna do pełna";
-        tankowania częściowe są wliczane do litrów i kosztów.
-      </p>
+      <PageHeader
+        title={t("nav.stats")}
+        subtitle={
+          'Wybierz pojazd, by zobaczyć jego tankowania i trasy. Spalanie liczone „od pełna do pełna"; tankowania częściowe są wliczane do litrów i kosztów.'
+        }
+      />
 
       {ready && vehicles.length === 0 && (
         <p style={{ color: palette.smoke, marginTop: 24 }}>Brak pojazdów / danych.</p>
