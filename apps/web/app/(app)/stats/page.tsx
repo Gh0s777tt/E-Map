@@ -9,64 +9,55 @@ import {
 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
 
-type FuelEntry = FuelStatsEntry & { isFull?: boolean };
-type Group = { id: string; label: string; entries: FuelEntry[] };
-type TripRow = {
+type FuelRaw = {
+  id: string;
+  vehicle_id: string;
+  odometer_km: number;
+  liters: number;
+  price_total: number | null;
+  is_full?: boolean;
+  station_country: string;
+  created_at: string;
+};
+type TripRaw = {
+  id: string;
   vehicle_id: string;
   action: string;
   weight_kg: number | null;
   amount: number | null;
-};
-type TripSummary = {
-  count: number;
-  loadKg: number;
-  unloadKg: number;
-  serviceCost: number;
+  country: string;
+  created_at: string;
 };
 
 const ACTION_PL: Record<string, string> = {
-  load: "Załadunki",
-  unload: "Rozładunki",
-  start: "Starty",
-  end: "Zakończenia",
-  service: "Serwisy",
+  load: "Załadunek",
+  unload: "Rozładunek",
+  start: "Start",
+  end: "Koniec",
+  service: "Serwis",
   other: "Inne",
 };
 
-function groupFuel(
-  logs: {
-    vehicle_id: string;
-    odometer_km: number;
-    liters: number;
-    price_total: number | null;
-    is_full?: boolean;
-  }[],
-  labelOf: (id: string) => string,
-): Group[] {
-  const byV = new Map<string, FuelEntry[]>();
-  for (const r of logs) {
-    const arr = byV.get(r.vehicle_id) ?? [];
-    arr.push({
-      odometerKm: r.odometer_km,
-      liters: Number(r.liters),
-      priceTotal: r.price_total != null ? Number(r.price_total) : undefined,
-      isFull: r.is_full !== false,
-    });
-    byV.set(r.vehicle_id, arr);
-  }
-  return [...byV.entries()].map(([id, entries]) => ({ id, label: labelOf(id), entries }));
-}
+const entry = (r: FuelRaw): FuelStatsEntry & { isFull?: boolean } => ({
+  odometerKm: r.odometer_km,
+  liters: Number(r.liters),
+  priceTotal: r.price_total != null ? Number(r.price_total) : undefined,
+  isFull: r.is_full !== false,
+});
 
 export default function StatsPage() {
-  const [fuel, setFuel] = useState<Group[]>([]);
-  const [adblue, setAdblue] = useState<Group[]>([]);
-  const [trips, setTrips] = useState<TripRow[]>([]);
-  const [source, setSource] = useState<"baza" | "brak">("brak");
+  const [vehicles, setVehicles] = useState<{ id: string; registration: string }[]>([]);
+  const [fuel, setFuel] = useState<FuelRaw[]>([]);
+  const [adblue, setAdblue] = useState<FuelRaw[]>([]);
+  const [trips, setTrips] = useState<TripRaw[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -74,132 +65,182 @@ export default function StatsPage() {
         const sb = getBrowserSupabase();
         const m = await getActiveMembership(sb);
         if (!m) return;
-        const [fuelLogs, adblueLogs, tripEvents, vehicles] = await Promise.all([
+        const [f, a, tr, vs] = await Promise.all([
           listFuelLogs(sb),
           listFuelLogs(sb, { table: "adblue_logs" }),
           listTripEvents(sb),
           listVehicles(sb, m.companyId),
         ]);
-        const map = new Map(
-          (vehicles as { id: string; registration: string }[]).map((v) => [v.id, v.registration]),
+        setFuel(f as FuelRaw[]);
+        setAdblue(a as FuelRaw[]);
+        setTrips(tr as TripRaw[]);
+        setVehicles(
+          (vs as { id: string; registration: string }[]).map((v) => ({
+            id: v.id,
+            registration: v.registration,
+          })),
         );
-        const labelOf = (id: string) => map.get(id) ?? id.slice(0, 8);
-        setFuel(groupFuel(fuelLogs as never[], labelOf));
-        setAdblue(groupFuel(adblueLogs as never[], labelOf));
-        setTrips(tripEvents as TripRow[]);
-        setSource("baza");
-      } catch {
-        setSource("brak");
+      } finally {
+        setReady(true);
       }
     })();
   }, []);
 
-  const tripSummary: TripSummary = trips.reduce(
-    (acc, r) => {
-      acc.count += 1;
-      if (r.action === "load") acc.loadKg += r.weight_kg ?? 0;
-      if (r.action === "unload") acc.unloadKg += r.weight_kg ?? 0;
-      if (r.action === "service" || r.action === "other") acc.serviceCost += r.amount ?? 0;
-      return acc;
-    },
-    { count: 0, loadKg: 0, unloadKg: 0, serviceCost: 0 },
-  );
-  const tripByAction = trips.reduce<Record<string, number>>((acc, r) => {
-    acc[r.action] = (acc[r.action] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const hasAny = fuel.length > 0 || adblue.length > 0 || trips.length > 0;
+  function byV<T extends { vehicle_id: string }>(rows: T[], id: string): T[] {
+    return rows.filter((r) => r.vehicle_id === id);
+  }
 
   return (
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.stats")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Liczone silnikiem <code>@e-logistic/core</code> · źródło: <strong>{source}</strong>.
-        Spalanie paliwa liczone metodą „od pełna do pełna".
+        Wybierz pojazd, by zobaczyć jego tankowania i trasy. Spalanie liczone „od pełna do pełna";
+        tankowania częściowe są wliczane do litrów i kosztów.
       </p>
 
-      {!hasAny ? (
-        <p style={{ color: palette.smoke, marginTop: 24 }}>
-          Brak danych — dodaj wpisy w formularzach.
-        </p>
-      ) : (
-        <>
-          <ConsumptionSection title="⛽ Paliwo" groups={fuel} unit="L" full />
-          <ConsumptionSection title="💧 AdBlue" groups={adblue} unit="L" />
+      {ready && vehicles.length === 0 && (
+        <p style={{ color: palette.smoke, marginTop: 24 }}>Brak pojazdów / danych.</p>
+      )}
 
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 36 }}>🚚 Trasy</h2>
-          {trips.length === 0 ? (
-            <p style={{ color: palette.smoke }}>Brak zdarzeń trasy.</p>
-          ) : (
-            <>
-              <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
-                <Stat label="Zdarzeń" value={String(tripSummary.count)} />
-                <Stat label="Załadowano" value={`${round2(tripSummary.loadKg)} kg`} />
-                <Stat label="Rozładowano" value={`${round2(tripSummary.unloadKg)} kg`} />
-                <Stat label="Koszt serwis/inne" value={String(round2(tripSummary.serviceCost))} />
-              </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                {Object.entries(tripByAction).map(([a, n]) => (
-                  <span key={a} style={styles.tag}>
-                    {ACTION_PL[a] ?? a}: <strong>{n}</strong>
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-        </>
+      {!selected ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
+          {vehicles.map((v) => {
+            const fEntries = byV(fuel, v.id).map(entry);
+            const s = summarizeFuel(fEntries);
+            const cons = consumptionFullToFull(fEntries);
+            const tripCount = byV(trips, v.id).length;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setSelected(v.id)}
+                style={styles.tile}
+              >
+                <div style={{ fontSize: 18, fontWeight: 800 }}>{v.registration}</div>
+                <div style={{ color: palette.smoke, fontSize: 13, marginTop: 8 }}>
+                  ⛽ {s.count} tank. · {s.totalLiters} L
+                </div>
+                <div style={{ color: palette.red, fontWeight: 700, marginTop: 4 }}>
+                  {cons != null ? `${cons} L/100km` : "— L/100km"}
+                </div>
+                <div style={{ color: palette.smoke, fontSize: 12, marginTop: 4 }}>
+                  🚚 {tripCount} zdarzeń trasy
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <VehicleDetail
+          reg={vehicles.find((v) => v.id === selected)?.registration ?? "?"}
+          fuel={byV(fuel, selected)}
+          adblue={byV(adblue, selected)}
+          trips={byV(trips, selected)}
+          onBack={() => setSelected(null)}
+        />
       )}
     </div>
   );
 }
 
-function ConsumptionSection({
+function VehicleDetail({
+  reg,
+  fuel,
+  adblue,
+  trips,
+  onBack,
+}: {
+  reg: string;
+  fuel: FuelRaw[];
+  adblue: FuelRaw[];
+  trips: TripRaw[];
+  onBack: () => void;
+}) {
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button type="button" style={styles.back} onClick={onBack}>
+          ← Wszystkie pojazdy
+        </button>
+        <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{reg}</h2>
+        <span style={{ flex: 1 }} />
+        <Link href={`/forms/history`} style={{ color: palette.red, fontSize: 14 }}>
+          Historia formularzy →
+        </Link>
+      </div>
+
+      <FuelBlock title="⛽ Paliwo" rows={fuel} full />
+      <FuelBlock title="💧 AdBlue" rows={adblue} />
+
+      <h3 style={{ fontSize: 16, fontWeight: 700, marginTop: 28 }}>🚚 Trasy</h3>
+      {trips.length === 0 ? (
+        <p style={{ color: palette.smoke }}>Brak zdarzeń.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+          {trips.map((r) => (
+            <div key={r.id} style={styles.line}>
+              <span style={{ minWidth: 110 }}>{ACTION_PL[r.action] ?? r.action}</span>
+              <span style={styles.dim}>{r.country}</span>
+              <span style={{ flex: 1 }} />
+              {r.weight_kg != null && <span style={styles.dim}>{r.weight_kg} kg</span>}
+              {r.amount != null && <span style={styles.dim}>{r.amount}</span>}
+              <span style={styles.dim}>{new Date(r.created_at).toLocaleDateString("pl-PL")}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FuelBlock({
   title,
-  groups,
-  unit,
+  rows,
   full = false,
 }: {
   title: string;
-  groups: Group[];
-  unit: string;
+  rows: FuelRaw[];
   full?: boolean;
 }) {
-  if (groups.length === 0) return null;
-  const all = groups.flatMap((g) => g.entries);
-  const overall = summarizeFuel(all);
-  const overallCons = full ? consumptionFullToFull(all) : overall.avgConsumptionLPer100km;
+  if (rows.length === 0) return null;
+  const entries = rows.map(entry);
+  const s = summarizeFuel(entries);
+  const cons = full ? consumptionFullToFull(entries) : s.avgConsumptionLPer100km;
+  const sorted = [...rows].sort((a, b) => b.odometer_km - a.odometer_km);
 
   return (
-    <>
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 36 }}>{title}</h2>
-      <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
-        <Stat label="Wpisów" value={String(overall.count)} />
-        <Stat label={`Litry (${unit})`} value={String(overall.totalLiters)} />
-        <Stat
-          label="Śr. zużycie"
-          value={overallCons != null ? `${overallCons} ${unit}/100km` : "—"}
-        />
-        <Stat label="Wydatek" value={String(overall.totalSpend)} />
+    <div style={{ marginTop: 24 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{title}</h3>
+      <div style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+        <Stat label="Wpisów" value={String(s.count)} />
+        <Stat label="Litry" value={`${s.totalLiters} L`} />
+        <Stat label="Śr. zużycie" value={cons != null ? `${cons} L/100km` : "—"} />
+        <Stat label="Wydatek" value={String(s.totalSpend)} />
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-        {groups.map((g) => {
-          const s = summarizeFuel(g.entries);
-          const cons = full ? consumptionFullToFull(g.entries) : s.avgConsumptionLPer100km;
-          return (
-            <div key={g.id} style={styles.row}>
-              <strong style={{ minWidth: 110 }}>{g.label}</strong>
-              <span style={styles.cell}>{s.count} wp.</span>
-              <span style={styles.cell}>
-                {s.totalLiters} {unit}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
+        {sorted.map((r) => (
+          <div key={r.id} style={styles.line}>
+            <span style={{ minWidth: 90 }}>{round2(Number(r.liters))} L</span>
+            <span style={styles.dim}>{r.odometer_km} km</span>
+            {!full ? null : r.is_full !== false ? (
+              <span style={{ ...styles.badge, color: "#22c55e", borderColor: "#22c55e" }}>
+                do pełna
               </span>
-              <span style={styles.cell}>{cons != null ? `${cons} ${unit}/100km` : "—"}</span>
-              <span style={styles.cell}>{s.totalSpend}</span>
-            </div>
-          );
-        })}
+            ) : (
+              <span
+                style={{ ...styles.badge, color: palette.warning, borderColor: palette.warning }}
+              >
+                częściowe
+              </span>
+            )}
+            <span style={styles.dim}>{r.station_country}</span>
+            <span style={{ flex: 1 }} />
+            {r.price_total != null && <span style={styles.dim}>{r.price_total}</span>}
+            <span style={styles.dim}>{new Date(r.created_at).toLocaleDateString("pl-PL")}</span>
+          </div>
+        ))}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -207,36 +248,48 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
-        minWidth: 150,
-        padding: 18,
+        minWidth: 140,
+        padding: 14,
         borderRadius: 12,
         background: palette.nearBlack,
         border: `1px solid ${palette.graphite}`,
       }}
     >
       <div style={{ color: palette.smoke, fontSize: 12 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 6, color: palette.red }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: palette.red }}>{value}</div>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  row: {
-    display: "flex",
-    gap: 16,
-    alignItems: "center",
-    padding: "12px 16px",
-    borderRadius: 10,
+  tile: {
+    minWidth: 200,
+    textAlign: "left",
+    padding: 18,
+    borderRadius: 14,
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,
-  },
-  cell: { color: palette.smoke, fontSize: 14, minWidth: 90 },
-  tag: {
     color: palette.offWhite,
-    fontSize: 13,
-    background: palette.coal,
+    cursor: "pointer",
+  },
+  back: {
+    background: "transparent",
+    color: palette.offWhite,
     border: `1px solid ${palette.graphite}`,
     borderRadius: 8,
-    padding: "4px 10px",
+    padding: "7px 12px",
+    cursor: "pointer",
   },
+  line: {
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+    padding: "8px 14px",
+    borderRadius: 8,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    fontSize: 14,
+  },
+  dim: { color: palette.smoke, fontSize: 13 },
+  badge: { fontSize: 11, padding: "2px 8px", borderRadius: 999, border: "1px solid" },
 };

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-41-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.40.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-42-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.41.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.41.0] — 📊 Statystyki per‑pojazd + pojemności zbiorników
+
+- `[#042]` 📊 **Statystyki uporządkowane wg pojazdu + pola pojemności zbiorników.**
+  - **DB** [`0018`](supabase/migrations/0018_vehicle_tanks.sql): `vehicles.fuel_tank_l`, `adblue_tank_l`.
+  - **Web** [`/vehicles`](apps/web/app/(app)/vehicles/page.tsx): pola **pojemność zbiornika paliwa i AdBlue** (formularz + szczegóły auta).
+  - **Web** [`/stats`](apps/web/app/(app)/stats/page.tsx): **kafelki pojazdów** → klik wchodzi w pojazd → **rozwinięcie z poszczególnymi tankowaniami** (paliwo/AdBlue z oznaczeniem „do pełna/częściowe") i zdarzeniami trasy. Spalanie „od pełna do pełna", a **tankowania częściowe wliczane** do litrów/kosztów.
+  - **Bramki:** biome czysto · `tsc` ×7 · build ✓.
 
 ## [0.40.0] — ✏️ Edycja formularzy (paliwo / AdBlue / Trasa)
 
