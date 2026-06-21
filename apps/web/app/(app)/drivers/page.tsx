@@ -1,0 +1,160 @@
+"use client";
+
+import { createInvite, getActiveMembership } from "@e-logistic/api";
+import { createTranslator } from "@e-logistic/i18n";
+import { palette } from "@e-logistic/ui";
+import { useEffect, useState } from "react";
+import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useFleet } from "@/lib/useFleet";
+
+const t = createTranslator("pl");
+
+export default function DriversPage() {
+  const { vehicles } = useFleet();
+  const [canInvite, setCanInvite] = useState(false);
+  const [vehicleId, setVehicleId] = useState("");
+  const [link, setLink] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const m = await getActiveMembership(getBrowserSupabase());
+        setCanInvite(m?.role === "owner" || m?.role === "dispatcher");
+      } catch {
+        setCanInvite(false);
+      }
+    })();
+  }, []);
+
+  async function generate() {
+    setBusy(true);
+    setError(null);
+    setLink(null);
+    setQr(null);
+    try {
+      const token = await createInvite(getBrowserSupabase(), {
+        role: "driver",
+        vehicleId: vehicleId || undefined,
+      });
+      const url = `${window.location.origin}/join?token=${token}`;
+      setLink(url);
+      const QR = (await import("qrcode")).default;
+      setQr(await QR.toDataURL(url, { width: 220, margin: 1 }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się utworzyć zaproszenia.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function copy() {
+    if (link) navigator.clipboard?.writeText(link);
+  }
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.drivers")}</h1>
+      <p style={{ color: palette.smoke, marginTop: 4 }}>
+        Zaproś kierowcę linkiem lub kodem QR — dołączy do firmy po zalogowaniu.
+      </p>
+
+      {!canInvite ? (
+        <p style={{ color: palette.smoke, marginTop: 16 }}>
+          Tylko właściciel lub spedytor może generować zaproszenia.
+        </p>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            marginTop: 20,
+            maxWidth: 360,
+          }}
+        >
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 12, color: palette.smoke }}>
+              Przypisz pojazd (opcjonalnie)
+            </span>
+            <select
+              style={styles.input}
+              value={vehicleId}
+              onChange={(e) => setVehicleId(e.target.value)}
+            >
+              <option value="">— bez pojazdu —</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.registration}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" style={styles.primary} onClick={generate} disabled={busy}>
+            {busy ? "Generuję…" : "Generuj zaproszenie"}
+          </button>
+          {error && <p style={{ color: palette.red, fontSize: 13 }}>{error}</p>}
+        </div>
+      )}
+
+      {link && (
+        <div style={styles.card}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Zaproszenie gotowe (ważne 7 dni)</div>
+          {qr && (
+            // biome-ignore lint/performance/noImgElement: data-URL QR, nie wymaga next/image
+            <img
+              src={qr}
+              alt="Kod QR zaproszenia"
+              width={220}
+              height={220}
+              style={{ borderRadius: 8, background: palette.white, padding: 8 }}
+            />
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+            <input style={{ ...styles.input, flex: 1 }} readOnly value={link} />
+            <button type="button" style={styles.ghost} onClick={copy}>
+              Kopiuj
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  input: {
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "10px 12px",
+    color: palette.offWhite,
+  },
+  primary: {
+    background: palette.red,
+    color: palette.white,
+    border: "none",
+    borderRadius: 8,
+    padding: "11px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  ghost: {
+    background: "transparent",
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "10px 12px",
+    cursor: "pointer",
+  },
+  card: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 12,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    maxWidth: 360,
+  },
+};
