@@ -2,7 +2,10 @@
 import type { DefectInput, DefectStatus } from "@e-logistic/core";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function listDefects(client: SupabaseClient, opts?: { vehicleId?: string }) {
+export async function listDefects(
+  client: SupabaseClient,
+  opts?: { vehicleId?: string; limit?: number },
+) {
   let q = client
     .from("vehicle_defects")
     .select(
@@ -10,6 +13,7 @@ export async function listDefects(client: SupabaseClient, opts?: { vehicleId?: s
     )
     .order("created_at", { ascending: false });
   if (opts?.vehicleId) q = q.eq("vehicle_id", opts.vehicleId);
+  if (opts?.limit) q = q.limit(opts.limit);
   const { data, error } = await q;
   if (error) throw error;
   return data ?? [];

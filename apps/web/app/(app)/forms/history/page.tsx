@@ -79,9 +79,9 @@ export default function FormsHistoryPage() {
       const m = await getActiveMembership(sb);
       if (m) {
         const [fuel, adblue, trips, vehicles] = await Promise.all([
-          listFuelLogs(sb),
-          listFuelLogs(sb, { table: "adblue_logs" }),
-          listTripEvents(sb),
+          listFuelLogs(sb, { limit: 1000 }),
+          listFuelLogs(sb, { table: "adblue_logs", limit: 1000 }),
+          listTripEvents(sb, { limit: 1000 }),
           listVehicles(sb, m.companyId),
         ]);
         const map = new Map(

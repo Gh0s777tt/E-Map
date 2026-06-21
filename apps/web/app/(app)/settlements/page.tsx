@@ -91,10 +91,13 @@ export default function SettlementsPage() {
     setBusy(true);
     try {
       const sb = getBrowserSupabase();
+      // Zakres dat filtrowany po stronie bazy (mniej danych w transferze) — `to` do końca dnia.
+      const toEnd = `${to}T23:59:59.999Z`;
+      const range = { from, to: toEnd };
       const [f, a, t] = await Promise.all([
-        listFuelLogs(sb, { vehicleId }),
-        listFuelLogs(sb, { vehicleId, table: "adblue_logs" }),
-        listTripEvents(sb, { vehicleId }),
+        listFuelLogs(sb, { vehicleId, ...range }),
+        listFuelLogs(sb, { vehicleId, table: "adblue_logs", ...range }),
+        listTripEvents(sb, { vehicleId, ...range }),
       ]);
       const fFilt = (f as FuelRow[]).filter((r) => inRange(r.created_at, from, to));
       const aFilt = (a as FuelRow[]).filter((r) => inRange(r.created_at, from, to));

@@ -77,7 +77,7 @@ export default function ReportsPage() {
       const sb = getBrowserSupabase();
       const m = await getActiveMembership(sb);
       setCanManage(m?.role === "owner" || m?.role === "dispatcher");
-      if (m) setDefects((await listDefects(sb)) as Defect[]);
+      if (m) setDefects((await listDefects(sb, { limit: 500 })) as Defect[]);
     } catch {
       setDefects([]);
     }

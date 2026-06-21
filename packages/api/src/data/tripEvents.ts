@@ -61,10 +61,19 @@ export async function updateTripEvent(client: SupabaseClient, id: string, input:
   if (error) throw error;
 }
 
-/** Lista zdarzeń Trip (RLS zawęża do kierowcy/firmy). */
-export async function listTripEvents(client: SupabaseClient, opts?: { vehicleId?: string }) {
+/**
+ * Lista zdarzeń Trip (RLS zawęża do kierowcy/firmy).
+ * Filtry `from`/`to` (zakres `created_at`, ISO) i `limit` ograniczają transfer.
+ */
+export async function listTripEvents(
+  client: SupabaseClient,
+  opts?: { vehicleId?: string; from?: string; to?: string; limit?: number },
+) {
   let query = client.from("trip_events").select("*").order("created_at", { ascending: false });
   if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  if (opts?.to) query = query.lte("created_at", opts.to);
+  if (opts?.limit) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
