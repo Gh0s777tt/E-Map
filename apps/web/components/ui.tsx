@@ -130,6 +130,24 @@ export function BarChart({
   );
 }
 
+/**
+ * Komunikat onboardingu (brak firmy / brak pojazdów) — wcześniej kopiowany 3×.
+ * `source` z `useFleet`/membership; teksty nadpisywalne per strona.
+ */
+export function SetupNotice({
+  source,
+  noCompany = "Najpierw utwórz firmę na Pulpicie.",
+  noVehicles = "Dodaj pojazd w zakładce Pojazdy, aby kontynuować.",
+}: {
+  source: string;
+  noCompany?: string;
+  noVehicles?: string;
+}) {
+  const msg = source === "no-company" ? noCompany : source === "no-vehicles" ? noVehicles : null;
+  if (!msg) return null;
+  return <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {msg}</p>;
+}
+
 /** Kolorowy „pill" statusu/etykiety (np. severity, status). */
 export function Badge({
   color = palette.smoke,

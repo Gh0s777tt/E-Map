@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-83-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.60.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-84-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.60.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.60.1] — 🧱 Wspólne prymitywy UI: SetupNotice + dedup Field (P2)
+
+- `[#084]` 🧱 **Porządki UI (mniej duplikacji):**
+  - Nowy [`SetupNotice`](apps/web/components/ui.tsx) (komunikat brak‑firmy/brak‑pojazdów) — wpięty w [Rozliczenia](apps/web/app/(app)/settlements/page.tsx) (czysty przypadek renderowy).
+  - [LiquidForm](apps/web/components/LiquidForm.tsx) używa wspólnego [`Field`](apps/web/components/Field.tsx) zamiast lokalnej kopii (usunięte ~18 linii duplikatu).
+  - Uwaga: w Usterkach/Trip `setupMsg` steruje też logiką (blokada/submit), więc tam pozostaje — to nie czysta duplikacja.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.60.0] — 🔐 Rozliczenia jako osobny moduł uprawnień (P2 #12)
 
