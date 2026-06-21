@@ -1,5 +1,6 @@
 "use client";
 
+import { getFuelLog, updateFuelLog } from "@e-logistic/api";
 import { fuelLogSchema, PAYMENT_METHODS } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -7,6 +8,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { enqueue } from "@/lib/outbox";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 /** Z etykiety geokodera „Miasto, …, Kraj" wyciąga miasto (pierwszy człon) i kraj (ostatni). */
@@ -48,10 +50,48 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const table = kind === "adblue" ? "adblue_logs" : "fuel_logs";
+
+  // Tryb edycji: ?edit=<id> → wczytaj istniejący wpis i wypełnij pola.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("edit");
+    if (!id) return;
+    setEditId(id);
+    (async () => {
+      try {
+        const row = (await getFuelLog(getBrowserSupabase(), id, table)) as {
+          vehicle_id: string;
+          station_country: string;
+          station_city: string | null;
+          odometer_km: number;
+          liters: number;
+          is_full?: boolean;
+          payment_method: "card" | "cash";
+          fuel_card_id: string | null;
+          price_total: number | null;
+          comment: string | null;
+        };
+        setVehicleId(row.vehicle_id);
+        setCountry(row.station_country);
+        setCity(row.station_city ?? "");
+        setOdometerKm(String(row.odometer_km));
+        setLiters(String(row.liters));
+        setIsFull(row.is_full !== false);
+        setPaymentMethod(row.payment_method);
+        if (row.fuel_card_id) setFuelCardId(row.fuel_card_id);
+        setPriceTotal(row.price_total != null ? String(row.price_total) : "");
+        setComment(row.comment ?? "");
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : "Nie udało się wczytać wpisu do edycji.");
+      }
+    })();
+  }, [table]);
 
   useEffect(() => {
-    if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
-  }, [vehicles, vehicleId]);
+    if (!editId && !vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
+  }, [vehicles, vehicleId, editId]);
   useEffect(() => {
     if (!fuelCardId && cards[0]) setFuelCardId(cards[0].id);
   }, [cards, fuelCardId]);
@@ -99,6 +139,19 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
       return;
     }
 
+    if (editId) {
+      try {
+        await updateFuelLog(getBrowserSupabase(), editId, parsed.data, table);
+        setStatus("✅ Zmiany zapisane. Przekierowuję do historii…");
+        setTimeout(() => {
+          window.location.href = "/forms/history";
+        }, 900);
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : "Błąd zapisu zmian.");
+      }
+      return;
+    }
+
     const item = await enqueue(kind, parsed.data, new Date().toISOString());
     setStatus(
       item.status === "synced"
@@ -116,7 +169,10 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
   return (
     <div style={{ maxWidth: 520 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{title}</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>
+        {title}
+        {editId ? " · edycja" : ""}
+      </h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
         Walidacja na współdzielonym schemacie Zod (offline-first).{" "}
         <Link href="/forms/history" style={{ color: palette.red }}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { getActiveMembership, notifyCompany } from "@e-logistic/api";
+import { getActiveMembership, getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
 import { TRIP_ACTIONS, tripEventSchema } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -44,10 +44,42 @@ export default function TripFormPage() {
   const [comment, setComment] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  // Tryb edycji: ?edit=<id> → wczytaj istniejące zdarzenie.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("edit");
+    if (!id) return;
+    setEditId(id);
+    (async () => {
+      try {
+        const row = (await getTripEvent(getBrowserSupabase(), id)) as {
+          vehicle_id: string;
+          action: (typeof TRIP_ACTIONS)[number];
+          country: string;
+          location: string | null;
+          odometer_km: number;
+          weight_kg: number | null;
+          amount: number | null;
+          comment: string | null;
+        };
+        setVehicleId(row.vehicle_id);
+        setAction(row.action);
+        setCountry(row.country);
+        setLocation(row.location ?? "");
+        setOdometerKm(String(row.odometer_km));
+        setWeightKg(row.weight_kg != null ? String(row.weight_kg) : "");
+        setAmount(row.amount != null ? String(row.amount) : "");
+        setComment(row.comment ?? "");
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : "Nie udało się wczytać zdarzenia do edycji.");
+      }
+    })();
+  }, []);
 
   useEffect(() => {
-    if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
-  }, [vehicles, vehicleId]);
+    if (!editId && !vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
+  }, [vehicles, vehicleId, editId]);
 
   const needsWeight = action === "load" || action === "unload";
   const needsAmount = action === "service" || action === "other";
@@ -94,6 +126,19 @@ export default function TripFormPage() {
       return;
     }
 
+    if (editId) {
+      try {
+        await updateTripEvent(getBrowserSupabase(), editId, parsed.data);
+        setStatus("✅ Zmiany zapisane. Przekierowuję do historii…");
+        setTimeout(() => {
+          window.location.href = "/forms/history";
+        }, 900);
+      } catch (e) {
+        setStatus(e instanceof Error ? e.message : "Błąd zapisu zmian.");
+      }
+      return;
+    }
+
     const item = await enqueue("trip", parsed.data, new Date().toISOString());
 
     // Kontrola przeładowania: waga załadunku > maks. ładowność pojazdu.
@@ -134,7 +179,10 @@ export default function TripFormPage() {
 
   return (
     <div style={{ maxWidth: 520 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("form.trip.title")}</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>
+        {t("form.trip.title")}
+        {editId ? " · edycja" : ""}
+      </h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
         Pola zależne od akcji (walidacja warunkowa Zod).{" "}
         <Link href="/forms/history" style={{ color: palette.red }}>

@@ -45,6 +45,22 @@ export async function insertTripEvent(
   return data;
 }
 
+/** Pojedyncze zdarzenie Trip (do edycji). */
+export async function getTripEvent(client: SupabaseClient, id: string) {
+  const { data, error } = await client.from("trip_events").select("*").eq("id", id).single();
+  if (error) throw error;
+  return data;
+}
+
+/** Edycja zdarzenia Trip. RLS: autor (kierowca) lub owner. Geo nadpisywane tylko gdy podane. */
+export async function updateTripEvent(client: SupabaseClient, id: string, input: TripEventInput) {
+  const row = tripEventToRow(input, { id, companyId: "", driverId: "" });
+  const { id: _id, company_id: _c, driver_id: _d, device_id: _dev, geo, ...rest } = row;
+  const patch = geo === null ? rest : { ...rest, geo };
+  const { error } = await client.from("trip_events").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
 /** Lista zdarzeń Trip (RLS zawęża do kierowcy/firmy). */
 export async function listTripEvents(client: SupabaseClient, opts?: { vehicleId?: string }) {
   let query = client.from("trip_events").select("*").order("created_at", { ascending: false });

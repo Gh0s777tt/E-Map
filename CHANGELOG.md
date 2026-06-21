@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-40-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.39.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-41-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.40.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.40.0] — ✏️ Edycja formularzy (paliwo / AdBlue / Trasa)
+
+- `[#041]` ✏️ **Edycja wcześniej zapisanych formularzy, nie tylko dodawanie/usuwanie.**
+  - **`packages/api`** — [`getFuelLog`/`updateFuelLog`](packages/api/src/data/fuelLogs.ts), [`getTripEvent`/`updateTripEvent`](packages/api/src/data/tripEvents.ts) (RLS: autor lub owner; geo nadpisywane tylko gdy podane).
+  - **Web** — formularze [Paliwo/AdBlue](apps/web/components/LiquidForm.tsx) i [Trasa](apps/web/app/(app)/forms/trip/page.tsx) obsługują tryb `?edit=<id>` (wczytanie + aktualizacja + powrót do historii).
+  - **Web** [Historia](apps/web/app/(app)/forms/history/page.tsx): przy zsynchronizowanych wpisach przycisk **„Edytuj"**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 54 testy · build ✓.
 
 ## [0.39.0] — ⛽ „Do pełna" + statystyki AdBlue i Tras
 

@@ -4,6 +4,7 @@ import { getActiveMembership, listFuelLogs, listTripEvents, listVehicles } from 
 import type { FuelLogInput, TripEventInput } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { vehicleLabel } from "@/lib/demo";
 import { listOutbox, type OutboxItem, removeOutbox, trySync } from "@/lib/outbox";
@@ -22,6 +23,7 @@ type Row = {
   status: Status;
   error?: string;
   outboxId?: string;
+  dbId?: string;
 };
 
 const STATUS: Record<Status, { label: string; color: string }> = {
@@ -102,6 +104,7 @@ export default function FormsHistoryPage() {
             title: `${labelOf(r.vehicle_id)} · ${r.liters} L · ${r.odometer_km} km`,
             sub: `${r.station_country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
             status: "synced",
+            dbId: r.id,
           }));
         const tripRows = (
           trips as {
@@ -119,6 +122,7 @@ export default function FormsHistoryPage() {
           title: `${labelOf(r.vehicle_id)} · ${ACTION_PL[r.action] ?? r.action} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
           sub: `${r.country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
           status: "synced",
+          dbId: r.id,
         }));
 
         const pending = outbox
@@ -178,6 +182,14 @@ export default function FormsHistoryPage() {
                 <span style={{ ...styles.badge, color: st.color, borderColor: st.color }}>
                   {st.label}
                 </span>
+                {r.status === "synced" && r.dbId && (
+                  <Link
+                    href={`/forms/${r.kind}?edit=${r.dbId}`}
+                    style={{ ...styles.btn, textDecoration: "none" }}
+                  >
+                    Edytuj
+                  </Link>
+                )}
                 {r.status !== "synced" && r.outboxId && (
                   <>
                     <button

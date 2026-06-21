@@ -46,6 +46,31 @@ export async function insertFuelLog(
   return data;
 }
 
+/** Pojedynczy wpis (do edycji). */
+export async function getFuelLog(
+  client: SupabaseClient,
+  id: string,
+  table: "fuel_logs" | "adblue_logs" = "fuel_logs",
+) {
+  const { data, error } = await client.from(table).select("*").eq("id", id).single();
+  if (error) throw error;
+  return data;
+}
+
+/** Edycja wpisu paliwo/AdBlue. RLS: autor (kierowca) lub owner. Geo nadpisywane tylko gdy podane. */
+export async function updateFuelLog(
+  client: SupabaseClient,
+  id: string,
+  input: FuelLogInput,
+  table: "fuel_logs" | "adblue_logs" = "fuel_logs",
+) {
+  const row = fuelLogToRow(input, { id, companyId: "", driverId: "" });
+  const { id: _id, company_id: _c, driver_id: _d, device_id: _dev, geo, ...rest } = row;
+  const patch = geo === null ? rest : { ...rest, geo };
+  const { error } = await client.from(table).update(patch).eq("id", id);
+  if (error) throw error;
+}
+
 /** Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy). */
 export async function listFuelLogs(
   client: SupabaseClient,
