@@ -819,6 +819,48 @@ export interface Database {
         };
         Relationships: [];
       };
+      service_tasks: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string;
+          name: string;
+          interval_km: number | null;
+          interval_months: number | null;
+          last_done_km: number | null;
+          last_done_date: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id: string;
+          name: string;
+          interval_km?: number | null;
+          interval_months?: number | null;
+          last_done_km?: number | null;
+          last_done_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string;
+          name?: string;
+          interval_km?: number | null;
+          interval_months?: number | null;
+          last_done_km?: number | null;
+          last_done_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       trip_event_revisions: {
         Row: {
           id: string;
