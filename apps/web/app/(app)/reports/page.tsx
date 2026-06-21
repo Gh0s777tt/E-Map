@@ -13,7 +13,7 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
-import { PageHeader } from "@/components/ui";
+import { Badge, Button, PageHeader } from "@/components/ui";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -287,9 +287,9 @@ export default function ReportsPage() {
             {errors.description && <span style={styles.err}>{errors.description}</span>}
           </label>
 
-          <button type="button" style={styles.primary} onClick={submit}>
+          <Button onClick={submit} style={{ alignSelf: "flex-start", minWidth: 160 }}>
             Zgłoś usterkę
-          </button>
+          </Button>
           {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
         </div>
       </div>
@@ -314,56 +314,28 @@ export default function ReportsPage() {
                 </div>
                 <div style={{ color: palette.smoke, fontSize: 13 }}>{d.description}</div>
               </div>
-              <span
-                style={{
-                  ...styles.badge,
-                  color: SEV_COLOR[d.severity],
-                  borderColor: SEV_COLOR[d.severity],
-                }}
-              >
-                {SEV_LABEL[d.severity] ?? d.severity}
-              </span>
-              <span
-                style={{
-                  ...styles.badge,
-                  color: STATUS_COLOR[d.status],
-                  borderColor: STATUS_COLOR[d.status],
-                }}
-              >
-                {STATUS_LABEL[d.status] ?? d.status}
-              </span>
+              <Badge color={SEV_COLOR[d.severity]}>{SEV_LABEL[d.severity] ?? d.severity}</Badge>
+              <Badge color={STATUS_COLOR[d.status]}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
               {canManage && (
                 <>
                   {d.status !== "in_progress" && d.status !== "resolved" && (
-                    <button
-                      type="button"
-                      style={styles.btn}
-                      onClick={() => changeStatus(d.id, "in_progress")}
-                    >
+                    <Button variant="ghost" onClick={() => changeStatus(d.id, "in_progress")}>
                       W naprawie
-                    </button>
+                    </Button>
                   )}
                   {d.status !== "resolved" && (
-                    <button
-                      type="button"
-                      style={styles.btn}
-                      onClick={() => changeStatus(d.id, "resolved")}
-                    >
+                    <Button variant="ghost" onClick={() => changeStatus(d.id, "resolved")}>
                       Naprawione
-                    </button>
+                    </Button>
                   )}
                   {d.status === "resolved" && (
-                    <button
-                      type="button"
-                      style={styles.btn}
-                      onClick={() => changeStatus(d.id, "open")}
-                    >
+                    <Button variant="ghost" onClick={() => changeStatus(d.id, "open")}>
                       Otwórz
-                    </button>
+                    </Button>
                   )}
-                  <button type="button" style={styles.danger} onClick={() => remove(d.id)}>
+                  <Button variant="danger" onClick={() => remove(d.id)}>
                     🗑️
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -395,17 +367,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: palette.offWhite,
     width: "100%",
   },
-  primary: {
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "12px",
-    fontWeight: 700,
-    cursor: "pointer",
-    alignSelf: "flex-start",
-    minWidth: 160,
-  },
   row: {
     display: "flex",
     gap: 10,
@@ -414,29 +375,5 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 10,
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,
-  },
-  badge: {
-    fontSize: 11,
-    padding: "3px 9px",
-    borderRadius: 999,
-    border: "1px solid",
-    whiteSpace: "nowrap",
-  },
-  btn: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "6px 10px",
-    cursor: "pointer",
-    fontSize: 13,
-  },
-  danger: {
-    background: "transparent",
-    color: palette.red,
-    border: `1px solid ${palette.red}`,
-    borderRadius: 8,
-    padding: "6px 10px",
-    cursor: "pointer",
   },
 };
