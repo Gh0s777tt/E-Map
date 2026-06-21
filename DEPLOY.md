@@ -25,9 +25,16 @@ a instalacja zależności i tak idzie z roota workspace’u (Vercel sam wykrywa 
 | `NEXT_PUBLIC_SUPABASE_URL` | wszystkie | publiczna (URL projektu Supabase) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | wszystkie | publiczna (klucz anon) |
 | `SUPABASE_SERVICE_ROLE_KEY` | wszystkie | **sekret** — tylko serwer |
-| `GRAPHHOPPER_API_KEY` | wszystkie | **sekret** — używany w `/api/route` (runtime) |
+| `HERE_API_KEY` | wszystkie | **sekret** — routing TIR + myto (`/api/route`) |
+| `GRAPHHOPPER_API_KEY` | wszystkie | **sekret** — fallback routingu (`/api/route`) |
+| `NEXT_PUBLIC_MAPTILER_KEY` | wszystkie | publiczna — render mapy/geokoder |
+| `NEXT_PUBLIC_SITE_URL` | wszystkie | zaufana domena dla WebAuthn/passkey (np. `https://e-logistic-one.vercel.app`) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` / `CRON_SECRET` | wszystkie | powiadomienia push — patrz **§7** |
+| `FUEL_PRICE_API_KEY` | wszystkie | ceny paliwa (Tankerkönig DE) — patrz **§8** |
 
-Te same klucze trzymaj lokalnie w `apps/web/.env.local` (szablon: `.env.example`).
+Pełna, kompletna lista jest w [`turbo.json`](turbo.json) (`globalEnv`). Te same klucze trzymaj lokalnie
+w `apps/web/.env.local` (szablon: [`.env.example`](.env.example)).
+> Uwaga: repozytorium nazywa się historycznie `Gh0s777tt/E-Map` (produkt: **E‑Logistic**).
 W [`turbo.json`](turbo.json) są zadeklarowane w `globalEnv`, żeby Turbo nie przycinał ich przy buildzie.
 
 ## 3. Supabase — Auth (KRYTYCZNE dla logowania)

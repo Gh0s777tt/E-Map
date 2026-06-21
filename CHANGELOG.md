@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-52-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.51.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-53-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.51.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.51.1] — 📚 Synchronizacja dokumentacji ze stanem kodu
+
+- `[#053]` 📚 **Domknięcie rozjazdów dokumentacji wykrytych w audycie.**
+  - [`.env.example`](.env.example) przepisany 1:1 wg [`turbo.json`](turbo.json) (usunięte nieużywane POWERSYNC/TWILIO/OAuth/SENTRY; dodane HERE/MAPTILER/SITE_URL/VAPID/CRON/FUEL_PRICE).
+  - [`DEPLOY.md`](DEPLOY.md): tabela env uzupełniona (HERE, MapTiler, SITE_URL, VAPID/CRON, FUEL_PRICE) + nota o nazwie repo.
+  - [`README.md`](README.md): tabela modułów zaktualizowana (Usterki, Rozliczenia, Powiadomienia push, ceny paliwa, PII szyfrowane, 2FA egzekwowane) — statusy „gotowe".
+  - [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md): sekcja **„Aktualny schemat (v0.51.0)"** — wszystkie tabele/kolumny/RPC z migracji 0001–0023 + nota o kolizjach numeracji.
+  - **Bramki:** biome czysto (docs). Bez zmian w kodzie.
 
 ## [0.51.0] — 🛡️ Bezpieczeństwo P2: nagłówki, walidacja Zod, anty‑spam cen
 
