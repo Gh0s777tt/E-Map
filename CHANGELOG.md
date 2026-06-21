@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-67-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.54.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-68-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.54.3-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.54.3] — 📱 Plan dojścia mobile do parytetu
+
+- `[#068]` 📱 **Fazowany plan wdrożenia mobile** — [docs/MOBILE-PLAN.md](docs/MOBILE-PLAN.md). M1 (sesja+dane), M2 (formularze offline na realnych danych), M3 (mapa/POI), M4 (push natywny), M5 (PowerSync opcjonalnie) — z dependami i krokami. Implementacja wymaga emulatora/urządzenia Expo (weryfikacja runtime), więc dowieziona jako konkretny plan, nie kod „na ślepo".
+  - **Bramki:** biome czysto (docs). Bez zmian w kodzie.
 
 ## [0.54.2] — 🎨 Kosmetyka UI: Button/Badge (start adopcji)
 
