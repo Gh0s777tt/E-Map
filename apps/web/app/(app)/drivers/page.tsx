@@ -1,10 +1,11 @@
 "use client";
 
-import { createInvite, getActiveMembership } from "@e-logistic/api";
+import { createInvite } from "@e-logistic/api";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { DriverRoster } from "@/components/DriverRoster";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -22,7 +23,7 @@ export default function DriversPage() {
   useEffect(() => {
     (async () => {
       try {
-        const m = await getActiveMembership(getBrowserSupabase());
+        const m = await getCachedMembership(getBrowserSupabase());
         setCanInvite(m?.role === "owner" || m?.role === "dispatcher");
       } catch {
         setCanInvite(false);

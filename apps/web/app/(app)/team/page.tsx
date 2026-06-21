@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  type CompanyMember,
-  getActiveMembership,
-  listCompanyMembers,
-  updateMember,
-} from "@e-logistic/api";
+import { type CompanyMember, listCompanyMembers, updateMember } from "@e-logistic/api";
 import { APP_MODULE_LABELS, APP_MODULES, type AppModule, effectiveModules } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export default function TeamPage() {
@@ -20,7 +16,7 @@ export default function TeamPage() {
   const load = useCallback(async () => {
     try {
       const sb = getBrowserSupabase();
-      const m = await getActiveMembership(sb);
+      const m = await getCachedMembership(sb);
       setIsOwner(m?.role === "owner");
       setCompanyId(m?.companyId ?? null);
       if (m) setMembers(await listCompanyMembers(sb));

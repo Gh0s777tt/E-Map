@@ -2,7 +2,6 @@
 
 import {
   deleteVehicle,
-  getActiveMembership,
   insertVehicle,
   listFuelCardsByVehicle,
   listVehicles,
@@ -19,6 +18,7 @@ import {
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type DbVehicle = {
@@ -83,7 +83,7 @@ export default function VehiclesPage() {
   const loadVehicles = useCallback(async () => {
     try {
       const supabase = getBrowserSupabase();
-      const membership = await getActiveMembership(supabase);
+      const membership = await getCachedMembership(supabase);
       if (!membership) {
         setDbVehicles([]);
         return;
@@ -216,7 +216,7 @@ export default function VehiclesPage() {
 
     try {
       const supabase = getBrowserSupabase();
-      const membership = await getActiveMembership(supabase);
+      const membership = await getCachedMembership(supabase);
       if (!membership) {
         setStatus("📥 Brak firmy — utwórz firmę w panelu, by zapisać w bazie.");
         return;

@@ -1,8 +1,9 @@
 "use client";
 
-import { deletePushSubscription, getActiveMembership, savePushSubscription } from "@e-logistic/api";
+import { deletePushSubscription, savePushSubscription } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
@@ -74,7 +75,7 @@ export function PushToggle() {
         setMsg("Zaloguj się, aby włączyć powiadomienia.");
         return;
       }
-      const m = await getActiveMembership(sb).catch(() => null);
+      const m = await getCachedMembership(sb).catch(() => null);
       const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
         setMsg("Nie udało się utworzyć subskrypcji.");

@@ -1,12 +1,13 @@
 "use client";
 
-import { getActiveMembership, listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
+import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
 import type { FuelLogInput, TripEventInput } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { vehicleLabel } from "@/lib/demo";
+import { getCachedMembership } from "@/lib/membership";
 import { listOutbox, type OutboxItem, removeOutbox, trySync } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -76,7 +77,7 @@ export default function FormsHistoryPage() {
     const outbox = listOutbox();
     try {
       const sb = getBrowserSupabase();
-      const m = await getActiveMembership(sb);
+      const m = await getCachedMembership(sb);
       if (m) {
         const [fuel, adblue, trips, vehicles] = await Promise.all([
           listFuelLogs(sb, { limit: 1000 }),

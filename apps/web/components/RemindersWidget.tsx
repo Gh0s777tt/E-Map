@@ -1,9 +1,10 @@
 "use client";
 
-import { getActiveMembership, listVehiclesExpiry } from "@e-logistic/api";
+import { listVehiclesExpiry } from "@e-logistic/api";
 import { type ExpiryLevel, expiryStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Reminder = {
@@ -36,7 +37,7 @@ export function RemindersWidget() {
     (async () => {
       try {
         const sb = getBrowserSupabase();
-        const m = await getActiveMembership(sb);
+        const m = await getCachedMembership(sb);
         if (!m) return;
         const vehicles = (await listVehiclesExpiry(sb, m.companyId)) as VRow[];
         const today = new Date().toISOString().slice(0, 10);

@@ -1,8 +1,9 @@
 "use client";
 
-import { type DevStats, getActiveMembership, getDevStats } from "@e-logistic/api";
+import { type DevStats, getDevStats } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const STAT_LABEL: Record<string, string> = {
@@ -26,7 +27,7 @@ export default function DevPage() {
     (async () => {
       try {
         const sb = getBrowserSupabase();
-        const m = await getActiveMembership(sb);
+        const m = await getCachedMembership(sb);
         if (m?.role !== "developer") {
           setAllowed(false);
           return;

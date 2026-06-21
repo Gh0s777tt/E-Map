@@ -1,6 +1,6 @@
 "use client";
 
-import { getActiveMembership, getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
+import { getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
 import { TRIP_ACTIONS, tripEventSchema } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { PlaceSearch } from "@/components/PlaceSearch";
+import { getCachedMembership } from "@/lib/membership";
 import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -151,7 +152,7 @@ export default function TripFormPage() {
       overloadMsg = ` ⚠️ PRZEŁADOWANIE: ${w} kg > ładowność ${maxKg} kg (o ${over} kg)!`;
       try {
         const sb = getBrowserSupabase();
-        const m = await getActiveMembership(sb);
+        const m = await getCachedMembership(sb);
         if (m) {
           await notifyCompany(sb, {
             companyId: m.companyId,

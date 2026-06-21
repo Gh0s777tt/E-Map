@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-59-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.4-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-60-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.5-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.5] — 🚀 Cache członkostwa na wszystkich stronach
+
+- `[#060]` 🚀 **Pełny rollout `getCachedMembership`** — wszystkie strony i komponenty klienckie wołające rolę/firmę przepięte na cache (stats, historia, zespół, kierowcy, pojazdy, trip, dev, RemindersWidget, PushToggle). Zostają na bezpośrednim `getActiveMembership` tylko konteksty serwerowe (layout, `/api/push/send`), outbox (zapis) i bramka onboardingu (CompanyBanner). Domyka rekomendację wydajnościową z audytu (z ~23 odpytań robi się minimum).
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.4] — 🧩 Wspólne prymitywy UI (start)
 
