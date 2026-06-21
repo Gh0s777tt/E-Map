@@ -1,7 +1,7 @@
 "use client";
 
 import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
-import type { FuelLogInput, TripEventInput } from "@e-logistic/core";
+import { type FuelLogInput, type TripEventInput, toCsv } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -43,6 +43,16 @@ const ACTION_PL: Record<string, string> = {
   service: "Serwis",
   other: "Inne",
 };
+
+function download(filename: string, text: string) {
+  const blob = new Blob([`﻿${text}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
   const when = new Date(item.createdAt).toLocaleString("pl-PL");
@@ -189,6 +199,18 @@ export default function FormsHistoryPage() {
     { value: "trip", label: "Trip" },
   ];
 
+  function exportCsv() {
+    const headers = ["Typ", "Pojazd", "Opis", "Szczegóły", "Status"];
+    const csvRows = filtered.map((r) => [
+      KIND_LABEL[r.kind],
+      r.vehicle,
+      r.title,
+      r.sub,
+      STATUS[r.status].label,
+    ]);
+    download(`historia_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, csvRows));
+  }
+
   return (
     <div style={{ maxWidth: 760 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("common.history")}</h1>
@@ -228,6 +250,9 @@ export default function FormsHistoryPage() {
               </select>
             )}
             <span style={{ flex: 1 }} />
+            <Button variant="ghost" onClick={exportCsv}>
+              ⬇️ CSV
+            </Button>
             <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
               {filtered.length} z {rows.length}
             </span>
