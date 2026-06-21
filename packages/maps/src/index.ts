@@ -5,6 +5,7 @@
 
 export * from "./factory";
 export * from "./geo";
+export * from "./geocode";
 export * from "./graphhopper";
 export * from "./here";
 export * from "./mock";

@@ -4,16 +4,26 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { insertMapReport, listActiveMapReports } from "@e-logistic/api";
 import { newId, REPORT_TYPES, type ReportType } from "@e-logistic/core";
-import { fetchPois, type LatLng, type Poi, type RouteResult } from "@e-logistic/maps";
+import {
+  fetchPois,
+  type GeoHit,
+  geocode,
+  type LatLng,
+  type Poi,
+  type RouteResult,
+} from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
-import type { Map as MlMap, StyleSpecification } from "maplibre-gl";
+import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type MaplibreModule = typeof import("maplibre-gl");
 type RouteResponse = RouteResult & { tollEstimated?: boolean; fallback?: boolean };
-type Stop = { key: string; label: string; lat: number; lng: number; cityId?: string };
+type Stop = { key: string; label: string; lat: number; lng: number };
 type Report = { id: string; type: ReportType; lat: number; lng: number; comment: string | null };
+type BasemapKey = "dark" | "satellite" | "terrain" | "osm";
+
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
 
 const REPORT_LABEL: Record<ReportType, string> = {
   accident: "Wypadek",
@@ -32,36 +42,6 @@ const REPORT_COLOR: Record<ReportType, string> = {
   hazard: "#eab308",
 };
 
-function reportFeatures(reports: Report[]) {
-  return {
-    type: "FeatureCollection" as const,
-    features: reports.map((r) => ({
-      type: "Feature" as const,
-      properties: {
-        type: r.type,
-        label: REPORT_LABEL[r.type],
-        color: REPORT_COLOR[r.type],
-        comment: r.comment ?? "",
-      },
-      geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] as [number, number] },
-    })),
-  };
-}
-
-const CITIES = [
-  { id: "berlin", label: "Berlin", lat: 52.52, lng: 13.405 },
-  { id: "warszawa", label: "Warszawa", lat: 52.2297, lng: 21.0122 },
-  { id: "wieden", label: "Wiedeń", lat: 48.2082, lng: 16.3738 },
-  { id: "paryz", label: "Paryż", lat: 48.8566, lng: 2.3522 },
-  { id: "madryt", label: "Madryt", lat: 40.4168, lng: -3.7038 },
-  { id: "zurych", label: "Zurych", lat: 47.3769, lng: 8.5417 },
-] as const;
-
-function cityStop(key: string, cityId: string): Stop {
-  const c = CITIES.find((x) => x.id === cityId) ?? CITIES[0];
-  return { key, cityId, label: c.label, lat: c.lat, lng: c.lng };
-}
-
 const OSM_STYLE: StyleSpecification = {
   version: 8,
   sources: {
@@ -77,6 +57,25 @@ const OSM_STYLE: StyleSpecification = {
     { id: "osm", type: "raster", source: "osm", paint: { "raster-brightness-max": 0.85 } },
   ],
 };
+
+const mtStyle = (name: string) =>
+  `https://api.maptiler.com/maps/${name}/style.json?key=${MAPTILER_KEY}`;
+
+/** Dostępne podkłady (gdy jest klucz MapTiler — wektorowe/satelita/teren; inaczej tylko OSM). */
+const BASEMAPS: { key: BasemapKey; label: string }[] = MAPTILER_KEY
+  ? [
+      { key: "dark", label: "Ciemna" },
+      { key: "satellite", label: "Satelita" },
+      { key: "terrain", label: "Teren" },
+    ]
+  : [{ key: "osm", label: "Mapa (OSM)" }];
+
+function basemapStyle(key: BasemapKey): string | StyleSpecification {
+  if (!MAPTILER_KEY) return OSM_STYLE;
+  if (key === "satellite") return mtStyle("hybrid");
+  if (key === "terrain") return mtStyle("outdoor-v2");
+  return mtStyle("streets-v2-dark");
+}
 
 function routeFeature(coords: [number, number][]) {
   return {
@@ -102,18 +101,55 @@ function poiFeatures(pois: Poi[]) {
   };
 }
 
+function reportFeatures(reports: Report[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: reports.map((r) => ({
+      type: "Feature" as const,
+      properties: {
+        label: REPORT_LABEL[r.type],
+        color: REPORT_COLOR[r.type],
+        comment: r.comment ?? "",
+      },
+      geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] as [number, number] },
+    })),
+  };
+}
+
+const POI_LABEL: Record<string, string> = {
+  fuel_station: "Stacja paliw",
+  parking: "Parking",
+  company: "Firma",
+  wash: "Myjnia",
+  weigh: "Waga",
+};
+
 export default function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const mlRef = useRef<MaplibreModule | null>(null);
   const reportsRef = useRef<Report[]>([]);
+  const routeGeoRef = useRef<LatLng[] | null>(null);
+  const poisRef = useRef<Poi[]>([]);
+  const markersRef = useRef<MlMarker[]>([]);
   const reportModeRef = useRef(false);
   const reportTypeRef = useRef<ReportType>("accident");
+  const terrainOnRef = useRef(true);
+  const globeOnRef = useRef(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [stops, setStops] = useState<Stop[]>([
-    cityStop("s-start", "berlin"),
-    cityStop("s-end", "warszawa"),
+    { key: "s-start", label: "Berlin", lat: 52.52, lng: 13.405 },
+    { key: "s-end", label: "Warszawa", lat: 52.2297, lng: 21.0122 },
   ]);
+  const [queries, setQueries] = useState<Record<string, string>>({
+    "s-start": "Berlin",
+    "s-end": "Warszawa",
+  });
+  const [hits, setHits] = useState<Record<string, GeoHit[]>>({});
+  const [basemap, setBasemap] = useState<BasemapKey>(MAPTILER_KEY ? "dark" : "osm");
+  const [terrain3d, setTerrain3d] = useState(true);
+  const [globe, setGlobe] = useState(false);
   const [kindHeavy, setKindHeavy] = useState(true);
   const [avoidTolls, setAvoidTolls] = useState(false);
   const [avoidFerries, setAvoidFerries] = useState(false);
@@ -125,6 +161,7 @@ export default function MapPage() {
   const [reportMode, setReportMode] = useState(false);
   const [reportType, setReportType] = useState<ReportType>("accident");
   const [reportMsg, setReportMsg] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     reportModeRef.current = reportMode;
@@ -133,10 +170,10 @@ export default function MapPage() {
     reportTypeRef.current = reportType;
   }, [reportType]);
 
+  // ── Rysowanie warstw (tylko add/update źródła — handlery rejestrowane raz) ──
   const drawReports = useCallback(() => {
     const map = mapRef.current;
-    const ml = mlRef.current;
-    if (!map || !ml) return;
+    if (!map) return;
     const data = reportFeatures(reportsRef.current);
     const existing = map.getSource("reports");
     if (existing) {
@@ -155,21 +192,113 @@ export default function MapPage() {
         "circle-stroke-color": palette.white,
       },
     } as import("maplibre-gl").AddLayerObject);
-    map.on("click", "reports-layer", (e) => {
-      const f = e.features?.[0];
-      if (!f) return;
-      if (f.geometry.type !== "Point") return;
-      const p = f.properties as { label?: string; comment?: string } | null;
-      const [lng, lat] = f.geometry.coordinates as [number, number];
-      new ml.Popup()
-        .setLngLat([lng, lat])
-        .setHTML(
-          `<strong>${p?.label ?? "Zgłoszenie"}</strong>${p?.comment ? `<br/>${p.comment}` : ""}`,
-        )
-        .addTo(map);
-    });
   }, []);
 
+  const drawRoute = useCallback((geometry: LatLng[]) => {
+    const map = mapRef.current;
+    const ml = mlRef.current;
+    if (!map || !ml || geometry.length < 2) return;
+    const coords = geometry.map((p) => [p.lng, p.lat] as [number, number]);
+    const data = routeFeature(coords);
+    const existing = map.getSource("route");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+    } else {
+      map.addSource("route", { type: "geojson", data });
+      map.addLayer({
+        id: "route",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": palette.red, "line-width": 5 },
+      });
+    }
+  }, []);
+
+  const drawPois = useCallback((pois: Poi[]) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const data = poiFeatures(pois);
+    const existing = map.getSource("pois");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+      return;
+    }
+    map.addSource("pois", { type: "geojson", data });
+    map.addLayer({
+      id: "pois-layer",
+      type: "circle",
+      source: "pois",
+      paint: {
+        "circle-radius": 6,
+        "circle-color": [
+          "match",
+          ["get", "type"],
+          "fuel_station",
+          palette.red,
+          "parking",
+          "#22c55e",
+          "company",
+          "#3b82f6",
+          "#9ca3af",
+        ],
+        "circle-stroke-width": 1,
+        "circle-stroke-color": palette.black,
+      },
+    } as import("maplibre-gl").AddLayerObject);
+  }, []);
+
+  const add3dBuildings = useCallback((map: MlMap) => {
+    if (!MAPTILER_KEY || map.getLayer("3d-buildings")) return;
+    const sources = map.getStyle().sources as Record<string, { type?: string }>;
+    const vectorSrc = Object.keys(sources).find((id) => sources[id]?.type === "vector");
+    if (!vectorSrc) return;
+    try {
+      map.addLayer({
+        id: "3d-buildings",
+        source: vectorSrc,
+        "source-layer": "building",
+        type: "fill-extrusion",
+        minzoom: 13,
+        paint: {
+          "fill-extrusion-color": "#3a3a3a",
+          "fill-extrusion-height": ["coalesce", ["get", "render_height"], ["get", "height"], 0],
+          "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+          "fill-extrusion-opacity": 0.85,
+        },
+      } as import("maplibre-gl").AddLayerObject);
+    } catch {
+      // styl bez warstwy budynków — pomijamy
+    }
+  }, []);
+
+  // ── Po (prze)ładowaniu stylu: teren, budynki, projekcja, odtworzenie warstw ──
+  const applyOverlays = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (MAPTILER_KEY) {
+      if (!map.getSource("terrain-dem")) {
+        map.addSource("terrain-dem", {
+          type: "raster-dem",
+          url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`,
+        });
+      }
+      map.setTerrain(terrainOnRef.current ? { source: "terrain-dem", exaggeration: 1.25 } : null);
+      add3dBuildings(map);
+    }
+    try {
+      (map as unknown as { setProjection: (p: { type: string }) => void }).setProjection({
+        type: globeOnRef.current ? "globe" : "mercator",
+      });
+    } catch {
+      // starsza wersja bez globu
+    }
+    drawReports();
+    if (routeGeoRef.current) drawRoute(routeGeoRef.current);
+    if (poisRef.current.length) drawPois(poisRef.current);
+  }, [add3dBuildings, drawReports, drawRoute, drawPois]);
+
+  // ── Inicjalizacja mapy ──
   useEffect(() => {
     let map: MlMap | undefined;
     let channel: { unsubscribe: () => void } | null = null;
@@ -179,12 +308,16 @@ export default function MapPage() {
       if (!containerRef.current) return;
       map = new ml.Map({
         container: containerRef.current,
-        style: OSM_STYLE,
+        style: basemapStyle(MAPTILER_KEY ? "dark" : "osm"),
         center: [15, 50],
-        zoom: 3.6,
+        zoom: 4,
+        pitch: 45,
+        maxPitch: 80,
       });
       mapRef.current = map;
+      map.addControl(new ml.NavigationControl({ visualizePitch: true }), "top-right");
 
+      // Klik na mapie w trybie zgłoszeń.
       map.on("click", (e) => {
         if (!reportModeRef.current) return;
         insertMapReport(getBrowserSupabase(), {
@@ -194,7 +327,60 @@ export default function MapPage() {
         }).catch(() => setReportMsg("Nie udało się zgłosić (zaloguj się)."));
       });
 
+      // Handlery warstw — rejestrowane RAZ (działają, gdy warstwa istnieje).
+      map.on("click", "reports-layer", (e) => {
+        const f = e.features?.[0];
+        if (f?.geometry.type !== "Point") return;
+        const p = f.properties as { label?: string; comment?: string } | null;
+        const [lng, lat] = f.geometry.coordinates as [number, number];
+        new ml.Popup()
+          .setLngLat([lng, lat])
+          .setHTML(
+            `<strong>${p?.label ?? "Zgłoszenie"}</strong>${p?.comment ? `<br/>${p.comment}` : ""}`,
+          )
+          .addTo(map as MlMap);
+      });
+
+      map.on("click", "pois-layer", (e) => {
+        const f = e.features?.[0];
+        if (f?.geometry.type !== "Point") return;
+        const props = f.properties as { name?: string; type?: string } | null;
+        const [lng, lat] = f.geometry.coordinates as [number, number];
+        const kindLabel = POI_LABEL[props?.type ?? ""] ?? "Punkt";
+        const name = props?.name || kindLabel;
+        const coords = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        const popup = new ml.Popup()
+          .setLngLat([lng, lat])
+          .setHTML(
+            `<strong>${name}</strong><br/>${kindLabel}<br/>📍 <code>${coords}</code>` +
+              `<br/><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noreferrer">Nawiguj ↗</a>` +
+              `<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ Dodaj jako przystanek</button>`,
+          )
+          .addTo(map as MlMap);
+        popup
+          .getElement()
+          ?.querySelector("[data-add-stop]")
+          ?.addEventListener("click", () => {
+            const key = newId();
+            setStops((s) => {
+              const next = [...s];
+              next.splice(next.length - 1, 0, { key, label: name, lat, lng });
+              return next;
+            });
+            setQueries((q) => ({ ...q, [key]: name }));
+            popup.remove();
+          });
+      });
+      map.on("mouseenter", "pois-layer", () => {
+        (map as MlMap).getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "pois-layer", () => {
+        (map as MlMap).getCanvas().style.cursor = "";
+      });
+
       map.on("load", () => {
+        applyOverlays();
+        setMapReady(true);
         (async () => {
           try {
             const sb = getBrowserSupabase();
@@ -222,118 +408,101 @@ export default function MapPage() {
     })();
     return () => {
       channel?.unsubscribe();
+      for (const m of markersRef.current) m.remove();
       map?.remove();
     };
-  }, [drawReports]);
+  }, [applyOverlays, drawReports]);
 
-  function setStopCity(key: string, cityId: string) {
-    setStops((s) => s.map((st) => (st.key === key ? cityStop(key, cityId) : st)));
+  // ── Znaczniki przystanków (DOM — przetrwają zmianę stylu) ──
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    const ml = mlRef.current;
+    if (!map || !ml) return;
+    for (const m of markersRef.current) m.remove();
+    markersRef.current = stops.map((st, i) => {
+      const color = i === 0 ? "#22c55e" : i === stops.length - 1 ? palette.red : "#f59e0b";
+      const role = i === 0 ? "Start" : i === stops.length - 1 ? "Cel" : `Przystanek ${i}`;
+      const popup = new ml.Popup({ offset: 24 }).setHTML(
+        `<strong>${role}</strong><br/>${st.label}<br/>📍 <code>${st.lat.toFixed(5)}, ${st.lng.toFixed(5)}</code>`,
+      );
+      return new ml.Marker({ color }).setLngLat([st.lng, st.lat]).setPopup(popup).addTo(map);
+    });
+  }, [stops, mapReady]);
+
+  // ── Wyszukiwarka miejsc (geokoder) ──
+  function onQueryChange(key: string, value: string) {
+    setQueries((q) => ({ ...q, [key]: value }));
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (value.trim().length < 2) {
+      setHits((h) => ({ ...h, [key]: [] }));
+      return;
+    }
+    searchTimer.current = setTimeout(async () => {
+      const results = await geocode(value, { maptilerKey: MAPTILER_KEY });
+      setHits((h) => ({ ...h, [key]: results }));
+    }, 350);
   }
+
+  function pickHit(key: string, hit: GeoHit) {
+    setStops((s) =>
+      s.map((st) =>
+        st.key === key ? { ...st, label: hit.label, lat: hit.lat, lng: hit.lng } : st,
+      ),
+    );
+    setQueries((q) => ({ ...q, [key]: hit.label }));
+    setHits((h) => ({ ...h, [key]: [] }));
+    mapRef.current?.flyTo({ center: [hit.lng, hit.lat], zoom: 9 });
+  }
+
   function addStop() {
+    const key = newId();
     setStops((s) => {
       const next = [...s];
-      next.splice(next.length - 1, 0, cityStop(newId(), "wieden"));
+      next.splice(next.length - 1, 0, { key, label: "Nowy przystanek", lat: 50, lng: 15 });
       return next;
     });
-  }
-  function addPoiStop(label: string, lat: number, lng: number) {
-    setStops((s) => {
-      const next = [...s];
-      next.splice(next.length - 1, 0, { key: newId(), label, lat, lng });
-      return next;
-    });
+    setQueries((q) => ({ ...q, [key]: "" }));
   }
   function removeStop(key: string) {
     setStops((s) => (s.length > 2 ? s.filter((st) => st.key !== key) : s));
   }
 
-  function drawRoute(geometry: LatLng[]) {
+  function switchBasemap(key: BasemapKey) {
+    setBasemap(key);
     const map = mapRef.current;
-    const ml = mlRef.current;
-    if (!map || !ml || geometry.length < 2) return;
-    const coords = geometry.map((p) => [p.lng, p.lat] as [number, number]);
-    const data = routeFeature(coords);
-
-    const existing = map.getSource("route");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-    } else {
-      map.addSource("route", { type: "geojson", data });
-      map.addLayer({
-        id: "route",
-        type: "line",
-        source: "route",
-        paint: { "line-color": palette.red, "line-width": 5 },
-      });
-    }
-
-    const first = coords[0];
-    if (!first) return;
-    const bounds = coords.reduce((b, c) => b.extend(c), new ml.LngLatBounds(first, first));
-    map.fitBounds(bounds, { padding: 60, duration: 600 });
+    if (!map) return;
+    map.setStyle(basemapStyle(key));
+    map.once("style.load", () => applyOverlays());
   }
 
-  function drawPois(pois: Poi[]) {
+  function toggleTerrain(on: boolean) {
+    setTerrain3d(on);
+    terrainOnRef.current = on;
     const map = mapRef.current;
-    const ml = mlRef.current;
-    if (!map || !ml) return;
-    const data = poiFeatures(pois);
-
-    const existing = map.getSource("pois");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-      return;
+    if (!map || !MAPTILER_KEY) return;
+    if (!map.getSource("terrain-dem")) {
+      map.addSource("terrain-dem", {
+        type: "raster-dem",
+        url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`,
+      });
     }
+    map.setTerrain(on ? { source: "terrain-dem", exaggeration: 1.25 } : null);
+    map.easeTo({ pitch: on ? 60 : 0, duration: 600 });
+  }
 
-    map.addSource("pois", { type: "geojson", data });
-    map.addLayer({
-      id: "pois-layer",
-      type: "circle",
-      source: "pois",
-      paint: {
-        "circle-radius": 6,
-        "circle-color": [
-          "match",
-          ["get", "type"],
-          "fuel_station",
-          palette.red,
-          "parking",
-          "#22c55e",
-          "#9ca3af",
-        ],
-        "circle-stroke-width": 1,
-        "circle-stroke-color": palette.black,
-      },
-    } as import("maplibre-gl").AddLayerObject);
-
-    map.on("click", "pois-layer", (e) => {
-      const f = e.features?.[0];
-      if (!f) return;
-      if (f.geometry.type !== "Point") return;
-      const props = f.properties as { name?: string; type?: string } | null;
-      const [lng, lat] = f.geometry.coordinates as [number, number];
-      const kindLabel = props?.type === "fuel_station" ? "Stacja" : "Parking";
-      const name = props?.name || kindLabel;
-      const popup = new ml.Popup()
-        .setLngLat([lng, lat])
-        .setHTML(
-          `<strong>${name}</strong><br/>${kindLabel}<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ Dodaj jako przystanek</button>`,
-        )
-        .addTo(map);
-      popup
-        .getElement()
-        ?.querySelector("[data-add-stop]")
-        ?.addEventListener("click", () => {
-          addPoiStop(name, lat, lng);
-          popup.remove();
-        });
-    });
-    map.on("mouseenter", "pois-layer", () => {
-      map.getCanvas().style.cursor = "pointer";
-    });
-    map.on("mouseleave", "pois-layer", () => {
-      map.getCanvas().style.cursor = "";
-    });
+  function toggleGlobe(on: boolean) {
+    setGlobe(on);
+    globeOnRef.current = on;
+    try {
+      (
+        mapRef.current as unknown as { setProjection: (p: { type: string }) => void } | null
+      )?.setProjection({
+        type: on ? "globe" : "mercator",
+      });
+    } catch {
+      // brak wsparcia
+    }
   }
 
   async function loadPois() {
@@ -348,6 +517,7 @@ export default function MapPage() {
         north: b.getNorth(),
         east: b.getEast(),
       });
+      poisRef.current = pois;
       setPoiCount(pois.length);
       drawPois(pois);
     } catch {
@@ -371,7 +541,18 @@ export default function MapPage() {
       });
       const r = (await res.json()) as RouteResponse;
       setResult(r);
+      routeGeoRef.current = r.geometry;
       drawRoute(r.geometry);
+      const map = mapRef.current;
+      const ml = mlRef.current;
+      if (map && ml && r.geometry.length > 1) {
+        const coords = r.geometry.map((p) => [p.lng, p.lat] as [number, number]);
+        const first = coords[0];
+        if (first) {
+          const bounds = coords.reduce((bb, c) => bb.extend(c), new ml.LngLatBounds(first, first));
+          map.fitBounds(bounds, { padding: 70, duration: 700 });
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -381,8 +562,8 @@ export default function MapPage() {
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Mapa</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Routing serwerowy (GraphHopper) z przystankami. Profil samochodowy — TIR wymaga planu
-        płatnego; myto doszacowane per odcinek.
+        Wyszukaj dowolne miasto/miejsce, wytycz trasę przez przystanki. Podkład wektorowy/satelita,
+        teren i budynki 3D{MAPTILER_KEY ? "" : " (dodaj klucz MapTiler, by włączyć 3D)"}.
       </p>
 
       <div style={{ display: "flex", gap: 16, marginTop: 16, flexWrap: "wrap" }}>
@@ -390,32 +571,38 @@ export default function MapPage() {
           {stops.map((st, i) => {
             const role = i === 0 ? "Start" : i === stops.length - 1 ? "Cel" : `Przystanek ${i}`;
             const removable = i > 0 && i < stops.length - 1;
+            const list = hits[st.key] ?? [];
             return (
-              <div key={st.key} style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
-                <div style={{ ...styles.field, flex: 1 }}>
-                  <span style={styles.label}>{role}</span>
-                  {st.cityId !== undefined ? (
-                    <select
+              <div key={st.key} style={{ position: "relative" }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
+                  <div style={{ ...styles.field, flex: 1 }}>
+                    <span style={styles.label}>{role}</span>
+                    <input
                       style={styles.input}
-                      value={st.cityId}
-                      onChange={(e) => setStopCity(st.key, e.target.value)}
-                    >
-                      {CITIES.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div style={{ ...styles.input, paddingTop: 11, paddingBottom: 11 }}>
-                      📍 {st.label}
-                    </div>
+                      value={queries[st.key] ?? ""}
+                      onChange={(e) => onQueryChange(st.key, e.target.value)}
+                      placeholder="Miasto, adres lub miejsce…"
+                    />
+                  </div>
+                  {removable && (
+                    <button type="button" style={styles.remove} onClick={() => removeStop(st.key)}>
+                      ✕
+                    </button>
                   )}
                 </div>
-                {removable && (
-                  <button type="button" style={styles.remove} onClick={() => removeStop(st.key)}>
-                    ✕
-                  </button>
+                {list.length > 0 && (
+                  <div style={styles.suggest}>
+                    {list.map((h) => (
+                      <button
+                        key={`${h.lat},${h.lng}`}
+                        type="button"
+                        style={styles.suggestItem}
+                        onClick={() => pickHit(st.key, h)}
+                      >
+                        {h.label}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             );
@@ -424,6 +611,47 @@ export default function MapPage() {
           <button type="button" style={styles.ghost} onClick={addStop}>
             ➕ Dodaj przystanek
           </button>
+
+          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+
+          <span style={styles.label}>Podkład</span>
+          <div style={{ display: "flex", gap: 6 }}>
+            {BASEMAPS.map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() => switchBasemap(b.key)}
+                style={{
+                  ...styles.segment,
+                  ...(basemap === b.key ? styles.segmentActive : {}),
+                }}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+          {MAPTILER_KEY && (
+            <>
+              <label style={styles.check}>
+                <input
+                  type="checkbox"
+                  checked={terrain3d}
+                  onChange={(e) => toggleTerrain(e.target.checked)}
+                />{" "}
+                Teren 3D
+              </label>
+              <label style={styles.check}>
+                <input
+                  type="checkbox"
+                  checked={globe}
+                  onChange={(e) => toggleGlobe(e.target.checked)}
+                />{" "}
+                Globus 3D
+              </label>
+            </>
+          )}
+
+          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
 
           <label style={styles.check}>
             <input
@@ -469,7 +697,8 @@ export default function MapPage() {
             <div style={{ fontSize: 12, color: palette.smoke }}>
               Znaleziono: <strong>{poiCount}</strong> ·{" "}
               <span style={{ color: palette.red }}>● stacje</span>{" "}
-              <span style={{ color: "#22c55e" }}>● parkingi</span>
+              <span style={{ color: "#22c55e" }}>● parkingi</span>{" "}
+              <span style={{ color: "#3b82f6" }}>● firmy</span>
             </div>
           )}
 
@@ -506,32 +735,6 @@ export default function MapPage() {
                 v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
               />
               <Row k="Dostawca" v={result.provider} />
-              {result.segments.length > 1 && (
-                <div
-                  style={{
-                    marginTop: 6,
-                    borderTop: `1px solid ${palette.graphite}`,
-                    paddingTop: 6,
-                  }}
-                >
-                  <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 4 }}>
-                    Odcinki:
-                  </div>
-                  {result.segments.map((s, i) => (
-                    <div
-                      key={`${s.from.lat},${s.from.lng}->${s.to.lat},${s.to.lng}`}
-                      style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}
-                    >
-                      <span style={{ color: palette.smoke }}>
-                        #{i + 1} · {s.distanceKm} km
-                      </span>
-                      <span>
-                        {s.tollCost} {result.currency}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -541,7 +744,7 @@ export default function MapPage() {
           style={{
             flex: 1,
             minWidth: 320,
-            height: "62vh",
+            height: "70vh",
             borderRadius: 12,
             overflow: "hidden",
             border: `1px solid ${palette.graphite}`,
@@ -563,7 +766,7 @@ function Row({ k, v }: { k: string; v: string }) {
 
 const styles: Record<string, React.CSSProperties> = {
   panel: {
-    width: 280,
+    width: 290,
     display: "flex",
     flexDirection: "column",
     gap: 10,
@@ -583,6 +786,43 @@ const styles: Record<string, React.CSSProperties> = {
     color: palette.offWhite,
     width: "100%",
   },
+  suggest: {
+    position: "absolute",
+    zIndex: 5,
+    top: "100%",
+    left: 0,
+    right: 0,
+    background: palette.coal,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    marginTop: 2,
+    overflow: "hidden",
+    maxHeight: 220,
+    overflowY: "auto",
+  },
+  suggestItem: {
+    display: "block",
+    width: "100%",
+    textAlign: "left",
+    background: "transparent",
+    color: palette.offWhite,
+    border: "none",
+    borderBottom: `1px solid ${palette.graphite}`,
+    padding: "8px 10px",
+    cursor: "pointer",
+    fontSize: 13,
+  },
+  segment: {
+    flex: 1,
+    background: palette.black,
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "8px 6px",
+    cursor: "pointer",
+    fontSize: 13,
+  },
+  segmentActive: { background: palette.red, color: palette.white, borderColor: palette.red },
   remove: {
     background: "transparent",
     color: palette.smoke,
