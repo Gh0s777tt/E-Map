@@ -5,8 +5,21 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PlaceSearch } from "@/components/PlaceSearch";
 import { enqueue } from "@/lib/outbox";
 import { useFleet } from "@/lib/useFleet";
+
+/** Z etykiety geokodera „Miasto, …, Kraj" wyciąga miasto (pierwszy człon) i kraj (ostatni). */
+function splitPlace(label: string): { city: string; country: string } {
+  const parts = label
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return {
+    city: parts[0] ?? label,
+    country: parts.length > 1 ? (parts[parts.length - 1] ?? "") : "",
+  };
+}
 
 const t = createTranslator("pl");
 
@@ -112,6 +125,18 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
             ))}
           </select>
         </Field>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 12, color: palette.smoke }}>Wyszukaj miejsce (adres → GPS)</span>
+          <PlaceSearch
+            onPick={(h) => {
+              const p = splitPlace(h.label);
+              setCity(p.city);
+              if (p.country) setCountry(p.country);
+              setCoords({ lat: h.lat, lng: h.lng });
+            }}
+          />
+        </div>
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")} error={errors["station.country"]}>

@@ -19,6 +19,7 @@ import {
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { CardArt } from "@/components/CardArt";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -272,9 +273,14 @@ export default function CardsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           {cards.map((c) => (
             <div key={c.id} style={styles.row}>
-              <strong style={{ minWidth: 110 }}>{providerLabel(c.provider)}</strong>
-              <span style={styles.cell}>{c.card_number_masked}</span>
-              {c.registration && <span style={styles.tag}>🚚 {c.registration}</span>}
+              <CardArt
+                provider={c.provider}
+                masked={c.card_number_masked}
+                validUntil={c.valid_until}
+                registration={c.registration}
+                width={132}
+              />
+              <strong style={{ minWidth: 90 }}>{providerLabel(c.provider)}</strong>
               <span style={styles.cell}>{c.valid_until ?? "—"}</span>
               {c.discount_percent != null && <span style={styles.cell}>{c.discount_percent}%</span>}
               <span style={{ flex: 1 }} />
