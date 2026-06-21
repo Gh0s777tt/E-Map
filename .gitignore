@@ -19,6 +19,9 @@ next-env.d.ts
 *.pem
 *.key
 
+# Vercel (link + lokalne env z pull)
+.vercel/
+
 # Supabase
 supabase/.branches/
 supabase/.temp/
