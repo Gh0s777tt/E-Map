@@ -1,6 +1,6 @@
 "use client";
 
-import { getActiveMembership, listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
+import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
 import {
   consumptionFullToFull,
   type FuelStatsEntry,
@@ -11,6 +11,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -63,7 +64,7 @@ export default function StatsPage() {
     (async () => {
       try {
         const sb = getBrowserSupabase();
-        const m = await getActiveMembership(sb);
+        const m = await getCachedMembership(sb);
         if (!m) return;
         const [f, a, tr, vs] = await Promise.all([
           listFuelLogs(sb, { limit: 2000 }),
