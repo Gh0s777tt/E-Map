@@ -12,6 +12,7 @@ import {
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { PageHeader } from "@/components/ui";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -180,11 +181,10 @@ export default function ReportsPage() {
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Usterki pojazdu</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Zgłaszaj uszkodzenia i to, co wymaga kontroli. Schemat auta zaznacza miejsce wg opisu;
-        właściciel/mechanik zmienia status.
-      </p>
+      <PageHeader
+        title="Usterki pojazdu"
+        subtitle="Zgłaszaj uszkodzenia i to, co wymaga kontroli. Schemat auta zaznacza miejsce wg opisu; właściciel/mechanik zmienia status."
+      />
 
       {setupMsg && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {setupMsg}</p>}
 

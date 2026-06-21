@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CardArt } from "@/components/CardArt";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { ListStatus } from "@/components/ListStatus";
+import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -181,11 +182,10 @@ export default function CardsPage() {
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.cards")}</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        PIN-y szyfrowane (Vault); kierowca może je odsłonić, by zapłacić w automacie. Każdy odczyt
-        jest audytowany. Kartę można przypisać do pojazdu.
-      </p>
+      <PageHeader
+        title={t("nav.cards")}
+        subtitle="PIN-y szyfrowane (Vault); kierowca może je odsłonić, by zapłacić w automacie. Każdy odczyt jest audytowany. Kartę można przypisać do pojazdu."
+      />
 
       {offline && (
         <p style={{ color: palette.smoke, marginTop: 16 }}>

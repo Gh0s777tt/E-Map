@@ -4,6 +4,7 @@ import { listFuelLogs, listTripEvents } from "@e-logistic/api";
 import { buildSettlement, round2, type Settlement, toCsv } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -174,11 +175,10 @@ export default function SettlementsPage() {
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Rozliczenia tras</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Podsumowanie kosztów (paliwo, AdBlue, serwis, myto) i zysku dla pojazdu w wybranym okresie.
-        Eksport do CSV (Excel) i wydruk/PDF.
-      </p>
+      <PageHeader
+        title="Rozliczenia tras"
+        subtitle="Podsumowanie kosztów (paliwo, AdBlue, serwis, myto) i zysku dla pojazdu w wybranym okresie. Eksport do CSV (Excel) i wydruk/PDF."
+      />
 
       {setupMsg && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {setupMsg}</p>}
 
