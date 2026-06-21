@@ -49,6 +49,37 @@ export const VEHICLE_MAKES: string[] = Array.from(
   new Set(VEHICLE_MAKE_GROUPS.flatMap((g) => g.makes)),
 ).sort();
 
+/** Moduły aplikacji, do których właściciel nadaje dostęp członkom. */
+export const APP_MODULES = ["vehicles", "drivers", "cards", "forms", "map", "stats"] as const;
+export type AppModule = (typeof APP_MODULES)[number];
+
+/** Czytelne nazwy modułów (UI). */
+export const APP_MODULE_LABELS: Record<AppModule, string> = {
+  vehicles: "Pojazdy",
+  drivers: "Kierowcy",
+  cards: "Karty paliwowe",
+  forms: "Formularze",
+  map: "Mapa",
+  stats: "Statystyki",
+};
+
+/** Domyślny zestaw modułów wg roli (gdy członek nie ma własnego `modules`). */
+export const DEFAULT_MODULES: Record<string, AppModule[]> = {
+  owner: [...APP_MODULES],
+  dispatcher: [...APP_MODULES],
+  manager: [...APP_MODULES],
+  driver: ["forms", "map"],
+  developer: [],
+};
+
+/** Efektywne moduły: własne (jeśli ustawione) lub domyślne dla roli. */
+export function effectiveModules(role: string, modules: string[] | null | undefined): AppModule[] {
+  if (modules && modules.length > 0) {
+    return modules.filter((m): m is AppModule => (APP_MODULES as readonly string[]).includes(m));
+  }
+  return DEFAULT_MODULES[role] ?? [];
+}
+
 /** Kategorie prawa jazdy (PL). */
 export const LICENSE_CATEGORIES = [
   "AM",

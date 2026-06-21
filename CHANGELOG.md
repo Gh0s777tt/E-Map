@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-33-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.33.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-34-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.34.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.34.0] — 🧩 Uprawnienia modułowe + panel Zespół
+
+- `[#034]` 🧩 **Modułowy dostęp — właściciel decyduje, kto widzi które panele.**
+  - **DB** [`0016`](supabase/migrations/0016_member_modules.sql): `memberships.modules text[]` + RPC `company_members` (lista członków z e‑mailem, owner/dispatcher).
+  - **`packages/core`** — katalog [`APP_MODULES` + `DEFAULT_MODULES` + `effectiveModules`](packages/core/src/catalog.ts) (pojazdy/kierowcy/karty/formularze/mapa/statystyki).
+  - **`packages/api`** — `getActiveMembership` z modułami; `listCompanyMembers`, `updateMember`.
+  - **Web** [`/team`](apps/web/app/(app)/team/page.tsx): właściciel nadaje rolę (spedytor=pełny wgląd / kierowca=tylko swoje) i przełącza moduły per osoba; menu [`layout`](apps/web/app/(app)/layout.tsx) filtruje panele wg uprawnień.
+  - Twarda izolacja danych nadal po stronie RLS (role); moduły sterują widocznością paneli/funkcji.
+  - **Bramki:** biome czysto (111) · `tsc` (×7) · `next build` ✓.
 
 ## [0.33.0] — 🎨 Grafika kart flotowych + geokoder w formularzach
 
