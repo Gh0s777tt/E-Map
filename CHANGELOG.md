@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-62-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.7-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-63-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.53.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.53.0] — 📈 Wykresy w statystykach (koszty, spalanie)
+
+- `[#063]` 📈 **Wykresy słupkowe per pojazd** (UX z audytu — dane już pobierane). Nowy lekki [`BarChart`](apps/web/components/ui.tsx) (CSS, bez zależności, motyw red/black). W widoku pojazdu ([/stats](apps/web/app/(app)/stats/page.tsx)): **„Koszty miesięczne"** (suma paliwo+AdBlue per miesiąc, ostatnie 6) i **„Spalanie wg tankowań"** (L/100km z `fuelConsumptionSeries`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.7] — ⏳ ListStatus na flocie + pusta kartoteka kierowców
 

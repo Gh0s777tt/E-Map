@@ -4,6 +4,7 @@ import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
 import {
   consumptionFullToFull,
   type FuelStatsEntry,
+  fuelConsumptionSeries,
   round2,
   summarizeFuel,
 } from "@e-logistic/core";
@@ -11,7 +12,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { PageHeader } from "@/components/ui";
+import { BarChart, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -52,6 +53,20 @@ const entry = (r: FuelRaw): FuelStatsEntry & { isFull?: boolean } => ({
   priceTotal: r.price_total != null ? Number(r.price_total) : undefined,
   isFull: r.is_full !== false,
 });
+
+/** Suma kosztów wg miesiąca (ostatnie 6) — do wykresu słupkowego. */
+function monthlyCost(rows: FuelRaw[]): { label: string; value: number }[] {
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    if (r.price_total == null) continue;
+    const m = r.created_at.slice(0, 7);
+    map.set(m, (map.get(m) ?? 0) + Number(r.price_total));
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([m, v]) => ({ label: `${m.slice(5)}.${m.slice(2, 4)}`, value: round2(v) }));
+}
 
 export default function StatsPage() {
   const [vehicles, setVehicles] = useState<{ id: string; registration: string }[]>([]);
@@ -159,6 +174,10 @@ function VehicleDetail({
   trips: TripRaw[];
   onBack: () => void;
 }) {
+  const cost = monthlyCost([...fuel, ...adblue]);
+  const consSeries = fuelConsumptionSeries(fuel.map(entry))
+    .slice(-8)
+    .map((s, i) => ({ label: String(i + 1), value: s.lPer100km }));
   return (
     <div style={{ marginTop: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -171,6 +190,25 @@ function VehicleDetail({
           Historia formularzy →
         </Link>
       </div>
+
+      {(cost.length > 0 || consSeries.length > 0) && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginTop: 24 }}>
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>
+              📈 Koszty miesięczne
+            </h3>
+            <BarChart data={cost} unit=" €" />
+          </div>
+          {consSeries.length > 0 && (
+            <div style={{ flex: 1, minWidth: 280 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>
+                📉 Spalanie wg tankowań (L/100km)
+              </h3>
+              <BarChart data={consSeries} color="#f59e0b" />
+            </div>
+          )}
+        </div>
+      )}
 
       <FuelBlock title="⛽ Paliwo" rows={fuel} full />
       <FuelBlock title="💧 AdBlue" rows={adblue} />
