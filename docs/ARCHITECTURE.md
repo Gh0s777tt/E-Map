@@ -1,7 +1,11 @@
 # 🧠 Architektura — E‑Logistic
 
-> Status: **propozycja do akceptacji** · wersja 0.1.0 · 2026-06-20
+> Status: **w realizacji** · stan na v0.59.0 · 2026-06-22
 > Decyzje wstępne: dokumentacja przed kodem · mapa = hybryda MapLibre+HERE/GraphHopper · web+mobile równolegle.
+>
+> **Stan implementacji** (ten dokument opisuje architekturę **docelową**):
+> - ✅ **Zaimplementowane:** Next.js 16 + React 19 + Tailwind 4 (web) · Supabase (Postgres + PostGIS + Auth + RLS + Vault) · MapLibre + `RoutingProvider` (HERE/GraphHopper) · offline przez **outbox** (localStorage) · web‑push · 2FA TOTP + passkeys · szyfrowanie PII/PIN · generowane typy DB · rate‑limiting.
+> - 🔜 **Planowane (jeszcze nie w kodzie):** **PowerSync** (offline SQLite ↔ Supabase — dziś rolę pełni outbox), **shadcn/ui**, **TanStack Query**, **Zustand**, **Sentry**, parytet aplikacji **mobile**.
 
 ---
 
