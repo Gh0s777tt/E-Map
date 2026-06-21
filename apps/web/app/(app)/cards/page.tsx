@@ -5,7 +5,7 @@ import {
   getActiveMembership,
   getFuelCardPin,
   insertFuelCard,
-  listFuelCardsSafe,
+  listFuelCardsForUser,
   listVehicles,
   setFuelCardPin,
   updateFuelCard,
@@ -24,26 +24,19 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
 
-type VehicleRef = { registration: string } | { registration: string }[] | null;
 type Card = {
   id: string;
   provider: string;
   card_number_masked: string;
   valid_until: string | null;
-  discount_percent: number;
+  discount_percent: number | null;
   vehicle_id: string | null;
-  vehicles: VehicleRef;
+  registration: string | null;
 };
 type Vehicle = { id: string; registration: string };
 
 const providerLabel = (p: string) =>
   FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
-
-const cardReg = (c: Card): string | null => {
-  const v = c.vehicles;
-  if (!v) return null;
-  return Array.isArray(v) ? (v[0]?.registration ?? null) : v.registration;
-};
 
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -71,10 +64,7 @@ export default function CardsPage() {
         return;
       }
       setIsOwner(m.role === "owner");
-      const [cs, vs] = await Promise.all([
-        listFuelCardsSafe(sb, m.companyId),
-        listVehicles(sb, m.companyId),
-      ]);
+      const [cs, vs] = await Promise.all([listFuelCardsForUser(sb), listVehicles(sb, m.companyId)]);
       setCards(cs as Card[]);
       setVehicles((vs as Vehicle[]).map((v) => ({ id: v.id, registration: v.registration })));
     } catch {
@@ -284,9 +274,9 @@ export default function CardsPage() {
             <div key={c.id} style={styles.row}>
               <strong style={{ minWidth: 110 }}>{providerLabel(c.provider)}</strong>
               <span style={styles.cell}>{c.card_number_masked}</span>
-              {cardReg(c) && <span style={styles.tag}>🚚 {cardReg(c)}</span>}
+              {c.registration && <span style={styles.tag}>🚚 {c.registration}</span>}
               <span style={styles.cell}>{c.valid_until ?? "—"}</span>
-              <span style={styles.cell}>{c.discount_percent}%</span>
+              {c.discount_percent != null && <span style={styles.cell}>{c.discount_percent}%</span>}
               <span style={{ flex: 1 }} />
               {pins[c.id] ? (
                 <strong style={{ color: palette.red, letterSpacing: 2 }}>{pins[c.id]}</strong>
