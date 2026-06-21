@@ -1,8 +1,16 @@
 import { fetchFuelPrices } from "@e-logistic/maps";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
+
+// Walidacja query (P2 #8) — współrzędne w zakresie, promień ograniczony (anty-abuse zewnętrznego API).
+const querySchema = z.object({
+  lat: z.coerce.number().finite().min(-90).max(90),
+  lng: z.coerce.number().finite().min(-180).max(180),
+  radius: z.coerce.number().finite().min(1).max(25).default(10),
+});
 
 /**
  * Ceny paliwa w okolicy punktu (Tankerkönig, Niemcy). Klucz `FUEL_PRICE_API_KEY`
@@ -18,12 +26,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ configured: false, stations: [] });
   }
   const { searchParams } = new URL(request.url);
-  const lat = Number(searchParams.get("lat"));
-  const lng = Number(searchParams.get("lng"));
-  const radiusKm = Number(searchParams.get("radius")) || 10;
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return NextResponse.json({ error: "Wymagane lat/lng." }, { status: 400 });
+  const parsed = querySchema.safeParse({
+    lat: searchParams.get("lat") ?? undefined,
+    lng: searchParams.get("lng") ?? undefined,
+    radius: searchParams.get("radius") ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Wymagane poprawne lat/lng (radius 1–25 km)." },
+      { status: 400 },
+    );
   }
+  const { lat, lng, radius: radiusKm } = parsed.data;
   try {
     const stations = await fetchFuelPrices({ lat, lng, radiusKm }, key);
     return NextResponse.json({ configured: true, stations });

@@ -15,7 +15,18 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Niezalogowany" }, { status: 401 });
 
-  const body = (await request.json()) as { response: RegistrationResponseJSON; name?: string };
+  // Walidacja kształtu (P2 #8) — bez Zod, by nie obciąć pól odpowiedzi WebAuthn.
+  const raw = (await request.json().catch(() => null)) as {
+    response?: unknown;
+    name?: unknown;
+  } | null;
+  if (!raw || typeof raw.response !== "object" || raw.response === null) {
+    return NextResponse.json({ error: "Brak danych rejestracji." }, { status: 400 });
+  }
+  const body = {
+    response: raw.response as RegistrationResponseJSON,
+    name: typeof raw.name === "string" ? raw.name : undefined,
+  };
   const expectedChallenge = request.headers.get("cookie")?.match(/pk_reg_chal=([^;]+)/)?.[1];
   if (!expectedChallenge) {
     return NextResponse.json({ error: "Brak wyzwania (spróbuj ponownie)" }, { status: 400 });

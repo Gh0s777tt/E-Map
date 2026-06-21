@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-72-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.55.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-73-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.55.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.55.1] — 🛡️ Walidacja wejścia API + ochrona przed open-redirect
+
+- `[#073]` 🛡️ **Domknięcie audytu P2 #8 — pełna walidacja wejścia w route'ach API** (`/api/route` był już zwalidowany):
+  - [`/api/fuel-prices`](apps/web/app/api/fuel-prices/route.ts) — schema Zod: `lat` ∈ ⟨-90,90⟩, `lng` ∈ ⟨-180,180⟩, **`radius` ograniczony 1–25 km** (anty-abuse zewnętrznego API Tankerkönig).
+  - [`/api/push/send`](apps/web/app/api/push/send/route.ts) — schema Zod (`title`/`body`/`url` z limitami). **`url` musi być ścieżką względną** (`^/` bez `//`) — eliminuje ryzyko **open-redirect** przy kliknięciu powiadomienia (SW `notificationclick`).
+  - [`/api/passkey/register/verify`](apps/web/app/api/passkey/register/verify/route.ts) + [`/api/passkey/auth/verify`](apps/web/app/api/passkey/auth/verify/route.ts) — walidacja kształtu body (czyste `400` zamiast `500` przy złym wejściu; bez Zod, by nie obciąć pól odpowiedzi WebAuthn). Krypto WebAuthn pozostaje główną ochroną.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.55.0] — 🔐 Szyfrowanie PII at-rest (profil, kierowcy, zaproszenia)
 
