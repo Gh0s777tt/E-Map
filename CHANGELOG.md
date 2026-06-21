@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-35-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.35.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-36-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.36.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.36.0] — 🧭 Samouczek + pomoc kontekstowa na każdym panelu
+
+- `[#036]` 🧭 **Interaktywne oprowadzenie po aplikacji + pomoc „?” zawsze pod ręką.**
+  - **Web** [`HelpCenter`](apps/web/components/HelpCenter.tsx) w [layoucie](apps/web/app/(app)/layout.tsx): pływający przycisk **„?”** na każdym panelu → szuflada z opisem panelu i **wyjaśnieniem każdej funkcji** (co robi, jak działa), kontekstowo wg trasy.
+  - **Oprowadzenie krok‑po‑kroku** przy pierwszym wejściu (6 kroków; flaga w `localStorage`) + przycisk „Pokaż oprowadzenie ponownie".
+  - **Bramki:** biome czysto (114) · `tsc` (×7) · `next build` ✓.
 
 ## [0.35.0] — 🔔 Powiadomienia w aplikacji (przeładowanie + terminy)
 
