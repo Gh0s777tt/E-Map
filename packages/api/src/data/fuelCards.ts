@@ -15,6 +15,17 @@ export async function listFuelCardsSafe(client: SupabaseClient, companyId: strin
   return data ?? [];
 }
 
+/**
+ * Karty widoczne dla bieżącego użytkownika (RPC, RLS-aware):
+ * owner/dispatcher → wszystkie karty firmy z rabatem; kierowca → tylko karty
+ * przypisanego auta, BEZ rabatu (`discount_percent = null`).
+ */
+export async function listFuelCardsForUser(client: SupabaseClient) {
+  const { data, error } = await client.rpc("list_fuel_cards_for_user");
+  if (error) throw error;
+  return data ?? [];
+}
+
 /** Karty przypisane do danego pojazdu (do panelu pojazdu). */
 export async function listFuelCardsByVehicle(client: SupabaseClient, vehicleId: string) {
   const { data, error } = await client

@@ -53,6 +53,7 @@ const providerLabel = (p: string) =>
 
 export default function VehiclesPage() {
   const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
+  const [canManage, setCanManage] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [vehicleCards, setVehicleCards] = useState<Record<string, CardRow[]>>({});
@@ -83,6 +84,7 @@ export default function VehiclesPage() {
         setDbVehicles([]);
         return;
       }
+      setCanManage(membership.role === "owner" || membership.role === "dispatcher");
       const vs = await listVehicles(supabase, membership.companyId);
       setDbVehicles(vs as DbVehicle[]);
     } catch {
@@ -248,204 +250,206 @@ export default function VehiclesPage() {
         karty.
       </p>
 
-      <div style={styles.form}>
-        {editingId && (
-          <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
-            ✏️ Edytujesz pojazd.
-          </div>
-        )}
-        <div style={styles.grid}>
-          <label style={styles.field}>
-            <span style={styles.label}>Rejestracja *</span>
-            <input
-              style={styles.input}
-              value={registration}
-              onChange={(e) => setRegistration(e.target.value)}
-              placeholder="WL5145U"
-            />
-            {errors.registration && <span style={styles.err}>{errors.registration}</span>}
-          </label>
-          <label style={styles.field}>
-            <span style={styles.label}>Marka</span>
-            <select style={styles.input} value={make} onChange={(e) => setMake(e.target.value)}>
-              <option value="">— wybierz —</option>
-              {VEHICLE_MAKE_GROUPS.map((g) => (
-                <optgroup key={g.group} label={g.group}>
-                  {g.makes.map((m) => (
-                    <option key={`${g.group}-${m}`} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-              <option value={OTHER}>Inna…</option>
-            </select>
-            {make === OTHER && (
-              <input
-                style={{ ...styles.input, marginTop: 6 }}
-                value={makeOther}
-                onChange={(e) => setMakeOther(e.target.value)}
-                placeholder="Wpisz markę"
-              />
-            )}
-          </label>
-        </div>
-
-        <div style={styles.grid}>
-          <label style={styles.field}>
-            <span style={styles.label}>Model *</span>
-            <input
-              style={styles.input}
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="FH / Master / Actros"
-            />
-            {errors.model && <span style={styles.err}>{errors.model}</span>}
-          </label>
-          <label style={styles.field}>
-            <span style={styles.label}>VIN</span>
-            <input
-              style={styles.input}
-              value={vin}
-              onChange={(e) => setVin(e.target.value)}
-              placeholder="17 znaków (z dowodu)"
-              maxLength={17}
-            />
-            {errors.vin && <span style={styles.err}>{errors.vin}</span>}
-          </label>
-        </div>
-
-        <div style={styles.grid}>
-          <label style={styles.field}>
-            <span style={styles.label}>Rocznik *</span>
-            <input
-              style={styles.input}
-              type="number"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              placeholder="2021"
-            />
-            {errors.year && <span style={styles.err}>{errors.year}</span>}
-          </label>
-          <label style={styles.field}>
-            <span style={styles.label}>Typ</span>
-            <select
-              style={styles.input}
-              value={vehicleType}
-              onChange={(e) => setVehicleType(e.target.value as (typeof VEHICLE_TYPES)[number])}
-            >
-              {VEHICLE_TYPES.map((vt) => (
-                <option key={vt} value={vt}>
-                  {vt}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div style={styles.grid}>
-          <label style={styles.field}>
-            <span style={styles.label}>Waga własna / na pusto (kg)</span>
-            <input
-              style={styles.input}
-              type="number"
-              value={curbWeightKg}
-              onChange={(e) => setCurbWeightKg(e.target.value)}
-              placeholder="np. 7500 (z dowodu)"
-            />
-          </label>
-          <label style={styles.field}>
-            <span style={styles.label}>Maks. ładunek (kg)</span>
-            <input
-              style={styles.input}
-              type="number"
-              value={maxPayloadKg}
-              onChange={(e) => setMaxPayloadKg(e.target.value)}
-              placeholder="24000"
-            />
-          </label>
-        </div>
-
-        <div style={styles.grid}>
-          <label style={styles.field}>
-            <span style={styles.label}>Przegląd ważny do</span>
-            <input
-              style={styles.input}
-              type="date"
-              value={inspectionExpiry}
-              onChange={(e) => setInspectionExpiry(e.target.value)}
-            />
-          </label>
-          <label style={styles.field}>
-            <span style={styles.label}>Wysokość (cm)</span>
-            <input
-              style={styles.input}
-              type="number"
-              value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value)}
-              placeholder="400"
-            />
-          </label>
-        </div>
-
-        <div style={styles.grid}>
-          <label style={styles.field}>
-            <span style={styles.label}>OC ważne do</span>
-            <input
-              style={styles.input}
-              type="date"
-              value={insuranceExpiry}
-              onChange={(e) => setInsuranceExpiry(e.target.value)}
-            />
-          </label>
-          <label style={styles.field}>
-            <span style={styles.label}>Ubezpieczyciel</span>
-            <select
-              style={styles.input}
-              value={insurer}
-              onChange={(e) => setInsurer(e.target.value)}
-            >
-              <option value="">— wybierz —</option>
-              {INSURERS.map((ins) => (
-                <option key={ins} value={ins}>
-                  {ins}
-                </option>
-              ))}
-              <option value={OTHER}>Inny…</option>
-            </select>
-            {insurer === OTHER && (
-              <input
-                style={{ ...styles.input, marginTop: 6 }}
-                value={insurerOther}
-                onChange={(e) => setInsurerOther(e.target.value)}
-                placeholder="Wpisz ubezpieczyciela"
-              />
-            )}
-          </label>
-        </div>
-
-        <label style={styles.field}>
-          <span style={styles.label}>Numer licencji (przypisanej do auta)</span>
-          <input
-            style={styles.input}
-            value={licenseNumber}
-            onChange={(e) => setLicenseNumber(e.target.value)}
-            placeholder="np. GITD / licencja wspólnotowa"
-          />
-        </label>
-
-        <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" style={styles.primary} onClick={save}>
-            {editingId ? "Zapisz zmiany" : t("common.save")}
-          </button>
+      {canManage && (
+        <div style={styles.form}>
           {editingId && (
-            <button type="button" style={styles.ghost} onClick={resetForm}>
-              Anuluj
-            </button>
+            <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
+              ✏️ Edytujesz pojazd.
+            </div>
           )}
+          <div style={styles.grid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Rejestracja *</span>
+              <input
+                style={styles.input}
+                value={registration}
+                onChange={(e) => setRegistration(e.target.value)}
+                placeholder="WL5145U"
+              />
+              {errors.registration && <span style={styles.err}>{errors.registration}</span>}
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Marka</span>
+              <select style={styles.input} value={make} onChange={(e) => setMake(e.target.value)}>
+                <option value="">— wybierz —</option>
+                {VEHICLE_MAKE_GROUPS.map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.makes.map((m) => (
+                      <option key={`${g.group}-${m}`} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+                <option value={OTHER}>Inna…</option>
+              </select>
+              {make === OTHER && (
+                <input
+                  style={{ ...styles.input, marginTop: 6 }}
+                  value={makeOther}
+                  onChange={(e) => setMakeOther(e.target.value)}
+                  placeholder="Wpisz markę"
+                />
+              )}
+            </label>
+          </div>
+
+          <div style={styles.grid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Model *</span>
+              <input
+                style={styles.input}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="FH / Master / Actros"
+              />
+              {errors.model && <span style={styles.err}>{errors.model}</span>}
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>VIN</span>
+              <input
+                style={styles.input}
+                value={vin}
+                onChange={(e) => setVin(e.target.value)}
+                placeholder="17 znaków (z dowodu)"
+                maxLength={17}
+              />
+              {errors.vin && <span style={styles.err}>{errors.vin}</span>}
+            </label>
+          </div>
+
+          <div style={styles.grid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Rocznik *</span>
+              <input
+                style={styles.input}
+                type="number"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="2021"
+              />
+              {errors.year && <span style={styles.err}>{errors.year}</span>}
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Typ</span>
+              <select
+                style={styles.input}
+                value={vehicleType}
+                onChange={(e) => setVehicleType(e.target.value as (typeof VEHICLE_TYPES)[number])}
+              >
+                {VEHICLE_TYPES.map((vt) => (
+                  <option key={vt} value={vt}>
+                    {vt}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div style={styles.grid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Waga własna / na pusto (kg)</span>
+              <input
+                style={styles.input}
+                type="number"
+                value={curbWeightKg}
+                onChange={(e) => setCurbWeightKg(e.target.value)}
+                placeholder="np. 7500 (z dowodu)"
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Maks. ładunek (kg)</span>
+              <input
+                style={styles.input}
+                type="number"
+                value={maxPayloadKg}
+                onChange={(e) => setMaxPayloadKg(e.target.value)}
+                placeholder="24000"
+              />
+            </label>
+          </div>
+
+          <div style={styles.grid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Przegląd ważny do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={inspectionExpiry}
+                onChange={(e) => setInspectionExpiry(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Wysokość (cm)</span>
+              <input
+                style={styles.input}
+                type="number"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                placeholder="400"
+              />
+            </label>
+          </div>
+
+          <div style={styles.grid}>
+            <label style={styles.field}>
+              <span style={styles.label}>OC ważne do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={insuranceExpiry}
+                onChange={(e) => setInsuranceExpiry(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Ubezpieczyciel</span>
+              <select
+                style={styles.input}
+                value={insurer}
+                onChange={(e) => setInsurer(e.target.value)}
+              >
+                <option value="">— wybierz —</option>
+                {INSURERS.map((ins) => (
+                  <option key={ins} value={ins}>
+                    {ins}
+                  </option>
+                ))}
+                <option value={OTHER}>Inny…</option>
+              </select>
+              {insurer === OTHER && (
+                <input
+                  style={{ ...styles.input, marginTop: 6 }}
+                  value={insurerOther}
+                  onChange={(e) => setInsurerOther(e.target.value)}
+                  placeholder="Wpisz ubezpieczyciela"
+                />
+              )}
+            </label>
+          </div>
+
+          <label style={styles.field}>
+            <span style={styles.label}>Numer licencji (przypisanej do auta)</span>
+            <input
+              style={styles.input}
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              placeholder="np. GITD / licencja wspólnotowa"
+            />
+          </label>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" style={styles.primary} onClick={save}>
+              {editingId ? "Zapisz zmiany" : t("common.save")}
+            </button>
+            {editingId && (
+              <button type="button" style={styles.ghost} onClick={resetForm}>
+                Anuluj
+              </button>
+            )}
+          </div>
+          {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
         </div>
-        {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
-      </div>
+      )}
 
       <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Flota</h2>
 
@@ -473,12 +477,16 @@ export default function VehiclesPage() {
                   <span style={{ flex: 1 }} />
                   <span style={styles.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
                   <span style={styles.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
-                  <button type="button" style={styles.ghost} onClick={() => startEdit(v)}>
-                    ✏️
-                  </button>
-                  <button type="button" style={styles.danger} onClick={() => removeVehicle(v)}>
-                    🗑️
-                  </button>
+                  {canManage && (
+                    <>
+                      <button type="button" style={styles.ghost} onClick={() => startEdit(v)}>
+                        ✏️
+                      </button>
+                      <button type="button" style={styles.danger} onClick={() => removeVehicle(v)}>
+                        🗑️
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {open && (

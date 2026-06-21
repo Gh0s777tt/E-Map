@@ -1,14 +1,10 @@
 "use client";
 
-import { getActiveMembership, listFuelCardsSafe, listVehicles } from "@e-logistic/api";
+import { getActiveMembership, listFuelCardsForUser, listVehicles } from "@e-logistic/api";
 import { FUEL_CARD_PROVIDER_LABELS, type FuelCardProvider } from "@e-logistic/core";
 import { useEffect, useState } from "react";
 import { DEMO_CARDS, DEMO_VEHICLES } from "@/lib/demo";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-
-type VehicleRef = { registration: string } | { registration: string }[] | null;
-const refReg = (v: VehicleRef): string | null =>
-  !v ? null : Array.isArray(v) ? (v[0]?.registration ?? null) : v.registration;
 
 export interface FleetVehicle {
   id: string;
@@ -37,7 +33,7 @@ export function useFleet() {
 
         const [vs, cs] = await Promise.all([
           listVehicles(sb, membership.companyId),
-          listFuelCardsSafe(sb, membership.companyId),
+          listFuelCardsForUser(sb),
         ]);
         setVehicles(
           (vs as { id: string; registration: string }[]).map((v) => ({
@@ -51,12 +47,12 @@ export function useFleet() {
               id: string;
               provider: string;
               card_number_masked: string | null;
-              vehicles?: VehicleRef;
+              registration?: string | null;
             }[]
           ).map((c) => {
             const brand =
               FUEL_CARD_PROVIDER_LABELS[c.provider as FuelCardProvider] ?? c.provider.toUpperCase();
-            const reg = refReg(c.vehicles ?? null);
+            const reg = c.registration ?? null;
             return {
               id: c.id,
               label: `${brand} ${c.card_number_masked ?? ""}${reg ? ` · ${reg}` : ""}`.trim(),
