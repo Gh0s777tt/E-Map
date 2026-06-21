@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-90-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.66.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-91-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.67.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.67.0] — 📑 Zlecenia / ładunki (rdzeń spedytora)
+
+- `[#091]` 📑 **Nowy moduł Zleceń** — największe rozszerzenie produktowe (rdzeń pracy spedytora):
+  - [Migracja 0029](supabase/migrations/0029_orders.sql): enum `order_status` (new/assigned/in_progress/delivered/invoiced/cancelled) + tabela `orders` (nadawca, odbiorca, trasa, ładunek, waga, stawka+waluta, pojazd, daty zał./rozł., status) + RLS (członek czyta, owner/dispatcher zarządza).
+  - core: `ORDER_STATUSES` + etykiety ([catalog](packages/core/src/catalog.ts)) + `orderSchema` Zod ([schemas](packages/core/src/schemas.ts)).
+  - api [data/orders.ts](packages/api/src/data/orders.ts): CRUD + `setOrderStatus`. Typy DB (28 tabel, 9 enumów).
+  - **Strona [/orders](apps/web/app/(app)/orders/page.tsx)** — formularz zlecenia, lista kart ze statusem (kolory), zmiana statusu, **filtr statusu** + licznik, edycja/usuwanie (manager). Link w nawigacji.
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓.
 
 ## [0.66.0] — 🔧 Plan serwisowy wg przebiegu
 

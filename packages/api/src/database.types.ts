@@ -621,6 +621,69 @@ export interface Database {
         };
         Relationships: [];
       };
+      orders: {
+        Row: {
+          id: string;
+          company_id: string;
+          reference_no: string | null;
+          shipper: string | null;
+          consignee: string | null;
+          origin: string | null;
+          destination: string | null;
+          cargo: string | null;
+          weight_kg: number | null;
+          price: number | null;
+          currency: string;
+          status: Database["public"]["Enums"]["order_status"];
+          vehicle_id: string | null;
+          load_date: string | null;
+          unload_date: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          reference_no?: string | null;
+          shipper?: string | null;
+          consignee?: string | null;
+          origin?: string | null;
+          destination?: string | null;
+          cargo?: string | null;
+          weight_kg?: number | null;
+          price?: number | null;
+          currency?: string;
+          status?: Database["public"]["Enums"]["order_status"];
+          vehicle_id?: string | null;
+          load_date?: string | null;
+          unload_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          reference_no?: string | null;
+          shipper?: string | null;
+          consignee?: string | null;
+          origin?: string | null;
+          destination?: string | null;
+          cargo?: string | null;
+          weight_kg?: number | null;
+          price?: number | null;
+          currency?: string;
+          status?: Database["public"]["Enums"]["order_status"];
+          vehicle_id?: string | null;
+          load_date?: string | null;
+          unload_date?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       passkeys: {
         Row: {
           id: string;
@@ -1129,6 +1192,7 @@ export interface Database {
         | "morganfuels"
         | "iqcard";
       membership_status: "active" | "invited" | "disabled";
+      order_status: "new" | "assigned" | "in_progress" | "delivered" | "invoiced" | "cancelled";
       payment_method: "card" | "cash";
       poi_type: "parking" | "fuel_station" | "ferry" | "airport" | "company" | "wash" | "weigh";
       report_type: "accident" | "police" | "closure" | "traffic" | "weigh" | "hazard";
