@@ -1,7 +1,40 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **propozycja do akceptacji** · wersja 0.1.0 · 2026-06-20
-> Baza: Supabase / **Postgres 17 + PostGIS**. Wszystkie tabele multi-tenant chronione **RLS**.
+> Status: **wdrożone** · stan kodu **v0.51.0** (#052) · 2026-06-21
+> Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS**.
+> Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
+
+---
+
+## 0. Aktualny schemat (stan v0.51.0 — migracje 0001–0023)
+
+**Tabele:**
+- `companies`, `memberships` (`role`, `status`, **`modules` text[]** — 0016), `profiles`, `driver_profiles`.
+- `vehicles` — rejestracja, `make`/`model`/`year`/**`vin`** (0009), waga, `max_payload_kg`, **`fuel_tank_l`/`adblue_tank_l`** (0018), terminy `inspection_expiry`/`insurance_expiry`/`insurer` (0009)/`leasing_end`, **`license_number`** (0011), PostGIS `geo`.
+- `driver_assignments` — przypisanie kierowca↔pojazd (RLS bez rekurencji: `is_assigned_to_vehicle` SECURITY DEFINER, 0014).
+- `drivers` (kartoteka, 0012) — **tożsamość szyfrowana** `first_name_enc`/`last_name_enc`/`birth_date_enc` (0022) + dokumenty `id_card_enc`/`passport_enc`/`license_enc` (0015); `license_categories`/`qualifications` text[], `notes`.
+- `fuel_cards` — `provider`, `card_number_masked`, **`pin_encrypted`** (pgcrypto+Vault, 0003), `discount`, `valid_until`, **`vehicle_id`/`registration`** (0011).
+- `fuel_logs` / `adblue_logs` — `odometer_km`, `liters`, **`is_full`** (0017), `price_total`, `payment_method`, `fuel_card_id`, stacja + `geo`.
+- `trip_events` — `action` (load/unload/start/end/service/other), `weight_kg`, `amount`, miejsce + `geo`.
+- `vehicle_defects` (0019) — `part`/`side`/`severity`/`dashboard_light`/`description`/`status`/`resolved_by`.
+- `notifications` (0017) — `type`/`title`/`body`/`severity`/`read_at`/`dedup_key` (`user_id`+`company_id`).
+- `push_subscriptions` (0020, RLS `company_id` 0021) — `endpoint`/`p256dh`/`auth`.
+- `passkeys` (0010) — WebAuthn (`credential_id`, `public_key`, `counter`).
+- `invites` (0005) — token **hashowany** (SHA‑256), `role`, `vehicle_id`, `email`.
+- `pois` / `poi_reviews` / `fuel_prices` (+ **`reported_by`** 0023) / `map_reports` — dane mapy/społeczności.
+- `audit_log` — audyt dostępu do PIN/dokumentów/tożsamości.
+
+**Kluczowe funkcje/RPC (SECURITY DEFINER):** `is_member_of`, `has_role`, `is_assigned_to_vehicle`,
+`fuel_card_pin`/`set_fuel_card_pin`, `list_fuel_cards_for_user`, `driver_documents`/`driver_set_documents`,
+**`list_drivers`/`driver_save`** (0022), `create_invite`/`accept_invite`, `notify_company`,
+`generate_expiry_notifications`, `bootstrap_company`, `dev_stats`.
+
+**Szyfrowanie:** PIN‑y kart, numery dokumentów oraz tożsamość kierowcy → `pgp_sym_encrypt` z kluczem
+z **Vault** (`_card_key()`); dostęp tylko owner/dispatcher przez RPC, audytowany. `auth.users` (email/hasło)
+szyfruje platforma Supabase.
+
+> Uwaga porządkowa: numeracja migracji ma dwie kolizje historyczne (`0017_fuel_full_tank`+`0017_notifications`,
+> `0018_fix_expiry_onconflict`+`0018_vehicle_tanks`) — kolejność wykonania alfabetyczna; do renumeracji w przyszłości.
 
 ---
 
