@@ -5,6 +5,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { DriverRoster } from "@/components/DriverRoster";
+import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -58,10 +59,10 @@ export default function DriversPage() {
 
   return (
     <div style={{ maxWidth: 640 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.drivers")}</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Zaproś kierowcę linkiem lub kodem QR — dołączy do firmy po zalogowaniu.
-      </p>
+      <PageHeader
+        title={t("nav.drivers")}
+        subtitle="Zaproś kierowcę linkiem lub kodem QR — dołączy do firmy po zalogowaniu."
+      />
 
       {!canInvite ? (
         <p style={{ color: palette.smoke, marginTop: 16 }}>

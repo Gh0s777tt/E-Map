@@ -18,6 +18,7 @@ import {
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -254,11 +255,10 @@ export default function VehiclesPage() {
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.vehicles")}</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Dodawaj, edytuj i usuwaj pojazdy. Kliknij auto na liście, by zobaczyć szczegóły i przypisane
-        karty.
-      </p>
+      <PageHeader
+        title={t("nav.vehicles")}
+        subtitle="Dodawaj, edytuj i usuwaj pojazdy. Kliknij auto na liście, by zobaczyć szczegóły i przypisane karty."
+      />
 
       {canManage && (
         <div style={styles.form}>
