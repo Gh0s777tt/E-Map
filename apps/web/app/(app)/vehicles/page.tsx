@@ -18,6 +18,7 @@ import {
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -56,6 +57,7 @@ const providerLabel = (p: string) =>
   FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
 
 export default function VehiclesPage() {
+  const confirm = useConfirm();
   const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -245,9 +247,9 @@ export default function VehiclesPage() {
 
   async function removeVehicle(v: DbVehicle) {
     if (
-      !window.confirm(
+      !(await confirm(
         `Usunąć pojazd ${v.registration}? Usunie też powiązane wpisy paliwa/AdBlue/trasy. Tej operacji nie można cofnąć.`,
-      )
+      ))
     )
       return;
     try {

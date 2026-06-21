@@ -11,6 +11,7 @@ import {
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { PageHeader } from "@/components/ui";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
@@ -49,6 +50,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function ReportsPage() {
   const { vehicles, source } = useFleet();
+  const confirm = useConfirm();
   const [canManage, setCanManage] = useState(false);
   const [defects, setDefects] = useState<Defect[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +172,7 @@ export default function ReportsPage() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm("Usunąć zgłoszenie?")) return;
+    if (!(await confirm("Usunąć zgłoszenie?"))) return;
     try {
       await deleteDefect(getBrowserSupabase(), id);
       await load();

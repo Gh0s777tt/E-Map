@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-63-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.53.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-64-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.53.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.53.1] — ✋ Ostylowany modal potwierdzeń (zamiast window.confirm)
+
+- `[#064]` ✋ **Dostępne, spójne potwierdzenia akcji destrukcyjnych** (a11y z audytu — koniec blokującego `window.confirm`). Nowy [`ConfirmProvider`](apps/web/components/ConfirmProvider.tsx) + hook `useConfirm()` (modal red/black, `role="dialog"`/`aria-modal`, Esc=anuluj, Enter=potwierdź), wpięty w [layout](apps/web/app/(app)/layout.tsx). Podmienione wszystkie `window.confirm`: usuwanie karty, usterki, kierowcy, pojazdu, klucza passkey i wyłączanie 2FA.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.53.0] — 📈 Wykresy w statystykach (koszty, spalanie)
 

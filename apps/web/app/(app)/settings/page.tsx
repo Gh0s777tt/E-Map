@@ -4,6 +4,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { PushToggle } from "@/components/PushToggle";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -13,6 +14,7 @@ type State = "loading" | "off" | "enrolling" | "on";
 type Passkey = { id: string; name: string | null; created_at: string };
 
 export default function SettingsPage() {
+  const confirm = useConfirm();
   const [state, setState] = useState<State>("loading");
   const [factorId, setFactorId] = useState<string | null>(null);
   const [qr, setQr] = useState<string>("");
@@ -95,7 +97,7 @@ export default function SettingsPage() {
   }
 
   async function removePasskey(id: string) {
-    if (!window.confirm("Usunąć ten klucz dostępu?")) return;
+    if (!(await confirm("Usunąć ten klucz dostępu?"))) return;
     try {
       await getBrowserSupabase().from("passkeys").delete().eq("id", id);
       await loadPasskeys();
@@ -160,7 +162,7 @@ export default function SettingsPage() {
 
   async function disable() {
     if (!factorId) return;
-    if (!window.confirm("Wyłączyć weryfikację dwuetapową?")) return;
+    if (!(await confirm("Wyłączyć weryfikację dwuetapową?"))) return;
     setBusy(true);
     setMsg(null);
     try {
