@@ -14,6 +14,8 @@ export interface VehicleProfile {
   widthCm?: number;
   lengthCm?: number;
   weightKg?: number;
+  /** Liczba osi (HERE: truck[axleCount]; domyślnie 5 dla zestawu). */
+  axleCount?: number;
 }
 
 /** Opcje omijania (kraje, płatne drogi, promy, autokoszetki, drogi gruntowe). */

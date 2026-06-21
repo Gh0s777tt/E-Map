@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-43-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.42.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-44-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.43.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.43.0] — 🚛 Mapa: wymiary TIR + ruch na żywo + filtr stacji wg kart
+
+- `[#044]` 🚛 **Routing wg pełnych wymiarów TIR, ruch na żywo i filtr stacji akceptujących karty flotowe.**
+  - **`packages/maps`** — [profil pojazdu](packages/maps/src/types.ts) o pole `axleCount`; [HERE](packages/maps/src/here.ts) wysyła konfigurowalną liczbę osi (`truck[axleCount]`). Routing HERE jest już **świadomy ruchu** (`departureTime` = teraz → ETA z korkami).
+  - **`packages/core`** — [katalog](packages/core/src/catalog.ts) `FUEL_CARD_STATION_BRANDS` (orientacyjne marki stacji per karta) + `stationMatchesProviders()`/`stationBrandsForProviders()`; **8 testów** ([catalog.test.ts](packages/core/src/catalog.test.ts)).
+  - **Web** [`/map`](apps/web/app/(app)/map/page.tsx): panel **„Wymiary i tonaż"** (masa, osie, wys./szer./dł.) przekazywany do routingu TIR; **filtr „tylko stacje akceptujące moje karty"** — chipy z markami kart floty ([`useFleet`](apps/web/lib/useFleet.ts) dorzuca `provider`), POI stacji filtrowane po marce (parkingi bez zmian, przeliczenie bez ponownego pobierania z Overpass).
+  - **Uwaga:** filtr akceptacji kart jest **poglądowy** (dane OSM `brand`/`operator`) — wiążąca akceptacja wymaga API partnerów (Eurowag/DKV).
+  - **Bramki:** biome czysto · `tsc` ×7 · **62 testy** · build ✓.
 
 ## [0.42.0] — 🔧 Moduł usterek + graficzny schemat auta
 

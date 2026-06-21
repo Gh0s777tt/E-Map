@@ -14,6 +14,7 @@ export interface FleetVehicle {
 export interface FleetCard {
   id: string;
   label: string;
+  provider: FuelCardProvider;
 }
 
 /** Stan floty: skąd pochodzą dane / czego brakuje do zapisu w bazie. */
@@ -73,11 +74,12 @@ export function useFleet() {
               registration?: string | null;
             }[]
           ).map((c) => {
-            const brand =
-              FUEL_CARD_PROVIDER_LABELS[c.provider as FuelCardProvider] ?? c.provider.toUpperCase();
+            const provider = c.provider as FuelCardProvider;
+            const brand = FUEL_CARD_PROVIDER_LABELS[provider] ?? c.provider.toUpperCase();
             const reg = c.registration ?? null;
             return {
               id: c.id,
+              provider,
               label: `${brand} ${c.card_number_masked ?? ""}${reg ? ` · ${reg}` : ""}`.trim(),
             };
           }),

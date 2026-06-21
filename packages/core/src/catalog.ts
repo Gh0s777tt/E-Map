@@ -4,6 +4,8 @@
  * pole `make`/`insurer` nie jest sztywnym enumem (dopuszczamy „Inna/Inny").
  */
 
+import type { FuelCardProvider } from "./enums";
+
 export const VEHICLE_MAKE_GROUPS = [
   {
     group: "Dostawcze / Furgonetki (do 3,5 t)",
@@ -177,6 +179,152 @@ export function guessDefectPart(description: string): string | null {
     if (k.match.some((m) => d.includes(m))) return k.part;
   }
   return null;
+}
+
+/**
+ * Orientacyjne marki stacji akceptujących daną kartę flotową (słowa-klucze,
+ * dopasowanie po fragmencie do tagów OSM `brand`/`operator`/`name`).
+ * UWAGA: sieci akceptacji są ogromne i zmienne — to filtr **poglądowy**,
+ * nie wiążąca lista akceptacji (do tego potrzebne są API partnerów).
+ */
+export const FUEL_CARD_STATION_BRANDS: Record<FuelCardProvider, string[]> = {
+  dkv: [
+    "shell",
+    "bp",
+    "aral",
+    "esso",
+    "total",
+    "omv",
+    "eni",
+    "agip",
+    "circle k",
+    "orlen",
+    "lotos",
+    "moya",
+    "amic",
+    "avia",
+    "q8",
+    "tamoil",
+    "mol",
+    "slovnaft",
+    "petrol",
+    "hem",
+    "westfalen",
+    "star",
+    "jet",
+    "gulf",
+    "ina",
+    "lukoil",
+  ],
+  eurowag: [
+    "eurowag",
+    "orlen",
+    "lotos",
+    "mol",
+    "omv",
+    "slovnaft",
+    "petrol",
+    "ina",
+    "hem",
+    "avia",
+    "amic",
+    "moya",
+    "circle k",
+    "shell",
+    "eni",
+    "lukoil",
+    "socar",
+    "benzina",
+  ],
+  shell: ["shell"],
+  bp: ["bp", "aral"],
+  circlek: ["circle k", "circlek", "statoil", "ingo"],
+  e100: [
+    "e100",
+    "orlen",
+    "lotos",
+    "amic",
+    "moya",
+    "circle k",
+    "shell",
+    "bp",
+    "lukoil",
+    "socar",
+    "petrol",
+    "omv",
+    "mol",
+    "eni",
+    "avia",
+  ],
+  uta: [
+    "uta",
+    "shell",
+    "esso",
+    "total",
+    "omv",
+    "eni",
+    "agip",
+    "avia",
+    "westfalen",
+    "star",
+    "aral",
+    "bp",
+    "orlen",
+    "mol",
+    "q8",
+    "tamoil",
+    "gulf",
+    "jet",
+  ],
+  as24: ["as24", "as 24", "total"],
+  aral: ["aral", "bp"],
+  omv: ["omv", "avanti", "petrom"],
+  routex: ["shell", "bp", "aral", "omv", "eni", "agip", "circle k", "mol", "slovnaft", "avia"],
+  logpay: [
+    "shell",
+    "esso",
+    "aral",
+    "bp",
+    "total",
+    "omv",
+    "eni",
+    "avia",
+    "westfalen",
+    "star",
+    "jet",
+  ],
+  esso: ["esso", "exxon", "mobil"],
+  totalenergies: ["total", "as24", "as 24"],
+  tankpool24: [
+    "tankpool24",
+    "tankpool",
+    "hem",
+    "westfalen",
+    "avia",
+    "raiffeisen",
+    "baywa",
+    "classic",
+  ],
+  morganfuels: ["morgan", "certas", "gulf", "texaco", "emo", "maxol", "top oil"],
+  iqcard: ["iq", "circle k", "orlen", "lotos", "amic", "moya", "shell", "bp"],
+  other: [],
+};
+
+/** Zbiór słów-kluczy marek dla wskazanych kart (poglądowo). */
+export function stationBrandsForProviders(providers: FuelCardProvider[]): string[] {
+  return Array.from(new Set(providers.flatMap((p) => FUEL_CARD_STATION_BRANDS[p] ?? [])));
+}
+
+/**
+ * Czy stacja (tekst z tagów OSM: marka/operator/nazwa) pasuje do którejś
+ * z kart? `haystack` powinien być złączeniem brand/operator/name (lowercase).
+ * Pusty zestaw kart → brak filtra (zwraca `true`).
+ */
+export function stationMatchesProviders(haystack: string, providers: FuelCardProvider[]): boolean {
+  if (providers.length === 0) return true;
+  const h = haystack.toLowerCase();
+  if (!h.trim()) return false; // stacja bez rozpoznanej marki — przy filtrze ukrywamy
+  return stationBrandsForProviders(providers).some((b) => h.includes(b));
 }
 
 /** Ubezpieczyciele komunikacyjni (PL) — do listy przy OC pojazdu. */
