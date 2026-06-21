@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-56-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-57-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.2] — ⏳ Stany ładowania/błędu na listach
+
+- `[#057]` ⏳ **Listy odróżniają „ładowanie", „błąd" i „pusto"** (UX z audytu — wcześniej błąd sieci wyglądał jak brak danych). Nowy [`ListStatus`](apps/web/components/ListStatus.tsx) (spinner / komunikat błędu z **„Ponów"** / pusto) wpięty w [Karty](apps/web/app/(app)/cards/page.tsx) i [Usterki](apps/web/app/(app)/reports/page.tsx); `catch` ustawia realny komunikat zamiast po cichu czyścić listę. Komponent gotowy do rozszerzenia na pozostałe listy.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.1] — 🎯 Podświetlenie aktywnej nawigacji
 

@@ -21,6 +21,7 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { CardArt } from "@/components/CardArt";
 import { Field, fieldInputStyle as input } from "@/components/Field";
+import { ListStatus } from "@/components/ListStatus";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -44,6 +45,8 @@ export default function CardsPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isOwner, setIsOwner] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const [pins, setPins] = useState<Record<string, string>>({});
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -57,6 +60,8 @@ export default function CardsPage() {
   const [status, setStatus] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setLoadErr(null);
     try {
       const sb = getBrowserSupabase();
       const m = await getActiveMembership(sb);
@@ -64,12 +69,15 @@ export default function CardsPage() {
         setOffline(true);
         return;
       }
+      setOffline(false);
       setIsOwner(m.role === "owner");
       const [cs, vs] = await Promise.all([listFuelCardsForUser(sb), listVehicles(sb, m.companyId)]);
       setCards(cs as Card[]);
       setVehicles((vs as Vehicle[]).map((v) => ({ id: v.id, registration: v.registration })));
-    } catch {
-      setOffline(true);
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać kart.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -267,9 +275,14 @@ export default function CardsPage() {
       )}
 
       <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Karty</h2>
-      {cards.length === 0 ? (
-        <p style={{ color: palette.smoke }}>Brak kart.</p>
-      ) : (
+      <ListStatus
+        loading={loading && !offline}
+        error={loadErr}
+        empty={!offline && cards.length === 0}
+        emptyText="Brak kart."
+        onRetry={load}
+      />
+      {!loading && !loadErr && cards.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           {cards.map((c) => (
             <div key={c.id} style={styles.row}>
