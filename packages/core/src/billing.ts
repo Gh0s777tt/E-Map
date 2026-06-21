@@ -182,6 +182,86 @@ export function computeTripSettlement(input: TripSettlementInput): TripSettlemen
   return { distanceKm, ...tripProfit(revenue, cost) };
 }
 
+// ── Rozliczenie okresowe (paliwo + AdBlue + trasy → koszt/zysk) ─────
+
+export interface SettlementFuelEntry extends FuelEntryFull {
+  priceTotal?: number;
+}
+
+export interface SettlementInput {
+  /** Tankowania paliwa w okresie (do dystansu, litrów, kosztu, spalania). */
+  fuel: SettlementFuelEntry[];
+  /** Tankowania AdBlue (litry + koszt). */
+  adblue: { liters: number; priceTotal?: number }[];
+  /** Zdarzenia trasy — koszty serwisu/innych z pola `amount`. */
+  trips: { action: string; amount?: number | null }[];
+  /** Stawka frachtu za km (opcjonalnie — do przychodu/zysku). */
+  ratePerKm?: number;
+  /** Myto za okres (opcjonalnie — wliczane do kosztów). */
+  tollCost?: number;
+}
+
+export interface Settlement {
+  distanceKm: number;
+  fuelLiters: number;
+  fuelCost: number;
+  avgConsumptionLPer100km: number | null;
+  adblueLiters: number;
+  adblueCost: number;
+  serviceCost: number;
+  otherCost: number;
+  tollCost: number;
+  totalCost: number;
+  revenue: number;
+  profit: number;
+  marginPercent: number | null;
+}
+
+/**
+ * Buduje rozliczenie okresu dla pojazdu: dystans z liczników tankowań,
+ * koszt paliwa/AdBlue (sumy `priceTotal`), koszty serwis/inne ze zdarzeń trasy,
+ * opcjonalne myto i przychód wg stawki za km → koszt całkowity i zysk.
+ */
+export function buildSettlement(input: SettlementInput): Settlement {
+  const fuelStats = summarizeFuel(
+    input.fuel.map((e) => ({
+      odometerKm: e.odometerKm,
+      liters: e.liters,
+      priceTotal: e.priceTotal,
+    })),
+  );
+  const adblueLiters = round2(input.adblue.reduce((s, e) => s + e.liters, 0));
+  const adblueCost = round2(input.adblue.reduce((s, e) => s + (e.priceTotal ?? 0), 0));
+  const serviceCost = round2(
+    input.trips.filter((t) => t.action === "service").reduce((s, t) => s + (t.amount ?? 0), 0),
+  );
+  const otherCost = round2(
+    input.trips.filter((t) => t.action === "other").reduce((s, t) => s + (t.amount ?? 0), 0),
+  );
+  const tollCost = round2(input.tollCost ?? 0);
+  const distanceKm = fuelStats.totalDistanceKm;
+
+  const totalCost = round2(fuelStats.totalSpend + adblueCost + serviceCost + otherCost + tollCost);
+  const revenue = round2(distanceKm * (input.ratePerKm ?? 0));
+  const { profit, marginPercent } = tripProfit(revenue, totalCost);
+
+  return {
+    distanceKm,
+    fuelLiters: fuelStats.totalLiters,
+    fuelCost: fuelStats.totalSpend,
+    avgConsumptionLPer100km: consumptionFullToFull(input.fuel),
+    adblueLiters,
+    adblueCost,
+    serviceCost,
+    otherCost,
+    tollCost,
+    totalCost,
+    revenue,
+    profit,
+    marginPercent,
+  };
+}
+
 // ── Podsumowanie paliwa (statystyki) ────────────────────────────────
 
 export interface FuelStatsEntry {

@@ -25,6 +25,7 @@ const NAV: { href: string; key: MessageKey; mod: AppModule | null }[] = [
   { href: "/reports", key: "nav.reports", mod: "reports" },
   { href: "/map", key: "nav.map", mod: "map" },
   { href: "/stats", key: "nav.stats", mod: "stats" },
+  { href: "/settlements", key: "nav.settlements", mod: "stats" },
   { href: "/settings", key: "nav.settings", mod: null },
 ];
 

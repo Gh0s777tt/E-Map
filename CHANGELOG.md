@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-44-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.43.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-45-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.44.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.44.0] — 🧾 Rozliczenia tras + eksport CSV/PDF
+
+- `[#045]` 🧾 **Okresowe rozliczenie pojazdu (koszty + zysk) z eksportem CSV (Excel) i wydrukiem/PDF.**
+  - **`packages/core`** — [silnik rozliczeń](packages/core/src/billing.ts) `buildSettlement()` (dystans z liczników, koszt paliwa/AdBlue, serwis/inne ze zdarzeń trasy, myto, przychód wg stawki za km → koszt całkowity, zysk, marża, spalanie full‑to‑full); generator [CSV](packages/core/src/csv.ts) `toCsv()`/`csvEscape()` (RFC 4180, separator `;` dla Excela PL). **+4 testy** ([settlement.test.ts](packages/core/src/settlement.test.ts)).
+  - **Web** [`/settlements`](apps/web/app/(app)/settlements/page.tsx): wybór pojazdu + zakres dat (domyślnie bieżący miesiąc) + stawka €/km + myto; kafelki (dystans, spalanie, koszt, **zysk**, marża), tabela pozycji (paliwo/AdBlue/trasa) i przyciski **⬇️ Eksport CSV** (z BOM) oraz **🖨️ Drukuj / PDF** (`@media print`).
+  - **Nawigacja** — pozycja **„Rozliczenia"** (moduł `stats`) + i18n PL/EN.
+  - **Bramki:** biome czysto · `tsc` ×7 · **66 testów** · build ✓.
 
 ## [0.43.0] — 🚛 Mapa: wymiary TIR + ruch na żywo + filtr stacji wg kart
 
