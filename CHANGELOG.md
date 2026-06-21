@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-39-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.38.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-40-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.39.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.39.0] — ⛽ „Do pełna" + statystyki AdBlue i Tras
+
+- `[#040]` ⛽ **Flaga „do pełna" przy tankowaniu + rozszerzone statystyki.**
+  - **DB** [`0017`](supabase/migrations/0017_fuel_full_tank.sql): kolumna `is_full` (fuel_logs + adblue_logs).
+  - **`packages/core`** — `fuelLogSchema.isFull`; nowa funkcja [`consumptionFullToFull`](packages/core/src/billing.ts) — spalanie liczone **od pełna do pełna** (uwzględnia tankowania częściowe). +2 testy.
+  - **Web** [Formularz paliwa](apps/web/components/LiquidForm.tsx): checkbox **„Zatankowano do pełna"**.
+  - **Web** [`/stats`](apps/web/app/(app)/stats/page.tsx): sekcje **⛽ Paliwo** (spalanie full‑to‑full), **💧 AdBlue** (zużycie L/100km, litry, koszt) i **🚚 Trasy** (zdarzenia wg typu, załadowano/rozładowano kg, koszt serwis/inne).
+  - **Bramki:** biome czysto · `tsc` ×7 · **54 testy** · build ✓.
 
 ## [0.38.1] — 🐞 Fix: synchronizacja formularzy (demo-pojazdy + ukryty błąd)
 

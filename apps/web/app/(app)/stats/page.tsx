@@ -1,136 +1,205 @@
 "use client";
 
-import { getActiveMembership, listFuelLogs, listVehicles } from "@e-logistic/api";
-import { type FuelLogInput, type FuelStatsEntry, summarizeFuel } from "@e-logistic/core";
+import { getActiveMembership, listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
+import {
+  consumptionFullToFull,
+  type FuelStatsEntry,
+  round2,
+  summarizeFuel,
+} from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
-import { vehicleLabel } from "@/lib/demo";
-import { listOutbox } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
 
-type Group = { id: string; label: string; entries: FuelStatsEntry[] };
+type FuelEntry = FuelStatsEntry & { isFull?: boolean };
+type Group = { id: string; label: string; entries: FuelEntry[] };
+type TripRow = {
+  vehicle_id: string;
+  action: string;
+  weight_kg: number | null;
+  amount: number | null;
+};
+type TripSummary = {
+  count: number;
+  loadKg: number;
+  unloadKg: number;
+  serviceCost: number;
+};
+
+const ACTION_PL: Record<string, string> = {
+  load: "Załadunki",
+  unload: "Rozładunki",
+  start: "Starty",
+  end: "Zakończenia",
+  service: "Serwisy",
+  other: "Inne",
+};
+
+function groupFuel(
+  logs: {
+    vehicle_id: string;
+    odometer_km: number;
+    liters: number;
+    price_total: number | null;
+    is_full?: boolean;
+  }[],
+  labelOf: (id: string) => string,
+): Group[] {
+  const byV = new Map<string, FuelEntry[]>();
+  for (const r of logs) {
+    const arr = byV.get(r.vehicle_id) ?? [];
+    arr.push({
+      odometerKm: r.odometer_km,
+      liters: Number(r.liters),
+      priceTotal: r.price_total != null ? Number(r.price_total) : undefined,
+      isFull: r.is_full !== false,
+    });
+    byV.set(r.vehicle_id, arr);
+  }
+  return [...byV.entries()].map(([id, entries]) => ({ id, label: labelOf(id), entries }));
+}
 
 export default function StatsPage() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [source, setSource] = useState<"baza" | "lokalne">("lokalne");
+  const [fuel, setFuel] = useState<Group[]>([]);
+  const [adblue, setAdblue] = useState<Group[]>([]);
+  const [trips, setTrips] = useState<TripRow[]>([]);
+  const [source, setSource] = useState<"baza" | "brak">("brak");
 
   useEffect(() => {
     (async () => {
-      // 1) Próba: dane z bazy (autorytatywne) dla zalogowanej firmy.
       try {
         const sb = getBrowserSupabase();
         const m = await getActiveMembership(sb);
-        if (m) {
-          const [logs, vehicles] = await Promise.all([
-            listFuelLogs(sb),
-            listVehicles(sb, m.companyId),
-          ]);
-          const labelOf = new Map(
-            (vehicles as { id: string; registration: string }[]).map((v) => [v.id, v.registration]),
-          );
-          const byV = new Map<string, FuelStatsEntry[]>();
-          for (const r of logs as {
-            vehicle_id: string;
-            odometer_km: number;
-            liters: number;
-            price_total: number | null;
-          }[]) {
-            const arr = byV.get(r.vehicle_id) ?? [];
-            arr.push({
-              odometerKm: r.odometer_km,
-              liters: Number(r.liters),
-              priceTotal: r.price_total != null ? Number(r.price_total) : undefined,
-            });
-            byV.set(r.vehicle_id, arr);
-          }
-          setGroups(
-            [...byV.entries()].map(([id, entries]) => ({
-              id,
-              label: labelOf.get(id) ?? id.slice(0, 8),
-              entries,
-            })),
-          );
-          setSource("baza");
-          return;
-        }
+        if (!m) return;
+        const [fuelLogs, adblueLogs, tripEvents, vehicles] = await Promise.all([
+          listFuelLogs(sb),
+          listFuelLogs(sb, { table: "adblue_logs" }),
+          listTripEvents(sb),
+          listVehicles(sb, m.companyId),
+        ]);
+        const map = new Map(
+          (vehicles as { id: string; registration: string }[]).map((v) => [v.id, v.registration]),
+        );
+        const labelOf = (id: string) => map.get(id) ?? id.slice(0, 8);
+        setFuel(groupFuel(fuelLogs as never[], labelOf));
+        setAdblue(groupFuel(adblueLogs as never[], labelOf));
+        setTrips(tripEvents as TripRow[]);
+        setSource("baza");
       } catch {
-        // brak konfiguracji / sesji → lokalne
+        setSource("brak");
       }
-
-      // 2) Fallback: outbox (offline).
-      const items = listOutbox().filter((i) => i.kind !== "trip");
-      const byV = new Map<string, FuelStatsEntry[]>();
-      for (const i of items) {
-        const inp = i.input as FuelLogInput;
-        const arr = byV.get(inp.vehicleId) ?? [];
-        arr.push({ odometerKm: inp.odometerKm, liters: inp.liters, priceTotal: inp.priceTotal });
-        byV.set(inp.vehicleId, arr);
-      }
-      setGroups(
-        [...byV.entries()].map(([id, entries]) => ({ id, label: vehicleLabel(id), entries })),
-      );
-      setSource("lokalne");
     })();
   }, []);
 
-  const overall = summarizeFuel(groups.flatMap((g) => g.entries));
+  const tripSummary: TripSummary = trips.reduce(
+    (acc, r) => {
+      acc.count += 1;
+      if (r.action === "load") acc.loadKg += r.weight_kg ?? 0;
+      if (r.action === "unload") acc.unloadKg += r.weight_kg ?? 0;
+      if (r.action === "service" || r.action === "other") acc.serviceCost += r.amount ?? 0;
+      return acc;
+    },
+    { count: 0, loadKg: 0, unloadKg: 0, serviceCost: 0 },
+  );
+  const tripByAction = trips.reduce<Record<string, number>>((acc, r) => {
+    acc[r.action] = (acc[r.action] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const hasAny = fuel.length > 0 || adblue.length > 0 || trips.length > 0;
 
   return (
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.stats")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Liczone silnikiem <code>@e-logistic/core</code> · źródło danych: <strong>{source}</strong>.
+        Liczone silnikiem <code>@e-logistic/core</code> · źródło: <strong>{source}</strong>.
+        Spalanie paliwa liczone metodą „od pełna do pełna".
       </p>
 
-      {groups.length === 0 ? (
+      {!hasAny ? (
         <p style={{ color: palette.smoke, marginTop: 24 }}>
-          Brak danych — dodaj tankowania w{" "}
-          <a href="/forms/fuel" style={{ color: palette.red }}>
-            Formularzu Paliwowym
-          </a>
-          .
+          Brak danych — dodaj wpisy w formularzach.
         </p>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 14, marginTop: 24, flexWrap: "wrap" }}>
-            <Stat label="Tankowań" value={String(overall.count)} />
-            <Stat label="Litry łącznie" value={overall.totalLiters.toString()} />
-            <Stat
-              label="Śr. spalanie"
-              value={
-                overall.avgConsumptionLPer100km != null
-                  ? `${overall.avgConsumptionLPer100km} L/100km`
-                  : "—"
-              }
-            />
-            <Stat label="Wydatek" value={overall.totalSpend.toString()} />
-          </div>
+          <ConsumptionSection title="⛽ Paliwo" groups={fuel} unit="L" full />
+          <ConsumptionSection title="💧 AdBlue" groups={adblue} unit="L" />
 
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Wg pojazdu</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-            {groups.map((g) => {
-              const s = summarizeFuel(g.entries);
-              return (
-                <div key={g.id} style={styles.row}>
-                  <strong style={{ minWidth: 110 }}>{g.label}</strong>
-                  <span style={styles.cell}>{s.count} tank.</span>
-                  <span style={styles.cell}>{s.totalLiters} L</span>
-                  <span style={styles.cell}>
-                    {s.avgConsumptionLPer100km != null
-                      ? `${s.avgConsumptionLPer100km} L/100km`
-                      : "—"}
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 36 }}>🚚 Trasy</h2>
+          {trips.length === 0 ? (
+            <p style={{ color: palette.smoke }}>Brak zdarzeń trasy.</p>
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
+                <Stat label="Zdarzeń" value={String(tripSummary.count)} />
+                <Stat label="Załadowano" value={`${round2(tripSummary.loadKg)} kg`} />
+                <Stat label="Rozładowano" value={`${round2(tripSummary.unloadKg)} kg`} />
+                <Stat label="Koszt serwis/inne" value={String(round2(tripSummary.serviceCost))} />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                {Object.entries(tripByAction).map(([a, n]) => (
+                  <span key={a} style={styles.tag}>
+                    {ACTION_PL[a] ?? a}: <strong>{n}</strong>
                   </span>
-                  <span style={styles.cell}>{s.totalSpend}</span>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
+  );
+}
+
+function ConsumptionSection({
+  title,
+  groups,
+  unit,
+  full = false,
+}: {
+  title: string;
+  groups: Group[];
+  unit: string;
+  full?: boolean;
+}) {
+  if (groups.length === 0) return null;
+  const all = groups.flatMap((g) => g.entries);
+  const overall = summarizeFuel(all);
+  const overallCons = full ? consumptionFullToFull(all) : overall.avgConsumptionLPer100km;
+
+  return (
+    <>
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 36 }}>{title}</h2>
+      <div style={{ display: "flex", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
+        <Stat label="Wpisów" value={String(overall.count)} />
+        <Stat label={`Litry (${unit})`} value={String(overall.totalLiters)} />
+        <Stat
+          label="Śr. zużycie"
+          value={overallCons != null ? `${overallCons} ${unit}/100km` : "—"}
+        />
+        <Stat label="Wydatek" value={String(overall.totalSpend)} />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+        {groups.map((g) => {
+          const s = summarizeFuel(g.entries);
+          const cons = full ? consumptionFullToFull(g.entries) : s.avgConsumptionLPer100km;
+          return (
+            <div key={g.id} style={styles.row}>
+              <strong style={{ minWidth: 110 }}>{g.label}</strong>
+              <span style={styles.cell}>{s.count} wp.</span>
+              <span style={styles.cell}>
+                {s.totalLiters} {unit}
+              </span>
+              <span style={styles.cell}>{cons != null ? `${cons} ${unit}/100km` : "—"}</span>
+              <span style={styles.cell}>{s.totalSpend}</span>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -162,4 +231,12 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.graphite}`,
   },
   cell: { color: palette.smoke, fontSize: 14, minWidth: 90 },
+  tag: {
+    color: palette.offWhite,
+    fontSize: 13,
+    background: palette.coal,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "4px 10px",
+  },
 };
