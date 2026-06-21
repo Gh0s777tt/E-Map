@@ -327,7 +327,9 @@ export function DriverRoster() {
         {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
       </div>
 
-      {drivers.length > 0 && (
+      {drivers.length === 0 ? (
+        <p style={{ color: palette.smoke, marginTop: 20 }}>Brak kierowców w kartotece.</p>
+      ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
           {drivers.map((d) => {
             const doc = revealed[d.id];

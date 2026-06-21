@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-61-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.52.6-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-62-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.52.7-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.52.7] — ⏳ ListStatus na flocie + pusta kartoteka kierowców
+
+- `[#062]` ⏳ **Dokończenie stanów list.** `ListStatus` (ładowanie/błąd/„Ponów") dodany w [Pojazdy](apps/web/app/(app)/vehicles/page.tsx) (błąd sieci nie udaje już „brak pojazdów"). W [Kartotece kierowców](apps/web/components/DriverRoster.tsx) dodany komunikat „Brak kierowców w kartotece". Łącznie stany list pokrywają główne listy CRUD: Karty, Usterki, Zespół, Pojazdy, Kierowcy.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.52.6] — 🧩 PageHeader na wszystkich stronach + ListStatus (zespół)
 

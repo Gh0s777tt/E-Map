@@ -18,6 +18,7 @@ import {
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { ListStatus } from "@/components/ListStatus";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -57,6 +58,8 @@ const providerLabel = (p: string) =>
 export default function VehiclesPage() {
   const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
   const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [vehicleCards, setVehicleCards] = useState<Record<string, CardRow[]>>({});
@@ -82,6 +85,8 @@ export default function VehiclesPage() {
   const [status, setStatus] = useState<string | null>(null);
 
   const loadVehicles = useCallback(async () => {
+    setLoading(true);
+    setLoadErr(null);
     try {
       const supabase = getBrowserSupabase();
       const membership = await getCachedMembership(supabase);
@@ -92,8 +97,10 @@ export default function VehiclesPage() {
       setCanManage(membership.role === "owner" || membership.role === "dispatcher");
       const vs = await listVehicles(supabase, membership.companyId);
       setDbVehicles(vs as DbVehicle[]);
-    } catch {
-      setDbVehicles([]);
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać floty.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -486,9 +493,14 @@ export default function VehiclesPage() {
 
       <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Flota</h2>
 
-      {dbVehicles.length === 0 ? (
-        <p style={{ color: palette.smoke }}>Brak pojazdów — dodaj powyżej.</p>
-      ) : (
+      <ListStatus
+        loading={loading}
+        error={loadErr}
+        empty={dbVehicles.length === 0}
+        emptyText="Brak pojazdów — dodaj powyżej."
+        onRetry={loadVehicles}
+      />
+      {!loading && !loadErr && dbVehicles.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           {dbVehicles.map((v) => {
             const open = expandedId === v.id;
