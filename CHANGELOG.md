@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-36-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.36.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-37-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.37.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,10 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.37.0] — 📍 Geokoder w formularzu Trasa
+
+- `[#037]` 📍 **Wyszukiwarka miejsc (adres → GPS) także w formularzu Trasa** — domknięcie pełnego wsparcia geolokalizacji we wszystkich formularzach ([trip](apps/web/app/(app)/forms/trip/page.tsx), reuse [`PlaceSearch`](apps/web/components/PlaceSearch.tsx)). Bramki: biome czysto · `tsc` ×7 · build ✓.
 
 ## [0.36.0] — 🧭 Samouczek + pomoc kontekstowa na każdym panelu
 
