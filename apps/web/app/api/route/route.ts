@@ -6,8 +6,35 @@ import {
   routeMultiLeg,
 } from "@e-logistic/maps";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+// Walidacja wejścia (P2 z audytu) — chroni płatne API (HERE/GraphHopper) przed nadużyciem.
+const waypointSchema = z.object({ lat: z.number().finite(), lng: z.number().finite() });
+const routeBodySchema = z.object({
+  waypoints: z.array(waypointSchema).min(2).max(25),
+  profile: z
+    .object({
+      kind: z.string().optional(),
+      weightKg: z.number().optional(),
+      heightCm: z.number().optional(),
+      widthCm: z.number().optional(),
+      lengthCm: z.number().optional(),
+      axleCount: z.number().optional(),
+    })
+    .optional(),
+  options: z
+    .object({
+      avoidTolls: z.boolean().optional(),
+      avoidFerries: z.boolean().optional(),
+      avoidCarTrains: z.boolean().optional(),
+      avoidDirtRoads: z.boolean().optional(),
+      avoidCountries: z.array(z.string()).optional(),
+    })
+    .optional(),
+  currency: z.string().optional(),
+});
 
 /**
  * Serwerowe wytyczanie trasy przez przystanki. Klucze czytane z env po stronie
@@ -16,10 +43,15 @@ export const dynamic = "force-dynamic";
  * Trasa liczona odcinkami (routeMultiLeg) → myto/dystans z podziałem na odcinki.
  */
 export async function POST(request: Request) {
-  const body = (await request.json()) as RouteRequest;
-  if (!Array.isArray(body.waypoints) || body.waypoints.length < 2) {
-    return NextResponse.json({ error: "Wymagane min. 2 punkty trasy." }, { status: 400 });
+  const raw = await request.json().catch(() => null);
+  const parsed = routeBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Nieprawidłowe dane trasy (min. 2 punkty, poprawne współrzędne)." },
+      { status: 400 },
+    );
   }
+  const body = parsed.data as RouteRequest;
 
   const hereKey = process.env.HERE_API_KEY;
   const ghKey = process.env.GRAPHHOPPER_API_KEY;

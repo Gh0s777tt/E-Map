@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-51-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.50.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-52-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.51.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.51.0] — 🛡️ Bezpieczeństwo P2: nagłówki, walidacja Zod, anty‑spam cen
+
+- `[#052]` 🛡️ **Utwardzenie warstwy aplikacyjnej (P2 z audytu).**
+  - **Nagłówki bezpieczeństwa** [`next.config.ts`](apps/web/next.config.ts): `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` (geolocation tylko `self`), `X-DNS-Prefetch-Control`. Bez sztywnego CSP (by nie zepsuć mapy).
+  - **Walidacja wejścia Zod** [`/api/route`](apps/web/app/api/route/route.ts): schema waypoints/profile/options (min. 2, maks. 25 punktów, poprawne współrzędne) → 400 dla śmieci. Chroni płatne API HERE/GraphHopper przed nadużyciem. Dodano `zod` do zależności web.
+  - **DB** [`0023`](supabase/migrations/0023_fuel_prices_reporter.sql): `fuel_prices.reported_by` + insert tylko jako autor (`reported_by = auth.uid()`) + delete własnych — koniec `with check (true)` (anty‑spam cen).
+  - **Pozostaje (wymaga Upstash/Vercel KV):** rate‑limiting endpointów — udokumentowane jako kolejny krok.
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓. Migracja 0023 na produkcji.
 
 ## [0.50.0] — ⚡ Wydajność: filtry zakresu dat + limity zapytań
 
