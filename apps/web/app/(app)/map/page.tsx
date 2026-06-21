@@ -3,11 +3,12 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { insertMapReport, listActiveMapReports } from "@e-logistic/api";
-import { newId, REPORT_TYPES, type ReportType } from "@e-logistic/core";
+import { fuelCost, newId, REPORT_TYPES, type ReportType } from "@e-logistic/core";
 import {
   fetchPois,
   type GeoHit,
   geocode,
+  haversineKm,
   type LatLng,
   type Poi,
   type RouteResult,
@@ -163,12 +164,55 @@ export default function MapPage() {
   const [reportMsg, setReportMsg] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
+  // Koszt paliwa trasy (silnik billing) + zapisane miejsca.
+  const [consumption, setConsumption] = useState("30");
+  const [fuelPrice, setFuelPrice] = useState("1.65");
+  const [fuelDiscount, setFuelDiscount] = useState("0");
+  const [saved, setSaved] = useState<{ label: string; lat: number; lng: number }[]>([]);
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+
   useEffect(() => {
     reportModeRef.current = reportMode;
   }, [reportMode]);
   useEffect(() => {
     reportTypeRef.current = reportType;
   }, [reportType]);
+
+  // Wczytaj zapisane miejsca + ewentualną trasę z linku (?r=lat,lng,label|…).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("elog_saved_places");
+      if (raw) setSaved(JSON.parse(raw));
+    } catch {
+      // brak/nieprawidłowy zapis
+    }
+    try {
+      const r = new URLSearchParams(window.location.search).get("r");
+      if (r) {
+        const parsed = r
+          .split("|")
+          .map((seg) => {
+            const [lat, lng, ...rest] = seg.split(",");
+            return {
+              lat: Number(lat),
+              lng: Number(lng),
+              label: decodeURIComponent(rest.join(",")),
+            };
+          })
+          .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+        if (parsed.length >= 2) {
+          const next = parsed.map((p, i) => ({
+            key: i === 0 ? "s-start" : i === parsed.length - 1 ? "s-end" : newId(),
+            ...p,
+          }));
+          setStops(next);
+          setQueries(Object.fromEntries(next.map((s) => [s.key, s.label])));
+        }
+      }
+    } catch {
+      // nieprawidłowy link
+    }
+  }, []);
 
   // ── Rysowanie warstw (tylko add/update źródła — handlery rejestrowane raz) ──
   const drawReports = useCallback(() => {
@@ -468,6 +512,63 @@ export default function MapPage() {
     setStops((s) => (s.length > 2 ? s.filter((st) => st.key !== key) : s));
   }
 
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setShareMsg("GPS niedostępny w tej przeglądarce.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setStops((s) =>
+          s.map((st, i) => (i === 0 ? { ...st, label: "Moja lokalizacja", lat, lng } : st)),
+        );
+        setQueries((q) => ({ ...q, "s-start": "Moja lokalizacja" }));
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: 11 });
+      },
+      () => setShareMsg("Nie udało się pobrać lokalizacji."),
+    );
+  }
+
+  function persistSaved(next: { label: string; lat: number; lng: number }[]) {
+    setSaved(next);
+    try {
+      localStorage.setItem("elog_saved_places", JSON.stringify(next));
+    } catch {
+      // brak dostępu do localStorage
+    }
+  }
+  function saveStart() {
+    const start = stops[0];
+    if (!start) return;
+    if (saved.some((p) => p.lat === start.lat && p.lng === start.lng)) return;
+    persistSaved([{ label: start.label, lat: start.lat, lng: start.lng }, ...saved].slice(0, 20));
+  }
+  function addSavedAsStop(p: { label: string; lat: number; lng: number }) {
+    const key = newId();
+    setStops((s) => {
+      const next = [...s];
+      next.splice(next.length - 1, 0, { key, label: p.label, lat: p.lat, lng: p.lng });
+      return next;
+    });
+    setQueries((q) => ({ ...q, [key]: p.label }));
+  }
+  function removeSaved(idx: number) {
+    persistSaved(saved.filter((_, i) => i !== idx));
+  }
+
+  function shareRoute() {
+    const r = stops
+      .map((s) => `${s.lat.toFixed(5)},${s.lng.toFixed(5)},${encodeURIComponent(s.label)}`)
+      .join("|");
+    const url = `${window.location.origin}/map?r=${r}`;
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => setShareMsg("🔗 Link do trasy skopiowany."))
+      .catch(() => setShareMsg(url));
+  }
+
   function switchBasemap(key: BasemapKey) {
     setBasemap(key);
     const map = mapRef.current;
@@ -527,6 +628,39 @@ export default function MapPage() {
     }
   }
 
+  /** POI w korytarzu wzdłuż wytyczonej trasy (≤6 km od linii). */
+  async function loadPoisAlongRoute() {
+    const geo = routeGeoRef.current;
+    if (!geo || geo.length < 2) {
+      setShareMsg("Najpierw wytycz trasę.");
+      return;
+    }
+    setPoiBusy(true);
+    try {
+      const lats = geo.map((p) => p.lat);
+      const lngs = geo.map((p) => p.lng);
+      const all = await fetchPois({
+        south: Math.min(...lats),
+        west: Math.min(...lngs),
+        north: Math.max(...lats),
+        east: Math.max(...lngs),
+      });
+      // Próbkujemy linię trasy i zostawiamy POI bliżej niż 6 km od najbliższego punktu.
+      const step = Math.max(1, Math.floor(geo.length / 300));
+      const sample = geo.filter((_, i) => i % step === 0);
+      const near = all.filter((poi) =>
+        sample.some((pt) => haversineKm({ lat: poi.lat, lng: poi.lng }, pt) <= 6),
+      );
+      poisRef.current = near;
+      setPoiCount(near.length);
+      drawPois(near);
+    } catch {
+      setPoiCount(0);
+    } finally {
+      setPoiBusy(false);
+    }
+  }
+
   async function plan() {
     setBusy(true);
     try {
@@ -557,6 +691,15 @@ export default function MapPage() {
       setBusy(false);
     }
   }
+
+  const fuelTotal = result
+    ? fuelCost(
+        (result.distanceKm * (Number(consumption) || 0)) / 100,
+        Number(fuelPrice) || 0,
+        Number(fuelDiscount) || 0,
+      )
+    : 0;
+  const grandTotal = result ? Math.round((result.tollCost + fuelTotal) * 100) / 100 : 0;
 
   return (
     <div>
@@ -608,9 +751,41 @@ export default function MapPage() {
             );
           })}
 
-          <button type="button" style={styles.ghost} onClick={addStop}>
-            ➕ Dodaj przystanek
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={addStop}>
+              ➕ Przystanek
+            </button>
+            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={useMyLocation}>
+              📍 Moja lokalizacja
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={saveStart}>
+              ⭐ Zapisz start
+            </button>
+            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={shareRoute}>
+              🔗 Udostępnij
+            </button>
+          </div>
+          {shareMsg && <div style={{ fontSize: 12, color: palette.smoke }}>{shareMsg}</div>}
+
+          {saved.length > 0 && (
+            <div>
+              <span style={styles.label}>Zapisane miejsca</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                {saved.map((p, i) => (
+                  <span key={`${p.lat},${p.lng}`} style={styles.savedChip}>
+                    <button type="button" style={styles.savedAdd} onClick={() => addSavedAsStop(p)}>
+                      {p.label}
+                    </button>
+                    <button type="button" style={styles.savedDel} onClick={() => removeSaved(i)}>
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
 
@@ -686,13 +861,58 @@ export default function MapPage() {
             Omijaj Szwajcarię
           </label>
 
+          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <span style={styles.label}>Koszt paliwa (szac.)</span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              style={styles.input}
+              type="number"
+              value={consumption}
+              onChange={(e) => setConsumption(e.target.value)}
+              placeholder="l/100km"
+              title="Spalanie l/100km"
+            />
+            <input
+              style={styles.input}
+              type="number"
+              step="0.01"
+              value={fuelPrice}
+              onChange={(e) => setFuelPrice(e.target.value)}
+              placeholder="€/l"
+              title="Cena za litr"
+            />
+            <input
+              style={styles.input}
+              type="number"
+              value={fuelDiscount}
+              onChange={(e) => setFuelDiscount(e.target.value)}
+              placeholder="rabat %"
+              title="Rabat karty %"
+            />
+          </div>
+
           <button type="button" style={styles.primary} onClick={plan} disabled={busy}>
             {busy ? "Liczę…" : "Wytycz trasę"}
           </button>
 
-          <button type="button" style={styles.ghost} onClick={loadPois} disabled={poiBusy}>
-            {poiBusy ? "Szukam…" : "📍 POI w widoku (OSM)"}
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              type="button"
+              style={{ ...styles.ghost, flex: 1 }}
+              onClick={loadPois}
+              disabled={poiBusy}
+            >
+              {poiBusy ? "Szukam…" : "📍 POI w widoku"}
+            </button>
+            <button
+              type="button"
+              style={{ ...styles.ghost, flex: 1 }}
+              onClick={loadPoisAlongRoute}
+              disabled={poiBusy}
+            >
+              🛣️ POI wzdłuż trasy
+            </button>
+          </div>
           {poiCount != null && (
             <div style={{ fontSize: 12, color: palette.smoke }}>
               Znaleziono: <strong>{poiCount}</strong> ·{" "}
@@ -734,6 +954,9 @@ export default function MapPage() {
                 k="Myto"
                 v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
               />
+              <Row k="Paliwo (szac.)" v={`${fuelTotal} ${result.currency}`} />
+              <div style={{ height: 1, background: palette.graphite, margin: "2px 0" }} />
+              <Row k="Razem (myto+paliwo)" v={`${grandTotal} ${result.currency}`} />
               <Row k="Dostawca" v={result.provider} />
             </div>
           )}
