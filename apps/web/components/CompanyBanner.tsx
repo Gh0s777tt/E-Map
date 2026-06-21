@@ -3,6 +3,7 @@
 import { bootstrapCompany, getActiveMembership } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
+import { clearMembershipCache } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type State = "loading" | "needCompany" | "hidden";
@@ -33,6 +34,7 @@ export function CompanyBanner() {
     setError(null);
     try {
       await bootstrapCompany(getBrowserSupabase(), name.trim() || "Moja firma");
+      clearMembershipCache(); // nowa firma → odśwież cache (NotificationBell/useFleet)
       setState("hidden");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się utworzyć firmy.");

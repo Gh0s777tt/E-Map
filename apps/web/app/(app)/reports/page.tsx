@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  deleteDefect,
-  getActiveMembership,
-  insertDefect,
-  listDefects,
-  updateDefectStatus,
-} from "@e-logistic/api";
+import { deleteDefect, insertDefect, listDefects, updateDefectStatus } from "@e-logistic/api";
 import {
   DEFECT_PARTS,
   DEFECT_SEVERITIES,
@@ -19,6 +13,7 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -80,7 +75,7 @@ export default function ReportsPage() {
     setLoadErr(null);
     try {
       const sb = getBrowserSupabase();
-      const m = await getActiveMembership(sb);
+      const m = await getCachedMembership(sb);
       setCanManage(m?.role === "owner" || m?.role === "dispatcher");
       if (m) setDefects((await listDefects(sb, { limit: 500 })) as Defect[]);
     } catch (e) {
@@ -141,7 +136,7 @@ export default function ReportsPage() {
     }
     try {
       const sb = getBrowserSupabase();
-      const m = await getActiveMembership(sb);
+      const m = await getCachedMembership(sb);
       const {
         data: { user },
       } = await sb.auth.getUser();
