@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-48-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.47.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-49-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.48.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.48.0] — 🔐 Hotfix bezpieczeństwa P0 + raport audytu
+
+- `[#049]` 🔐 **Naprawa trzech krytycznych luk wykrytych w audycie ([docs/AUDIT-2026-06-21.md](docs/AUDIT-2026-06-21.md)).**
+  - **DB** [`0021`](supabase/migrations/0021_push_sub_company_check.sql): polityki `push_subscriptions` walidują `company_id` (`is_member_of`) przy insert/update + spójne `to authenticated` + jawna polityka update. **Zamyka cross‑tenant wyciek powiadomień push.**
+  - **WebAuthn** [`lib/passkey.ts`](apps/web/lib/passkey.ts): `rpID`/`origin` ze **stałej zaufanej domeny** `NEXT_PUBLIC_SITE_URL` (nie z nagłówków `x-forwarded-*` sterowanych przez klienta) — przywraca ochronę antyphishingową passkey.
+  - **2FA** [`layout`](apps/web/app/(app)/layout.tsx): **serwerowe egzekwowanie AAL2** — konto z TOTP w sesji aal1 jest przekierowane do kroku 2FA (`/login?mfa=1`); [login](apps/web/app/login/page.tsx) wznawia krok TOTP po redirekcie (także dla magic‑link/OAuth/passkey). Wcześniej 2FA było tylko po stronie klienta.
+  - **Audyt:** pełny raport jakości/bezpieczeństwa/wydajności/dokumentacji/infrastruktury — [docs/AUDIT-2026-06-21.md](docs/AUDIT-2026-06-21.md).
+  - **Env** — `NEXT_PUBLIC_SITE_URL` ([turbo.json](turbo.json), Vercel). **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓. Migracja 0021 zastosowana na produkcji.
 
 ## [0.47.0] — ⛽ Ceny paliwa na mapie (Tankerkönig, DE)
 

@@ -3,7 +3,7 @@
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { startAuthentication } from "@simplewebauthn/browser";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -20,6 +20,28 @@ export default function LoginPage() {
   // Krok 2FA (po poprawnym haśle, gdy konto ma włączone TOTP).
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
+
+  // Wznowienie kroku 2FA po przekierowaniu z aplikacji (sesja aal1 wymagająca aal2 —
+  // np. po magic-link / OAuth / passkey, które nie przechodzą przez krok hasła).
+  useEffect(() => {
+    (async () => {
+      try {
+        const sb = getBrowserSupabase();
+        const {
+          data: { user },
+        } = await sb.auth.getUser();
+        if (!user) return;
+        const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel === "aal1" && aal.nextLevel === "aal2") {
+          const { data: factors } = await sb.auth.mfa.listFactors();
+          const totp = factors?.totp?.find((f) => f.status === "verified") ?? factors?.totp?.[0];
+          if (totp) setMfaFactorId(totp.id);
+        }
+      } catch {
+        // brak sesji / błąd — pokaż normalny formularz logowania
+      }
+    })();
+  }, []);
 
   async function run(fn: () => Promise<{ error: { message: string } | null }>, ok: string) {
     setBusy(true);
