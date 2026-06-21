@@ -103,6 +103,13 @@ Kod jest gotowy; do uruchomienia potrzeba kluczy VAPID i migracji.
 5. **Użytkownik** — w **Ustawienia → Powiadomienia push** klika „Włącz powiadomienia" (zgoda przeglądarki).
 6. (Opcjonalnie) dodaj ikonę `apps/web/public/icon-192.png` (192×192) — pojawi się w powiadomieniu.
 
+## 7b. Rate‑limiting (Upstash) — włączenie
+
+Kod jest gotowy; bez kluczy endpointy działają **bez limitów** (no‑op). Aby włączyć:
+1. Załóż darmową bazę **Upstash Redis** (REST).
+2. Ustaw env w Vercel (Production): `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` → redeploy.
+3. Limity (sliding window 30/min na IP+akcję) zaczną obowiązywać na: `/api/route`, `/api/fuel-prices`, `/api/passkey/auth/verify`. Przekroczenie → HTTP 429.
+
 ## 8. Czego jeszcze brakuje (wymaga decyzji/kluczy właściciela)
 
 - **OAuth Google/Apple/Microsoft** — konfiguracja providerów w panelu Supabase.
