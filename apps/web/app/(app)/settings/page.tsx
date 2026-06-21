@@ -2,12 +2,14 @@
 
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
 
 type State = "loading" | "off" | "enrolling" | "on";
+type Passkey = { id: string; name: string | null; created_at: string };
 
 export default function SettingsPage() {
   const [state, setState] = useState<State>("loading");
@@ -17,6 +19,10 @@ export default function SettingsPage() {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [passkeys, setPasskeys] = useState<Passkey[]>([]);
+  const [pkBusy, setPkBusy] = useState(false);
+  const [pkMsg, setPkMsg] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -38,9 +44,64 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const loadPasskeys = useCallback(async () => {
+    try {
+      const sb = getBrowserSupabase();
+      const { data } = await sb
+        .from("passkeys")
+        .select("id, name, created_at")
+        .order("created_at", { ascending: false });
+      setPasskeys((data ?? []) as Passkey[]);
+    } catch {
+      setPasskeys([]);
+    }
+  }, []);
+
   useEffect(() => {
     refresh();
-  }, [refresh]);
+    loadPasskeys();
+  }, [refresh, loadPasskeys]);
+
+  async function addPasskey() {
+    setPkBusy(true);
+    setPkMsg(null);
+    try {
+      const name = window.prompt("Nazwa klucza (np. iPhone Jana)", "Mój klucz");
+      const optRes = await fetch("/api/passkey/register/options", { method: "POST" });
+      if (!optRes.ok) {
+        setPkMsg("Zaloguj się ponownie, aby dodać klucz.");
+        return;
+      }
+      const options = await optRes.json();
+      const attResp = await startRegistration({ optionsJSON: options });
+      const verRes = await fetch("/api/passkey/register/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ response: attResp, name }),
+      });
+      const data = (await verRes.json()) as { verified?: boolean; error?: string };
+      if (!data.verified) {
+        setPkMsg(data.error ?? "Nie udało się dodać klucza.");
+        return;
+      }
+      setPkMsg("✅ Klucz dodany.");
+      await loadPasskeys();
+    } catch (e) {
+      setPkMsg(e instanceof Error ? e.message : "Błąd passkey.");
+    } finally {
+      setPkBusy(false);
+    }
+  }
+
+  async function removePasskey(id: string) {
+    if (!window.confirm("Usunąć ten klucz dostępu?")) return;
+    try {
+      await getBrowserSupabase().from("passkeys").delete().eq("id", id);
+      await loadPasskeys();
+    } catch (e) {
+      setPkMsg(e instanceof Error ? e.message : "Błąd usuwania.");
+    }
+  }
 
   async function startEnroll() {
     setBusy(true);
@@ -190,6 +251,49 @@ export default function SettingsPage() {
         )}
 
         {msg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{msg}</p>}
+      </div>
+
+      <div style={styles.card}>
+        <strong style={{ fontSize: 16 }}>{t("auth.passkey")}</strong>
+        <p style={{ color: palette.smoke, fontSize: 13, margin: 0 }}>
+          Logowanie bez hasła odciskiem palca, Face ID lub kluczem sprzętowym. Klucz jest związany z
+          tym urządzeniem i tą domeną.
+        </p>
+
+        {passkeys.length === 0 ? (
+          <p style={{ color: palette.smoke, fontSize: 14 }}>{t("auth.passkeyNone")}</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {passkeys.map((pk) => (
+              <div
+                key={pk.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  background: palette.black,
+                  border: `1px solid ${palette.graphite}`,
+                }}
+              >
+                <span>🔑 {pk.name ?? "Klucz"}</span>
+                <span style={{ flex: 1 }} />
+                <span style={{ color: palette.smoke, fontSize: 12 }}>
+                  {pk.created_at?.slice(0, 10)}
+                </span>
+                <button type="button" style={styles.danger} onClick={() => removePasskey(pk.id)}>
+                  🗑️
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button type="button" style={styles.primary} onClick={addPasskey} disabled={pkBusy}>
+          {t("auth.passkeyAdd")}
+        </button>
+        {pkMsg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{pkMsg}</p>}
       </div>
     </div>
   );

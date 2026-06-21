@@ -38,6 +38,10 @@ export const pl = {
   "auth.twoFactor": "Weryfikacja dwuetapowa (2FA)",
   "auth.twoFactorCode": "Kod z aplikacji uwierzytelniającej",
   "auth.twoFactorVerify": "Zweryfikuj kod",
+  "auth.passkey": "Klucze dostępu (passkey)",
+  "auth.passkeyAdd": "Dodaj klucz dostępu",
+  "auth.passkeyLogin": "Zaloguj kluczem (passkey)",
+  "auth.passkeyNone": "Brak kluczy dostępu.",
 
   "form.fuel.title": "Formularz paliwowy",
   "form.adblue.title": "Formularz AdBlue",

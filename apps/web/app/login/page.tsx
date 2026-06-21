@@ -2,6 +2,7 @@
 
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import { startAuthentication } from "@simplewebauthn/browser";
 import { useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -121,6 +122,43 @@ export default function LoginPage() {
       return { error };
     }, "Przekierowanie…");
 
+  async function loginPasskey() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const optRes = await fetch("/api/passkey/auth/options", { method: "POST" });
+      const options = await optRes.json();
+      const assertion = await startAuthentication({ optionsJSON: options });
+      const verRes = await fetch("/api/passkey/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ response: assertion }),
+      });
+      const data = (await verRes.json()) as {
+        verified?: boolean;
+        tokenHash?: string;
+        error?: string;
+      };
+      if (!data.verified || !data.tokenHash) {
+        setMsg(data.error ?? "Logowanie kluczem nie powiodło się.");
+        return;
+      }
+      const { error } = await getBrowserSupabase().auth.verifyOtp({
+        type: "magiclink",
+        token_hash: data.tokenHash,
+      });
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      window.location.href = "/dashboard";
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Błąd passkey");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const isSignup = mode === "signup";
 
   function toggleMode() {
@@ -219,6 +257,9 @@ export default function LoginPage() {
         <button type="button" style={styles.oauth} onClick={() => oauth("apple")} disabled={busy}>
           {t("auth.continueApple")}
         </button>
+        <button type="button" style={styles.passkey} onClick={loginPasskey} disabled={busy}>
+          🔑 {t("auth.passkeyLogin")}
+        </button>
 
         {msg && <p style={styles.msg}>{msg}</p>}
       </div>
@@ -281,6 +322,14 @@ const styles: Record<string, React.CSSProperties> = {
     background: palette.coal,
     color: palette.offWhite,
     border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "10px 12px",
+    cursor: "pointer",
+  },
+  passkey: {
+    background: "transparent",
+    color: palette.offWhite,
+    border: `1px solid ${palette.red}`,
     borderRadius: 8,
     padding: "10px 12px",
     cursor: "pointer",

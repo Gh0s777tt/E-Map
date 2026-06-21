@@ -3,7 +3,7 @@
  * klient tworzony dopiero w wywołaniu, nigdy na poziomie modułu.
  */
 import { createBrowserClient as ssrBrowser, createServerClient as ssrServer } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export interface SupabaseConfig {
   url: string;
@@ -29,6 +29,22 @@ function resolveConfig(cfg?: Partial<SupabaseConfig>): SupabaseConfig {
 export function createSupabaseBrowserClient(cfg?: Partial<SupabaseConfig>): SupabaseClient {
   const { url, anonKey } = resolveConfig(cfg);
   return ssrBrowser(url, anonKey);
+}
+
+/**
+ * Klient service-role (TYLKO serwer — pełne uprawnienia, omija RLS).
+ * Używany np. przy logowaniu passkey (weryfikacja + mintowanie sesji).
+ * Nigdy nie używać w kodzie klienckim.
+ */
+export function createSupabaseAdminClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error("Brak konfiguracji service-role (SUPABASE_SERVICE_ROLE_KEY).");
+  }
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 /** Typ adaptera ciasteczek wymagany przez @supabase/ssr (dostarcza go framework). */
