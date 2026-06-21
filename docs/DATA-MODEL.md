@@ -20,7 +20,7 @@
 - `notifications` (0017) — `type`/`title`/`body`/`severity`/`read_at`/`dedup_key` (`user_id`+`company_id`).
 - `push_subscriptions` (0020, RLS `company_id` 0021) — `endpoint`/`p256dh`/`auth`.
 - `passkeys` (0010) — WebAuthn (`credential_id`, `public_key`, `counter`).
-- `invites` (0005) — token **hashowany** (SHA‑256), `role`, `vehicle_id`, `email`.
+- `invites` (0005) — token **hashowany** (SHA‑256), `role`, `vehicle_id`, `email_enc` (**szyfrowany** 0024); odczyt menedżera przez `list_invites()` (audytowane).
 - `pois` / `poi_reviews` / `fuel_prices` (+ **`reported_by`** 0023) / `map_reports` — dane mapy/społeczności.
 - `audit_log` — audyt dostępu do PIN/dokumentów/tożsamości.
 
@@ -84,8 +84,11 @@ z `memberships` zalogowanego użytkownika; kierowca dodatkowo ograniczony do
 ### `companies`
 `id` (uuid) · `name` · `tax_id` (NIP/VAT) · `address` · `country` · `created_at`.
 
-### `users` (rozszerza `auth.users`)
-`id` · `full_name` · `phone` · `email` · `locale` · `mfa_enabled`.
+### `users` / `profiles` (rozszerza `auth.users`)
+`id` · `full_name_enc` · `phone_enc` · `email_enc` · `locale` · `mfa_enabled`.
+> **PII szyfrowane at-rest** (0024): imię/telefon/e-mail jako `*_enc` (pgcrypto + Vault `pii_key`,
+> odrębny od `card_key`). Kanoniczny e-mail i tak żyje w `auth.users`; `email_enc` to zaszyfrowana
+> kopia zapisywana przez trigger rejestracji. Brak czytelników w aplikacji (zero ekspozycji jawnej).
 
 ### `memberships`
 `id` · `company_id` · `user_id` · `role` (enum) · `status` (active/invited/disabled) · `created_at`.
@@ -104,8 +107,9 @@ z `memberships` zalogowanego użytkownika; kierowca dodatkowo ograniczony do
 Kierowca: dane w `users` + `driver_profiles` (poniżej).
 
 ### `driver_profiles`
-`user_id` · `company_name` (firma kierowcy) + `company_data` · `phone` · `email` ·
+`user_id` · `company_name` (firma kierowcy) + `company_data_enc` · `phone_enc` · `email_enc` ·
 `qualifications` (jsonb: wózki widłowe, ADR, …) · `comment`.
+> PII (`phone`/`email`/`company_data`) **szyfrowane at-rest** (0024, `pii_key`).
 
 ### `fuel_cards` — *wszystkie istniejące karty + dane wrażliwe*
 `id` · `company_id` · `provider` (enum: DKV, Eurowag, Shell, BP, Circle K, E100, UTA,
