@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-49-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.48.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-50-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.49.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.49.0] — 🔒 Szyfrowanie tożsamości kierowcy (PII at‑rest)
+
+- `[#050]` 🔒 **Imię, nazwisko i data urodzenia kierowcy szyfrowane at‑rest** (P1 z audytu) — wzorem numerów dokumentów (0015).
+  - **DB** [`0022`](supabase/migrations/0022_driver_identity_encryption.sql): kolumny `first_name_enc/last_name_enc/birth_date_enc` (`pgp_sym_encrypt` + klucz z Vault), kolumny jawne **usunięte**. Odczyt przez RPC [`list_drivers`] (deszyfrowanie, owner/dispatcher), zapis przez [`driver_save`] (insert/update, audytowane). RLS i SECURITY DEFINER jak w 0015.
+  - **`packages/api`** [drivers](packages/api/src/data/drivers.ts): `listDrivers`/`insertDriver`/`updateDriver` przepięte na RPC — **sygnatury i kształt danych bez zmian**, UI ([DriverRoster](apps/web/components/DriverRoster.tsx)) bez modyfikacji.
+  - Efekt: wyciek backupu/bazy nie odsłania danych osobowych kierowców (czytelne tylko po deszyfrowaniu dla uprawnionych ról; każdy zapis audytowany). AES‑256 (pgcrypto) jest odporne na Grovera — właściwy poziom także „post‑kwantowo".
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓. Migracja 0022 zastosowana na produkcji.
 
 ## [0.48.0] — 🔐 Hotfix bezpieczeństwa P0 + raport audytu
 
