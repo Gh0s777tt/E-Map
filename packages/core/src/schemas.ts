@@ -21,11 +21,18 @@ export type GeoLocation = z.infer<typeof geoLocationSchema>;
 
 export const vehicleSchema = z.object({
   registration: z.string().min(1).max(16),
+  make: z.string().min(1).max(40).optional(),
   model: z.string().min(1),
+  /** VIN: 17 znaków, bez I/O/Q (norma ISO 3779). Walidowany tylko gdy podany. */
+  vin: z
+    .string()
+    .regex(/^[A-HJ-NPR-Z0-9]{17}$/i, "VIN to 17 znaków (bez I, O, Q)")
+    .optional(),
   year: z.number().int().min(1950).max(2100),
   firstRegistrationDate: isoDate.optional(),
   inspectionExpiry: isoDate.optional(),
   insuranceExpiry: isoDate.optional(),
+  insurer: z.string().max(60).optional(),
   leasingEnd: isoDate.optional(),
   curbWeightKg: z.number().int().positive().optional(),
   maxPayloadKg: z.number().int().positive().optional(),

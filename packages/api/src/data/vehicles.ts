@@ -5,7 +5,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function listVehicles(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
     .from("vehicles")
-    .select("id, registration, model, vehicle_type")
+    .select(
+      "id, registration, make, model, vehicle_type, vin, curb_weight_kg, inspection_expiry, insurance_expiry, insurer",
+    )
     .eq("company_id", companyId)
     .order("registration");
   if (error) throw error;
@@ -28,7 +30,10 @@ export function vehicleToRow(input: VehicleInput, companyId: string) {
   return {
     company_id: companyId,
     registration: input.registration,
+    make: input.make ?? null,
     model: input.model,
+    vin: input.vin ?? null,
+    insurer: input.insurer ?? null,
     year: input.year,
     first_registration_date: input.firstRegistrationDate ?? null,
     inspection_expiry: input.inspectionExpiry ?? null,
