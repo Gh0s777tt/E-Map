@@ -73,6 +73,37 @@ export function aggregateConsumptionLPer100km(entries: FuelEntry[]): number | nu
   return consumptionLPer100km(distance, liters);
 }
 
+export interface FuelEntryFull extends FuelEntry {
+  /** Czy „do pełna" (domyślnie true). Tylko pełne baki są granicami okna spalania. */
+  isFull?: boolean;
+}
+
+/**
+ * Spalanie metodą full-to-full: dystans liczony między pierwszym a ostatnim
+ * pełnym bakiem, litry = suma wszystkich tankowań PO pierwszym pełnym do ostatniego
+ * pełnego włącznie (uwzględnia tankowania częściowe pomiędzy). Najdokładniejsza metoda.
+ * Zwraca `null`, gdy mniej niż 2 pełne baki lub dystans = 0.
+ */
+export function consumptionFullToFull(entries: FuelEntryFull[]): number | null {
+  const sorted = [...entries].sort((a, b) => a.odometerKm - b.odometerKm);
+  const fullPositions = sorted
+    .map((e, i) => ({ i, full: e.isFull !== false }))
+    .filter((x) => x.full)
+    .map((x) => x.i);
+  if (fullPositions.length < 2) return null;
+  const firstIdx = fullPositions[0];
+  const lastIdx = fullPositions[fullPositions.length - 1];
+  if (firstIdx === undefined || lastIdx === undefined) return null;
+  const first = sorted[firstIdx];
+  const last = sorted[lastIdx];
+  if (!first || !last) return null;
+  const distance = last.odometerKm - first.odometerKm;
+  if (distance <= 0) return null;
+  let liters = 0;
+  for (let i = firstIdx + 1; i <= lastIdx; i++) liters += sorted[i]?.liters ?? 0;
+  return consumptionLPer100km(distance, liters);
+}
+
 // ── Koszt paliwa (z rabatem karty) ──────────────────────────────────
 
 /** Cena za litr po uwzględnieniu rabatu karty paliwowej (0–100%). */

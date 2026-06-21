@@ -40,6 +40,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [liters, setLiters] = useState("");
+  const [isFull, setIsFull] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<(typeof PAYMENT_METHODS)[number]>("card");
   const [fuelCardId, setFuelCardId] = useState("");
   const [priceTotal, setPriceTotal] = useState("");
@@ -82,6 +83,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
       station: { country, city: city || undefined, lat: coords?.lat, lng: coords?.lng },
       odometerKm: Number(odometerKm),
       liters: Number(liters),
+      isFull,
       paymentMethod,
       fuelCardId: paymentMethod === "card" ? fuelCardId || undefined : undefined,
       priceTotal: priceTotal ? Number(priceTotal) : undefined,
@@ -107,6 +109,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
     );
     setOdometerKm("");
     setLiters("");
+    setIsFull(true);
     setPriceTotal("");
     setComment("");
   }
@@ -212,6 +215,21 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
             />
           </Field>
         </div>
+
+        {kind === "fuel" && (
+          <label
+            style={{
+              color: palette.offWhite,
+              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
+            Zatankowano do pełna (potrzebne do liczenia spalania)
+          </label>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontSize: 12, color: palette.smoke }}>

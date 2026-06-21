@@ -87,6 +87,8 @@ export const fuelLogSchema = z
     station: geoLocationSchema,
     odometerKm: z.number().int().nonnegative(),
     liters: z.number().positive(),
+    /** Czy zatankowano „do pełna" — do liczenia spalania (full-to-full). */
+    isFull: z.boolean().default(true),
     paymentMethod: z.enum(PAYMENT_METHODS),
     fuelCardId: z.uuid().optional(),
     priceTotal: z.number().nonnegative().optional(),

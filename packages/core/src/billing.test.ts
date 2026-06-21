@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateConsumptionLPer100km,
   computeTripSettlement,
+  consumptionFullToFull,
   consumptionLPer100km,
   effectiveFuelPrice,
   fuelConsumptionSeries,
@@ -112,5 +113,27 @@ describe("summarizeFuel", () => {
     const s = summarizeFuel([]);
     expect(s).toMatchObject({ count: 0, totalLiters: 0, totalDistanceKm: 0, totalSpend: 0 });
     expect(s.avgConsumptionLPer100km).toBeNull();
+  });
+});
+
+describe("consumptionFullToFull", () => {
+  it("liczy spalanie tylko między pełnymi bakami (z tankowaniem częściowym)", () => {
+    // pełny @1000, częściowe @1300 (50L), pełny @1500 → dystans 500 km, litry 50+? po pierwszym pełnym
+    const r = consumptionFullToFull([
+      { odometerKm: 1000, liters: 80, isFull: true },
+      { odometerKm: 1300, liters: 50, isFull: false },
+      { odometerKm: 1500, liters: 30, isFull: true },
+    ]);
+    // litry po pierwszym pełnym = 50 + 30 = 80; dystans = 500 km → 16 L/100km
+    expect(r).toBe(16);
+  });
+
+  it("zwraca null gdy mniej niż 2 pełne baki", () => {
+    expect(
+      consumptionFullToFull([
+        { odometerKm: 1000, liters: 80, isFull: true },
+        { odometerKm: 1300, liters: 50, isFull: false },
+      ]),
+    ).toBeNull();
   });
 });
