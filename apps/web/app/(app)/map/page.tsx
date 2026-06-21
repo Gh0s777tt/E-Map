@@ -2,15 +2,51 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { newId } from "@e-logistic/core";
+import { insertMapReport, listActiveMapReports } from "@e-logistic/api";
+import { newId, REPORT_TYPES, type ReportType } from "@e-logistic/core";
 import { fetchPois, type LatLng, type Poi, type RouteResult } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, StyleSpecification } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type MaplibreModule = typeof import("maplibre-gl");
 type RouteResponse = RouteResult & { tollEstimated?: boolean; fallback?: boolean };
 type Stop = { key: string; label: string; lat: number; lng: number; cityId?: string };
+type Report = { id: string; type: ReportType; lat: number; lng: number; comment: string | null };
+
+const REPORT_LABEL: Record<ReportType, string> = {
+  accident: "Wypadek",
+  police: "Policja",
+  closure: "Zamknięcie",
+  traffic: "Korek",
+  weigh: "Waga",
+  hazard: "Zagrożenie",
+};
+const REPORT_COLOR: Record<ReportType, string> = {
+  accident: palette.red,
+  police: "#3b82f6",
+  closure: "#f59e0b",
+  traffic: "#f97316",
+  weigh: "#a855f7",
+  hazard: "#eab308",
+};
+
+function reportFeatures(reports: Report[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: reports.map((r) => ({
+      type: "Feature" as const,
+      properties: {
+        type: r.type,
+        label: REPORT_LABEL[r.type],
+        color: REPORT_COLOR[r.type],
+        comment: r.comment ?? "",
+      },
+      geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] as [number, number] },
+    })),
+  };
+}
 
 const CITIES = [
   { id: "berlin", label: "Berlin", lat: 52.52, lng: 13.405 },
@@ -70,6 +106,9 @@ export default function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const mlRef = useRef<MaplibreModule | null>(null);
+  const reportsRef = useRef<Report[]>([]);
+  const reportModeRef = useRef(false);
+  const reportTypeRef = useRef<ReportType>("accident");
 
   const [stops, setStops] = useState<Stop[]>([
     cityStop("s-start", "berlin"),
@@ -83,9 +122,57 @@ export default function MapPage() {
   const [busy, setBusy] = useState(false);
   const [poiBusy, setPoiBusy] = useState(false);
   const [poiCount, setPoiCount] = useState<number | null>(null);
+  const [reportMode, setReportMode] = useState(false);
+  const [reportType, setReportType] = useState<ReportType>("accident");
+  const [reportMsg, setReportMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    reportModeRef.current = reportMode;
+  }, [reportMode]);
+  useEffect(() => {
+    reportTypeRef.current = reportType;
+  }, [reportType]);
+
+  const drawReports = useCallback(() => {
+    const map = mapRef.current;
+    const ml = mlRef.current;
+    if (!map || !ml) return;
+    const data = reportFeatures(reportsRef.current);
+    const existing = map.getSource("reports");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+      return;
+    }
+    map.addSource("reports", { type: "geojson", data });
+    map.addLayer({
+      id: "reports-layer",
+      type: "circle",
+      source: "reports",
+      paint: {
+        "circle-radius": 7,
+        "circle-color": ["get", "color"],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": palette.white,
+      },
+    } as import("maplibre-gl").AddLayerObject);
+    map.on("click", "reports-layer", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      if (f.geometry.type !== "Point") return;
+      const p = f.properties as { label?: string; comment?: string } | null;
+      const [lng, lat] = f.geometry.coordinates as [number, number];
+      new ml.Popup()
+        .setLngLat([lng, lat])
+        .setHTML(
+          `<strong>${p?.label ?? "Zgłoszenie"}</strong>${p?.comment ? `<br/>${p.comment}` : ""}`,
+        )
+        .addTo(map);
+    });
+  }, []);
 
   useEffect(() => {
     let map: MlMap | undefined;
+    let channel: { unsubscribe: () => void } | null = null;
     (async () => {
       const ml = await import("maplibre-gl");
       mlRef.current = ml;
@@ -97,9 +184,47 @@ export default function MapPage() {
         zoom: 3.6,
       });
       mapRef.current = map;
+
+      map.on("click", (e) => {
+        if (!reportModeRef.current) return;
+        insertMapReport(getBrowserSupabase(), {
+          type: reportTypeRef.current,
+          lat: e.lngLat.lat,
+          lng: e.lngLat.lng,
+        }).catch(() => setReportMsg("Nie udało się zgłosić (zaloguj się)."));
+      });
+
+      map.on("load", () => {
+        (async () => {
+          try {
+            const sb = getBrowserSupabase();
+            reportsRef.current = (await listActiveMapReports(sb)) as Report[];
+            drawReports();
+            channel = sb
+              .channel("map-reports")
+              .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "map_reports" },
+                (payload) => {
+                  const r = payload.new as Report;
+                  if (r.lat != null && r.lng != null) {
+                    reportsRef.current = [...reportsRef.current.filter((x) => x.id !== r.id), r];
+                    drawReports();
+                  }
+                },
+              )
+              .subscribe();
+          } catch {
+            // offline → brak warstwy zgłoszeń
+          }
+        })();
+      });
     })();
-    return () => map?.remove();
-  }, []);
+    return () => {
+      channel?.unsubscribe();
+      map?.remove();
+    };
+  }, [drawReports]);
 
   function setStopCity(key: string, cityId: string) {
     setStops((s) => s.map((st) => (st.key === key ? cityStop(key, cityId) : st)));
@@ -347,6 +472,30 @@ export default function MapPage() {
               <span style={{ color: "#22c55e" }}>● parkingi</span>
             </div>
           )}
+
+          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <label style={styles.check}>
+            <input
+              type="checkbox"
+              checked={reportMode}
+              onChange={(e) => setReportMode(e.target.checked)}
+            />{" "}
+            Tryb zgłoszeń (klik na mapie)
+          </label>
+          {reportMode && (
+            <select
+              style={styles.input}
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value as ReportType)}
+            >
+              {REPORT_TYPES.map((rt) => (
+                <option key={rt} value={rt}>
+                  {REPORT_LABEL[rt]}
+                </option>
+              ))}
+            </select>
+          )}
+          {reportMsg && <div style={{ fontSize: 12, color: palette.red }}>{reportMsg}</div>}
 
           {result && (
             <div style={styles.result}>
