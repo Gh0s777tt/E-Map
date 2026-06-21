@@ -16,15 +16,7 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-type Driver = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  birth_date: string | null;
-  license_categories: string[];
-  qualifications: string[];
-  notes: string | null;
-};
+type Driver = Awaited<ReturnType<typeof listDrivers>>[number];
 type Docs = { idCard: string | null; passport: string | null; license: string | null };
 
 const toggle = (arr: string[], v: string) =>
@@ -56,7 +48,7 @@ export function DriverRoster() {
       const m = await getActiveMembership(sb);
       const ok = m?.role === "owner" || m?.role === "dispatcher";
       setAllowed(Boolean(ok));
-      if (m && ok) setDrivers((await listDrivers(sb, m.companyId)) as Driver[]);
+      if (m && ok) setDrivers(await listDrivers(sb, m.companyId));
     } catch {
       setAllowed(false);
     }

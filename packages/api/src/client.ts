@@ -4,6 +4,12 @@
  */
 import { createBrowserClient as ssrBrowser, createServerClient as ssrServer } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
+
+export type { Database, Json } from "./database.types";
+
+/** Klient Supabase otypowany schematem bazy (generowany z żywej bazy). */
+export type TypedSupabaseClient = SupabaseClient<Database>;
 
 export interface SupabaseConfig {
   url: string;
@@ -26,9 +32,9 @@ function resolveConfig(cfg?: Partial<SupabaseConfig>): SupabaseConfig {
 }
 
 /** Klient przeglądarkowy (komponenty klienta). */
-export function createSupabaseBrowserClient(cfg?: Partial<SupabaseConfig>): SupabaseClient {
+export function createSupabaseBrowserClient(cfg?: Partial<SupabaseConfig>): TypedSupabaseClient {
   const { url, anonKey } = resolveConfig(cfg);
-  return ssrBrowser(url, anonKey);
+  return ssrBrowser<Database>(url, anonKey);
 }
 
 /**
@@ -36,13 +42,13 @@ export function createSupabaseBrowserClient(cfg?: Partial<SupabaseConfig>): Supa
  * Używany np. przy logowaniu passkey (weryfikacja + mintowanie sesji).
  * Nigdy nie używać w kodzie klienckim.
  */
-export function createSupabaseAdminClient(): SupabaseClient {
+export function createSupabaseAdminClient(): TypedSupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
     throw new Error("Brak konfiguracji service-role (SUPABASE_SERVICE_ROLE_KEY).");
   }
-  return createClient(url, serviceKey, {
+  return createClient<Database>(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

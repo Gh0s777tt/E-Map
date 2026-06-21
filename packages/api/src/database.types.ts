@@ -1,0 +1,1087 @@
+// AUTOGENEROWANE z żywej bazy (introspekcja). Nie edytować ręcznie.
+// Regeneracja: pnpm gen:types (patrz scripts/gen-types.mjs).
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+export interface Database {
+  public: {
+    Tables: {
+      adblue_log_revisions: {
+        Row: {
+          id: string;
+          adblue_log_id: string;
+          revision: number;
+          snapshot: Json;
+          edited_by: string | null;
+          edited_at: string;
+        };
+        Insert: {
+          id?: string;
+          adblue_log_id: string;
+          revision: number;
+          snapshot: Json;
+          edited_by?: string | null;
+          edited_at?: string;
+        };
+        Update: {
+          id?: string;
+          adblue_log_id?: string;
+          revision?: number;
+          snapshot?: Json;
+          edited_by?: string | null;
+          edited_at?: string;
+        };
+        Relationships: [];
+      };
+      adblue_logs: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_id: string;
+          vehicle_id: string;
+          station_country: string;
+          station_city: string | null;
+          station_loc: string | null;
+          geo: unknown | null;
+          odometer_km: number;
+          liters: number;
+          payment_method: Database["public"]["Enums"]["payment_method"];
+          fuel_card_id: string | null;
+          price_total: number | null;
+          comment: string | null;
+          device_id: string | null;
+          revision: number;
+          created_at: string;
+          updated_at: string;
+          synced_at: string | null;
+          is_full: boolean;
+        };
+        Insert: {
+          id: string;
+          company_id: string;
+          driver_id: string;
+          vehicle_id: string;
+          station_country: string;
+          station_city?: string | null;
+          station_loc?: string | null;
+          geo?: unknown | null;
+          odometer_km: number;
+          liters: number;
+          payment_method: Database["public"]["Enums"]["payment_method"];
+          fuel_card_id?: string | null;
+          price_total?: number | null;
+          comment?: string | null;
+          device_id?: string | null;
+          revision?: number;
+          created_at?: string;
+          updated_at?: string;
+          synced_at?: string | null;
+          is_full?: boolean;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_id?: string;
+          vehicle_id?: string;
+          station_country?: string;
+          station_city?: string | null;
+          station_loc?: string | null;
+          geo?: unknown | null;
+          odometer_km?: number;
+          liters?: number;
+          payment_method?: Database["public"]["Enums"]["payment_method"];
+          fuel_card_id?: string | null;
+          price_total?: number | null;
+          comment?: string | null;
+          device_id?: string | null;
+          revision?: number;
+          created_at?: string;
+          updated_at?: string;
+          synced_at?: string | null;
+          is_full?: boolean;
+        };
+        Relationships: [];
+      };
+      audit_log: {
+        Row: {
+          id: string;
+          company_id: string | null;
+          actor_id: string | null;
+          action: string;
+          target: string | null;
+          meta: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          actor_id?: string | null;
+          action: string;
+          target?: string | null;
+          meta?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          actor_id?: string | null;
+          action?: string;
+          target?: string | null;
+          meta?: Json | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      card_assignments: {
+        Row: {
+          id: string;
+          fuel_card_id: string;
+          user_id: string | null;
+          vehicle_id: string | null;
+          active: boolean;
+        };
+        Insert: {
+          id?: string;
+          fuel_card_id: string;
+          user_id?: string | null;
+          vehicle_id?: string | null;
+          active?: boolean;
+        };
+        Update: {
+          id?: string;
+          fuel_card_id?: string;
+          user_id?: string | null;
+          vehicle_id?: string | null;
+          active?: boolean;
+        };
+        Relationships: [];
+      };
+      companies: {
+        Row: {
+          id: string;
+          name: string;
+          tax_id: string | null;
+          address: string | null;
+          country: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          tax_id?: string | null;
+          address?: string | null;
+          country?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          tax_id?: string | null;
+          address?: string | null;
+          country?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      driver_assignments: {
+        Row: {
+          id: string;
+          vehicle_id: string;
+          user_id: string;
+          valid_from: string | null;
+          valid_to: string | null;
+          active: boolean;
+        };
+        Insert: {
+          id?: string;
+          vehicle_id: string;
+          user_id: string;
+          valid_from?: string | null;
+          valid_to?: string | null;
+          active?: boolean;
+        };
+        Update: {
+          id?: string;
+          vehicle_id?: string;
+          user_id?: string;
+          valid_from?: string | null;
+          valid_to?: string | null;
+          active?: boolean;
+        };
+        Relationships: [];
+      };
+      driver_profiles: {
+        Row: {
+          user_id: string;
+          company_name: string | null;
+          qualifications: Json | null;
+          comment: string | null;
+          phone_enc: string | null;
+          email_enc: string | null;
+          company_data_enc: string | null;
+        };
+        Insert: {
+          user_id: string;
+          company_name?: string | null;
+          qualifications?: Json | null;
+          comment?: string | null;
+          phone_enc?: string | null;
+          email_enc?: string | null;
+          company_data_enc?: string | null;
+        };
+        Update: {
+          user_id?: string;
+          company_name?: string | null;
+          qualifications?: Json | null;
+          comment?: string | null;
+          phone_enc?: string | null;
+          email_enc?: string | null;
+          company_data_enc?: string | null;
+        };
+        Relationships: [];
+      };
+      drivers: {
+        Row: {
+          id: string;
+          company_id: string;
+          license_categories: string[];
+          qualifications: string[];
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          id_card_enc: string | null;
+          passport_enc: string | null;
+          license_enc: string | null;
+          first_name_enc: string | null;
+          last_name_enc: string | null;
+          birth_date_enc: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          license_categories?: string[];
+          qualifications?: string[];
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          id_card_enc?: string | null;
+          passport_enc?: string | null;
+          license_enc?: string | null;
+          first_name_enc?: string | null;
+          last_name_enc?: string | null;
+          birth_date_enc?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          license_categories?: string[];
+          qualifications?: string[];
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          id_card_enc?: string | null;
+          passport_enc?: string | null;
+          license_enc?: string | null;
+          first_name_enc?: string | null;
+          last_name_enc?: string | null;
+          birth_date_enc?: string | null;
+        };
+        Relationships: [];
+      };
+      fuel_cards: {
+        Row: {
+          id: string;
+          company_id: string;
+          provider: Database["public"]["Enums"]["fuel_card_provider"];
+          card_number_masked: string;
+          pin_encrypted: string | null;
+          valid_until: string | null;
+          discount_percent: number;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          vehicle_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          provider: Database["public"]["Enums"]["fuel_card_provider"];
+          card_number_masked: string;
+          pin_encrypted?: string | null;
+          valid_until?: string | null;
+          discount_percent?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          vehicle_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          provider?: Database["public"]["Enums"]["fuel_card_provider"];
+          card_number_masked?: string;
+          pin_encrypted?: string | null;
+          valid_until?: string | null;
+          discount_percent?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          vehicle_id?: string | null;
+        };
+        Relationships: [];
+      };
+      fuel_log_revisions: {
+        Row: {
+          id: string;
+          fuel_log_id: string;
+          revision: number;
+          snapshot: Json;
+          edited_by: string | null;
+          edited_at: string;
+        };
+        Insert: {
+          id?: string;
+          fuel_log_id: string;
+          revision: number;
+          snapshot: Json;
+          edited_by?: string | null;
+          edited_at?: string;
+        };
+        Update: {
+          id?: string;
+          fuel_log_id?: string;
+          revision?: number;
+          snapshot?: Json;
+          edited_by?: string | null;
+          edited_at?: string;
+        };
+        Relationships: [];
+      };
+      fuel_logs: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_id: string;
+          vehicle_id: string;
+          station_country: string;
+          station_city: string | null;
+          station_loc: string | null;
+          geo: unknown | null;
+          odometer_km: number;
+          liters: number;
+          payment_method: Database["public"]["Enums"]["payment_method"];
+          fuel_card_id: string | null;
+          price_total: number | null;
+          comment: string | null;
+          device_id: string | null;
+          revision: number;
+          created_at: string;
+          updated_at: string;
+          synced_at: string | null;
+          is_full: boolean;
+        };
+        Insert: {
+          id: string;
+          company_id: string;
+          driver_id: string;
+          vehicle_id: string;
+          station_country: string;
+          station_city?: string | null;
+          station_loc?: string | null;
+          geo?: unknown | null;
+          odometer_km: number;
+          liters: number;
+          payment_method: Database["public"]["Enums"]["payment_method"];
+          fuel_card_id?: string | null;
+          price_total?: number | null;
+          comment?: string | null;
+          device_id?: string | null;
+          revision?: number;
+          created_at?: string;
+          updated_at?: string;
+          synced_at?: string | null;
+          is_full?: boolean;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_id?: string;
+          vehicle_id?: string;
+          station_country?: string;
+          station_city?: string | null;
+          station_loc?: string | null;
+          geo?: unknown | null;
+          odometer_km?: number;
+          liters?: number;
+          payment_method?: Database["public"]["Enums"]["payment_method"];
+          fuel_card_id?: string | null;
+          price_total?: number | null;
+          comment?: string | null;
+          device_id?: string | null;
+          revision?: number;
+          created_at?: string;
+          updated_at?: string;
+          synced_at?: string | null;
+          is_full?: boolean;
+        };
+        Relationships: [];
+      };
+      fuel_prices: {
+        Row: {
+          id: string;
+          poi_id: string | null;
+          fuel_type: string;
+          price: number;
+          currency: string;
+          reported_at: string;
+          source: string | null;
+          reported_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          poi_id?: string | null;
+          fuel_type?: string;
+          price: number;
+          currency?: string;
+          reported_at?: string;
+          source?: string | null;
+          reported_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          poi_id?: string | null;
+          fuel_type?: string;
+          price?: number;
+          currency?: string;
+          reported_at?: string;
+          source?: string | null;
+          reported_by?: string | null;
+        };
+        Relationships: [];
+      };
+      invites: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string | null;
+          role: Database["public"]["Enums"]["role"];
+          token_hash: string;
+          expires_at: string;
+          accepted_at: string | null;
+          created_at: string;
+          email_enc: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id?: string | null;
+          role?: Database["public"]["Enums"]["role"];
+          token_hash: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_at?: string;
+          email_enc?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string | null;
+          role?: Database["public"]["Enums"]["role"];
+          token_hash?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_at?: string;
+          email_enc?: string | null;
+        };
+        Relationships: [];
+      };
+      map_reports: {
+        Row: {
+          id: string;
+          type: Database["public"]["Enums"]["report_type"];
+          geo: unknown;
+          reported_by: string | null;
+          confidence: number;
+          votes: number;
+          comment: string | null;
+          created_at: string;
+          expires_at: string;
+          lat: number | null;
+          lng: number | null;
+        };
+        Insert: {
+          id?: string;
+          type: Database["public"]["Enums"]["report_type"];
+          geo: unknown;
+          reported_by?: string | null;
+          confidence?: number;
+          votes?: number;
+          comment?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          lat?: number | null;
+          lng?: number | null;
+        };
+        Update: {
+          id?: string;
+          type?: Database["public"]["Enums"]["report_type"];
+          geo?: unknown;
+          reported_by?: string | null;
+          confidence?: number;
+          votes?: number;
+          comment?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          lat?: number | null;
+          lng?: number | null;
+        };
+        Relationships: [];
+      };
+      memberships: {
+        Row: {
+          id: string;
+          company_id: string | null;
+          user_id: string;
+          role: Database["public"]["Enums"]["role"];
+          status: Database["public"]["Enums"]["membership_status"];
+          created_at: string;
+          modules: string[] | null;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          user_id: string;
+          role: Database["public"]["Enums"]["role"];
+          status?: Database["public"]["Enums"]["membership_status"];
+          created_at?: string;
+          modules?: string[] | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string | null;
+          user_id?: string;
+          role?: Database["public"]["Enums"]["role"];
+          status?: Database["public"]["Enums"]["membership_status"];
+          created_at?: string;
+          modules?: string[] | null;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          company_id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string | null;
+          severity: string;
+          dedup_key: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body?: string | null;
+          severity?: string;
+          dedup_key?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          body?: string | null;
+          severity?: string;
+          dedup_key?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      passkeys: {
+        Row: {
+          id: string;
+          user_id: string;
+          credential_id: string;
+          public_key: string;
+          counter: number;
+          transports: string[] | null;
+          name: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          credential_id: string;
+          public_key: string;
+          counter?: number;
+          transports?: string[] | null;
+          name?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          credential_id?: string;
+          public_key?: string;
+          counter?: number;
+          transports?: string[] | null;
+          name?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      poi_reviews: {
+        Row: {
+          id: string;
+          poi_id: string;
+          user_id: string;
+          rating: number | null;
+          safety: number | null;
+          comment: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          poi_id: string;
+          user_id: string;
+          rating?: number | null;
+          safety?: number | null;
+          comment?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          poi_id?: string;
+          user_id?: string;
+          rating?: number | null;
+          safety?: number | null;
+          comment?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      pois: {
+        Row: {
+          id: string;
+          type: Database["public"]["Enums"]["poi_type"];
+          name: string | null;
+          country: string | null;
+          address: string | null;
+          geo: unknown;
+          amenities: Json | null;
+          accepts: Json | null;
+          source: string | null;
+          rating_avg: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          type: Database["public"]["Enums"]["poi_type"];
+          name?: string | null;
+          country?: string | null;
+          address?: string | null;
+          geo: unknown;
+          amenities?: Json | null;
+          accepts?: Json | null;
+          source?: string | null;
+          rating_avg?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          type?: Database["public"]["Enums"]["poi_type"];
+          name?: string | null;
+          country?: string | null;
+          address?: string | null;
+          geo?: unknown;
+          amenities?: Json | null;
+          accepts?: Json | null;
+          source?: string | null;
+          rating_avg?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          locale: string | null;
+          mfa_enabled: boolean;
+          created_at: string;
+          updated_at: string;
+          full_name_enc: string | null;
+          phone_enc: string | null;
+          email_enc: string | null;
+        };
+        Insert: {
+          id: string;
+          locale?: string | null;
+          mfa_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          full_name_enc?: string | null;
+          phone_enc?: string | null;
+          email_enc?: string | null;
+        };
+        Update: {
+          id?: string;
+          locale?: string | null;
+          mfa_enabled?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          full_name_enc?: string | null;
+          phone_enc?: string | null;
+          email_enc?: string | null;
+        };
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          company_id: string | null;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          company_id?: string | null;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          company_id?: string | null;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      rates: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string | null;
+          rate_per_km: number;
+          currency: string;
+          valid_from: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id?: string | null;
+          rate_per_km: number;
+          currency?: string;
+          valid_from?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string | null;
+          rate_per_km?: number;
+          currency?: string;
+          valid_from?: string;
+        };
+        Relationships: [];
+      };
+      trip_event_revisions: {
+        Row: {
+          id: string;
+          trip_event_id: string;
+          revision: number;
+          snapshot: Json;
+          edited_by: string | null;
+          edited_at: string;
+        };
+        Insert: {
+          id?: string;
+          trip_event_id: string;
+          revision: number;
+          snapshot: Json;
+          edited_by?: string | null;
+          edited_at?: string;
+        };
+        Update: {
+          id?: string;
+          trip_event_id?: string;
+          revision?: number;
+          snapshot?: Json;
+          edited_by?: string | null;
+          edited_at?: string;
+        };
+        Relationships: [];
+      };
+      trip_events: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_id: string;
+          vehicle_id: string;
+          action: Database["public"]["Enums"]["trip_action"];
+          country: string;
+          location: string | null;
+          geo: unknown | null;
+          odometer_km: number;
+          weight_kg: number | null;
+          amount: number | null;
+          comment: string | null;
+          device_id: string | null;
+          revision: number;
+          created_at: string;
+          updated_at: string;
+          synced_at: string | null;
+        };
+        Insert: {
+          id: string;
+          company_id: string;
+          driver_id: string;
+          vehicle_id: string;
+          action: Database["public"]["Enums"]["trip_action"];
+          country: string;
+          location?: string | null;
+          geo?: unknown | null;
+          odometer_km: number;
+          weight_kg?: number | null;
+          amount?: number | null;
+          comment?: string | null;
+          device_id?: string | null;
+          revision?: number;
+          created_at?: string;
+          updated_at?: string;
+          synced_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_id?: string;
+          vehicle_id?: string;
+          action?: Database["public"]["Enums"]["trip_action"];
+          country?: string;
+          location?: string | null;
+          geo?: unknown | null;
+          odometer_km?: number;
+          weight_kg?: number | null;
+          amount?: number | null;
+          comment?: string | null;
+          device_id?: string | null;
+          revision?: number;
+          created_at?: string;
+          updated_at?: string;
+          synced_at?: string | null;
+        };
+        Relationships: [];
+      };
+      vehicle_defects: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string;
+          reported_by: string | null;
+          part: string;
+          side: string | null;
+          severity: string;
+          dashboard_light: boolean;
+          description: string;
+          status: string;
+          resolved_by: string | null;
+          resolved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id: string;
+          reported_by?: string | null;
+          part: string;
+          side?: string | null;
+          severity?: string;
+          dashboard_light?: boolean;
+          description: string;
+          status?: string;
+          resolved_by?: string | null;
+          resolved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string;
+          reported_by?: string | null;
+          part?: string;
+          side?: string | null;
+          severity?: string;
+          dashboard_light?: boolean;
+          description?: string;
+          status?: string;
+          resolved_by?: string | null;
+          resolved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      vehicles: {
+        Row: {
+          id: string;
+          company_id: string;
+          registration: string;
+          model: string;
+          year: number | null;
+          first_registration_date: string | null;
+          inspection_expiry: string | null;
+          insurance_expiry: string | null;
+          leasing_end: string | null;
+          curb_weight_kg: number | null;
+          max_payload_kg: number | null;
+          height_cm: number | null;
+          width_cm: number | null;
+          length_cm: number | null;
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"];
+          forwarder: string | null;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+          make: string | null;
+          vin: string | null;
+          insurer: string | null;
+          license_number: string | null;
+          fuel_tank_l: number | null;
+          adblue_tank_l: number | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          registration: string;
+          model: string;
+          year?: number | null;
+          first_registration_date?: string | null;
+          inspection_expiry?: string | null;
+          insurance_expiry?: string | null;
+          leasing_end?: string | null;
+          curb_weight_kg?: number | null;
+          max_payload_kg?: number | null;
+          height_cm?: number | null;
+          width_cm?: number | null;
+          length_cm?: number | null;
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"];
+          forwarder?: string | null;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          make?: string | null;
+          vin?: string | null;
+          insurer?: string | null;
+          license_number?: string | null;
+          fuel_tank_l?: number | null;
+          adblue_tank_l?: number | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          registration?: string;
+          model?: string;
+          year?: number | null;
+          first_registration_date?: string | null;
+          inspection_expiry?: string | null;
+          insurance_expiry?: string | null;
+          leasing_end?: string | null;
+          curb_weight_kg?: number | null;
+          max_payload_kg?: number | null;
+          height_cm?: number | null;
+          width_cm?: number | null;
+          length_cm?: number | null;
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"];
+          forwarder?: string | null;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          make?: string | null;
+          vin?: string | null;
+          insurer?: string | null;
+          license_number?: string | null;
+          fuel_tank_l?: number | null;
+          adblue_tank_l?: number | null;
+        };
+        Relationships: [];
+      };
+    };
+    Views: { [_ in never]: never };
+    Functions: {
+      _card_key: { Args: Record<string, unknown>; Returns: Json };
+      _pii_key: { Args: Record<string, unknown>; Returns: Json };
+      accept_invite: { Args: Record<string, unknown>; Returns: Json };
+      bootstrap_company: { Args: Record<string, unknown>; Returns: Json };
+      company_members: { Args: Record<string, unknown>; Returns: Json };
+      create_invite: { Args: Record<string, unknown>; Returns: Json };
+      dev_stats: { Args: Record<string, unknown>; Returns: Json };
+      driver_documents: { Args: Record<string, unknown>; Returns: Json };
+      driver_save: { Args: Record<string, unknown>; Returns: Json };
+      driver_set_documents: { Args: Record<string, unknown>; Returns: Json };
+      fuel_card_pin: { Args: Record<string, unknown>; Returns: Json };
+      fuel_card_set_pin: { Args: Record<string, unknown>; Returns: Json };
+      generate_expiry_notifications: { Args: Record<string, unknown>; Returns: Json };
+      has_role: { Args: Record<string, unknown>; Returns: Json };
+      is_assigned_to_vehicle: { Args: Record<string, unknown>; Returns: Json };
+      is_developer: { Args: Record<string, unknown>; Returns: Json };
+      is_member_of: { Args: Record<string, unknown>; Returns: Json };
+      list_drivers: { Args: Record<string, unknown>; Returns: Json };
+      list_fuel_cards_for_user: { Args: Record<string, unknown>; Returns: Json };
+      list_invites: { Args: Record<string, unknown>; Returns: Json };
+      notify_company: { Args: Record<string, unknown>; Returns: Json };
+    };
+    Enums: {
+      fuel_card_provider:
+        | "dkv"
+        | "eurowag"
+        | "shell"
+        | "bp"
+        | "circlek"
+        | "e100"
+        | "uta"
+        | "as24"
+        | "aral"
+        | "omv"
+        | "routex"
+        | "logpay"
+        | "esso"
+        | "totalenergies"
+        | "other"
+        | "tankpool24"
+        | "morganfuels"
+        | "iqcard";
+      membership_status: "active" | "invited" | "disabled";
+      payment_method: "card" | "cash";
+      poi_type: "parking" | "fuel_station" | "ferry" | "airport" | "company" | "wash" | "weigh";
+      report_type: "accident" | "police" | "closure" | "traffic" | "weigh" | "hazard";
+      role: "developer" | "owner" | "dispatcher" | "driver";
+      trip_action: "load" | "unload" | "start" | "end" | "service" | "other";
+      vehicle_type: "truck" | "tractor" | "van" | "trailer" | "other";
+    };
+    CompositeTypes: { [_ in never]: never };
+  };
+}

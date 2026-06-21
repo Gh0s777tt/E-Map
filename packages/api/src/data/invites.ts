@@ -1,6 +1,6 @@
 /** Warstwa danych: zaproszenia kierowców (link/QR). Token hashowany po stronie bazy. */
 import type { Role } from "@e-logistic/core";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 /** Tworzy zaproszenie (owner/spedytor) i zwraca surowy token (do linku/QR). */
 export async function createInvite(

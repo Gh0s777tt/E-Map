@@ -16,14 +16,6 @@ type Reminder = {
   level: ExpiryLevel;
 };
 
-type VRow = {
-  id: string;
-  registration: string;
-  inspection_expiry: string | null;
-  insurance_expiry: string | null;
-  leasing_end: string | null;
-};
-
 const FIELDS: { col: "inspection_expiry" | "insurance_expiry" | "leasing_end"; label: string }[] = [
   { col: "inspection_expiry", label: "Przegląd" },
   { col: "insurance_expiry", label: "OC" },
@@ -39,7 +31,7 @@ export function RemindersWidget() {
         const sb = getBrowserSupabase();
         const m = await getCachedMembership(sb);
         if (!m) return;
-        const vehicles = (await listVehiclesExpiry(sb, m.companyId)) as VRow[];
+        const vehicles = await listVehiclesExpiry(sb, m.companyId);
         const today = new Date().toISOString().slice(0, 10);
         const out: Reminder[] = [];
         for (const v of vehicles) {

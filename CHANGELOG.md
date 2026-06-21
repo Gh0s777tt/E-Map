@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-74-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.55.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-75-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.56.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.56.0] — 🧬 Generowane typy DB (koniec rozjazdu typ↔schemat)
+
+- `[#075]` 🧬 **Otypowanie warstwy danych schematem z żywej bazy** — eliminacja ryzyka rozjazdu typ↔schemat (jakość z audytu):
+  - **Generator** [scripts/gen-types.mjs](scripts/gen-types.mjs) (`pnpm gen:types`) — introspekcja przez `pg`, bez Dockera (CLI `supabase gen types` go wymaga). Emituje [packages/api/src/database.types.ts](packages/api/src/database.types.ts): `Database` (26 tabel Row/Insert/Update, 8 enumów, 21 funkcji RPC). Reprodukowalny (regeneracja = identyczny plik).
+  - **Typowany klient**: `createSupabaseBrowserClient/Admin/Server` → `SupabaseClient<Database>` (eksport `TypedSupabaseClient`, `Database`, `Json`). Wszystkie 12 plików warstwy danych przełączone na typowanego klienta → `.from(...).select(...)` i `.rpc(...)` zwracają typy ze schematu.
+  - **Usunięte redundantne casty mapowania DB**: lokalne typy `Db*`/`*Row` w stronach (pojazdy, usterki, kierowcy, przypomnienia, karty) zastąpione aliasem `Awaited<ReturnType<typeof listX>>[number]` — jedno źródło prawdy = schemat. Pozostałe `as` to świadome zawężenia view-model (przy `select('*')`) lub legalne narrowing (enumy/DOM/fetch/body/localStorage).
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.55.2] — 🧹 Porządki P3 z audytu (guard PIN, RLS, numeracja migracji)
 

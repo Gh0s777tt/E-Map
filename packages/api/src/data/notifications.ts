@@ -1,5 +1,5 @@
 /** Warstwa danych: powiadomienia w aplikacji. */
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export type Notification = {
   id: string;

@@ -1,6 +1,6 @@
 /** Warstwa danych: zgłoszenia społecznościowe na mapie (wypadek/policja/waga…). */
 import type { MapReportInput } from "@e-logistic/core";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export async function insertMapReport(client: SupabaseClient, input: MapReportInput) {
   const {

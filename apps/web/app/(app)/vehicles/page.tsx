@@ -24,25 +24,7 @@ import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-type DbVehicle = {
-  id: string;
-  registration: string;
-  make: string | null;
-  model: string;
-  vehicle_type: string;
-  vin: string | null;
-  curb_weight_kg: number | null;
-  max_payload_kg: number | null;
-  fuel_tank_l: number | null;
-  adblue_tank_l: number | null;
-  height_cm: number | null;
-  inspection_expiry: string | null;
-  insurance_expiry: string | null;
-  insurer: string | null;
-  license_number: string | null;
-  leasing_end: string | null;
-  year: number | null;
-};
+type DbVehicle = Awaited<ReturnType<typeof listVehicles>>[number];
 type CardRow = {
   id: string;
   provider: string;
@@ -98,7 +80,7 @@ export default function VehiclesPage() {
       }
       setCanManage(membership.role === "owner" || membership.role === "dispatcher");
       const vs = await listVehicles(supabase, membership.companyId);
-      setDbVehicles(vs as DbVehicle[]);
+      setDbVehicles(vs);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać floty.");
     } finally {

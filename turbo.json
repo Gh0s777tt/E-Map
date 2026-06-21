@@ -15,7 +15,9 @@
     "CRON_SECRET",
     "FUEL_PRICE_API_KEY",
     "UPSTASH_REDIS_REST_URL",
-    "UPSTASH_REDIS_REST_TOKEN"
+    "UPSTASH_REDIS_REST_TOKEN",
+    "SUPABASE_DB_URL",
+    "SUPABASE_DB_HOST"
   ],
   "tasks": {
     "build": {
