@@ -1,10 +1,17 @@
 "use client";
 
 import { listFuelLogs, listTripEvents } from "@e-logistic/api";
-import { buildSettlement, round2, type Settlement, toCsv } from "@e-logistic/core";
+import {
+  buildSettlement,
+  effectiveModules,
+  round2,
+  type Settlement,
+  toCsv,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Button, PageHeader } from "@/components/ui";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -67,6 +74,16 @@ export default function SettlementsPage() {
   const [settlement, setSettlement] = useState<Settlement | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [denied, setDenied] = useState(false);
+
+  // Strażnik modułu: jeśli członek istnieje, ale nie ma modułu `settlements` → brak dostępu.
+  useEffect(() => {
+    getCachedMembership(getBrowserSupabase())
+      .then((m) => {
+        if (m) setDenied(!effectiveModules(m.role, m.modules).includes("settlements"));
+      })
+      .catch(() => {});
+  }, []);
 
   const setupMsg =
     source === "no-company"
@@ -183,66 +200,73 @@ export default function SettlementsPage() {
       />
 
       {setupMsg && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {setupMsg}</p>}
+      {denied && (
+        <p style={{ color: palette.red, marginTop: 16 }}>
+          ⛔ Brak dostępu do modułu Rozliczenia. Poproś właściciela o nadanie uprawnień.
+        </p>
+      )}
 
-      <div style={styles.controls} className="no-print">
-        <label style={styles.field}>
-          <span style={styles.label}>Pojazd</span>
-          <select
-            style={styles.input}
-            value={vehicleId}
-            onChange={(e) => setVehicleId(e.target.value)}
-          >
-            {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.registration}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={styles.field}>
-          <span style={styles.label}>Od</span>
-          <input
-            style={styles.input}
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-        </label>
-        <label style={styles.field}>
-          <span style={styles.label}>Do</span>
-          <input
-            style={styles.input}
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </label>
-        <label style={styles.field}>
-          <span style={styles.label}>Stawka €/km</span>
-          <input
-            style={styles.input}
-            type="number"
-            step="0.01"
-            value={ratePerKm}
-            onChange={(e) => setRatePerKm(e.target.value)}
-            placeholder="np. 1.20"
-          />
-        </label>
-        <label style={styles.field}>
-          <span style={styles.label}>Myto (€)</span>
-          <input
-            style={styles.input}
-            type="number"
-            step="0.01"
-            value={tollCost}
-            onChange={(e) => setTollCost(e.target.value)}
-            placeholder="opcjonalnie"
-          />
-        </label>
-        <Button onClick={load} disabled={busy || !vehicleId}>
-          {busy ? "Liczę…" : "Przelicz"}
-        </Button>
-      </div>
+      {!denied && (
+        <div style={styles.controls} className="no-print">
+          <label style={styles.field}>
+            <span style={styles.label}>Pojazd</span>
+            <select
+              style={styles.input}
+              value={vehicleId}
+              onChange={(e) => setVehicleId(e.target.value)}
+            >
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.registration}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={styles.field}>
+            <span style={styles.label}>Od</span>
+            <input
+              style={styles.input}
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </label>
+          <label style={styles.field}>
+            <span style={styles.label}>Do</span>
+            <input
+              style={styles.input}
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </label>
+          <label style={styles.field}>
+            <span style={styles.label}>Stawka €/km</span>
+            <input
+              style={styles.input}
+              type="number"
+              step="0.01"
+              value={ratePerKm}
+              onChange={(e) => setRatePerKm(e.target.value)}
+              placeholder="np. 1.20"
+            />
+          </label>
+          <label style={styles.field}>
+            <span style={styles.label}>Myto (€)</span>
+            <input
+              style={styles.input}
+              type="number"
+              step="0.01"
+              value={tollCost}
+              onChange={(e) => setTollCost(e.target.value)}
+              placeholder="opcjonalnie"
+            />
+          </label>
+          <Button onClick={load} disabled={busy || !vehicleId}>
+            {busy ? "Liczę…" : "Przelicz"}
+          </Button>
+        </div>
+      )}
 
       {loadErr && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {loadErr}</p>}
 
