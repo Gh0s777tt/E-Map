@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-46-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.45.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-47-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.46.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.46.0] — 🔔 Powiadomienia push (Web Push) — kod gotowy
+
+- `[#047]` 🔔 **Push w przeglądarce/OS (service worker + VAPID + cron).** Kod kompletny; włączenie wymaga kluczy VAPID + migracji (instrukcja: [DEPLOY.md §7](DEPLOY.md)).
+  - **DB** [`0020`](supabase/migrations/0020_push_subscriptions.sql): tabela `push_subscriptions` (endpoint, p256dh, auth) + RLS (użytkownik zarządza tylko swoimi).
+  - **`packages/api`** — [push](packages/api/src/data/push.ts): `savePushSubscription`/`deletePushSubscription`/`listPushSubscriptionsForDelivery`.
+  - **Web** — [service worker](apps/web/public/sw.js) (push + klik), [`PushToggle`](apps/web/components/PushToggle.tsx) w [Ustawieniach](apps/web/app/(app)/settings/page.tsx) (zgoda + subskrypcja), endpoint wysyłki [`/api/push/send`](apps/web/app/api/push/send/route.ts) (owner/spedytor) i **cron** [`/api/cron/notify`](apps/web/app/api/cron/notify/route.ts) dosyłający nieprzeczytane powiadomienia (przeładowanie/terminy/usterki) — [`vercel.json`](apps/web/vercel.json) 07:00.
+  - **Env** — `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET` ([turbo.json](turbo.json)). Bez kluczy UI pokazuje „skonfiguruj VAPID" (build‑safe).
+  - **Bramki:** biome czysto · `tsc` ×7 · **68 testów** · build ✓.
 
 ## [0.45.0] — 💸 Podpowiedź ceny paliwa/AdBlue z historii
 
