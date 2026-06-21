@@ -1,11 +1,19 @@
 "use client";
 
-import { getActiveMembership, insertVehicle, listVehicles } from "@e-logistic/api";
 import {
+  deleteVehicle,
+  getActiveMembership,
+  insertVehicle,
+  listFuelCardsByVehicle,
+  listVehicles,
+  updateVehicle,
+} from "@e-logistic/api";
+import {
+  FUEL_CARD_PROVIDER_LABELS,
+  type FuelCardProvider,
   INSURERS,
   VEHICLE_MAKE_GROUPS,
   VEHICLE_TYPES,
-  type VehicleInput,
   vehicleSchema,
 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
@@ -21,16 +29,34 @@ type DbVehicle = {
   vehicle_type: string;
   vin: string | null;
   curb_weight_kg: number | null;
+  max_payload_kg: number | null;
+  height_cm: number | null;
   inspection_expiry: string | null;
   insurance_expiry: string | null;
   insurer: string | null;
+  license_number: string | null;
+  leasing_end: string | null;
+  year: number | null;
+};
+type CardRow = {
+  id: string;
+  provider: string;
+  card_number_masked: string;
+  discount_percent: number;
 };
 
 const t = createTranslator("pl");
 const OTHER = "__other__";
+const ALL_MAKES = VEHICLE_MAKE_GROUPS.flatMap((g) => g.makes);
+const providerLabel = (p: string) =>
+  FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
 
 export default function VehiclesPage() {
-  const [list, setList] = useState<VehicleInput[]>([]);
+  const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [vehicleCards, setVehicleCards] = useState<Record<string, CardRow[]>>({});
+
   const [registration, setRegistration] = useState("");
   const [make, setMake] = useState("");
   const [makeOther, setMakeOther] = useState("");
@@ -45,9 +71,9 @@ export default function VehiclesPage() {
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
   const [insurer, setInsurer] = useState("");
   const [insurerOther, setInsurerOther] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
-  const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
 
   const loadVehicles = useCallback(async () => {
     try {
@@ -69,12 +95,14 @@ export default function VehiclesPage() {
   }, [loadVehicles]);
 
   function resetForm() {
+    setEditingId(null);
     setRegistration("");
     setMake("");
     setMakeOther("");
     setModel("");
     setVin("");
     setYear("");
+    setVehicleType("tractor");
     setCurbWeightKg("");
     setMaxPayloadKg("");
     setHeightCm("");
@@ -82,12 +110,71 @@ export default function VehiclesPage() {
     setInsuranceExpiry("");
     setInsurer("");
     setInsurerOther("");
+    setLicenseNumber("");
+    setErrors({});
   }
 
-  async function add() {
+  function pickListValue(
+    val: string | null,
+    list: string[],
+    setSel: (s: string) => void,
+    setOther: (s: string) => void,
+  ) {
+    if (!val) {
+      setSel("");
+      setOther("");
+    } else if (list.includes(val)) {
+      setSel(val);
+      setOther("");
+    } else {
+      setSel(OTHER);
+      setOther(val);
+    }
+  }
+
+  function startEdit(v: DbVehicle) {
+    setEditingId(v.id);
+    setRegistration(v.registration);
+    pickListValue(v.make, ALL_MAKES, setMake, setMakeOther);
+    setModel(v.model);
+    setVin(v.vin ?? "");
+    setYear(v.year ? String(v.year) : "");
+    setVehicleType(
+      (VEHICLE_TYPES as readonly string[]).includes(v.vehicle_type)
+        ? (v.vehicle_type as (typeof VEHICLE_TYPES)[number])
+        : "other",
+    );
+    setCurbWeightKg(v.curb_weight_kg ? String(v.curb_weight_kg) : "");
+    setMaxPayloadKg(v.max_payload_kg ? String(v.max_payload_kg) : "");
+    setHeightCm(v.height_cm ? String(v.height_cm) : "");
+    setInspectionExpiry(v.inspection_expiry ?? "");
+    setInsuranceExpiry(v.insurance_expiry ?? "");
+    pickListValue(v.insurer, INSURERS as unknown as string[], setInsurer, setInsurerOther);
+    setLicenseNumber(v.license_number ?? "");
     setErrors({});
     setStatus(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
+  async function toggleExpand(id: string) {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    if (!vehicleCards[id]) {
+      try {
+        const cs = await listFuelCardsByVehicle(getBrowserSupabase(), id);
+        setVehicleCards((m) => ({ ...m, [id]: cs as CardRow[] }));
+      } catch {
+        setVehicleCards((m) => ({ ...m, [id]: [] }));
+      }
+    }
+  }
+
+  async function save() {
+    setErrors({});
+    setStatus(null);
     const resolvedMake = make === OTHER ? makeOther.trim() : make;
     const resolvedInsurer = insurer === OTHER ? insurerOther.trim() : insurer;
 
@@ -104,6 +191,7 @@ export default function VehiclesPage() {
       inspectionExpiry: inspectionExpiry || undefined,
       insuranceExpiry: insuranceExpiry || undefined,
       insurer: resolvedInsurer || undefined,
+      licenseNumber: licenseNumber.trim() || undefined,
     };
 
     const parsed = vehicleSchema.safeParse(candidate);
@@ -114,32 +202,58 @@ export default function VehiclesPage() {
       return;
     }
 
-    setList((prev) => [parsed.data, ...prev]);
-    resetForm();
-
     try {
       const supabase = getBrowserSupabase();
       const membership = await getActiveMembership(supabase);
-      if (membership) {
-        await insertVehicle(supabase, parsed.data, membership.companyId);
-        setStatus("✅ Dodano i zapisano w bazie.");
-        await loadVehicles();
-      } else {
-        setStatus("📥 Dodano lokalnie (utwórz firmę w panelu, by zapisać w bazie).");
+      if (!membership) {
+        setStatus("📥 Brak firmy — utwórz firmę w panelu, by zapisać w bazie.");
+        return;
       }
+      if (editingId) {
+        await updateVehicle(supabase, editingId, parsed.data, membership.companyId);
+        setStatus("✅ Zmiany zapisane.");
+      } else {
+        await insertVehicle(supabase, parsed.data, membership.companyId);
+        setStatus("✅ Dodano pojazd.");
+      }
+      resetForm();
+      await loadVehicles();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "📥 Dodano lokalnie (błąd zapisu w bazie).");
+      setStatus(e instanceof Error ? e.message : "Błąd zapisu pojazdu.");
+    }
+  }
+
+  async function removeVehicle(v: DbVehicle) {
+    if (
+      !window.confirm(
+        `Usunąć pojazd ${v.registration}? Usunie też powiązane wpisy paliwa/AdBlue/trasy. Tej operacji nie można cofnąć.`,
+      )
+    )
+      return;
+    try {
+      await deleteVehicle(getBrowserSupabase(), v.id);
+      if (editingId === v.id) resetForm();
+      setStatus("🗑️ Pojazd usunięty.");
+      await loadVehicles();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Błąd usuwania pojazdu.");
     }
   }
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: 820 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.vehicles")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Marka z listy, VIN, waga własna (z dowodu), terminy przeglądu i OC z ubezpieczycielem.
+        Dodawaj, edytuj i usuwaj pojazdy. Kliknij auto na liście, by zobaczyć szczegóły i przypisane
+        karty.
       </p>
 
       <div style={styles.form}>
+        {editingId && (
+          <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
+            ✏️ Edytujesz pojazd.
+          </div>
+        )}
         <div style={styles.grid}>
           <label style={styles.field}>
             <span style={styles.label}>Rejestracja *</span>
@@ -239,7 +353,6 @@ export default function VehiclesPage() {
               onChange={(e) => setCurbWeightKg(e.target.value)}
               placeholder="np. 7500 (z dowodu)"
             />
-            {errors.curbWeightKg && <span style={styles.err}>{errors.curbWeightKg}</span>}
           </label>
           <label style={styles.field}>
             <span style={styles.label}>Maks. ładunek (kg)</span>
@@ -250,7 +363,6 @@ export default function VehiclesPage() {
               onChange={(e) => setMaxPayloadKg(e.target.value)}
               placeholder="24000"
             />
-            {errors.maxPayloadKg && <span style={styles.err}>{errors.maxPayloadKg}</span>}
           </label>
         </div>
 
@@ -263,7 +375,6 @@ export default function VehiclesPage() {
               value={inspectionExpiry}
               onChange={(e) => setInspectionExpiry(e.target.value)}
             />
-            {errors.inspectionExpiry && <span style={styles.err}>{errors.inspectionExpiry}</span>}
           </label>
           <label style={styles.field}>
             <span style={styles.label}>Wysokość (cm)</span>
@@ -274,7 +385,6 @@ export default function VehiclesPage() {
               onChange={(e) => setHeightCm(e.target.value)}
               placeholder="400"
             />
-            {errors.heightCm && <span style={styles.err}>{errors.heightCm}</span>}
           </label>
         </div>
 
@@ -287,7 +397,6 @@ export default function VehiclesPage() {
               value={insuranceExpiry}
               onChange={(e) => setInsuranceExpiry(e.target.value)}
             />
-            {errors.insuranceExpiry && <span style={styles.err}>{errors.insuranceExpiry}</span>}
           </label>
           <label style={styles.field}>
             <span style={styles.label}>Ubezpieczyciel</span>
@@ -315,42 +424,117 @@ export default function VehiclesPage() {
           </label>
         </div>
 
-        <button type="button" style={styles.primary} onClick={add}>
-          {t("common.save")}
-        </button>
+        <label style={styles.field}>
+          <span style={styles.label}>Numer licencji (przypisanej do auta)</span>
+          <input
+            style={styles.input}
+            value={licenseNumber}
+            onChange={(e) => setLicenseNumber(e.target.value)}
+            placeholder="np. GITD / licencja wspólnotowa"
+          />
+        </label>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button type="button" style={styles.primary} onClick={save}>
+            {editingId ? "Zapisz zmiany" : t("common.save")}
+          </button>
+          {editingId && (
+            <button type="button" style={styles.ghost} onClick={resetForm}>
+              Anuluj
+            </button>
+          )}
+        </div>
         {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
       </div>
 
       <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Flota</h2>
 
-      {dbVehicles.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {dbVehicles.map((v) => (
-            <div key={v.id} style={styles.row}>
-              <strong style={{ minWidth: 110 }}>{v.registration}</strong>
-              <span style={styles.cell}>{[v.make, v.model].filter(Boolean).join(" ")}</span>
-              <span style={styles.cell}>{v.vehicle_type}</span>
-              <span style={{ flex: 1 }} />
-              <span style={styles.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
-              <span style={styles.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
-              {v.insurer && <span style={styles.meta}>{v.insurer}</span>}
-            </div>
-          ))}
-        </div>
-      ) : list.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {list.map((v) => (
-            <div key={`${v.registration}-${v.year}`} style={styles.row}>
-              <strong style={{ minWidth: 110 }}>{v.registration}</strong>
-              <span style={styles.cell}>{[v.make, v.model].filter(Boolean).join(" ")}</span>
-              <span style={styles.cell}>{v.year}</span>
-              <span style={{ ...styles.cell, color: palette.warning }}>lokalnie</span>
-            </div>
-          ))}
-        </div>
-      ) : (
+      {dbVehicles.length === 0 ? (
         <p style={{ color: palette.smoke }}>Brak pojazdów — dodaj powyżej.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {dbVehicles.map((v) => {
+            const open = expandedId === v.id;
+            const cards = vehicleCards[v.id] ?? [];
+            return (
+              <div key={v.id} style={styles.card}>
+                <div style={styles.row}>
+                  <button
+                    type="button"
+                    style={styles.expandBtn}
+                    onClick={() => toggleExpand(v.id)}
+                    aria-label="Szczegóły"
+                  >
+                    {open ? "▾" : "▸"}
+                  </button>
+                  <strong style={{ minWidth: 110 }}>{v.registration}</strong>
+                  <span style={styles.cell}>{[v.make, v.model].filter(Boolean).join(" ")}</span>
+                  <span style={styles.cell}>{v.vehicle_type}</span>
+                  <span style={{ flex: 1 }} />
+                  <span style={styles.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
+                  <span style={styles.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
+                  <button type="button" style={styles.ghost} onClick={() => startEdit(v)}>
+                    ✏️
+                  </button>
+                  <button type="button" style={styles.danger} onClick={() => removeVehicle(v)}>
+                    🗑️
+                  </button>
+                </div>
+
+                {open && (
+                  <div style={styles.details}>
+                    <div style={styles.detailGrid}>
+                      <Detail k="VIN" v={v.vin} />
+                      <Detail k="Rocznik" v={v.year ? String(v.year) : null} />
+                      <Detail
+                        k="Waga na pusto"
+                        v={v.curb_weight_kg ? `${v.curb_weight_kg} kg` : null}
+                      />
+                      <Detail
+                        k="Maks. ładunek"
+                        v={v.max_payload_kg ? `${v.max_payload_kg} kg` : null}
+                      />
+                      <Detail k="Wysokość" v={v.height_cm ? `${v.height_cm} cm` : null} />
+                      <Detail k="Ubezpieczyciel" v={v.insurer} />
+                      <Detail k="Licencja" v={v.license_number} />
+                      <Detail k="Leasing do" v={v.leasing_end} />
+                    </div>
+
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 13, color: palette.smoke, marginBottom: 6 }}>
+                        Karty przypisane do pojazdu:
+                      </div>
+                      {cards.length === 0 ? (
+                        <div style={{ fontSize: 13, color: palette.smoke }}>
+                          Brak — przypisz w zakładce „Karty".
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {cards.map((c) => (
+                            <span key={c.id} style={styles.cardTag}>
+                              💳 {providerLabel(c.provider)} {c.card_number_masked} ·{" "}
+                              {c.discount_percent}%
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
+    </div>
+  );
+}
+
+function Detail({ k, v }: { k: string; v: string | null }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <span style={{ fontSize: 11, color: palette.smoke }}>{k}</span>
+      <span style={{ fontSize: 14 }}>{v ?? "—"}</span>
     </div>
   );
 }
@@ -378,18 +562,53 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "12px",
     fontWeight: 700,
     cursor: "pointer",
-    alignSelf: "flex-start",
     minWidth: 160,
   },
-  row: {
-    display: "flex",
-    gap: 14,
-    alignItems: "center",
-    padding: "10px 16px",
+  card: {
     borderRadius: 10,
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,
+    overflow: "hidden",
+  },
+  row: { display: "flex", gap: 12, alignItems: "center", padding: "10px 14px" },
+  expandBtn: {
+    background: "transparent",
+    color: palette.smoke,
+    border: "none",
+    cursor: "pointer",
+    fontSize: 14,
+    width: 18,
   },
   cell: { color: palette.smoke, fontSize: 14, minWidth: 90 },
   meta: { color: palette.smoke, fontSize: 12 },
+  ghost: {
+    background: "transparent",
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "6px 10px",
+    cursor: "pointer",
+  },
+  danger: {
+    background: "transparent",
+    color: palette.red,
+    border: `1px solid ${palette.red}`,
+    borderRadius: 8,
+    padding: "6px 10px",
+    cursor: "pointer",
+  },
+  details: {
+    padding: "12px 16px 16px",
+    borderTop: `1px solid ${palette.graphite}`,
+    background: palette.black,
+  },
+  detailGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 },
+  cardTag: {
+    color: palette.offWhite,
+    fontSize: 13,
+    background: palette.coal,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "4px 10px",
+  },
 };

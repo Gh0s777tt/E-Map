@@ -6,7 +6,7 @@ export async function listVehicles(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
     .from("vehicles")
     .select(
-      "id, registration, make, model, vehicle_type, vin, curb_weight_kg, inspection_expiry, insurance_expiry, insurer",
+      "id, registration, make, model, vehicle_type, vin, curb_weight_kg, max_payload_kg, height_cm, inspection_expiry, insurance_expiry, insurer, license_number, leasing_end, year",
     )
     .eq("company_id", companyId)
     .order("registration");
@@ -38,6 +38,7 @@ export function vehicleToRow(input: VehicleInput, companyId: string) {
     first_registration_date: input.firstRegistrationDate ?? null,
     inspection_expiry: input.inspectionExpiry ?? null,
     insurance_expiry: input.insuranceExpiry ?? null,
+    license_number: input.licenseNumber ?? null,
     leasing_end: input.leasingEnd ?? null,
     curb_weight_kg: input.curbWeightKg ?? null,
     max_payload_kg: input.maxPayloadKg ?? null,
@@ -62,4 +63,22 @@ export async function insertVehicle(
     .single();
   if (error) throw error;
   return data;
+}
+
+/** Edytuje pojazd. RLS: owner/dispatcher. */
+export async function updateVehicle(
+  client: SupabaseClient,
+  vehicleId: string,
+  input: VehicleInput,
+  companyId: string,
+) {
+  const { company_id: _ignore, ...row } = vehicleToRow(input, companyId);
+  const { error } = await client.from("vehicles").update(row).eq("id", vehicleId);
+  if (error) throw error;
+}
+
+/** Usuwa pojazd (kaskadowo: powiązane wpisy paliwa/AdBlue/trip). RLS: owner/dispatcher. */
+export async function deleteVehicle(client: SupabaseClient, vehicleId: string) {
+  const { error } = await client.from("vehicles").delete().eq("id", vehicleId);
+  if (error) throw error;
 }

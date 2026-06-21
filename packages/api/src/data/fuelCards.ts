@@ -6,8 +6,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function listFuelCardsSafe(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
     .from("fuel_cards")
-    .select("id, provider, card_number_masked, valid_until, discount_percent")
+    .select(
+      "id, provider, card_number_masked, valid_until, discount_percent, vehicle_id, vehicles(registration)",
+    )
     .eq("company_id", companyId)
+    .order("provider");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Karty przypisane do danego pojazdu (do panelu pojazdu). */
+export async function listFuelCardsByVehicle(client: SupabaseClient, vehicleId: string) {
+  const { data, error } = await client
+    .from("fuel_cards")
+    .select("id, provider, card_number_masked, valid_until, discount_percent")
+    .eq("vehicle_id", vehicleId)
     .order("provider");
   if (error) throw error;
   return data ?? [];
@@ -27,6 +40,7 @@ export async function insertFuelCard(
       card_number_masked: input.cardNumberMasked,
       valid_until: input.validUntil ?? null,
       discount_percent: input.discountPercent,
+      vehicle_id: input.vehicleId ?? null,
       notes: input.notes ?? null,
     })
     .select("id")
@@ -44,6 +58,7 @@ export async function updateFuelCard(client: SupabaseClient, cardId: string, inp
       card_number_masked: input.cardNumberMasked,
       valid_until: input.validUntil ?? null,
       discount_percent: input.discountPercent,
+      vehicle_id: input.vehicleId ?? null,
       notes: input.notes ?? null,
     })
     .eq("id", cardId);
