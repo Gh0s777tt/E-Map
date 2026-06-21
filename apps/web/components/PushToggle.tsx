@@ -26,6 +26,7 @@ export function PushToggle() {
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [canSend, setCanSend] = useState(false);
 
   const refresh = useCallback(async () => {
     if (
@@ -52,6 +53,39 @@ export function PushToggle() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Wysyłka testowa do całej firmy dostępna tylko dla owner/dispatcher (endpoint też to egzekwuje).
+  useEffect(() => {
+    getCachedMembership(getBrowserSupabase())
+      .then((m) => setCanSend(m?.role === "owner" || m?.role === "dispatcher"))
+      .catch(() => {});
+  }, []);
+
+  async function sendTest() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "E-Logistic — test",
+          body: "Powiadomienia push działają ✅",
+          url: "/dashboard",
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { sent?: number; error?: string };
+      if (!res.ok) {
+        setMsg(data.error ?? "Nie udało się wysłać.");
+        return;
+      }
+      setMsg(`✅ Wysłano testowe powiadomienie do ${data.sent ?? 0} urządzeń firmy.`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Błąd wysyłki.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function enable() {
     setBusy(true);
@@ -155,9 +189,16 @@ export function PushToggle() {
         </Button>
       )}
       {state === "on" && (
-        <Button variant="danger" onClick={disable} disabled={busy}>
-          Wyłącz na tym urządzeniu
-        </Button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {canSend && (
+            <Button onClick={sendTest} disabled={busy}>
+              Wyślij testowe powiadomienie
+            </Button>
+          )}
+          <Button variant="danger" onClick={disable} disabled={busy}>
+            Wyłącz na tym urządzeniu
+          </Button>
+        </div>
       )}
       {msg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{msg}</p>}
     </div>
