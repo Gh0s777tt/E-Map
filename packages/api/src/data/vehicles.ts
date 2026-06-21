@@ -6,7 +6,7 @@ export async function listVehicles(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
     .from("vehicles")
     .select(
-      "id, registration, make, model, vehicle_type, vin, curb_weight_kg, max_payload_kg, height_cm, inspection_expiry, insurance_expiry, insurer, license_number, leasing_end, year",
+      "id, registration, make, model, vehicle_type, vin, curb_weight_kg, max_payload_kg, fuel_tank_l, adblue_tank_l, height_cm, inspection_expiry, insurance_expiry, insurer, license_number, leasing_end, year",
     )
     .eq("company_id", companyId)
     .order("registration");
@@ -42,6 +42,8 @@ export function vehicleToRow(input: VehicleInput, companyId: string) {
     leasing_end: input.leasingEnd ?? null,
     curb_weight_kg: input.curbWeightKg ?? null,
     max_payload_kg: input.maxPayloadKg ?? null,
+    fuel_tank_l: input.fuelTankL ?? null,
+    adblue_tank_l: input.adblueTankL ?? null,
     height_cm: input.heightCm ?? null,
     width_cm: input.widthCm ?? null,
     length_cm: input.lengthCm ?? null,

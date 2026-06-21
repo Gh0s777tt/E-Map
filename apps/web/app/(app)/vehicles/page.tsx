@@ -30,6 +30,8 @@ type DbVehicle = {
   vin: string | null;
   curb_weight_kg: number | null;
   max_payload_kg: number | null;
+  fuel_tank_l: number | null;
+  adblue_tank_l: number | null;
   height_cm: number | null;
   inspection_expiry: string | null;
   insurance_expiry: string | null;
@@ -67,6 +69,8 @@ export default function VehiclesPage() {
   const [vehicleType, setVehicleType] = useState<(typeof VEHICLE_TYPES)[number]>("tractor");
   const [curbWeightKg, setCurbWeightKg] = useState("");
   const [maxPayloadKg, setMaxPayloadKg] = useState("");
+  const [fuelTankL, setFuelTankL] = useState("");
+  const [adblueTankL, setAdblueTankL] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [inspectionExpiry, setInspectionExpiry] = useState("");
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
@@ -107,6 +111,8 @@ export default function VehiclesPage() {
     setVehicleType("tractor");
     setCurbWeightKg("");
     setMaxPayloadKg("");
+    setFuelTankL("");
+    setAdblueTankL("");
     setHeightCm("");
     setInspectionExpiry("");
     setInsuranceExpiry("");
@@ -148,6 +154,8 @@ export default function VehiclesPage() {
     );
     setCurbWeightKg(v.curb_weight_kg ? String(v.curb_weight_kg) : "");
     setMaxPayloadKg(v.max_payload_kg ? String(v.max_payload_kg) : "");
+    setFuelTankL(v.fuel_tank_l ? String(v.fuel_tank_l) : "");
+    setAdblueTankL(v.adblue_tank_l ? String(v.adblue_tank_l) : "");
     setHeightCm(v.height_cm ? String(v.height_cm) : "");
     setInspectionExpiry(v.inspection_expiry ?? "");
     setInsuranceExpiry(v.insurance_expiry ?? "");
@@ -189,6 +197,8 @@ export default function VehiclesPage() {
       vehicleType,
       curbWeightKg: curbWeightKg ? Number(curbWeightKg) : undefined,
       maxPayloadKg: maxPayloadKg ? Number(maxPayloadKg) : undefined,
+      fuelTankL: fuelTankL ? Number(fuelTankL) : undefined,
+      adblueTankL: adblueTankL ? Number(adblueTankL) : undefined,
       heightCm: heightCm ? Number(heightCm) : undefined,
       inspectionExpiry: inspectionExpiry || undefined,
       insuranceExpiry: insuranceExpiry || undefined,
@@ -371,6 +381,29 @@ export default function VehiclesPage() {
 
           <div style={styles.grid}>
             <label style={styles.field}>
+              <span style={styles.label}>Zbiornik paliwa (L)</span>
+              <input
+                style={styles.input}
+                type="number"
+                value={fuelTankL}
+                onChange={(e) => setFuelTankL(e.target.value)}
+                placeholder="np. 600"
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Zbiornik AdBlue (L)</span>
+              <input
+                style={styles.input}
+                type="number"
+                value={adblueTankL}
+                onChange={(e) => setAdblueTankL(e.target.value)}
+                placeholder="np. 60"
+              />
+            </label>
+          </div>
+
+          <div style={styles.grid}>
+            <label style={styles.field}>
               <span style={styles.label}>Przegląd ważny do</span>
               <input
                 style={styles.input}
@@ -501,6 +534,11 @@ export default function VehiclesPage() {
                       <Detail
                         k="Maks. ładunek"
                         v={v.max_payload_kg ? `${v.max_payload_kg} kg` : null}
+                      />
+                      <Detail k="Zbiornik paliwa" v={v.fuel_tank_l ? `${v.fuel_tank_l} L` : null} />
+                      <Detail
+                        k="Zbiornik AdBlue"
+                        v={v.adblue_tank_l ? `${v.adblue_tank_l} L` : null}
                       />
                       <Detail k="Wysokość" v={v.height_cm ? `${v.height_cm} cm` : null} />
                       <Detail k="Ubezpieczyciel" v={v.insurer} />

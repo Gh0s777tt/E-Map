@@ -37,6 +37,8 @@ export const vehicleSchema = z.object({
   leasingEnd: isoDate.optional(),
   curbWeightKg: z.number().int().positive().optional(),
   maxPayloadKg: z.number().int().positive().optional(),
+  fuelTankL: z.number().int().positive().optional(),
+  adblueTankL: z.number().int().positive().optional(),
   heightCm: z.number().int().positive().optional(),
   widthCm: z.number().int().positive().optional(),
   lengthCm: z.number().int().positive().optional(),
