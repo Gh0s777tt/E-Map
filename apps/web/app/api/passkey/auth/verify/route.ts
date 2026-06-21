@@ -25,7 +25,20 @@ export async function POST(request: Request) {
   if (!(await rateLimit(request, "passkey-auth")).ok) {
     return NextResponse.json({ error: "Za dużo prób — spróbuj za chwilę." }, { status: 429 });
   }
-  const body = (await request.json()) as { response: AuthenticationResponseJSON };
+  // Walidacja kształtu (P2 #8) — `response.id` musi istnieć (używane do wyszukania klucza);
+  // bez Zod, by nie obciąć pól odpowiedzi WebAuthn.
+  const raw = (await request.json().catch(() => null)) as {
+    response?: { id?: unknown };
+  } | null;
+  if (
+    !raw ||
+    typeof raw.response !== "object" ||
+    raw.response === null ||
+    typeof raw.response.id !== "string"
+  ) {
+    return NextResponse.json({ error: "Brak danych asercji." }, { status: 400 });
+  }
+  const body = { response: raw.response as AuthenticationResponseJSON };
   const expectedChallenge = request.headers.get("cookie")?.match(/pk_auth_chal=([^;]+)/)?.[1];
   if (!expectedChallenge) {
     return NextResponse.json({ error: "Brak wyzwania (spróbuj ponownie)" }, { status: 400 });
