@@ -44,10 +44,6 @@ function firstOfMonth(): string {
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
-function inRange(iso: string, from: string, to: string): boolean {
-  const d = iso.slice(0, 10);
-  return d >= from && d <= to;
-}
 function download(filename: string, text: string) {
   const blob = new Blob([`﻿${text}`], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -100,9 +96,10 @@ export default function SettlementsPage() {
         listFuelLogs(sb, { vehicleId, table: "adblue_logs", ...range }),
         listTripEvents(sb, { vehicleId, ...range }),
       ]);
-      const fFilt = (f as FuelRow[]).filter((r) => inRange(r.created_at, from, to));
-      const aFilt = (a as FuelRow[]).filter((r) => inRange(r.created_at, from, to));
-      const tFilt = (t as TripRow[]).filter((r) => inRange(r.created_at, from, to));
+      // Zakres dat już zastosowany w zapytaniu (gte/lte na created_at) — bez ponownego filtra w JS.
+      const fFilt = f as FuelRow[];
+      const aFilt = a as FuelRow[];
+      const tFilt = t as TripRow[];
       setFuel(fFilt);
       setAdblue(aFilt);
       setTrips(tFilt);
