@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-84-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.60.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-85-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.61.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.61.0] — 🔎 Filtry i eksport CSV w Usterkach (P2 #9)
+
+- `[#085]` 🔎 **Usterki — filtrowanie + eksport** ([reports](apps/web/app/(app)/reports/page.tsx)):
+  - **Filtr statusu** (chipy: Wszystkie / Zgłoszone / W naprawie / Naprawione) + **filtr pojazdu** (select przy >1 pojeździe).
+  - **Eksport CSV** widocznej (przefiltrowanej) listy zgłoszeń (pojazd, część, strona, pilność, status, kontrolka, opis, data) — BOM dla Excela.
+  - Licznik „N z M"; filtrowanie po stronie klienta (`useMemo`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.60.1] — 🧱 Wspólne prymitywy UI: SetupNotice + dedup Field (P2)
 
