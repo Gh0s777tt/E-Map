@@ -70,6 +70,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const navItems = [
     ...items.map((i) => ({ href: i.href, label: t(i.key) })),
     { href: "/fuel-prices", label: "Ceny diesla" },
+    { href: "/service", label: "Serwis" },
     ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
   ];
 

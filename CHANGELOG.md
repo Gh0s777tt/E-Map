@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-89-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.65.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-90-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.66.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.66.0] — 🔧 Plan serwisowy wg przebiegu
+
+- `[#090]` 🔧 **Plan serwisowy pojazdu** (nowa funkcja produktowa, nowy moduł danych):
+  - [Migracja 0028](supabase/migrations/0028_service_tasks.sql): tabela `service_tasks` (interwał km i/lub miesięczny, ostatni serwis) + RLS (odczyt: członek; zapis: owner/dispatcher). Blok serwisowy w `generate_expiry_notifications` — **alert km-owy** (bieżący przebieg ≥ cel − 2000 km), dedup po docelowym przebiegu.
+  - core [`serviceStatus`](packages/core/src/expiry.ts) — status wg przebiegu (po przebiegu / zbliża się / ok). **+4 testy** (łącznie 78).
+  - api [data/service.ts](packages/api/src/data/service.ts): CRUD + `latestOdometers` (bieżący przebieg = max licznika z tankowań).
+  - **Nowa strona [/service](apps/web/app/(app)/service/page.tsx)** — zadania per pojazd ze statusem (za X km / po przebiegu), „✓ Wykonano" (ustawia ostatni serwis na bieżący przebieg), edycja/usuwanie (manager). Link w nawigacji.
+  - **Bramki:** biome czysto · `tsc` ×7 · **78 testów** · build ✓.
 
 ## [0.65.0] — 📊 Anomalie spalania + pulpit floty
 
