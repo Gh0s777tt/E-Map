@@ -3,7 +3,15 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { insertMapReport, listActiveMapReports } from "@e-logistic/api";
-import { fuelCost, newId, REPORT_TYPES, type ReportType } from "@e-logistic/core";
+import {
+  FUEL_CARD_PROVIDER_LABELS,
+  type FuelCardProvider,
+  fuelCost,
+  newId,
+  REPORT_TYPES,
+  type ReportType,
+  stationMatchesProviders,
+} from "@e-logistic/core";
 import {
   fetchPois,
   type GeoHit,
@@ -17,6 +25,7 @@ import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useFleet } from "@/lib/useFleet";
 
 type MaplibreModule = typeof import("maplibre-gl");
 type RouteResponse = RouteResult & { tollEstimated?: boolean; fallback?: boolean };
@@ -132,6 +141,7 @@ export default function MapPage() {
   const reportsRef = useRef<Report[]>([]);
   const routeGeoRef = useRef<LatLng[] | null>(null);
   const poisRef = useRef<Poi[]>([]);
+  const allPoisRef = useRef<Poi[]>([]);
   const markersRef = useRef<MlMarker[]>([]);
   const reportModeRef = useRef(false);
   const reportTypeRef = useRef<ReportType>("accident");
@@ -170,6 +180,20 @@ export default function MapPage() {
   const [fuelDiscount, setFuelDiscount] = useState("0");
   const [saved, setSaved] = useState<{ label: string; lat: number; lng: number }[]>([]);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+
+  // Wymiary TIR (do routingu HERE) + filtr stacji wg kart flotowych.
+  const { cards } = useFleet();
+  const [dimsOpen, setDimsOpen] = useState(false);
+  const [weightT, setWeightT] = useState("24");
+  const [heightCm, setHeightCm] = useState("400");
+  const [widthCm, setWidthCm] = useState("255");
+  const [lengthCm, setLengthCm] = useState("1650");
+  const [axles, setAxles] = useState("5");
+  const [cardFilterOn, setCardFilterOn] = useState(false);
+  const [cardProviders, setCardProviders] = useState<Set<FuelCardProvider>>(new Set());
+
+  // Marki kart użytkownika (odduplikowane) — do filtra stacji.
+  const cardOptions = Array.from(new Set(cards.map((c) => c.provider)));
 
   useEffect(() => {
     reportModeRef.current = reportMode;
@@ -606,6 +630,30 @@ export default function MapPage() {
     }
   }
 
+  // Filtr stacji wg akceptacji kart (poglądowy): zostawia parkingi + stacje marek z kart.
+  const applyPoiFilter = useCallback(() => {
+    const providers = Array.from(cardProviders);
+    const active = cardFilterOn && providers.length > 0;
+    const filtered = active
+      ? allPoisRef.current.filter(
+          (p) =>
+            p.type !== "fuel_station" ||
+            stationMatchesProviders(
+              `${p.tags.brand ?? ""} ${p.tags.operator ?? ""} ${p.name ?? ""}`,
+              providers,
+            ),
+        )
+      : allPoisRef.current;
+    poisRef.current = filtered;
+    setPoiCount(filtered.length);
+    drawPois(filtered);
+  }, [cardFilterOn, cardProviders, drawPois]);
+
+  // Przełączenie filtra/marki → ponowne przeliczenie bez pobierania z Overpass.
+  useEffect(() => {
+    if (allPoisRef.current.length) applyPoiFilter();
+  }, [applyPoiFilter]);
+
   async function loadPois() {
     const map = mapRef.current;
     if (!map) return;
@@ -618,9 +666,8 @@ export default function MapPage() {
         north: b.getNorth(),
         east: b.getEast(),
       });
-      poisRef.current = pois;
-      setPoiCount(pois.length);
-      drawPois(pois);
+      allPoisRef.current = pois;
+      applyPoiFilter();
     } catch {
       setPoiCount(0);
     } finally {
@@ -651,9 +698,8 @@ export default function MapPage() {
       const near = all.filter((poi) =>
         sample.some((pt) => haversineKm({ lat: poi.lat, lng: poi.lng }, pt) <= 6),
       );
-      poisRef.current = near;
-      setPoiCount(near.length);
-      drawPois(near);
+      allPoisRef.current = near;
+      applyPoiFilter();
     } catch {
       setPoiCount(0);
     } finally {
@@ -669,7 +715,16 @@ export default function MapPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           waypoints: stops.map((st) => ({ lat: st.lat, lng: st.lng })),
-          profile: { kind: kindHeavy ? "truck" : "van", weightKg: kindHeavy ? 24000 : 3000 },
+          profile: kindHeavy
+            ? {
+                kind: "truck",
+                weightKg: Math.round((Number(weightT) || 24) * 1000),
+                heightCm: Number(heightCm) || undefined,
+                widthCm: Number(widthCm) || undefined,
+                lengthCm: Number(lengthCm) || undefined,
+                axleCount: Number(axles) || undefined,
+              }
+            : { kind: "van", weightKg: 3000 },
           options: { avoidTolls, avoidFerries, avoidCountries: avoidCH ? ["CH"] : [] },
         }),
       });
@@ -834,8 +889,68 @@ export default function MapPage() {
               checked={kindHeavy}
               onChange={(e) => setKindHeavy(e.target.checked)}
             />{" "}
-            Ciężarówka (24 t)
+            Ciężarówka (TIR) — routing wg wymiarów + ruch
           </label>
+          {kindHeavy && (
+            <>
+              <button
+                type="button"
+                style={{ ...styles.ghost, textAlign: "left", padding: "8px 10px" }}
+                onClick={() => setDimsOpen((o) => !o)}
+              >
+                {dimsOpen ? "▾" : "▸"} Wymiary i tonaż ({weightT} t · {axles} osie)
+              </button>
+              {dimsOpen && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  <label style={styles.field}>
+                    <span style={styles.label}>Masa całk. (t)</span>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={weightT}
+                      onChange={(e) => setWeightT(e.target.value)}
+                    />
+                  </label>
+                  <label style={styles.field}>
+                    <span style={styles.label}>Osie</span>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={axles}
+                      onChange={(e) => setAxles(e.target.value)}
+                    />
+                  </label>
+                  <label style={styles.field}>
+                    <span style={styles.label}>Wysokość (cm)</span>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={heightCm}
+                      onChange={(e) => setHeightCm(e.target.value)}
+                    />
+                  </label>
+                  <label style={styles.field}>
+                    <span style={styles.label}>Szerokość (cm)</span>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={widthCm}
+                      onChange={(e) => setWidthCm(e.target.value)}
+                    />
+                  </label>
+                  <label style={{ ...styles.field, gridColumn: "1 / -1" }}>
+                    <span style={styles.label}>Długość (cm)</span>
+                    <input
+                      style={styles.input}
+                      type="number"
+                      value={lengthCm}
+                      onChange={(e) => setLengthCm(e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+            </>
+          )}
           <label style={styles.check}>
             <input
               type="checkbox"
@@ -921,6 +1036,54 @@ export default function MapPage() {
               <span style={{ color: "#3b82f6" }}>● firmy</span>
             </div>
           )}
+
+          <label style={styles.check}>
+            <input
+              type="checkbox"
+              checked={cardFilterOn}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setCardFilterOn(on);
+                if (on && cardProviders.size === 0 && cardOptions.length) {
+                  setCardProviders(new Set(cardOptions));
+                }
+              }}
+            />{" "}
+            Tylko stacje akceptujące moje karty (orientacyjnie)
+          </label>
+          {cardFilterOn &&
+            (cardOptions.length === 0 ? (
+              <div style={{ fontSize: 12, color: palette.smoke }}>
+                Brak kart we flocie — dodaj kartę w „Karty paliwowe”.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {cardOptions.map((p) => {
+                  const on = cardProviders.has(p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      style={{
+                        ...styles.segment,
+                        flex: "0 0 auto",
+                        ...(on ? styles.segmentActive : {}),
+                      }}
+                      onClick={() =>
+                        setCardProviders((s) => {
+                          const n = new Set(s);
+                          if (n.has(p)) n.delete(p);
+                          else n.add(p);
+                          return n;
+                        })
+                      }
+                    >
+                      {FUEL_CARD_PROVIDER_LABELS[p]}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
 
           <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
           <label style={styles.check}>

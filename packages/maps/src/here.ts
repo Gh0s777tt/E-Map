@@ -62,7 +62,7 @@ export function buildHereUrl(req: RouteRequest, apiKey: string, departureTime?: 
     if (pr.heightCm) p.push(`truck[height]=${pr.heightCm}`);
     if (pr.widthCm) p.push(`truck[width]=${pr.widthCm}`);
     if (pr.lengthCm) p.push(`truck[length]=${pr.lengthCm}`);
-    p.push("truck[axleCount]=5");
+    p.push(`truck[axleCount]=${pr.axleCount ?? 5}`);
   }
 
   const avoidFeatures: string[] = [];
