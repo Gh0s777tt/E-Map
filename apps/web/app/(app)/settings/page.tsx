@@ -4,6 +4,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
+import { PushToggle } from "@/components/PushToggle";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -295,6 +296,8 @@ export default function SettingsPage() {
         </button>
         {pkMsg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{pkMsg}</p>}
       </div>
+
+      <PushToggle />
     </div>
   );
 }

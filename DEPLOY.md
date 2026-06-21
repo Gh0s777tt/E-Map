@@ -70,9 +70,36 @@ curl -X POST https://e-logistic-one.vercel.app/api/route \
   -d '{"waypoints":[{"lat":52.52,"lng":13.405},{"lat":52.23,"lng":21.01}]}'      # trasa ~570 km
 ```
 
-## 7. Czego jeszcze brakuje (wymaga decyzji/kluczy właściciela)
+## 7. Powiadomienia push (Web Push) — włączenie
+
+Kod jest gotowy; do uruchomienia potrzeba kluczy VAPID i migracji.
+
+1. **Migracja DB** — zastosuj [`supabase/migrations/0020_push_subscriptions.sql`](supabase/migrations/0020_push_subscriptions.sql)
+   (SQL Editor w Supabase lub Management API — jak pozostałe migracje).
+2. **Wygeneruj klucze VAPID**:
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+3. **Ustaw env w Vercel** (Production) — następnie redeploy:
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` = *Public Key*
+   - `VAPID_PRIVATE_KEY` = *Private Key*  (sekret)
+   - `VAPID_SUBJECT` = `mailto:twoj@email` (kontakt)
+   - `CRON_SECRET` = długi losowy ciąg (chroni `/api/cron/notify`)
+   ```bash
+   printf '%s' "<PUBLIC>"  | npx vercel@latest env add NEXT_PUBLIC_VAPID_PUBLIC_KEY production
+   printf '%s' "<PRIVATE>" | npx vercel@latest env add VAPID_PRIVATE_KEY production
+   printf '%s' "mailto:..." | npx vercel@latest env add VAPID_SUBJECT production
+   printf '%s' "<SECRET>"  | npx vercel@latest env add CRON_SECRET production
+   ```
+4. **Cron** — [`apps/web/vercel.json`](apps/web/vercel.json) uruchamia `/api/cron/notify` codziennie o 07:00
+   (dosyła nieprzeczytane powiadomienia jako push). Vercel sam dołącza `Authorization: Bearer $CRON_SECRET`.
+5. **Użytkownik** — w **Ustawienia → Powiadomienia push** klika „Włącz powiadomienia" (zgoda przeglądarki).
+6. (Opcjonalnie) dodaj ikonę `apps/web/public/icon-192.png` (192×192) — pojawi się w powiadomieniu.
+
+## 8. Czego jeszcze brakuje (wymaga decyzji/kluczy właściciela)
 
 - **OAuth Google/Apple/Microsoft** — konfiguracja providerów w panelu Supabase.
 - **SMS/WhatsApp** zaproszeń — klucz Twilio.
-- **Routing profilu `truck`** — płatny plan GraphHopper lub klucz HERE (flaga `truckProfile`).
+- **Ceny paliwa z API** (Tankerkönig DE) — klucz `FUEL_PRICE_API_KEY` (przygotowywane).
+- **Akceptacja kart / Travis / SNAP** — API partnerów (DKV/Eurowag) — wymaga umów.
 - **Własna domena** — podłączenie w Vercel → Domains (wtedy zaktualizuj Site URL w Supabase).
