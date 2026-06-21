@@ -14,6 +14,7 @@ export const pl = {
   "nav.cards": "Karty paliwowe",
   "nav.map": "Mapa",
   "nav.stats": "Statystyki",
+  "nav.reports": "Usterki",
   "nav.settings": "Ustawienia",
 
   "auth.signIn": "Zaloguj się",

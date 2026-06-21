@@ -3,7 +3,14 @@
  * Odwzorowują model danych (docs/DATA-MODEL.md) 1:1 ze specyfikacją formularzy.
  */
 import { z } from "zod";
-import { FUEL_CARD_PROVIDERS, PAYMENT_METHODS, REPORT_TYPES, VEHICLE_TYPES } from "./enums";
+import {
+  DEFECT_SEVERITIES,
+  DEFECT_STATUSES,
+  FUEL_CARD_PROVIDERS,
+  PAYMENT_METHODS,
+  REPORT_TYPES,
+  VEHICLE_TYPES,
+} from "./enums";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data w formacie YYYY-MM-DD");
 
@@ -80,6 +87,19 @@ export const driverSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 export type DriverInput = z.infer<typeof driverSchema>;
+
+// ── Usterka pojazdu ─────────────────────────────────────────────────
+
+export const defectSchema = z.object({
+  vehicleId: z.uuid(),
+  part: z.string().min(1).max(60),
+  side: z.string().max(20).optional(),
+  severity: z.enum(DEFECT_SEVERITIES).default("medium"),
+  dashboardLight: z.boolean().default(false),
+  description: z.string().min(1).max(2000),
+  status: z.enum(DEFECT_STATUSES).default("open"),
+});
+export type DefectInput = z.infer<typeof defectSchema>;
 
 // ── Formularz Paliwo / AdBlue ───────────────────────────────────────
 
