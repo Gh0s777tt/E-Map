@@ -17,6 +17,7 @@ import {
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { ListStatus } from "@/components/ListStatus";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -54,6 +55,8 @@ export default function ReportsPage() {
   const { vehicles, source } = useFleet();
   const [canManage, setCanManage] = useState(false);
   const [defects, setDefects] = useState<Defect[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
   const [vehicleId, setVehicleId] = useState("");
   const [part, setPart] = useState<string>(DEFECT_PARTS[0]);
@@ -73,13 +76,17 @@ export default function ReportsPage() {
         : null;
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setLoadErr(null);
     try {
       const sb = getBrowserSupabase();
       const m = await getActiveMembership(sb);
       setCanManage(m?.role === "owner" || m?.role === "dispatcher");
       if (m) setDefects((await listDefects(sb, { limit: 500 })) as Defect[]);
-    } catch {
-      setDefects([]);
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zgłoszeń.");
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -291,9 +298,14 @@ export default function ReportsPage() {
       </div>
 
       <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 36 }}>Zgłoszenia</h2>
-      {defects.length === 0 ? (
-        <p style={{ color: palette.smoke }}>Brak zgłoszeń.</p>
-      ) : (
+      <ListStatus
+        loading={loading}
+        error={loadErr}
+        empty={defects.length === 0}
+        emptyText="Brak zgłoszeń."
+        onRetry={load}
+      />
+      {!loading && !loadErr && defects.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           {defects.map((d) => (
             <div key={d.id} style={styles.row}>
