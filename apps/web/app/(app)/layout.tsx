@@ -6,6 +6,7 @@ import { createTranslator, type MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { HelpCenter } from "@/components/HelpCenter";
 import { NotificationBell } from "@/components/NotificationBell";
 import { SignOutButton } from "@/components/SignOutButton";
 import { getServerSupabase } from "@/lib/supabase/server";
@@ -109,6 +110,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <SignOutButton />
       </aside>
       <main style={{ flex: 1, padding: 32 }}>{children}</main>
+      <HelpCenter />
     </div>
   );
 }
