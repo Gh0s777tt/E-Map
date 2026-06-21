@@ -7,6 +7,7 @@ import {
 } from "@e-logistic/maps";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,9 @@ const routeBodySchema = z.object({
  * Trasa liczona odcinkami (routeMultiLeg) → myto/dystans z podziałem na odcinki.
  */
 export async function POST(request: Request) {
+  if (!(await rateLimit(request, "route")).ok) {
+    return NextResponse.json({ error: "Za dużo żądań — spróbuj za chwilę." }, { status: 429 });
+  }
   const raw = await request.json().catch(() => null);
   const parsed = routeBodySchema.safeParse(raw);
   if (!parsed.success) {

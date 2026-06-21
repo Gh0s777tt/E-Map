@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-64-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.53.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-65-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.54.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.54.0] — 🚦 Rate‑limiting endpointów (Upstash, kod gotowy)
+
+- `[#065]` 🚦 **Ochrona endpointów przed nadużyciem/kosztami** (P2 z audytu). Nowy [`rateLimit`](apps/web/lib/ratelimit.ts) (Upstash sliding‑window 30/min na IP+akcję) wpięty w [`/api/route`](apps/web/app/api/route/route.ts), [`/api/fuel-prices`](apps/web/app/api/fuel-prices/route.ts) i logowanie passkey [`/api/passkey/auth/verify`](apps/web/app/api/passkey/auth/verify/route.ts) — przekroczenie → 429. **Bez kluczy Upstash = no‑op** (build/lokalnie działa bez limitów); fail‑open przy awarii limitera. Włączenie: [DEPLOY.md §7b](DEPLOY.md).
+  - **Env** — `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` ([turbo.json](turbo.json)). **Bramki:** biome czysto · `tsc` ×7 · 71 testów · build ✓.
 
 ## [0.53.1] — ✋ Ostylowany modal potwierdzeń (zamiast window.confirm)
 

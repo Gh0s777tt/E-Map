@@ -3,6 +3,7 @@ import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { NextResponse } from "next/server";
 import { rpFromRequest } from "@/lib/passkey";
+import { rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,9 @@ type PasskeyRow = {
  * wymienia na sesję przez `verifyOtp`. Bez poprawnego klucza nie ma tokena.
  */
 export async function POST(request: Request) {
+  if (!(await rateLimit(request, "passkey-auth")).ok) {
+    return NextResponse.json({ error: "Za dużo prób — spróbuj za chwilę." }, { status: 429 });
+  }
   const body = (await request.json()) as { response: AuthenticationResponseJSON };
   const expectedChallenge = request.headers.get("cookie")?.match(/pk_auth_chal=([^;]+)/)?.[1];
   if (!expectedChallenge) {
