@@ -22,7 +22,7 @@ import { CardArt } from "@/components/CardArt";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { ListStatus } from "@/components/ListStatus";
-import { PageHeader } from "@/components/ui";
+import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -263,13 +263,13 @@ export default function CardsPage() {
             </select>
           </Field>
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" style={styles.primary} onClick={save}>
+            <Button onClick={save} style={{ minWidth: 140 }}>
               {editingId ? "Zapisz zmiany" : t("common.save")}
-            </button>
+            </Button>
             {editingId && (
-              <button type="button" style={styles.ghost} onClick={resetForm}>
+              <Button variant="ghost" onClick={resetForm}>
                 Anuluj
-              </button>
+              </Button>
             )}
           </div>
           {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
@@ -302,18 +302,18 @@ export default function CardsPage() {
               {pins[c.id] ? (
                 <strong style={{ color: palette.red, letterSpacing: 2 }}>{pins[c.id]}</strong>
               ) : (
-                <button type="button" style={styles.ghost} onClick={() => reveal(c.id)}>
+                <Button variant="ghost" onClick={() => reveal(c.id)}>
                   🔓 PIN
-                </button>
+                </Button>
               )}
               {isOwner && (
                 <>
-                  <button type="button" style={styles.ghost} onClick={() => startEdit(c)}>
+                  <Button variant="ghost" onClick={() => startEdit(c)}>
                     ✏️ Edytuj
-                  </button>
-                  <button type="button" style={styles.danger} onClick={() => remove(c.id)}>
+                  </Button>
+                  <Button variant="danger" onClick={() => remove(c.id)}>
                     🗑️
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -326,32 +326,6 @@ export default function CardsPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   form: { display: "flex", flexDirection: "column", gap: 14, marginTop: 20, maxWidth: 560 },
-  primary: {
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "11px",
-    fontWeight: 700,
-    cursor: "pointer",
-    minWidth: 140,
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "7px 12px",
-    cursor: "pointer",
-  },
-  danger: {
-    background: "transparent",
-    color: palette.red,
-    border: `1px solid ${palette.red}`,
-    borderRadius: 8,
-    padding: "7px 11px",
-    cursor: "pointer",
-  },
   row: {
     display: "flex",
     gap: 12,
