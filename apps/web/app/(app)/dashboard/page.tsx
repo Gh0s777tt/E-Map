@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AttentionPanel } from "@/components/AttentionPanel";
 import { CompanyBanner } from "@/components/CompanyBanner";
 import { DriverActiveOrder } from "@/components/DriverActiveOrder";
+import { KpiStrip } from "@/components/KpiStrip";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { getLocale } from "@/lib/locale";
 
@@ -49,6 +50,7 @@ export default async function DashboardPage() {
 
       <CompanyBanner />
       <DriverActiveOrder />
+      <KpiStrip />
       <OnboardingChecklist />
       <AttentionPanel />
 
