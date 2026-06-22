@@ -8,11 +8,11 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { HelpCenter } from "@/components/HelpCenter";
 import type { NavGroup } from "@/components/SidebarNav";
+import { getLocale } from "@/lib/locale";
 import { getServerSupabase } from "@/lib/supabase/server";
 
-const t = createTranslator("pl");
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const t = createTranslator(await getLocale());
   const supabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
@@ -58,18 +58,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const navGroups: NavGroup[] = [
     { title: null, items: [{ href: "/dashboard", label: t("nav.dashboard") }] },
     {
-      title: "Zlecenia",
+      title: t("nav.group.orders"),
       items: [
-        ...(manage ? [{ href: "/orders", label: "Zlecenia" }] : []),
-        ...(manage ? [{ href: "/fleet-status", label: "Status floty" }] : []),
-        { href: "/my-orders", label: "Moje zlecenia" },
+        ...(manage ? [{ href: "/orders", label: t("nav.orders") }] : []),
+        ...(manage ? [{ href: "/fleet-status", label: t("nav.fleetStatus") }] : []),
+        { href: "/my-orders", label: t("nav.myOrders") },
         ...(has("map") ? [{ href: "/map", label: t("nav.map") }] : []),
       ],
     },
     ...(has("forms")
       ? [
           {
-            title: "Formularze",
+            title: t("nav.group.forms"),
             items: [
               { href: "/forms/fuel", label: t("form.fuel.title") },
               { href: "/forms/adblue", label: t("form.adblue.title") },
@@ -79,23 +79,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ]
       : []),
     {
-      title: "Flota",
+      title: t("nav.group.fleet"),
       items: [
         ...(has("vehicles") ? [{ href: "/vehicles", label: t("nav.vehicles") }] : []),
         ...(has("drivers") ? [{ href: "/drivers", label: t("nav.drivers") }] : []),
         ...(has("cards") ? [{ href: "/cards", label: t("nav.cards") }] : []),
-        ...(manage ? [{ href: "/service", label: "Serwis" }] : []),
-        { href: "/documents", label: "Sejf dokumentów" },
+        ...(manage ? [{ href: "/service", label: t("nav.service") }] : []),
+        { href: "/documents", label: t("nav.documents") },
         ...(has("reports") ? [{ href: "/reports", label: t("nav.reports") }] : []),
       ],
     },
     {
-      title: "Finanse",
+      title: t("nav.group.finance"),
       items: [
-        ...(manage ? [{ href: "/invoices", label: "Faktury" }] : []),
+        ...(manage ? [{ href: "/invoices", label: t("nav.invoices") }] : []),
         ...(has("settlements") ? [{ href: "/settlements", label: t("nav.settlements") }] : []),
-        ...(has("settlements") ? [{ href: "/monthly", label: "Zestawienie msc." }] : []),
-        { href: "/fuel-prices", label: "Ceny diesla" },
+        ...(has("settlements") ? [{ href: "/monthly", label: t("nav.monthly") }] : []),
+        { href: "/fuel-prices", label: t("nav.fuelPrices") },
         ...(has("stats") ? [{ href: "/stats", label: t("nav.stats") }] : []),
       ],
     },
@@ -103,7 +103,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       title: null,
       items: [
         { href: "/settings", label: t("nav.settings") },
-        ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
+        ...(isOwner ? [{ href: "/team", label: t("nav.team") }] : []),
       ],
     },
   ].filter((g) => g.items.length > 0);

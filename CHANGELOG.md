@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-126-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.96.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-127-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.97.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.97.0] — 🌍 i18n etap 1 (przełącznik PL/EN + nawigacja + logowanie)
+
+- `[#127]` 🌍 **Realne przełączanie języka** — fundament i18n istniał (katalogi PL/EN, parytet), ale aplikacja była zaszyta na PL (`createTranslator("pl")`). Teraz język wybiera użytkownik:
+  - **Wzorzec (ciasteczko + RSC):** [lib/locale.ts](apps/web/lib/locale.ts) czyta język **serwerowo** z ciasteczka `locale` → komponenty serwerowe (nawigacja) renderują się od razu w wybranym języku, bez migotania. [LocaleSwitcher](apps/web/components/LocaleSwitcher.tsx) (PL/EN) zapisuje ciasteczko i `router.refresh()` — przeładowuje RSC bez pełnego reloadu.
+  - **Nawigacja:** cały pasek ([layout](apps/web/app/(app)/layout.tsx)) przez `t()` — dołożone klucze nav (zlecenia, status floty, moje zlecenia, serwis, sejf, faktury, zestawienie, ceny diesla, zespół) + tytuły grup; przełącznik w stopce sidebara ([AppSidebar](apps/web/components/AppSidebar.tsx)).
+  - **Moduł logowania:** [LoginForm](apps/web/components/LoginForm.tsx) (klient) dostaje język propsem z serwerowego [login/page.tsx](apps/web/app/login/page.tsx) (`getLocale`) — pełne PL/EN + przełącznik na karcie (zmiana języka przed zalogowaniem).
+  - Parytet kluczy wymuszony typem (`Record<MessageKey>`) i testem; +14 kluczy w PL i EN. Kolejne moduły (pulpit, ustawienia, formularze) w następnych etapach.
+  - **Bramki:** biome czysto · `tsc` ×7 · 105 testów (parytet i18n ✓) · build ✓ (`/login`, `/dashboard`).
 
 ## [0.96.0] — 💸 Rentowność klientów (przychód − przypisany koszt)
 

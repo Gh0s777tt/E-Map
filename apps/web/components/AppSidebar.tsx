@@ -3,6 +3,7 @@
 import { palette } from "@e-logistic/ui";
 import { useState } from "react";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { type NavGroup, SidebarNav } from "@/components/SidebarNav";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -47,6 +48,9 @@ export function AppSidebar({
             <NotificationBell />
           </div>
         )}
+        <div style={{ marginBottom: 8 }}>
+          <LocaleSwitcher />
+        </div>
         <div style={{ fontSize: 12, color: palette.smoke, marginBottom: 8 }}>{email}</div>
         <SignOutButton />
       </div>
