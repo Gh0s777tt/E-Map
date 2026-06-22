@@ -7,6 +7,7 @@ export * from "./alerts";
 export * from "./billing";
 export * from "./catalog";
 export * from "./csv";
+export * from "./duration";
 export * from "./enums";
 export * from "./expiry";
 export * from "./fakturownia";

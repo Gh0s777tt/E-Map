@@ -2,6 +2,7 @@ import { round2 } from "@e-logistic/core";
 import {
   createRoutingProvider,
   estimateTollEur,
+  estimateTruckDurationMin,
   type RouteRequest,
   routeMultiLeg,
 } from "@e-logistic/maps";
@@ -80,11 +81,26 @@ export async function POST(request: Request) {
       tollEstimated = true;
     }
 
-    return NextResponse.json({ ...result, segments, tollCost, tollEstimated });
+    // HERE zwraca realny czas TIR; mock/GraphHopper(car) — szacujemy czas jazdy
+    // ciężarówki z dystansu (realna średnia TIR), bo profil „car" jest zbyt szybki.
+    const durationMin =
+      provider.name === "here" ? result.durationMin : estimateTruckDurationMin(result.distanceKm);
+    const durationEstimated = provider.name !== "here";
+
+    return NextResponse.json({
+      ...result,
+      durationMin,
+      durationEstimated,
+      segments,
+      tollCost,
+      tollEstimated,
+    });
   } catch (e) {
     const mock = await routeMultiLeg(createRoutingProvider(), body);
     return NextResponse.json({
       ...mock,
+      durationMin: estimateTruckDurationMin(mock.distanceKm),
+      durationEstimated: true,
       tollEstimated: false,
       fallback: true,
       error: e instanceof Error ? e.message : "Błąd routingu",

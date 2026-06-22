@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-145-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.7.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-146-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.7.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.7.1] — 🗺️ Mapa: czytelny czas (d/h/min) + realniejszy czas TIR i myto
+
+- `[#146]` 🗺️ **Poprawki wyceny trasy** (zgłoszone: zły czas i zawyżone myto):
+  - **Czas w d/h/min** — [core/duration.ts](packages/core/src/duration.ts) `formatDuration` (np. `1 d 9 h 30 min` zamiast `1990 min`); wpięte w panel trasy na [mapie](apps/web/app/(app)/map/page.tsx).
+  - **Realny czas TIR** — [estimateTruckDurationMin](packages/maps/src/toll.ts) (średnia 68 km/h: limiter 90 + postoje/ruch/granice). [/api/route](apps/web/app/api/route/route.ts) używa go, gdy dostawca nie liczy trasy TIR (mock lub GraphHopper na profilu „car" — profil truck wymaga planu płatnego); czas oznaczony „(szac.)".
+  - **Niższe, uczciwsze myto** — [estimateTollEur](packages/maps/src/toll.ts): myto liczone tylko od **~60% dystansu** (nie cała trasa jest płatna: miasta, drogi krajowe, kraje bez myta), zamiast 100%. Korekta zawyżenia; wynik dalej oznaczony „(szac.)".
+  - Etykieta „Czas" → „Czas jazdy". 6 nowych testów rdzenia/map (133 łącznie).
+  - **Bramki:** biome czysto · `tsc` ×7 · 133 testy · build ✓ (`/map`, `/api/route`).
 
 ## [1.7.0] — 📤 Integracja z Fakturownią: eksport faktury VAT
 
