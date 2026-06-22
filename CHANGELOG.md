@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-146-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.7.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-147-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.8.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.8.0] — 📇 Rejestr kontrahentów (etap 2: zlecenia + zarządzanie)
+
+- `[#147]` 📇 **Domknięcie rejestru kontrahentów** — brakujące połowy [#144] (autouzupełnianie i strona CRUD):
+  - **Zlecenia** ([orders](apps/web/app/(app)/orders/page.tsx)): pola „Nadawca" i „Odbiorca" z podpowiedziami (`<datalist>`) z rejestru firmy; zapis zlecenia **dopisuje nowe nazwy do rejestru** (rośnie organicznie, best-effort — bez blokowania zapisu). Wczytywanie kontrahentów tylko dla owner/dispatcher.
+  - **Strona zarządzania** [/contractors](apps/web/app/(app)/contractors/page.tsx) — lista + dodawanie/edycja/usuwanie (nazwa/NIP/adres/kraj), eksport CSV, dostęp owner/dispatcher. Wpis w nawigacji (sekcja Finanse) + klucz i18n `nav.contractors` (PL/EN, parytet ✓).
+  - **api** [data/contractors.ts](packages/api/src/data/contractors.ts): dodane `updateContractor(id, input)` (edycja po id, w tym zmiana nazwy). Reużyte `listContractors`/`upsertContractor`/`deleteContractor` z [#144]; tabela `contractors` i RLS bez zmian.
+  - **Bramki:** biome czysto · `tsc` ×3 · 133 testy · build ✓ (`/contractors`, `/orders`).
 
 ## [1.7.1] — 🗺️ Mapa: czytelny czas (d/h/min) + realniejszy czas TIR i myto
 

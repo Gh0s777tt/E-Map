@@ -23,6 +23,7 @@ export const pl = {
   "nav.service": "Serwis",
   "nav.documents": "Sejf dokumentów",
   "nav.invoices": "Faktury",
+  "nav.contractors": "Kontrahenci",
   "nav.monthly": "Zestawienie msc.",
   "nav.fuelPrices": "Ceny diesla",
   "nav.team": "Zespół",

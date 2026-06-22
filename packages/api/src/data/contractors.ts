@@ -56,6 +56,24 @@ export async function upsertContractor(
   if (error) throw error;
 }
 
+/** Aktualizuje kontrahenta po id (edycja w rejestrze, w tym zmiana nazwy). RLS: owner/dispatcher. */
+export async function updateContractor(
+  client: SupabaseClient,
+  id: string,
+  input: ContractorInput,
+): Promise<void> {
+  const { error } = await client
+    .from("contractors")
+    .update({
+      name: input.name.trim(),
+      tax_id: input.taxId?.trim() || null,
+      address: input.address?.trim() || null,
+      country: input.country?.trim() || null,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 /** Usuwa kontrahenta. RLS: owner/dispatcher. */
 export async function deleteContractor(client: SupabaseClient, id: string): Promise<void> {
   const { error } = await client.from("contractors").delete().eq("id", id);

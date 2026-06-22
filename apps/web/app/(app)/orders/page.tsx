@@ -3,14 +3,17 @@
 import {
   type Company,
   type CompanyMember,
+  type Contractor,
   createInvoiceFromOrder,
   deleteOrder,
   getCompany,
   listCompanyMembers,
+  listContractors,
   listOrders,
   type Order,
   saveOrder,
   setOrderStatus,
+  upsertContractor,
 } from "@e-logistic/api";
 import { ORDER_STATUSES, type OrderStatus, orderSchema, round2 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
@@ -44,6 +47,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
   const [members, setMembers] = useState<CompanyMember[]>([]);
+  const [contractors, setContractors] = useState<Contractor[]>([]);
   const [cmrOrder, setCmrOrder] = useState<Order | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,14 +83,16 @@ export default function OrdersPage() {
       }
       const manage = m.role === "owner" || m.role === "dispatcher";
       setCanManage(manage);
-      const [ord, comp, mem] = await Promise.all([
+      const [ord, comp, mem, contr] = await Promise.all([
         listOrders(sb, m.companyId),
         getCompany(sb, m.companyId),
         manage ? listCompanyMembers(sb) : Promise.resolve([]),
+        manage ? listContractors(sb, m.companyId) : Promise.resolve([]),
       ]);
       setOrders(ord);
       setCompany(comp);
       setMembers(mem);
+      setContractors(contr);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zleceń.");
     } finally {
@@ -206,6 +212,12 @@ export default function OrdersPage() {
         ? (orders.find((o) => o.id === editingId)?.assigned_to ?? "")
         : "";
       const id = await saveOrder(sb, m.companyId, parsed.data, editingId ?? undefined);
+      // Organicznie buduj rejestr kontrahentów z nadawcy/odbiorcy (best-effort).
+      await Promise.all(
+        [shipper.trim(), consignee.trim()]
+          .filter((n) => n && !contractors.some((c) => c.name === n))
+          .map((name) => upsertContractor(sb, m.companyId, { name }).catch(() => {})),
+      );
       if (assignedTo && assignedTo !== prevAssigned) {
         // Natychmiastowy push do kierowcy (best-effort — powiadomienie w aplikacji powstaje przez trigger).
         void fetch("/api/orders/notify-assignment", {
@@ -327,9 +339,14 @@ export default function OrdersPage() {
             <Field label="Ładunek" v={cargo} set={setCargo} ph="np. palety EUR ×33" />
           </div>
           <div style={styles.grid}>
-            <Field label="Nadawca" v={shipper} set={setShipper} />
-            <Field label="Odbiorca" v={consignee} set={setConsignee} />
+            <Field label="Nadawca" v={shipper} set={setShipper} list="contractors-dl" />
+            <Field label="Odbiorca" v={consignee} set={setConsignee} list="contractors-dl" />
           </div>
+          <datalist id="contractors-dl">
+            {contractors.map((c) => (
+              <option key={c.id} value={c.name} />
+            ))}
+          </datalist>
           <div style={styles.grid}>
             <Field label="Załadunek (skąd)" v={origin} set={setOrigin} />
             <Field label="Rozładunek (dokąd)" v={destination} set={setDestination} />
@@ -550,11 +567,13 @@ function Field({
   v,
   set,
   ph,
+  list,
 }: {
   label: string;
   v: string;
   set: (s: string) => void;
   ph?: string;
+  list?: string;
 }) {
   return (
     <label style={styles.field}>
@@ -564,6 +583,7 @@ function Field({
         value={v}
         onChange={(e) => set(e.target.value)}
         placeholder={ph}
+        list={list}
       />
     </label>
   );
