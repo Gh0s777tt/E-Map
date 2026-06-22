@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-160-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.18.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-161-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.18.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.18.2] — 🧹 Rozbicie `map/page.tsx` (spłata długu [P2] z audytu)
+
+- `[#161]` 🧹 **Dekompozycja największego pliku** ([map/page.tsx](apps/web/app/(app)/map/page.tsx)) — realizacja [P2] z [audytu v1.18](docs/AUDIT-v1.18.md). Czysty refaktor: kod modułowy (stałe, typy, buildery, style) wyniesiony do współlokowanych plików, bez zmiany zachowania:
+  - [mapTypes.ts](apps/web/app/(app)/map/mapTypes.ts) — `RouteResponse`, `Stop`, `Report`, `BasemapKey`, `MaplibreModule`.
+  - [mapTheme.ts](apps/web/app/(app)/map/mapTheme.ts) — `MAPTILER_KEY`, `OSM_STYLE`, `BASEMAPS`, `basemapStyle`, etykiety/kolory zgłoszeń, `SAVED_CAT_ICON`, `TRAFFIC_COLOR`, `DISRUPTION_RADIUS_KM`, `POI_LABEL`.
+  - [mapFeatures.ts](apps/web/app/(app)/map/mapFeatures.ts) — buildery GeoJSON (`routeFeature`/`poiFeatures`/`reportFeatures`).
+  - [mapUi.tsx](apps/web/app/(app)/map/mapUi.tsx) — komponent `Row` + obiekt `styles`.
+  - **Efekt:** `page.tsx` **1694 → 1388 linii** (−306, ~18%); stateful `MapPage` bez zmian (świadomie — rozbijanie ciała komponentu ryzykowne bez testu wizualnego).
+  - **Bramki:** biome czysto · `tsc` ×7 · 158 testów · build ✓ (`/map`). Zachowanie identyczne (relokacja kodu).
 
 ## [1.18.1] — 🔍 Trzeci audyt całościowy (v1.18, przed publikacją mobile)
 

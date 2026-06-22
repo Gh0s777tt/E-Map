@@ -34,147 +34,30 @@ import {
   jamSeverity,
   type LatLng,
   type Poi,
-  type RouteResult,
   type TrafficFlow,
 } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
-import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from "maplibre-gl";
+import type { Map as MlMap, Marker as MlMarker } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-const SAVED_CAT_ICON: Record<SavedPlaceCategory, string> = {
-  fuel_station: "⛽",
-  port: "⚓",
-  customs: "🛃",
-  company: "🏢",
-  parking: "🅿️",
-  other: "📍",
-};
-
-/** Promień (km) uznania zgłoszenia za „utrudnienie na trasie". */
-const DISRUPTION_RADIUS_KM = 5;
-
-/** Kolor warstwy ruchu HERE wg natężenia (jamFactor → severity). */
-const TRAFFIC_COLOR: Record<ReturnType<typeof jamSeverity>, string> = {
-  free: "#22c55e",
-  moderate: "#eab308",
-  heavy: "#f97316",
-  blocked: "#ef4444",
-};
-
-type MaplibreModule = typeof import("maplibre-gl");
-type RouteResponse = RouteResult & {
-  tollEstimated?: boolean;
-  durationEstimated?: boolean;
-  fallback?: boolean;
-};
-type Stop = { key: string; label: string; lat: number; lng: number };
-type Report = { id: string; type: ReportType; lat: number; lng: number; comment: string | null };
-type BasemapKey = "dark" | "satellite" | "terrain" | "osm";
-
-const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
-
-const REPORT_LABEL: Record<ReportType, string> = {
-  accident: "Wypadek",
-  police: "Policja",
-  closure: "Zamknięcie",
-  traffic: "Korek",
-  weigh: "Waga",
-  hazard: "Zagrożenie",
-};
-const REPORT_COLOR: Record<ReportType, string> = {
-  accident: palette.red,
-  police: "#3b82f6",
-  closure: "#f59e0b",
-  traffic: "#f97316",
-  weigh: "#a855f7",
-  hazard: "#eab308",
-};
-
-const OSM_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap",
-    },
-  },
-  layers: [
-    { id: "bg", type: "background", paint: { "background-color": palette.black } },
-    { id: "osm", type: "raster", source: "osm", paint: { "raster-brightness-max": 0.85 } },
-  ],
-};
-
-const mtStyle = (name: string) =>
-  `https://api.maptiler.com/maps/${name}/style.json?key=${MAPTILER_KEY}`;
-
-/** Dostępne podkłady (gdy jest klucz MapTiler — wektorowe/satelita/teren; inaczej tylko OSM). */
-const BASEMAPS: { key: BasemapKey; label: string }[] = MAPTILER_KEY
-  ? [
-      { key: "dark", label: "Ciemna" },
-      { key: "satellite", label: "Satelita" },
-      { key: "terrain", label: "Teren" },
-    ]
-  : [{ key: "osm", label: "Mapa (OSM)" }];
-
-function basemapStyle(key: BasemapKey): string | StyleSpecification {
-  if (!MAPTILER_KEY) return OSM_STYLE;
-  if (key === "satellite") return mtStyle("hybrid");
-  if (key === "terrain") return mtStyle("outdoor-v2");
-  return mtStyle("streets-v2-dark");
-}
-
-function routeFeature(coords: [number, number][]) {
-  return {
-    type: "FeatureCollection" as const,
-    features: [
-      {
-        type: "Feature" as const,
-        properties: {},
-        geometry: { type: "LineString" as const, coordinates: coords },
-      },
-    ],
-  };
-}
-
-function poiFeatures(pois: Poi[]) {
-  return {
-    type: "FeatureCollection" as const,
-    features: pois.map((p) => ({
-      type: "Feature" as const,
-      properties: { name: p.name ?? "", type: p.type },
-      geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] as [number, number] },
-    })),
-  };
-}
-
-function reportFeatures(reports: Report[]) {
-  return {
-    type: "FeatureCollection" as const,
-    features: reports.map((r) => ({
-      type: "Feature" as const,
-      properties: {
-        label: REPORT_LABEL[r.type],
-        color: REPORT_COLOR[r.type],
-        comment: r.comment ?? "",
-      },
-      geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] as [number, number] },
-    })),
-  };
-}
-
-const POI_LABEL: Record<string, string> = {
-  fuel_station: "Stacja paliw",
-  parking: "Parking",
-  company: "Firma",
-  wash: "Myjnia",
-  weigh: "Waga",
-};
+import { poiFeatures, reportFeatures, routeFeature } from "./mapFeatures";
+import {
+  BASEMAPS,
+  basemapStyle,
+  DISRUPTION_RADIUS_KM,
+  MAPTILER_KEY,
+  POI_LABEL,
+  REPORT_COLOR,
+  REPORT_LABEL,
+  SAVED_CAT_ICON,
+  TRAFFIC_COLOR,
+} from "./mapTheme";
+import type { BasemapKey, MaplibreModule, Report, RouteResponse, Stop } from "./mapTypes";
+import { Row, styles } from "./mapUi";
 
 export default function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1566,129 +1449,4 @@ export default function MapPage() {
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-      <span style={{ color: palette.smoke }}>{k}</span>
-      <strong>{v}</strong>
-    </div>
-  );
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  panel: {
-    width: 290,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    padding: 16,
-    borderRadius: 12,
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    height: "fit-content",
-  },
-  field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontSize: 12, color: palette.smoke },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "9px 10px",
-    color: palette.offWhite,
-    width: "100%",
-  },
-  suggest: {
-    position: "absolute",
-    zIndex: 5,
-    top: "100%",
-    left: 0,
-    right: 0,
-    background: palette.coal,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    marginTop: 2,
-    overflow: "hidden",
-    maxHeight: 220,
-    overflowY: "auto",
-  },
-  suggestItem: {
-    display: "block",
-    width: "100%",
-    textAlign: "left",
-    background: "transparent",
-    color: palette.offWhite,
-    border: "none",
-    borderBottom: `1px solid ${palette.graphite}`,
-    padding: "8px 10px",
-    cursor: "pointer",
-    fontSize: 13,
-  },
-  segment: {
-    flex: 1,
-    background: palette.black,
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "8px 6px",
-    cursor: "pointer",
-    fontSize: 13,
-  },
-  segmentActive: { background: palette.red, color: palette.white, borderColor: palette.red },
-  remove: {
-    background: "transparent",
-    color: palette.smoke,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "9px 11px",
-    cursor: "pointer",
-  },
-  check: { color: palette.offWhite, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
-  primary: {
-    marginTop: 6,
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "11px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px",
-    cursor: "pointer",
-  },
-  result: {
-    marginTop: 8,
-    paddingTop: 10,
-    borderTop: `1px solid ${palette.graphite}`,
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-    fontSize: 14,
-  },
-  disruptions: {
-    marginTop: 8,
-    padding: "10px 12px",
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-  },
-  disruptionRow: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
-  priceRow: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "7px 10px",
-    cursor: "pointer",
-    color: palette.offWhite,
-    fontSize: 13,
-    textAlign: "left",
-  },
-};
+// `Row` i `styles` przeniesione do ./mapUi (refaktor [#161]).
