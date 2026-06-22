@@ -12,6 +12,7 @@ import { serviceStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -168,9 +169,9 @@ export default function ServicePage() {
           {editingId && <div style={{ color: palette.red, fontWeight: 700 }}>✏️ Edycja zadania</div>}
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Pojazd</span>
+              <span style={f.label}>Pojazd</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
               >
@@ -182,9 +183,9 @@ export default function ServicePage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Zadanie</span>
+              <span style={f.label}>Zadanie</span>
               <input
-                style={styles.input}
+                style={f.input}
                 list="svc-presets"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -199,9 +200,9 @@ export default function ServicePage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Interwał (km)</span>
+              <span style={f.label}>Interwał (km)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={intervalKm}
                 onChange={(e) => setIntervalKm(e.target.value)}
@@ -209,9 +210,9 @@ export default function ServicePage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Interwał (mies.)</span>
+              <span style={f.label}>Interwał (mies.)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={intervalMonths}
                 onChange={(e) => setIntervalMonths(e.target.value)}
@@ -221,18 +222,18 @@ export default function ServicePage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Ostatni serwis (km)</span>
+              <span style={f.label}>Ostatni serwis (km)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={lastDoneKm}
                 onChange={(e) => setLastDoneKm(e.target.value)}
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Ostatni serwis (data)</span>
+              <span style={f.label}>Ostatni serwis (data)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="date"
                 value={lastDoneDate}
                 onChange={(e) => setLastDoneDate(e.target.value)}
@@ -307,15 +308,6 @@ const styles: Record<string, React.CSSProperties> = {
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 16, maxWidth: 620 },
   grid: { display: "flex", gap: 12, flexWrap: "wrap" },
   field: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 200 },
-  label: { fontSize: 12, color: palette.smoke },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    width: "100%",
-  },
   row: {
     display: "flex",
     gap: 10,

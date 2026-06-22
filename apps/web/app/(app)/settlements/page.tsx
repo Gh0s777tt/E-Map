@@ -4,6 +4,7 @@ import { listFuelLogs, listTripEvents } from "@e-logistic/api";
 import { buildSettlement, effectiveModules, round2, type Settlement } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import * as f from "@/components/formStyles";
 import { Button, PageHeader, SetupNotice } from "@/components/ui";
 import { downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -190,7 +191,7 @@ export default function SettlementsPage() {
       {!denied && (
         <div style={styles.controls} className="no-print">
           <label style={styles.field}>
-            <span style={styles.label}>Pojazd</span>
+            <span style={f.label}>Pojazd</span>
             <select
               style={styles.input}
               value={vehicleId}
@@ -204,7 +205,7 @@ export default function SettlementsPage() {
             </select>
           </label>
           <label style={styles.field}>
-            <span style={styles.label}>Od</span>
+            <span style={f.label}>Od</span>
             <input
               style={styles.input}
               type="date"
@@ -213,7 +214,7 @@ export default function SettlementsPage() {
             />
           </label>
           <label style={styles.field}>
-            <span style={styles.label}>Do</span>
+            <span style={f.label}>Do</span>
             <input
               style={styles.input}
               type="date"
@@ -222,7 +223,7 @@ export default function SettlementsPage() {
             />
           </label>
           <label style={styles.field}>
-            <span style={styles.label}>Stawka €/km</span>
+            <span style={f.label}>Stawka €/km</span>
             <input
               style={styles.input}
               type="number"
@@ -233,7 +234,7 @@ export default function SettlementsPage() {
             />
           </label>
           <label style={styles.field}>
-            <span style={styles.label}>Myto (€)</span>
+            <span style={f.label}>Myto (€)</span>
             <input
               style={styles.input}
               type="number"
@@ -372,7 +373,6 @@ function Tr({ k, v }: { k: string; v: string }) {
 const styles: Record<string, React.CSSProperties> = {
   controls: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginTop: 16 },
   field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontSize: 12, color: palette.smoke },
   input: {
     background: palette.black,
     border: `1px solid ${palette.graphite}`,

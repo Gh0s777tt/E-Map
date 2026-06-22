@@ -11,6 +11,7 @@ import { DOCUMENT_CATEGORIES, type ExpiryLevel, expiryStatus } from "@e-logistic
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -182,18 +183,18 @@ export default function DocumentsPage() {
         <div style={styles.form}>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Plik (max {MAX_MB} MB)</span>
+              <span style={f.label}>Plik (max {MAX_MB} MB)</span>
               <input
                 ref={fileRef}
-                style={styles.input}
+                style={f.input}
                 type="file"
                 onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Nazwa</span>
+              <span style={f.label}>Nazwa</span>
               <input
-                style={styles.input}
+                style={f.input}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="np. OC ciągnik 2026"
@@ -202,9 +203,9 @@ export default function DocumentsPage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Kategoria</span>
+              <span style={f.label}>Kategoria</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
@@ -217,9 +218,9 @@ export default function DocumentsPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Pojazd (opcjonalnie)</span>
+              <span style={f.label}>Pojazd (opcjonalnie)</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
               >
@@ -232,9 +233,9 @@ export default function DocumentsPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Termin ważności</span>
+              <span style={f.label}>Termin ważności</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
@@ -330,15 +331,6 @@ const styles: Record<string, React.CSSProperties> = {
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 16, maxWidth: 720 },
   grid: { display: "flex", gap: 12, flexWrap: "wrap" },
   field: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 160 },
-  label: { fontSize: 12, color: palette.smoke },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    width: "100%",
-  },
   filters: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 16 },
   chip: {
     background: "transparent",
