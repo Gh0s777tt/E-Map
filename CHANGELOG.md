@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-107-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.82.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-108-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.83.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.83.0] — 🚀 Lista startowa „Pierwsze kroki" na pulpicie
+
+- `[#108]` 🚀 **Onboarding checklist dla nowej firmy** ([OnboardingChecklist](apps/web/components/OnboardingChecklist.tsx)):
+  - Na pulpicie (owner/dispatcher) lista 4 kroków: **pojazd → kierowca → karta paliwowa → pierwsze zlecenie**, każdy linkuje do modułu, ze stanem ✅/⬜ i licznikiem postępu.
+  - **Znika automatycznie**, gdy wszystkie kroki wykonane (sprawdzane na żywo z bazy). Nie pokazuje się kierowcom.
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/dashboard`).
 
 ## [0.82.0] — 🚛 Karta pojazdu 360° (dokumenty + serwis + paliwo + zlecenia)
 
