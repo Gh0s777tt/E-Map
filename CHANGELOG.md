@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-120-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.93.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-121-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.93.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.93.2] — 🧭 Nawigacja wg roli (kierowca bez narzędzi zarządczych)
+
+- `[#121]` 🧭 **Pasek dopasowany do roli** ([layout](apps/web/app/(app)/layout.tsx)): linki zarządcze (**Zlecenia, Status floty, Faktury, Serwis**) widoczne tylko dla **owner/dispatcher**. Kierowca widzi spójny zestaw: Pulpit, **Moje zlecenia**, Mapa, Formularze, Usterki, Ceny diesla, Sejf dokumentów, Ustawienia.
+  - Dostęp i tak egzekwują RLS/role na stronach — to odchudzenie i porządek w UI (mniej mylących pozycji dla kierowcy).
+  - **Bramki:** biome czysto · `tsc` ×7 · 97 testów · build ✓.
 
 ## [0.93.1] — 🖨️ Czysty PDF rozliczenia miesięcznego
 
