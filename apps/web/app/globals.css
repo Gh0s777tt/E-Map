@@ -142,6 +142,73 @@ body {
   padding: 32px;
 }
 
+/* ── Mapa: dymki MapLibre w motywie aplikacji ──
+   Domyślny dymek ma białe tło, a strona dziedziczy jasny tekst (#f5f5f5) →
+   biały tekst na białym tle = nieczytelne. Przestawiamy na ciemny motyw. */
+.maplibregl-popup-content {
+  background: #141414;
+  color: #f5f5f5;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 12px 28px 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+.maplibregl-popup-content strong {
+  color: #fff;
+}
+.maplibregl-popup-content a {
+  color: #e50914;
+  text-decoration: none;
+}
+.maplibregl-popup-content a:hover {
+  text-decoration: underline;
+}
+.maplibregl-popup-content code {
+  color: #f5f5f5;
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.maplibregl-popup-content button {
+  background: #e50914;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-weight: 700;
+  font-size: 12px;
+}
+.maplibregl-popup-close-button {
+  color: #8a8a8a;
+  font-size: 18px;
+  padding: 0 6px;
+  background: transparent;
+}
+.maplibregl-popup-close-button:hover {
+  color: #f5f5f5;
+  background: transparent;
+}
+/* Strzałka dymka — strona stykająca się z treścią dostaje kolor tła */
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: #141414;
+}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: #141414;
+}
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: #141414;
+}
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: #141414;
+}
+
 /* Telefon/tablet: sidebar → górny pasek, nawigacja pozioma (zawijana) */
 @media (max-width: 820px) {
   .app-shell {
