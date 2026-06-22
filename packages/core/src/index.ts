@@ -10,5 +10,6 @@ export * from "./enums";
 export * from "./expiry";
 export * from "./fleet";
 export * from "./ids";
+export * from "./invoice";
 export * from "./money";
 export * from "./schemas";

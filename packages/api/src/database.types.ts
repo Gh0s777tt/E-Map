@@ -625,6 +625,7 @@ export interface Database {
           created_at: string;
           status: string;
           due_date: string | null;
+          paid_at: string | null;
         };
         Insert: {
           id?: string;
@@ -647,6 +648,7 @@ export interface Database {
           created_at?: string;
           status?: string;
           due_date?: string | null;
+          paid_at?: string | null;
         };
         Update: {
           id?: string;
@@ -669,6 +671,7 @@ export interface Database {
           created_at?: string;
           status?: string;
           due_date?: string | null;
+          paid_at?: string | null;
         };
         Relationships: [];
       };

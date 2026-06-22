@@ -20,11 +20,12 @@ export interface Invoice {
   currency: string;
   status: string;
   due_date: string | null;
+  paid_at: string | null;
   created_at: string;
 }
 
 const COLS =
-  "id, order_id, number, issue_date, due_date, seller_name, seller_tax_id, seller_address, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
+  "id, order_id, number, issue_date, due_date, paid_at, seller_name, seller_tax_id, seller_address, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
 
 export async function listInvoices(client: SupabaseClient, companyId: string): Promise<Invoice[]> {
   const { data, error } = await client
@@ -65,6 +66,19 @@ export async function setInvoiceStatus(
   status: "issued" | "cancelled",
 ): Promise<void> {
   const { error } = await client.from("invoices").update({ status }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Oznacza fakturę jako opłaconą (`paid=true`) lub cofa płatność. RLS: owner/dispatcher; audyt. */
+export async function setInvoicePaid(
+  client: SupabaseClient,
+  id: string,
+  paid: boolean,
+): Promise<void> {
+  const { error } = await client
+    .from("invoices")
+    .update({ paid_at: paid ? new Date().toISOString() : null })
+    .eq("id", id);
   if (error) throw error;
 }
 

@@ -1,4 +1,4 @@
-<!-- SYNC: v0.90.0 · #116 · 2026-06-22 — utrzymywane ręcznie do czasu `pnpm docs:check` (badge wersji + blurb „Najnowsze") -->
+<!-- SYNC: v0.91.0 · #117 · 2026-06-22 — utrzymywane ręcznie do czasu `pnpm docs:check` (badge wersji + blurb „Najnowsze") -->
 <!-- ╔══════════════════════════════════════════════════════════════════╗ -->
 <!-- ║                       E - L O G I S T I C                         ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->

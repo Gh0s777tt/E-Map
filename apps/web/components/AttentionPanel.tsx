@@ -4,10 +4,16 @@ import {
   latestOdometers,
   listDocuments,
   listFuelCardsSafe,
+  listInvoices,
   listServiceTasks,
   listVehiclesExpiry,
 } from "@e-logistic/api";
-import { type ExpiryLevel, expiryStatus, serviceStatus } from "@e-logistic/core";
+import {
+  type ExpiryLevel,
+  expiryStatus,
+  invoicePaymentStatus,
+  serviceStatus,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -52,12 +58,13 @@ export function AttentionPanel() {
         const sb = getBrowserSupabase();
         const m = await getCachedMembership(sb);
         if (!m) return;
-        const [vehs, cards, tasks, odo, docs] = await Promise.all([
+        const [vehs, cards, tasks, odo, docs, invs] = await Promise.all([
           listVehiclesExpiry(sb, m.companyId),
           listFuelCardsSafe(sb, m.companyId),
           listServiceTasks(sb, m.companyId),
           latestOdometers(sb, m.companyId),
           listDocuments(sb, m.companyId),
+          listInvoices(sb, m.companyId),
         ]);
         const today = new Date().toISOString().slice(0, 10);
         const regOf = new Map(vehs.map((v) => [v.id, v.registration]));
@@ -128,6 +135,29 @@ export function AttentionPanel() {
             level: st.level,
             urgency: st.daysLeft,
             href: "/documents",
+          });
+        }
+
+        for (const inv of invs) {
+          const pay = invoicePaymentStatus({
+            paidAt: inv.paid_at,
+            dueDate: inv.due_date,
+            status: inv.status,
+            todayISO: today,
+          });
+          if (pay !== "overdue") continue;
+          const days = inv.due_date
+            ? Math.round((Date.parse(inv.due_date) - Date.parse(today)) / 86_400_000)
+            : 0;
+          out.push({
+            key: `inv-${inv.id}`,
+            icon: "🧾",
+            category: "Faktura",
+            title: `${inv.number} · ${inv.buyer_name ?? "—"}`,
+            detail: `termin ${inv.due_date} · ${inv.gross} ${inv.currency}`,
+            level: "expired",
+            urgency: days,
+            href: "/invoices",
           });
         }
 
