@@ -1,22 +1,21 @@
 "use client";
 
 import { getCompany, updateCompany } from "@e-logistic/api";
-import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { useT } from "@/components/LocaleProvider";
 import { PushToggle } from "@/components/PushToggle";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-const t = createTranslator("pl");
-
 type State = "loading" | "off" | "enrolling" | "on";
 type Passkey = { id: string; name: string | null; created_at: string };
 
 export default function SettingsPage() {
+  const t = useT();
   const confirm = useConfirm();
   const [state, setState] = useState<State>("loading");
   const [factorId, setFactorId] = useState<string | null>(null);
@@ -71,7 +70,7 @@ export default function SettingsPage() {
     if (!companyId) return;
     setCMsg(null);
     if (!cName.trim()) {
-      setCMsg("Nazwa firmy jest wymagana.");
+      setCMsg(t("settings.company.nameRequired"));
       return;
     }
     setCBusy(true);
@@ -86,9 +85,9 @@ export default function SettingsPage() {
         bankName: cBank.trim() || undefined,
         bankAccount: cAccount.trim() || undefined,
       });
-      setCMsg("✅ Zapisano dane firmy.");
+      setCMsg(t("settings.company.saved"));
     } catch (e) {
-      setCMsg(e instanceof Error ? e.message : "Błąd zapisu danych firmy.");
+      setCMsg(e instanceof Error ? e.message : t("settings.company.saveError"));
     } finally {
       setCBusy(false);
     }
@@ -137,10 +136,13 @@ export default function SettingsPage() {
     setPkBusy(true);
     setPkMsg(null);
     try {
-      const name = window.prompt("Nazwa klucza (np. iPhone Jana)", "Mój klucz");
+      const name = window.prompt(
+        t("settings.passkey.namePrompt"),
+        t("settings.passkey.defaultName"),
+      );
       const optRes = await fetch("/api/passkey/register/options", { method: "POST" });
       if (!optRes.ok) {
-        setPkMsg("Zaloguj się ponownie, aby dodać klucz.");
+        setPkMsg(t("settings.passkey.reauth"));
         return;
       }
       const options = await optRes.json();
@@ -152,25 +154,25 @@ export default function SettingsPage() {
       });
       const data = (await verRes.json()) as { verified?: boolean; error?: string };
       if (!data.verified) {
-        setPkMsg(data.error ?? "Nie udało się dodać klucza.");
+        setPkMsg(data.error ?? t("settings.passkey.addError"));
         return;
       }
-      setPkMsg("✅ Klucz dodany.");
+      setPkMsg(t("settings.passkey.added"));
       await loadPasskeys();
     } catch (e) {
-      setPkMsg(e instanceof Error ? e.message : "Błąd passkey.");
+      setPkMsg(e instanceof Error ? e.message : t("settings.passkey.error"));
     } finally {
       setPkBusy(false);
     }
   }
 
   async function removePasskey(id: string) {
-    if (!(await confirm("Usunąć ten klucz dostępu?"))) return;
+    if (!(await confirm(t("settings.passkey.removeConfirm")))) return;
     try {
       await getBrowserSupabase().from("passkeys").delete().eq("id", id);
       await loadPasskeys();
     } catch (e) {
-      setPkMsg(e instanceof Error ? e.message : "Błąd usuwania.");
+      setPkMsg(e instanceof Error ? e.message : t("settings.passkey.removeError"));
     }
   }
 
@@ -186,7 +188,7 @@ export default function SettingsPage() {
       }
       const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp" });
       if (error || !data) {
-        setMsg(error?.message ?? "Nie udało się rozpocząć konfiguracji.");
+        setMsg(error?.message ?? t("settings.twofa.startError"));
         return;
       }
       setFactorId(data.id);
@@ -206,7 +208,7 @@ export default function SettingsPage() {
       const sb = getBrowserSupabase();
       const { data: ch, error: chErr } = await sb.auth.mfa.challenge({ factorId });
       if (chErr || !ch) {
-        setMsg(chErr?.message ?? "Błąd.");
+        setMsg(chErr?.message ?? t("common.error"));
         return;
       }
       const { error } = await sb.auth.mfa.verify({
@@ -221,7 +223,7 @@ export default function SettingsPage() {
       setCode("");
       setQr("");
       setSecret("");
-      setMsg("✅ 2FA włączone.");
+      setMsg(t("settings.twofa.enabled"));
       setState("on");
     } finally {
       setBusy(false);
@@ -240,7 +242,7 @@ export default function SettingsPage() {
         return;
       }
       setFactorId(null);
-      setMsg("2FA wyłączone.");
+      setMsg(t("settings.twofa.disabledMsg"));
       setState("off");
     } finally {
       setBusy(false);
@@ -252,18 +254,15 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 560 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.settings")}</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Bezpieczeństwo konta — weryfikacja dwuetapowa (2FA) kodem z aplikacji (Google Authenticator,
-        Authy, 1Password…).
-      </p>
+      <p style={{ color: palette.smoke, marginTop: 4 }}>{t("settings.subtitle")}</p>
 
       {companyId && (
         <div style={styles.card}>
-          <strong style={{ fontSize: 16 }}>🏢 Dane firmy (sprzedawca na fakturach/CMR)</strong>
+          <strong style={{ fontSize: 16 }}>{t("settings.company.title")}</strong>
           {isOwner ? (
             <>
               <label style={styles.field}>
-                <span style={styles.label}>Nazwa firmy</span>
+                <span style={styles.label}>{t("settings.company.name")}</span>
                 <input
                   style={styles.cInput}
                   value={cName}
@@ -271,7 +270,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>NIP</span>
+                <span style={styles.label}>{t("settings.company.taxId")}</span>
                 <input
                   style={styles.cInput}
                   value={cTaxId}
@@ -279,7 +278,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>Adres</span>
+                <span style={styles.label}>{t("settings.company.address")}</span>
                 <input
                   style={styles.cInput}
                   value={cAddress}
@@ -287,7 +286,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>Kraj</span>
+                <span style={styles.label}>{t("settings.company.country")}</span>
                 <input
                   style={{ ...styles.cInput, maxWidth: 120 }}
                   value={cCountry}
@@ -297,7 +296,7 @@ export default function SettingsPage() {
               </label>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <label style={styles.field}>
-                  <span style={styles.label}>Domyślny VAT (%)</span>
+                  <span style={styles.label}>{t("settings.company.vat")}</span>
                   <input
                     style={{ ...styles.cInput, maxWidth: 120 }}
                     type="number"
@@ -307,7 +306,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label style={styles.field}>
-                  <span style={styles.label}>Termin płatności (dni)</span>
+                  <span style={styles.label}>{t("settings.company.dueDays")}</span>
                   <input
                     style={{ ...styles.cInput, maxWidth: 140 }}
                     type="number"
@@ -318,7 +317,7 @@ export default function SettingsPage() {
                 </label>
               </div>
               <label style={styles.field}>
-                <span style={styles.label}>Bank</span>
+                <span style={styles.label}>{t("settings.company.bank")}</span>
                 <input
                   style={styles.cInput}
                   value={cBank}
@@ -327,7 +326,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>Nr konta (IBAN)</span>
+                <span style={styles.label}>{t("settings.company.account")}</span>
                 <input
                   style={styles.cInput}
                   value={cAccount}
@@ -337,7 +336,7 @@ export default function SettingsPage() {
               </label>
               <div>
                 <Button onClick={saveCompany} disabled={cBusy}>
-                  {cBusy ? "Zapisywanie…" : "Zapisz dane firmy"}
+                  {cBusy ? t("common.saving") : t("settings.company.save")}
                 </Button>
               </div>
               {cMsg && <p style={{ color: palette.smoke, fontSize: 13 }}>{cMsg}</p>}
@@ -345,10 +344,10 @@ export default function SettingsPage() {
           ) : (
             <p style={{ color: palette.smoke, fontSize: 14 }}>
               {cName || "—"}
-              {cTaxId ? ` · NIP ${cTaxId}` : ""}
+              {cTaxId ? ` · ${t("settings.company.taxId")} ${cTaxId}` : ""}
               {cAddress ? ` · ${cAddress}` : ""}
               <br />
-              Dane firmy może edytować tylko właściciel.
+              {t("settings.company.ownerOnly")}
             </p>
           )}
         </div>
@@ -367,22 +366,22 @@ export default function SettingsPage() {
               border: `1px solid ${state === "on" ? "#22c55e" : palette.graphite}`,
             }}
           >
-            {state === "on" ? "Aktywne" : "Wyłączone"}
+            {state === "on" ? t("common.active") : t("common.disabled")}
           </span>
         </div>
 
-        {state === "loading" && <p style={{ color: palette.smoke }}>Ładowanie…</p>}
+        {state === "loading" && <p style={{ color: palette.smoke }}>{t("common.loading")}</p>}
 
         {state === "off" && (
           <Button onClick={startEnroll} disabled={busy}>
-            Włącz 2FA
+            {t("settings.twofa.enable")}
           </Button>
         )}
 
         {state === "enrolling" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <p style={{ color: palette.smoke, fontSize: 14, margin: 0 }}>
-              Zeskanuj kod QR w aplikacji uwierzytelniającej, potem wpisz 6-cyfrowy kod.
+              {t("settings.twofa.scan")}
             </p>
             <div
               style={{
@@ -393,10 +392,10 @@ export default function SettingsPage() {
               }}
             >
               {/* biome-ignore lint/performance/noImgElement: QR jako data-URI/SVG, bez optymalizacji next/image */}
-              <img src={qrSrc} alt="Kod QR 2FA" width={180} height={180} />
+              <img src={qrSrc} alt={t("settings.twofa.qrAlt")} width={180} height={180} />
             </div>
             <div style={{ fontSize: 12, color: palette.smoke }}>
-              Ręcznie: <code style={{ color: palette.offWhite }}>{secret}</code>
+              {t("settings.twofa.manual")} <code style={{ color: palette.offWhite }}>{secret}</code>
             </div>
             <input
               style={styles.input}
@@ -414,7 +413,7 @@ export default function SettingsPage() {
 
         {state === "on" && (
           <Button variant="danger" onClick={disable} disabled={busy}>
-            Wyłącz 2FA
+            {t("settings.twofa.disable")}
           </Button>
         )}
 
@@ -424,8 +423,7 @@ export default function SettingsPage() {
       <div style={styles.card}>
         <strong style={{ fontSize: 16 }}>{t("auth.passkey")}</strong>
         <p style={{ color: palette.smoke, fontSize: 13, margin: 0 }}>
-          Logowanie bez hasła odciskiem palca, Face ID lub kluczem sprzętowym. Klucz jest związany z
-          tym urządzeniem i tą domeną.
+          {t("settings.passkey.desc")}
         </p>
 
         {passkeys.length === 0 ? (
@@ -445,7 +443,7 @@ export default function SettingsPage() {
                   border: `1px solid ${palette.graphite}`,
                 }}
               >
-                <span>🔑 {pk.name ?? "Klucz"}</span>
+                <span>🔑 {pk.name ?? t("settings.passkey.unnamed")}</span>
                 <span style={{ flex: 1 }} />
                 <span style={{ color: palette.smoke, fontSize: 12 }}>
                   {pk.created_at?.slice(0, 10)}
