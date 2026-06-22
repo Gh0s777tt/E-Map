@@ -27,6 +27,7 @@ export const en: Record<MessageKey, string> = {
   "nav.invoices": "Invoices",
   "nav.contractors": "Contractors",
   "nav.monthly": "Monthly report",
+  "nav.perDiem": "Driver per diem",
   "nav.fuelPrices": "Diesel prices",
   "nav.team": "Team",
   "nav.group.orders": "Orders",

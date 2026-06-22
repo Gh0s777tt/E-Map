@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-171-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.27.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-172-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.28.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.28.0] — 🧮 Diety kierowcy (per diem) — kalkulator + zestawienie
+
+- `[#172]` 🧮 **Moduł diet z podróży służbowych** — krajowych i zagranicznych, pod rozliczenie wynagrodzeń kierowców:
+  - **Rdzeń** [core/perDiem.ts](packages/core/src/perDiem.ts): `computePerDiem(trip)` + `sumPerDiem(results)` — należna liczba „dób" wg reguł czasowych (krajowa: ≤doby <8h=0 · 8–12h=½ · >12h=1; wielodobowa: pełna doba=1, niepełna ≤8h=½, >8h=1 · zagraniczna: ≤8h=⅓ · 8–12h=½ · >12h=1, pełna doba=1) × stawka, suma per waluta. **Czyste, 13 testów (156 łącznie)**.
+  - **Strona** ([diety](apps/web/app/(app)/diety/page.tsx)): kalkulator wielu podróży (cel, typ, czas, stawka/dobę, waluta) z natychmiastowym wynikiem per wiersz, podsumowaniem per waluta i **eksportem CSV** zestawienia (owner/dispatcher). Stawki dobowe ustala owner (silnik nie zaszywa stawek urzędowych).
+  - **Nawigacja + i18n** ([layout](apps/web/app/(app)/layout.tsx)): pozycja „Diety kierowcy" w sekcji finansów; klucz `nav.perDiem` w PL/EN (parytet).
+  - **Bramki:** biome czysto · `tsc` ×7 · 156 testów · parytet i18n · build ✓ (`/diety`).
 
 ## [1.27.0] — 🧾 Samodzielny „Dowód dostawy" (POD) do druku/PDF
 
