@@ -182,6 +182,18 @@ export const pl = {
   "orders.csv.loadDate": "Załadunek",
   "orders.csv.unloadDate": "Rozładunek",
 
+  "invoices.csv.number": "Numer",
+  "invoices.csv.buyer": "Nabywca",
+  "invoices.csv.taxId": "NIP",
+  "invoices.csv.net": "Netto",
+  "invoices.csv.vat": "VAT",
+  "invoices.csv.gross": "Brutto",
+
+  "monthly.csv.revenue": "Przychód EUR",
+  "monthly.csv.fuel": "Paliwo",
+  "monthly.csv.adblue": "AdBlue",
+  "monthly.csv.result": "Wynik",
+
   "profit.title": "Rentowność klientów",
   "profit.approx": "(przybliżenie — koszt = paliwo)",
   "profit.total.revenue": "Przychód (EUR)",
@@ -221,6 +233,8 @@ export const pl = {
   "common.retry": "Ponów",
   "common.status": "Status",
   "common.vehicle": "Pojazd",
+  "common.date": "Data",
+  "common.total": "RAZEM",
 } as const;
 
 export type MessageKey = keyof typeof pl;

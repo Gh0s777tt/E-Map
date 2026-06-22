@@ -13,6 +13,7 @@ import {
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { BarChart, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -24,6 +25,7 @@ function thisMonth(): string {
 }
 
 export default function MonthlyPage() {
+  const t = useT();
   const { vehicles, source } = useFleet();
   const [month, setMonth] = useState(thisMonth);
   const [orders, setOrders] = useState<MonthlyOrderEntry[]>([]);
@@ -106,7 +108,13 @@ export default function MonthlyPage() {
   const prev = trend.length >= 2 ? trend[trend.length - 2] : null;
 
   function exportCsv() {
-    const headers = ["Pojazd", "Przychód EUR", "Paliwo", "AdBlue", "Wynik"];
+    const headers = [
+      t("common.vehicle"),
+      t("monthly.csv.revenue"),
+      t("monthly.csv.fuel"),
+      t("monthly.csv.adblue"),
+      t("monthly.csv.result"),
+    ];
     const rows: (string | number)[][] = summary.rows.map((r) => [
       regOf(r.vehicleId),
       r.revenueEur,
@@ -116,7 +124,7 @@ export default function MonthlyPage() {
     ]);
     rows.push([]);
     rows.push([
-      "RAZEM",
+      t("common.total"),
       summary.totals.revenueEur,
       summary.totals.fuelCost,
       summary.totals.adblueCost,

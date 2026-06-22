@@ -17,12 +17,14 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export default function InvoicesPage() {
+  const t = useT();
   const confirm = useConfirm();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [canManage, setCanManage] = useState(false);
@@ -91,7 +93,16 @@ export default function InvoicesPage() {
   }
 
   function exportCsv() {
-    const headers = ["Numer", "Data", "Nabywca", "NIP", "Netto", "VAT", "Brutto", "Waluta"];
+    const headers = [
+      t("invoices.csv.number"),
+      t("common.date"),
+      t("invoices.csv.buyer"),
+      t("invoices.csv.taxId"),
+      t("invoices.csv.net"),
+      t("invoices.csv.vat"),
+      t("invoices.csv.gross"),
+      t("orders.csv.currency"),
+    ];
     const rows = invoices.map((i) => [
       i.number,
       i.issue_date,
