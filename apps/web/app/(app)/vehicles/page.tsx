@@ -17,6 +17,7 @@ import {
 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
@@ -504,6 +505,9 @@ export default function VehiclesPage() {
                   <span style={{ flex: 1 }} />
                   <span style={styles.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
                   <span style={styles.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
+                  <Link href={`/vehicles/${v.id}`} className="app-navlink" style={styles.cardLink}>
+                    📇 Karta
+                  </Link>
                   {canManage && (
                     <>
                       <Button variant="ghost" onClick={() => startEdit(v)}>
@@ -621,6 +625,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cell: { color: palette.smoke, fontSize: 14, minWidth: 90 },
   meta: { color: palette.smoke, fontSize: 12 },
+  cardLink: {
+    fontSize: 13,
+    padding: "9px 12px",
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+  },
   ghost: {
     background: "transparent",
     color: palette.offWhite,
