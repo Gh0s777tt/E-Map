@@ -5,6 +5,7 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { DriverRoster } from "@/components/DriverRoster";
+import * as f from "@/components/formStyles";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -83,7 +84,7 @@ export default function DriversPage() {
               Przypisz pojazd (opcjonalnie)
             </span>
             <select
-              style={styles.input}
+              style={f.input}
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
             >
@@ -103,7 +104,7 @@ export default function DriversPage() {
       )}
 
       {link && (
-        <div style={styles.card}>
+        <div style={{ ...f.card, marginTop: 24, padding: 16, maxWidth: 360 }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Zaproszenie gotowe (ważne 7 dni)</div>
           {qr && (
             // biome-ignore lint/performance/noImgElement: data-URL QR, nie wymaga next/image
@@ -116,7 +117,7 @@ export default function DriversPage() {
             />
           )}
           <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
-            <input style={{ ...styles.input, flex: 1 }} readOnly value={link} />
+            <input style={{ ...f.input, flex: 1 }} readOnly value={link} />
             <Button variant="ghost" onClick={copy}>
               Kopiuj
             </Button>
@@ -128,38 +129,3 @@ export default function DriversPage() {
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-  },
-  primary: {
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "11px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    cursor: "pointer",
-  },
-  card: {
-    marginTop: 24,
-    padding: 16,
-    borderRadius: 12,
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    maxWidth: 360,
-  },
-};

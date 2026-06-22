@@ -20,6 +20,7 @@ import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -282,26 +283,26 @@ export default function VehiclesPage() {
       />
 
       {canManage && (
-        <div style={styles.form}>
+        <div style={f.formWrap}>
           {editingId && (
             <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
               ✏️ Edytujesz pojazd.
             </div>
           )}
-          <div style={styles.grid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Rejestracja *</span>
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>Rejestracja *</span>
               <input
-                style={styles.input}
+                style={f.input}
                 value={registration}
                 onChange={(e) => setRegistration(e.target.value)}
                 placeholder="WL5145U"
               />
               {errors.registration && <span style={styles.err}>{errors.registration}</span>}
             </label>
-            <label style={styles.field}>
-              <span style={styles.label}>Marka</span>
-              <select style={styles.input} value={make} onChange={(e) => setMake(e.target.value)}>
+            <label style={f.field}>
+              <span style={f.label}>Marka</span>
+              <select style={f.input} value={make} onChange={(e) => setMake(e.target.value)}>
                 <option value="">— wybierz —</option>
                 {VEHICLE_MAKE_GROUPS.map((g) => (
                   <optgroup key={g.group} label={g.group}>
@@ -316,7 +317,7 @@ export default function VehiclesPage() {
               </select>
               {make === OTHER && (
                 <input
-                  style={{ ...styles.input, marginTop: 6 }}
+                  style={{ ...f.input, marginTop: 6 }}
                   value={makeOther}
                   onChange={(e) => setMakeOther(e.target.value)}
                   placeholder="Wpisz markę"
@@ -325,21 +326,21 @@ export default function VehiclesPage() {
             </label>
           </div>
 
-          <div style={styles.grid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Model *</span>
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>Model *</span>
               <input
-                style={styles.input}
+                style={f.input}
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="FH / Master / Actros"
               />
               {errors.model && <span style={styles.err}>{errors.model}</span>}
             </label>
-            <label style={styles.field}>
-              <span style={styles.label}>VIN</span>
+            <label style={f.field}>
+              <span style={f.label}>VIN</span>
               <input
-                style={styles.input}
+                style={f.input}
                 value={vin}
                 onChange={(e) => setVin(e.target.value)}
                 placeholder="17 znaków (z dowodu)"
@@ -349,11 +350,11 @@ export default function VehiclesPage() {
             </label>
           </div>
 
-          <div style={styles.grid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Rocznik *</span>
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>Rocznik *</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
@@ -361,10 +362,10 @@ export default function VehiclesPage() {
               />
               {errors.year && <span style={styles.err}>{errors.year}</span>}
             </label>
-            <label style={styles.field}>
-              <span style={styles.label}>Typ</span>
+            <label style={f.field}>
+              <span style={f.label}>Typ</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={vehicleType}
                 onChange={(e) => setVehicleType(e.target.value as (typeof VEHICLE_TYPES)[number])}
               >
@@ -377,21 +378,21 @@ export default function VehiclesPage() {
             </label>
           </div>
 
-          <div style={styles.grid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Waga własna / na pusto (kg)</span>
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>Waga własna / na pusto (kg)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={curbWeightKg}
                 onChange={(e) => setCurbWeightKg(e.target.value)}
                 placeholder="np. 7500 (z dowodu)"
               />
             </label>
-            <label style={styles.field}>
-              <span style={styles.label}>Maks. ładunek (kg)</span>
+            <label style={f.field}>
+              <span style={f.label}>Maks. ładunek (kg)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={maxPayloadKg}
                 onChange={(e) => setMaxPayloadKg(e.target.value)}
@@ -400,21 +401,21 @@ export default function VehiclesPage() {
             </label>
           </div>
 
-          <div style={styles.grid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Zbiornik paliwa (L)</span>
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>Zbiornik paliwa (L)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={fuelTankL}
                 onChange={(e) => setFuelTankL(e.target.value)}
                 placeholder="np. 600"
               />
             </label>
-            <label style={styles.field}>
-              <span style={styles.label}>Zbiornik AdBlue (L)</span>
+            <label style={f.field}>
+              <span style={f.label}>Zbiornik AdBlue (L)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={adblueTankL}
                 onChange={(e) => setAdblueTankL(e.target.value)}
@@ -423,20 +424,20 @@ export default function VehiclesPage() {
             </label>
           </div>
 
-          <div style={styles.grid}>
-            <label style={styles.field}>
-              <span style={styles.label}>Przegląd ważny do</span>
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>Przegląd ważny do</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="date"
                 value={inspectionExpiry}
                 onChange={(e) => setInspectionExpiry(e.target.value)}
               />
             </label>
-            <label style={styles.field}>
-              <span style={styles.label}>Wysokość (cm)</span>
+            <label style={f.field}>
+              <span style={f.label}>Wysokość (cm)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={heightCm}
                 onChange={(e) => setHeightCm(e.target.value)}
@@ -445,23 +446,19 @@ export default function VehiclesPage() {
             </label>
           </div>
 
-          <div style={styles.grid}>
-            <label style={styles.field}>
-              <span style={styles.label}>OC ważne do</span>
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>OC ważne do</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="date"
                 value={insuranceExpiry}
                 onChange={(e) => setInsuranceExpiry(e.target.value)}
               />
             </label>
-            <label style={styles.field}>
-              <span style={styles.label}>Ubezpieczyciel</span>
-              <select
-                style={styles.input}
-                value={insurer}
-                onChange={(e) => setInsurer(e.target.value)}
-              >
+            <label style={f.field}>
+              <span style={f.label}>Ubezpieczyciel</span>
+              <select style={f.input} value={insurer} onChange={(e) => setInsurer(e.target.value)}>
                 <option value="">— wybierz —</option>
                 {INSURERS.map((ins) => (
                   <option key={ins} value={ins}>
@@ -472,7 +469,7 @@ export default function VehiclesPage() {
               </select>
               {insurer === OTHER && (
                 <input
-                  style={{ ...styles.input, marginTop: 6 }}
+                  style={{ ...f.input, marginTop: 6 }}
                   value={insurerOther}
                   onChange={(e) => setInsurerOther(e.target.value)}
                   placeholder="Wpisz ubezpieczyciela"
@@ -481,10 +478,10 @@ export default function VehiclesPage() {
             </label>
           </div>
 
-          <label style={styles.field}>
-            <span style={styles.label}>Numer licencji (przypisanej do auta)</span>
+          <label style={f.field}>
+            <span style={f.label}>Numer licencji (przypisanej do auta)</span>
             <input
-              style={styles.input}
+              style={f.input}
               value={licenseNumber}
               onChange={(e) => setLicenseNumber(e.target.value)}
               placeholder="np. GITD / licencja wspólnotowa"
@@ -526,8 +523,8 @@ export default function VehiclesPage() {
             const open = expandedId === v.id;
             const cards = vehicleCards[v.id] ?? [];
             return (
-              <div key={v.id} style={styles.card}>
-                <div style={styles.row}>
+              <div key={v.id} style={f.card}>
+                <div style={f.listRow}>
                   <button
                     type="button"
                     style={styles.expandBtn}
@@ -537,11 +534,11 @@ export default function VehiclesPage() {
                     {open ? "▾" : "▸"}
                   </button>
                   <strong style={{ minWidth: 110 }}>{v.registration}</strong>
-                  <span style={styles.cell}>{[v.make, v.model].filter(Boolean).join(" ")}</span>
-                  <span style={styles.cell}>{v.vehicle_type}</span>
+                  <span style={f.cell}>{[v.make, v.model].filter(Boolean).join(" ")}</span>
+                  <span style={f.cell}>{v.vehicle_type}</span>
                   <span style={{ flex: 1 }} />
-                  <span style={styles.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
-                  <span style={styles.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
+                  <span style={f.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
+                  <span style={f.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
                   <Link href={`/vehicles/${v.id}`} className="app-navlink" style={styles.cardLink}>
                     📇 Karta
                   </Link>
@@ -621,37 +618,7 @@ function Detail({ k, v }: { k: string; v: string | null }) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  form: { display: "flex", flexDirection: "column", gap: 14, marginTop: 20, maxWidth: 560 },
-  grid: { display: "flex", gap: 12 },
-  field: { display: "flex", flexDirection: "column", gap: 4, flex: 1 },
-  label: { fontSize: 12, color: palette.smoke },
   err: { color: palette.red, fontSize: 12 },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    width: "100%",
-  },
-  primary: {
-    marginTop: 8,
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "12px",
-    fontWeight: 700,
-    cursor: "pointer",
-    minWidth: 160,
-  },
-  card: {
-    borderRadius: 10,
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    overflow: "hidden",
-  },
-  row: { display: "flex", gap: 12, alignItems: "center", padding: "10px 14px" },
   expandBtn: {
     background: "transparent",
     color: palette.smoke,
@@ -660,29 +627,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     width: 18,
   },
-  cell: { color: palette.smoke, fontSize: 14, minWidth: 90 },
-  meta: { color: palette.smoke, fontSize: 12 },
   cardLink: {
     fontSize: 13,
     padding: "9px 12px",
     border: `1px solid ${palette.graphite}`,
     borderRadius: 8,
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "6px 10px",
-    cursor: "pointer",
-  },
-  danger: {
-    background: "transparent",
-    color: palette.red,
-    border: `1px solid ${palette.red}`,
-    borderRadius: 8,
-    padding: "6px 10px",
-    cursor: "pointer",
   },
   details: {
     padding: "12px 16px 16px",
