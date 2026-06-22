@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-177-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.33.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-178-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.34.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.34.0] — 🚚 Ranking rentowności floty (P&L per pojazd)
+
+- `[#178]` 🏆 **Zysk wszystkich pojazdów obok siebie** — rozszerzenie P&L [#177] z pojedynczego pojazdu na całą flotę:
+  - **Rdzeń** [core/vehiclePnl.ts](packages/core/src/vehiclePnl.ts): `fleetPnlByVehicle(orders, fuelByVehicle, costsByVehicle)` — przychód EUR (zlecenia zrealizowane) − paliwo − koszty dla każdego pojazdu, malejąco wg zysku; obejmuje też pojazdy z kosztem bez przychodu. Reużywa `vehiclePnl`. **3 testy (168 łącznie)**.
+  - **Statystyki** ([stats](apps/web/app/(app)/stats/page.tsx)): sekcja **„🚚 Ranking rentowności floty (per pojazd)"** — tabela Pojazd / Przychód / Paliwo / Koszty / Zysk / Marża (kolor wg znaku), pod zbiorczym P&L floty.
+  - **Bramki:** biome czysto · `tsc` ×7 · 168 testów · build ✓ (`/stats`).
 
 ## [1.33.0] — 🚚 Karta pojazdu: mini P&L (zysk per pojazd)
 
