@@ -1,6 +1,6 @@
 "use client";
 
-import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
+import { listFuelLogs, listOrders, listTripEvents, listVehicles } from "@e-logistic/api";
 import {
   consumptionFullToFull,
   detectFuelAnomalies,
@@ -74,6 +74,9 @@ export default function StatsPage() {
   const [fuel, setFuel] = useState<FuelRaw[]>([]);
   const [adblue, setAdblue] = useState<FuelRaw[]>([]);
   const [trips, setTrips] = useState<TripRaw[]>([]);
+  const [orders, setOrders] = useState<
+    { status: string; price: number | null; currency: string }[]
+  >([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -83,15 +86,17 @@ export default function StatsPage() {
         const sb = getBrowserSupabase();
         const m = await getCachedMembership(sb);
         if (!m) return;
-        const [f, a, tr, vs] = await Promise.all([
+        const [f, a, tr, vs, ord] = await Promise.all([
           listFuelLogs(sb, { limit: 2000 }),
           listFuelLogs(sb, { table: "adblue_logs", limit: 2000 }),
           listTripEvents(sb, { limit: 2000 }),
           listVehicles(sb, m.companyId),
+          listOrders(sb, m.companyId),
         ]);
         setFuel(f as FuelRaw[]);
         setAdblue(a as FuelRaw[]);
         setTrips(tr as TripRaw[]);
+        setOrders(ord.map((o) => ({ status: o.status, price: o.price, currency: o.currency })));
         setVehicles(
           (vs as { id: string; registration: string }[]).map((v) => ({
             id: v.id,
@@ -132,6 +137,13 @@ export default function StatsPage() {
   // Pulpit floty — agregaty po wszystkich pojazdach (raz na zmianę danych).
   const fleet = useMemo(() => {
     const consVals = tiles.map((tl) => tl.cons).filter((c): c is number => c != null);
+    const ordersRevenueEur = round2(
+      orders
+        .filter(
+          (o) => (o.status === "delivered" || o.status === "invoiced") && o.currency === "EUR",
+        )
+        .reduce((a, o) => a + (o.price ?? 0), 0),
+    );
     return {
       vehicles: tiles.length,
       totalLiters: round2(tiles.reduce((a, tl) => a + tl.totalLiters, 0)),
@@ -141,8 +153,9 @@ export default function StatsPage() {
       avgCons: consVals.length
         ? round2(consVals.reduce((a, c) => a + c, 0) / consVals.length)
         : null,
+      ordersRevenueEur,
     };
-  }, [tiles]);
+  }, [tiles, orders]);
 
   return (
     <div>
@@ -169,6 +182,11 @@ export default function StatsPage() {
                 value={fleet.avgCons != null ? `${fleet.avgCons} L/100km` : "—"}
               />
               <FleetStat label="Trasy" value={String(fleet.totalTrips)} />
+              <FleetStat
+                label="Przychód (zlecenia EUR)"
+                value={`${fleet.ordersRevenueEur} €`}
+                accent="#22c55e"
+              />
               <FleetStat
                 label="Anomalie spalania"
                 value={String(fleet.anomalies)}
