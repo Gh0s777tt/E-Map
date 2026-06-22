@@ -3,20 +3,20 @@
 import {
   addInvoiceItem,
   createBlankInvoice,
-  deleteInvoice,
   deleteInvoiceItem,
   duplicateInvoice,
   type Invoice,
   type InvoiceItem,
   listInvoiceItems,
   listInvoices,
+  setInvoiceStatus,
 } from "@e-logistic/api";
 import { round2 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
-import { Button, PageHeader } from "@/components/ui";
+import { Badge, Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -58,14 +58,13 @@ export default function InvoicesPage() {
     load();
   }, [load]);
 
-  async function remove(id: string) {
-    if (!(await confirm("Usunąć fakturę? (uwaga: powstanie luka w numeracji)"))) return;
+  async function cancel(inv: Invoice) {
+    if (!(await confirm(`Anulować fakturę ${inv.number}? (numer zostanie zachowany)`))) return;
     try {
-      await deleteInvoice(getBrowserSupabase(), id);
-      if (selected?.id === id) setSelected(null);
+      await setInvoiceStatus(getBrowserSupabase(), inv.id, "cancelled");
       await load();
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Błąd usuwania.");
+      setLoadErr(e instanceof Error ? e.message : "Błąd anulowania.");
     }
   }
 
@@ -197,29 +196,35 @@ export default function InvoicesPage() {
       />
       {!loading && !loadErr && invoices.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-          {invoices.map((inv) => (
-            <div key={inv.id} style={styles.row}>
-              <button type="button" style={styles.rowMain} onClick={() => setSelected(inv)}>
-                <strong style={{ minWidth: 130 }}>{inv.number}</strong>
-                <span style={styles.dim}>{inv.issue_date}</span>
-                <span style={{ flex: 1 }} />
-                <span style={styles.dim}>{inv.buyer_name ?? "—"}</span>
-                <strong style={{ color: palette.red, minWidth: 110, textAlign: "right" }}>
-                  {inv.gross} {inv.currency}
-                </strong>
-              </button>
-              {canManage && (
-                <>
-                  <Button variant="ghost" onClick={() => duplicate(inv.id)}>
-                    ⧉
-                  </Button>
-                  <Button variant="danger" onClick={() => remove(inv.id)}>
-                    🗑️
-                  </Button>
-                </>
-              )}
-            </div>
-          ))}
+          {invoices.map((inv) => {
+            const cancelled = inv.status === "cancelled";
+            return (
+              <div key={inv.id} style={{ ...styles.row, opacity: cancelled ? 0.55 : 1 }}>
+                <button type="button" style={styles.rowMain} onClick={() => setSelected(inv)}>
+                  <strong style={{ minWidth: 130 }}>{inv.number}</strong>
+                  <span style={styles.dim}>{inv.issue_date}</span>
+                  {cancelled && <Badge color={palette.red}>Anulowana</Badge>}
+                  <span style={{ flex: 1 }} />
+                  <span style={styles.dim}>{inv.buyer_name ?? "—"}</span>
+                  <strong style={{ color: palette.red, minWidth: 110, textAlign: "right" }}>
+                    {inv.gross} {inv.currency}
+                  </strong>
+                </button>
+                {canManage && (
+                  <>
+                    <Button variant="ghost" onClick={() => duplicate(inv.id)}>
+                      ⧉
+                    </Button>
+                    {!cancelled && (
+                      <Button variant="danger" onClick={() => cancel(inv)}>
+                        ✖ Anuluj
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -314,7 +319,23 @@ function InvoiceDoc({
       <div style={styles.doc}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontSize: 24, fontWeight: 800 }}>Faktura {inv.number}</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>
+              Faktura {inv.number}
+              {inv.status === "cancelled" && (
+                <span
+                  style={{
+                    marginLeft: 10,
+                    fontSize: 14,
+                    color: "#b00",
+                    border: "2px solid #b00",
+                    borderRadius: 6,
+                    padding: "1px 8px",
+                  }}
+                >
+                  ANULOWANA
+                </span>
+              )}
+            </div>
             <div style={styles.muted}>Data wystawienia: {inv.issue_date}</div>
           </div>
           <div style={{ textAlign: "right", fontWeight: 800, color: palette.red }}>E-Logistic</div>

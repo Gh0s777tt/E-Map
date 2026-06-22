@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-112-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.87.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-113-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.88.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.88.0] — 🗑️ Anulowanie faktury (zamiast usuwania)
+
+- `[#113]` 🗑️ **Status faktury `anulowana`** zamiast twardego usuwania ([invoices](apps/web/app/(app)/invoices/page.tsx)):
+  - [Migracja 0037](supabase/migrations/0037_invoice_status.sql): `invoices.status` (issued/cancelled) + check; trigger **audytujący zmianę statusu** (tylko realna zmiana). Anulowanie **zachowuje numer** → brak luk w numeracji FV/ROK/NNNN.
+  - **Lista faktur**: zamiast „🗑️" jest **„✖ Anuluj"** (zachowuje numer); anulowane wyszarzone z plakietką „Anulowana". Drukowalny dokument pokazuje znak **ANULOWANA**.
+  - api [data/invoices.ts](packages/api/src/data/invoices.ts): `setInvoiceStatus`; `Invoice.status`. Typy DB (31 tabel).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/invoices`).
 
 ## [0.87.0] — 🏢 Dane firmy do edycji w Ustawieniach
 
