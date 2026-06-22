@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { co2ByVehicle, co2PerHundredKm, dieselCo2Kg, formatCo2 } from "./co2";
+import { co2ByClient, co2ByVehicle, co2PerHundredKm, dieselCo2Kg, formatCo2 } from "./co2";
 
 describe("dieselCo2Kg", () => {
   it("liczy CO₂ z litrów (2,64 kg/L)", () => {
@@ -37,5 +37,31 @@ describe("co2ByVehicle", () => {
 
   it("pusta lista → pusto", () => {
     expect(co2ByVehicle([])).toEqual([]);
+  });
+});
+
+describe("co2ByClient", () => {
+  it("przypisuje litry pojazdu do klientów proporcjonalnie do przychodu", () => {
+    // Pojazd v1: 100 L; dwa zlecenia EUR (A=750, B=250) → A:75 L, B:25 L.
+    const rows = co2ByClient(
+      [
+        { shipper: "A", vehicleId: "v1", price: 750, currency: "EUR", status: "delivered" },
+        { shipper: "B", vehicleId: "v1", price: 250, currency: "EUR", status: "invoiced" },
+      ],
+      [{ vehicleId: "v1", liters: 100 }],
+    );
+    expect(rows[0]).toMatchObject({ client: "A", liters: 75, co2Kg: 198 }); // 75*2.64
+    expect(rows[1]).toMatchObject({ client: "B", liters: 25, co2Kg: 66 });
+  });
+
+  it("pomija zlecenia niezrealizowane / nie-EUR", () => {
+    const rows = co2ByClient(
+      [
+        { shipper: "A", vehicleId: "v1", price: 1000, currency: "EUR", status: "new" },
+        { shipper: "A", vehicleId: "v1", price: 1000, currency: "PLN", status: "delivered" },
+      ],
+      [{ vehicleId: "v1", liters: 100 }],
+    );
+    expect(rows).toEqual([]);
   });
 });

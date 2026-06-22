@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-166-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.22.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-167-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.23.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.23.0] — 🌱 Emisje CO₂ per klient (atrybucja jak rentowność)
+
+- `[#167]` 🌱 **Ślad węglowy w rozbiciu na nadawców** — pod raporty CO₂ przesyłek dla klientów:
+  - **Rdzeń** [core/co2.ts](packages/core/src/co2.ts): `co2ByClient(orders, vehicleLiters)` — litry paliwa pojazdu dzielone na jego zrealizowane zlecenia EUR proporcjonalnie do przychodu (ten sam model atrybucji co `clientProfitability`), sumowane per nadawca → CO₂. Malejąco. **2 testy (136 łącznie)**.
+  - **Statystyki** ([EmissionsSection](apps/web/app/(app)/stats/EmissionsSection.tsx)): pod tabelą per‑pojazd druga tabela **„👥 Wg klienta (nadawcy)"** (litry przypisane + CO₂); eksport CSV rozszerzony o sekcję klientów.
+  - **Bramki:** biome czysto · `tsc` ×7 · 136 testów · build ✓ (`/stats`).
 
 ## [1.22.0] — 💶 Eksport księgowy: rejestr kosztów miesiąca
 

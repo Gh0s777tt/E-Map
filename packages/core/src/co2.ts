@@ -53,3 +53,56 @@ export function co2ByVehicle(vehicles: VehicleFuelInput[]): VehicleCo2Row[] {
     }))
     .sort((a, b) => b.co2Kg - a.co2Kg);
 }
+
+export interface Co2OrderEntry {
+  shipper: string | null;
+  vehicleId: string | null;
+  price: number | null;
+  currency: string;
+  status: string;
+}
+
+export interface ClientCo2 {
+  client: string;
+  liters: number;
+  co2Kg: number;
+}
+
+const CO2_REALIZED = new Set(["delivered", "invoiced"]);
+const CO2_NO_CLIENT = "(bez nadawcy)";
+
+/**
+ * Emisje CO₂ przypisane do klientów (nadawców) — ten sam model atrybucji co
+ * rentowność: litry paliwa pojazdu dzielone na jego zrealizowane zlecenia EUR
+ * proporcjonalnie do przychodu, sumowane per nadawca → CO₂. Malejąco wg kg.
+ */
+export function co2ByClient(
+  orders: Co2OrderEntry[],
+  vehicleLiters: { vehicleId: string; liters: number }[],
+): ClientCo2[] {
+  const litersByVehicle = new Map<string, number>();
+  for (const v of vehicleLiters) {
+    litersByVehicle.set(v.vehicleId, (litersByVehicle.get(v.vehicleId) ?? 0) + v.liters);
+  }
+  const realized = orders.filter(
+    (o) => CO2_REALIZED.has(o.status) && o.currency === "EUR" && o.price != null && o.price > 0,
+  );
+  const vehRevenue = new Map<string, number>();
+  for (const o of realized) {
+    if (o.vehicleId) {
+      vehRevenue.set(o.vehicleId, (vehRevenue.get(o.vehicleId) ?? 0) + (o.price ?? 0));
+    }
+  }
+  const litersByClient = new Map<string, number>();
+  for (const o of realized) {
+    const revenue = o.price ?? 0;
+    const name = (o.shipper ?? "").trim() || CO2_NO_CLIENT;
+    const vehRev = o.vehicleId ? (vehRevenue.get(o.vehicleId) ?? 0) : 0;
+    const vehL = o.vehicleId ? (litersByVehicle.get(o.vehicleId) ?? 0) : 0;
+    const attributed = vehRev > 0 ? (vehL * revenue) / vehRev : 0;
+    litersByClient.set(name, (litersByClient.get(name) ?? 0) + attributed);
+  }
+  return [...litersByClient.entries()]
+    .map(([client, liters]) => ({ client, liters: round2(liters), co2Kg: dieselCo2Kg(liters) }))
+    .sort((a, b) => b.co2Kg - a.co2Kg);
+}
