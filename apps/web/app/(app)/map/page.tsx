@@ -6,6 +6,7 @@ import { insertMapReport, listActiveMapReports } from "@e-logistic/api";
 import {
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
+  formatDuration,
   fuelCost,
   newId,
   REPORT_TYPES,
@@ -30,7 +31,11 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 type MaplibreModule = typeof import("maplibre-gl");
-type RouteResponse = RouteResult & { tollEstimated?: boolean; fallback?: boolean };
+type RouteResponse = RouteResult & {
+  tollEstimated?: boolean;
+  durationEstimated?: boolean;
+  fallback?: boolean;
+};
 type Stop = { key: string; label: string; lat: number; lng: number };
 type Report = { id: string; type: ReportType; lat: number; lng: number; comment: string | null };
 type BasemapKey = "dark" | "satellite" | "terrain" | "osm";
@@ -1231,7 +1236,10 @@ export default function MapPage() {
           {result && (
             <div style={styles.result}>
               <Row k="Dystans" v={`${result.distanceKm} km`} />
-              <Row k="Czas" v={`${Math.round(result.durationMin)} min`} />
+              <Row
+                k="Czas jazdy"
+                v={`${formatDuration(result.durationMin)}${result.durationEstimated ? " (szac.)" : ""}`}
+              />
               <Row
                 k="Myto"
                 v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}

@@ -6,7 +6,7 @@ import { buildHereUrl, decodeFlexiblePolyline } from "./here";
 import { MockRoutingProvider } from "./mock";
 import { routeMultiLeg } from "./multileg";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
-import { estimateTollEur } from "./toll";
+import { estimateTollEur, estimateTruckDurationMin } from "./toll";
 import type { LatLng } from "./types";
 
 const BERLIN: LatLng = { lat: 52.52, lng: 13.405 };
@@ -101,13 +101,20 @@ describe("routeMultiLeg", () => {
 });
 
 describe("estimateTollEur", () => {
-  it("liczy myto proporcjonalnie do dystansu i masy", () => {
-    expect(estimateTollEur(100)).toBe(18);
-    expect(estimateTollEur(100, { weightKg: 24000 })).toBe(27);
+  it("liczy myto proporcjonalnie do dystansu i masy (udział płatnych odcinków 0.6)", () => {
+    expect(estimateTollEur(100)).toBe(10.8); // 100 * 0.18 * 0.6
+    expect(estimateTollEur(100, { weightKg: 24000 })).toBe(16.2); // * 1.5
   });
 
   it("zeruje myto przy omijaniu płatnych dróg", () => {
     expect(estimateTollEur(100, { avoidTolls: true })).toBe(0);
+  });
+});
+
+describe("estimateTruckDurationMin", () => {
+  it("czas jazdy z dystansu wg średniej TIR (68 km/h)", () => {
+    expect(estimateTruckDurationMin(680)).toBe(600); // 680/68*60 = 10 h
+    expect(estimateTruckDurationMin(0)).toBe(0);
   });
 });
 
