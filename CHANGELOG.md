@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-96-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.72.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-97-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.73.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.73.0] — ⚠️ Pulpit „Co wymaga uwagi" (zbiorczy panel terminów)
+
+- `[#097]` ⚠️ **Zbiorczy panel terminów na pulpicie** ([AttentionPanel](apps/web/components/AttentionPanel.tsx)):
+  - Jeden widok agregujący **wszystkie terminy i progi** wymagające reakcji: dokumenty pojazdów (przegląd/OC/leasing), karty paliwowe (ważność), serwis wg przebiegu (km), dokumenty z sejfu (termin ważności).
+  - Liczony **na żywo** (niezależnie od crona/powiadomień), z jednego `Promise.all`; pokazuje tylko pozycje „po terminie / wkrótce", **posortowane wg pilności** (po terminie → najbliższe), z licznikami i klikalnym przejściem do modułu.
+  - Zastępuje wcześniejszy `RemindersWidget` (był tylko dla pojazdów) — pełny superset.
+  - Anomalie spalania pozostają na [/stats](apps/web/app/(app)/stats/page.tsx) (pulpit floty).
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓ (`/dashboard`).
 
 ## [0.72.0] — 📄 List przewozowy CMR ze zlecenia
 
