@@ -1,12 +1,14 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v0.51.0** (#052) · 2026-06-21
-> Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS**.
+> Status: **wdrożone** · stan kodu **v1.4.0** (#138) · 2026-06-22
+> Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
 ---
 
-## 0. Aktualny schemat (stan v0.51.0 — migracje 0001–0023)
+## 0. Aktualny schemat (stan v1.4.0 — migracje 0001–0040)
+
+**31 tabel `public` (wszystkie z RLS).** Poniżej rdzeń; sekcja 0.1 obejmuje moduły dodane po v0.51.
 
 **Tabele:**
 - `companies`, `memberships` (`role`, `status`, **`modules` text[]** — 0016), `profiles`, `driver_profiles`.
@@ -36,6 +38,18 @@ szyfruje platforma Supabase.
 > Uwaga porządkowa: numeracja migracji ma dwie kolizje historyczne (`0017_fuel_full_tank`+`0017_notifications`,
 > `0018_fix_expiry_onconflict`+`0018_vehicle_tanks`) — kolejność wykonania alfabetyczna; do renumeracji w przyszłości.
 
+### 0.1 Moduły dodane po v0.51 (migracje 0024–0040)
+
+- **`service_tasks`** (0028) — zadania serwisowe per pojazd: `name`, `interval_km`, `last_done_km`; status liczony wg przebiegu (`serviceStatus` w core).
+- **`orders`** (0029) — zlecenia/ładunki: `reference_no`, `shipper`, `consignee`, `origin`, `destination`, `cargo`, `weight_kg`, `price`, `currency`, `status` (enum `order_status`: new/assigned/in_progress/delivered/invoiced/cancelled), `vehicle_id`, **`assigned_to`** → `auth.users` (0032), `load_date`, `unload_date`, `notes`. RPC **`order_set_status`**: owner/dispatcher pełny zakres; przypisany kierowca tylko statusy operacyjne.
+- **`invoices`** (0030) — faktury ze zlecenia lub puste: numeracja `FV/ROK/NNNN` per firma (blokada `pg_advisory_xact_lock`, bez luk), **snapshot sprzedawcy** (`seller_name`/`seller_tax_id`/`seller_address`, **`seller_bank`/`seller_account`** 0040), nabywca, `net`/`vat_rate`/`vat_amount`/`gross`, `currency`, **`status`** issued/cancelled (0037), **`due_date`** + domyślny VAT/termin z firmy (0038), **`paid_at`** (0039). RPC **`create_invoice`** (ze zlecenia → status `invoiced`), **`create_blank_invoice`** (0036), **`duplicate_invoice`** — wszystkie `SECURITY DEFINER` + `has_role(owner/dispatcher)`, zmiany audytowane.
+- **`invoice_items`** (0034) — pozycje faktury: `position`/`description`/`quantity`/`unit_price`/`vat_rate`; kwoty pozycji (`net`/`vat_amount`/`gross`) liczone triggerem BEFORE, sumy faktury przeliczane triggerem AFTER z pozycji.
+- **`documents`** (0031) — sejf dokumentów: prywatny bucket Storage `documents` (ścieżka `{company_id}/{uuid}-nazwa`), `name`/`category`/`size_bytes`/`expiry_date`/`vehicle_id`. RLS na `storage.objects` wiąże pierwszy segment ścieżki z `company_id` aktywnego członka; powiadomienia o wygasających dokumentach.
+- **`companies`** rozszerzone: `default_vat_rate`, `payment_due_days` (0038), `bank_name`, `bank_account` (0040) — domyślne i dane do przelewu na fakturach.
+- **`drivers`** + `user_id` (0035) — powiązanie kartoteki kierowcy z kontem (RPC `driver_link_user`; `list_drivers` zwraca `user_id`).
+
+> **Analityka bez własnych tabel:** rentowność klientów (`clientProfitability`/`clientProfitTrend`) i alerty progowe (`fleetAlerts`) liczone są w `packages/core` z danych zleceń + paliwa (model atrybucji kosztu opisany w [#126]). Eksporty CSV i dwujęzyczność (PL/EN) po stronie web.
+
 ---
 
 ## 1. Diagram encji (skrót)
@@ -58,6 +72,12 @@ erDiagram
   companies ||--o{ rates : definiuje
   pois ||--o{ poi_reviews : oceny
   companies ||--o{ map_reports : zglasza
+  companies ||--o{ orders : zleca
+  vehicles ||--o{ orders : realizuje
+  orders ||--o{ invoices : fakturowane
+  invoices ||--o{ invoice_items : pozycje
+  companies ||--o{ documents : sejf
+  vehicles ||--o{ service_tasks : serwis
 ```
 
 ---

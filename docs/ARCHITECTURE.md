@@ -1,11 +1,12 @@
 # 🧠 Architektura — E‑Logistic
 
-> Status: **w realizacji** · stan na v0.59.0 · 2026-06-22
+> Status: **w realizacji** · stan na v1.4.0 (#138) · 2026-06-22
 > Decyzje wstępne: dokumentacja przed kodem · mapa = hybryda MapLibre+HERE/GraphHopper · web+mobile równolegle.
 >
 > **Stan implementacji** (ten dokument opisuje architekturę **docelową**):
-> - ✅ **Zaimplementowane:** Next.js 16 + React 19 + Tailwind 4 (web) · Supabase (Postgres + PostGIS + Auth + RLS + Vault) · MapLibre + `RoutingProvider` (HERE/GraphHopper) · offline przez **outbox** (localStorage) · web‑push · 2FA TOTP + passkeys · szyfrowanie PII/PIN · generowane typy DB · rate‑limiting.
-> - 🔜 **Planowane (jeszcze nie w kodzie):** **PowerSync** (offline SQLite ↔ Supabase — dziś rolę pełni outbox), **shadcn/ui**, **TanStack Query**, **Zustand**, **Sentry**, parytet aplikacji **mobile**.
+> - ✅ **Platforma:** Next.js 16 + React 19 + Tailwind 4 (web) · Supabase (Postgres 17 + PostGIS + Auth + RLS + Vault) · MapLibre + `RoutingProvider` (HERE/GraphHopper) · offline przez **outbox** (localStorage) · web‑push · 2FA TOTP + passkeys · szyfrowanie PII/PIN · generowane typy DB · rate‑limiting · **bramka RLS w CI** ([`audit:rls`](../scripts/audit-rls.mjs)).
+> - ✅ **Moduły biznesowe (v1.0–1.4):** flota (pojazdy/kierowcy/karty) · formularze offline (paliwo/AdBlue/trip) + historia · mapa TIR + POI + ceny paliw · statystyki (spalanie/anomalie/koszty) · **zlecenia** (przypisania, statusy, CMR) · **faktury** (numeracja bez luk, status, płatność, bank/IBAN, pozycje, duplikat) · **sejf dokumentów** · rozliczenia + zestawienie miesięczne · **rentowność klientów** (snapshot + trend + CSV) · **alerty progowe** · powiadomienia (in‑app + push) · **dwujęzyczność PL/EN** całego UI widokowego.
+> - 🔜 **Planowane (jeszcze nie w kodzie):** **PowerSync** (offline SQLite ↔ Supabase — dziś rolę pełni outbox), **shadcn/ui**, **TanStack Query**, **Zustand**, **Sentry**, parytet aplikacji **mobile**, profil **truck** w routingu (płatny tier GraphHopper), kolejne języki i18n (dziś PL/EN; docelowo ×14).
 
 ---
 
@@ -35,7 +36,7 @@ packages/
   api/      → klient Supabase, repozytoria danych, warstwa sync
   ui/       → tokeny motywu (red/black), współdzielone prymitywy/ikony
   maps/     → RoutingProvider (interfejs) + adaptery HERE/GraphHopper + typy geo
-  i18n/     → tłumaczenia ×14 + helpery
+  i18n/     → tłumaczenia PL/EN (docelowo ×14) + helpery, parytet kluczy w teście
   config/   → tsconfig bazowy, konfiguracja Biome, współdzielone ustawienia
 supabase/
   migrations/  → SQL (schema, RLS, PostGIS, indeksy)
@@ -60,7 +61,7 @@ flowchart TB
     API["📦 api — Supabase client · repo · sync"]
     MAPS["📦 maps — RoutingProvider"]
     UI["📦 ui — motyw red/black"]
-    I18N["📦 i18n ×14"]
+    I18N["📦 i18n PL/EN (docelowo ×14)"]
   end
   subgraph Backend
     SB[("🟢 Supabase<br/>Postgres 17 · PostGIS · Auth · Realtime · Storage")]
@@ -189,8 +190,8 @@ Tego nie kupujemy — to przewaga produktu (dane są nasze):
 ## 9. Stan, walidacja, i18n
 
 - **Walidacja**: Zod w `packages/core` — te same schematy w formularzach web i mobile oraz w Edge Functions.
-- **Stan serwera**: TanStack Query; **stan klienta**: Zustand; lokalna baza PowerSync jest reaktywna.
-- **i18n ×14** (jak w ekosystemie), parytet kluczy pilnowany w CI.
+- **Stan serwera**: TanStack Query; **stan klienta**: Zustand; lokalna baza PowerSync jest reaktywna. *(🔜 — dziś React hooks + outbox.)*
+- **i18n**: dziś **PL/EN** (docelowo ×14 jak w ekosystemie); język czytany serwerowo z ciasteczka (RSC, bez migotania) + kliencki `LocaleProvider`/`useT`; **parytet kluczy** wymuszony typem `Record<MessageKey>` i testem.
 
 ---
 
@@ -215,8 +216,8 @@ Tego nie kupujemy — to przewaga produktu (dane są nasze):
 
 ## 12. Decyzje otwarte (do potwierdzenia)
 
-1. Nazwa repo: zostawić `E-Map` czy zmienić na `E-Logistic`?
-2. Tile provider do renderu: **MapTiler** (szybki start) vs self-host tiles (taniej przy skali)?
-3. Dostawca SMS/WhatsApp: Twilio vs MessageBird vs inny?
-4. Czy PIN kart ma być dostępny w apce kierowcy, czy tylko właściciela?
-5. Zakres i18n od startu: 14 języków od razu czy PL+EN, reszta dokładana?
+1. Nazwa repo: zostawić `E-Map` czy zmienić na `E-Logistic`? *(otwarte — repo nadal `E-Map`)*
+2. Tile provider do renderu: **MapTiler** (szybki start) vs self-host tiles (taniej przy skali)? *(otwarte)*
+3. Dostawca SMS/WhatsApp: Twilio vs MessageBird vs inny? *(otwarte)*
+4. ~~Czy PIN kart ma być dostępny w apce kierowcy~~ → **rozstrzygnięte:** ustawia owner, **odczyt dla aktywnych członków firmy** (kierowca płaci w automacie), każdy odczyt audytowany.
+5. ~~Zakres i18n od startu~~ → **rozstrzygnięte:** start **PL+EN**, kolejne języki dokładane z zachowaniem parytetu.
