@@ -17,6 +17,7 @@ import {
   expiryStatus,
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
+  formatCardExpiry,
   fuelConsumptionSeries,
   round2,
   serviceStatus,
@@ -222,7 +223,7 @@ export default function VehicleCardPage() {
                 <span key={c.id} style={styles.tag}>
                   💳 {FUEL_CARD_PROVIDER_LABELS[c.provider as FuelCardProvider] ?? c.provider}{" "}
                   {c.card_number_masked ?? ""}
-                  {c.valid_until ? ` · do ${c.valid_until}` : ""}
+                  {c.valid_until ? ` · do ${formatCardExpiry(c.valid_until)}` : ""}
                 </span>
               ))}
             </div>

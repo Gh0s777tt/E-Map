@@ -10,10 +10,13 @@ import {
   updateFuelCard,
 } from "@e-logistic/api";
 import {
+  dateToMonthInput,
   FUEL_CARD_PROVIDER_LABELS,
   FUEL_CARD_PROVIDERS,
   type FuelCardProvider,
+  formatCardExpiry,
   fuelCardSchema,
+  monthInputToDate,
 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -235,12 +238,12 @@ export default function CardsPage() {
                 placeholder={editingId ? "bez zmian" : ""}
               />
             </Field>
-            <Field label="Ważna do" error={errors.validUntil}>
+            <Field label="Ważna do (mies./rok)" error={errors.validUntil}>
               <input
                 style={input}
-                type="date"
-                value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
+                type="month"
+                value={dateToMonthInput(validUntil)}
+                onChange={(e) => setValidUntil(monthInputToDate(e.target.value) ?? "")}
               />
             </Field>
             <Field label="Rabat %" error={errors.discountPercent}>
@@ -296,7 +299,7 @@ export default function CardsPage() {
                 width={132}
               />
               <strong style={{ minWidth: 90 }}>{providerLabel(c.provider)}</strong>
-              <span style={styles.cell}>{c.valid_until ?? "—"}</span>
+              <span style={styles.cell}>{formatCardExpiry(c.valid_until)}</span>
               {c.discount_percent != null && <span style={styles.cell}>{c.discount_percent}%</span>}
               <span style={{ flex: 1 }} />
               {pins[c.id] ? (
