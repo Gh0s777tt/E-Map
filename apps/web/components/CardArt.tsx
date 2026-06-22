@@ -1,6 +1,10 @@
 "use client";
 
-import { FUEL_CARD_PROVIDER_LABELS, type FuelCardProvider } from "@e-logistic/core";
+import {
+  FUEL_CARD_PROVIDER_LABELS,
+  type FuelCardProvider,
+  formatCardExpiry,
+} from "@e-logistic/core";
 
 /**
  * Stylizowana grafika karty flotowej w barwach danego dostawcy.
@@ -94,7 +98,7 @@ export function CardArt({
           }}
         >
           <span>{registration ? `🚚 ${registration}` : ""}</span>
-          <span>{validUntil ? `do ${validUntil}` : ""}</span>
+          <span>{validUntil ? formatCardExpiry(validUntil) : ""}</span>
         </div>
       </div>
     </div>

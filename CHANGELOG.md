@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-148-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.8.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-149-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.8.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.8.2] — 🃏 Karty paliwowe: ważność jako mies./rok (bez dnia)
+
+- `[#149]` 🃏 **Ważność karty = MM/RRRR** (zgłoszone) — na kartach flotowych data ważności jest tylko miesiąc/rok, więc pole z pełną datą myliło:
+  - **Rdzeń** [core/cardExpiry.ts](packages/core/src/cardExpiry.ts): `monthInputToDate` (MM/RRRR → ostatni dzień miesiąca, np. `2026-03` → `2026-03-31`), `dateToMonthInput`, `formatCardExpiry` (→ `03/2026`). 6 testów (m.in. luty przestępny). Bez migracji — kolumna `valid_until date` zostaje, normalizujemy do **końca miesiąca** (karta ważna do końca tego miesiąca).
+  - **Formularz kart** ([cards](apps/web/app/(app)/cards/page.tsx)): `<input type="date">` → `type="month"`; etykieta „Ważna do (mies./rok)".
+  - **Wyświetlanie**: lista kart, [CardArt](apps/web/components/CardArt.tsx) (grafika karty) i [karta pojazdu](apps/web/app/(app)/vehicles/[id]/page.tsx) pokazują `MM/RRRR` zamiast pełnej daty.
+  - **Bramki:** biome czysto · `tsc` ×2 · 112 testów · build ✓ (`/cards`).
 
 ## [1.8.1] — 🐛 Mapa: czytelne dymki (koniec „białego tła")
 
