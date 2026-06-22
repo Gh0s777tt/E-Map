@@ -1,16 +1,11 @@
 "use client";
 
 import { listFuelLogs, listTripEvents } from "@e-logistic/api";
-import {
-  buildSettlement,
-  effectiveModules,
-  round2,
-  type Settlement,
-  toCsv,
-} from "@e-logistic/core";
+import { buildSettlement, effectiveModules, round2, type Settlement } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Button, PageHeader, SetupNotice } from "@/components/ui";
+import { downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -50,15 +45,6 @@ function firstOfMonth(): string {
 }
 function today(): string {
   return new Date().toISOString().slice(0, 10);
-}
-function download(filename: string, text: string) {
-  const blob = new Blob([`﻿${text}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function SettlementsPage() {
@@ -181,8 +167,10 @@ export default function SettlementsPage() {
       ["ZYSK", settlement.profit],
       ["Marża (%)", settlement.marginPercent],
     ];
-    const csv = toCsv(headers, [...rows, ...summary]);
-    download(`rozliczenie_${regOf(vehicleId)}_${from}_${to}.csv`, csv);
+    downloadCsv(`rozliczenie_${regOf(vehicleId)}_${from}_${to}.csv`, headers, [
+      ...rows,
+      ...summary,
+    ]);
   }
 
   return (

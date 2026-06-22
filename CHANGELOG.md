@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-114-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.89.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-115-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.89.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.89.1] — ♻️ Porządki: wspólny eksport CSV (mniej duplikacji)
+
+- `[#115]` ♻️ **Ujednolicenie eksportu CSV** — `orders`, `settlements`, `monthly` używają teraz wspólnego helpera [lib/csv.ts](apps/web/lib/csv.ts) (`downloadCsv` + `csvDateStamp`) zamiast lokalnych, powielonych funkcji `download()`. Zachowanie bez zmian (BOM UTF-8), mniej kodu i jeden punkt prawdy dla wszystkich list. Bez zmian w API/DB.
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓.
 
 ## [0.89.0] — 🔔 Centrum powiadomień: pojedyncze przeczytane + filtr
 
