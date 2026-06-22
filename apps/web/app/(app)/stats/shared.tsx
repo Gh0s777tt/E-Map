@@ -103,6 +103,20 @@ export const styles: Record<string, React.CSSProperties> = {
   },
   anHead: { fontWeight: 800, fontSize: 14, marginBottom: 8 },
   anRow: { display: "flex", gap: 10, alignItems: "center", padding: "5px 0", fontSize: 14 },
+  pnl: {
+    marginTop: 24,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 12,
+    padding: "14px 16px",
+  },
+  pnlTag: {
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "4px 12px",
+    fontSize: 13,
+  },
   profitWrap: {
     marginTop: 24,
     background: palette.nearBlack,

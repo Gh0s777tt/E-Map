@@ -20,4 +20,5 @@ export * from "./data/orders";
 export * from "./data/push";
 export * from "./data/service";
 export * from "./data/tripEvents";
+export * from "./data/vehicleCosts";
 export * from "./data/vehicles";
