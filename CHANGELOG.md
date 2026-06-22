@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-147-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.8.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-148-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.8.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.8.1] — 🐛 Mapa: czytelne dymki (koniec „białego tła")
+
+- `[#148]` 🐛 **Fix: białe, nieczytelne dymki pinezek** (zgłoszone) — kliknięcie pinezki/POI pokazywało biały prostokąt bez widocznej treści (nazwa, typ, GPS, „Nawiguj", „Dodaj jako przystanek"):
+  - **Przyczyna:** domyślny dymek MapLibre ma **białe tło**, a strona dziedziczy jasny tekst (`#f5f5f5`) → biały tekst na białym tle = nic nie widać.
+  - **Rozwiązanie:** motyw dymków dopasowany do aplikacji (ciemne tło `#141414`, jasny tekst, czerwone akcenty, strzałka i przycisk zamknięcia) — [globals.css](apps/web/app/globals.css). Przycisk „➕ Dodaj jako przystanek" w stylu czerwieni, `<code>` GPS z ramką. Czysto CSS — bez zmian logiki mapy.
+  - **Bramki:** biome czysto · build ✓ (`/map`).
 
 ## [1.8.0] — 📇 Rejestr kontrahentów (etap 2: zlecenia + zarządzanie)
 
