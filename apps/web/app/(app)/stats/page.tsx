@@ -18,6 +18,7 @@ import {
   dieselCo2Kg,
   fleetAlerts,
   fleetPnl,
+  fleetPnlByVehicle,
   formatCo2,
   fuelConsumptionSeries,
   orderAnalytics,
@@ -204,6 +205,25 @@ export default function StatsPage() {
     };
   }, [fuel, costs, fleet.ordersRevenueEur]);
 
+  // Ranking rentowności floty: P&L per pojazd (przychód − paliwo − koszty, EUR).
+  const pnlRows = useMemo(() => {
+    const fuelByVehicle = tiles.map((tl) => ({ vehicleId: tl.id, eur: tl.spend }));
+    const costsByVehicle = costs
+      .filter((c) => c.currency === "EUR")
+      .map((c) => ({ vehicleId: c.vehicle_id, eur: Number(c.amount) }));
+    const regOf = new Map(vehicles.map((v) => [v.id, v.registration]));
+    return fleetPnlByVehicle(
+      orders.map((o) => ({
+        vehicleId: o.vehicle_id,
+        price: o.price,
+        currency: o.currency,
+        status: o.status,
+      })),
+      fuelByVehicle,
+      costsByVehicle,
+    ).map((r) => ({ ...r, registration: regOf.get(r.vehicleId) ?? r.vehicleId.slice(0, 8) }));
+  }, [orders, tiles, costs, vehicles]);
+
   // Emisje CO₂ per pojazd (z litrów paliwa) — raport ESG, malejąco.
   const co2Rows = useMemo(
     () =>
@@ -379,6 +399,51 @@ export default function StatsPage() {
                 Pozostałe koszty dodasz na karcie pojazdu (naprawy, leasing, ubezpieczenie…).
                 Pozycje w innych walutach są pomijane w sumie.
               </p>
+            </div>
+          )}
+
+          {canManage && pnlRows.length > 0 && (
+            <div style={styles.profitWrap}>
+              <div style={styles.anHead}>
+                🚚 Ranking rentowności floty (per pojazd){" "}
+                <span style={{ color: palette.smoke, fontWeight: 400, fontSize: 12 }}>
+                  zysk = przychód − paliwo − koszty · EUR
+                </span>
+              </div>
+              <div style={{ ...styles.profitRow, color: palette.smoke, fontSize: 12 }}>
+                <span style={{ flex: 1 }}>Pojazd</span>
+                <span style={styles.profitCol}>Przychód</span>
+                <span style={styles.profitCol}>Paliwo</span>
+                <span style={styles.profitCol}>Koszty</span>
+                <span style={styles.profitCol}>Zysk</span>
+                <span style={styles.profitCol}>Marża</span>
+              </div>
+              {pnlRows.map((r) => {
+                const color = r.net >= 0 ? "#22c55e" : palette.red;
+                return (
+                  <div key={r.vehicleId} style={styles.profitRow}>
+                    <span
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {r.registration}
+                    </span>
+                    <span style={styles.profitCol}>{r.revenue} €</span>
+                    <span style={styles.profitCol}>{r.fuel} €</span>
+                    <span style={styles.profitCol}>{r.costs} €</span>
+                    <span style={{ ...styles.profitCol, color, fontWeight: 700 }}>{r.net} €</span>
+                    <span style={{ ...styles.profitCol, color }}>
+                      {r.marginPct != null ? `${r.marginPct}%` : "—"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
 
