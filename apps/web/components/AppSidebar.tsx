@@ -2,6 +2,7 @@
 
 import { palette } from "@e-logistic/ui";
 import { useState } from "react";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { NotificationBell } from "@/components/NotificationBell";
 import { type NavGroup, SidebarNav } from "@/components/SidebarNav";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -39,6 +40,7 @@ export function AppSidebar({
         </button>
       </div>
       <div className="app-sidebar-body">
+        {supabaseConfigured && <GlobalSearch />}
         <SidebarNav groups={navGroups} onNavigate={() => setOpen(false)} />
         {supabaseConfigured && (
           <div style={{ marginBottom: 8 }}>

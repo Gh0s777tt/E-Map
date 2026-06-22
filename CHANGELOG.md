@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-108-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.83.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-109-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.84.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.84.0] — 🔍 Globalna wyszukiwarka (Ctrl/⌘+K)
+
+- `[#109]` 🔍 **Paleta wyszukiwania** ([GlobalSearch](apps/web/components/GlobalSearch.tsx)) w bocznym pasku + skrót **Ctrl/⌘+K**:
+  - Szybki skok do **pojazdu** (→ karta 360°), **kierowcy** (→ karta 360°), **zlecenia** (→ Zlecenia) i **faktury** (→ Faktury).
+  - Indeks pobierany leniwie przy pierwszym otwarciu (jeden `Promise.all`, źródła bez dostępu pomijane), filtr po stronie klienta po nazwie/szczegółach/typie.
+  - Pełna obsługa klawiatury: Ctrl/⌘+K otwiera, ↑/↓ wybór, Enter przejście, Esc/klik tła zamyka. Przycisk **„🔍 Szukaj… Ctrl K"** w pasku (także na mobile).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓.
 
 ## [0.83.0] — 🚀 Lista startowa „Pierwsze kroki" na pulpicie
 

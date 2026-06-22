@@ -76,6 +76,32 @@ body {
 .app-navlink-active:hover {
   background: #e50914;
 }
+.app-search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  color: #8a8a8a;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.app-search-trigger:hover {
+  color: #f5f5f5;
+  border-color: #3a3a3a;
+}
+.app-search-kbd {
+  margin-left: auto;
+  font-size: 11px;
+  color: #8a8a8a;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
 .app-navgroup {
   display: flex;
   flex-direction: column;
