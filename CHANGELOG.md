@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-163-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.19.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-164-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.20.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.20.0] — 🌱 Emisje CO₂ per pojazd + eksport CSV (raport ESG)
+
+- `[#164]` 🌱 **Rozszerzenie raportu CO₂** o rozbicie na pojazdy i eksport — pod sprawozdawczość ESG/CSRD:
+  - **Rdzeń** [core/co2.ts](packages/core/src/co2.ts): `co2ByVehicle(vehicles)` → wiersze (rejestracja, litry, CO₂ kg, CO₂/100km), posortowane malejąco wg emisji. 2 testy (**129 łącznie**).
+  - **Sekcja** [stats/EmissionsSection.tsx](apps/web/app/(app)/stats/EmissionsSection.tsx): tabela „🌱 Emisje CO₂" per pojazd + sumy floty (ślad węglowy, litry) + **eksport „⬇️ CSV"** (pojazd/litry/CO₂/CO₂‑100km + wiersz RAZEM). Tylko owner/dispatcher. Reużywa policzone agregaty floty.
+  - **Bramki:** biome czysto · `tsc` ×7 · 129 testów · build ✓ (`/stats`).
 
 ## [1.19.0] — 🌱 Ślad węglowy floty (CO₂) na statystykach
 

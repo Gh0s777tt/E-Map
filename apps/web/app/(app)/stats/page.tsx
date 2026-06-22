@@ -10,6 +10,7 @@ import {
 } from "@e-logistic/api";
 import {
   clientProfitability,
+  co2ByVehicle,
   co2PerHundredKm,
   consumptionFullToFull,
   detectFuelAnomalies,
@@ -30,6 +31,7 @@ import { Badge, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { AlertsBanner } from "./AlertsBanner";
+import { EmissionsSection } from "./EmissionsSection";
 import { ProfitabilitySection } from "./ProfitabilitySection";
 import { entry, FleetStat, type FuelRaw, styles, type TripRaw } from "./shared";
 import { VehicleDetail } from "./VehicleDetail";
@@ -200,6 +202,20 @@ export default function StatsPage() {
       ),
     };
   }, [fuel, costs, fleet.ordersRevenueEur]);
+
+  // Emisje CO₂ per pojazd (z litrów paliwa) — raport ESG, malejąco.
+  const co2Rows = useMemo(
+    () =>
+      co2ByVehicle(
+        tiles.map((t) => ({
+          id: t.id,
+          registration: t.registration,
+          liters: t.totalLiters,
+          consumption: t.cons,
+        })),
+      ),
+    [tiles],
+  );
 
   // Wejście do trendu rentowności: zlecenia i koszty paliwa otagowane miesiącem
   // (zlecenie wg daty załadunku, fallback do utworzenia) + ostatnie 6 miesięcy.
@@ -396,6 +412,8 @@ export default function StatsPage() {
           {canManage && profit.clients.length > 0 && (
             <ProfitabilitySection data={profit} trend={trendInput} />
           )}
+
+          {canManage && co2Rows.length > 0 && <EmissionsSection rows={co2Rows} />}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
             {tiles.map((tile) => (

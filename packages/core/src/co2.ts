@@ -23,3 +23,33 @@ export function formatCo2(kg: number): string {
   const v = Math.max(0, kg);
   return v >= 1000 ? `${round2(v / 1000)} t` : `${round2(v)} kg`;
 }
+
+export interface VehicleFuelInput {
+  id: string;
+  registration: string;
+  /** Litry oleju napędowego w okresie. */
+  liters: number;
+  /** Średnie spalanie L/100km (opcjonalnie, do intensywności). */
+  consumption?: number | null;
+}
+
+export interface VehicleCo2Row {
+  id: string;
+  registration: string;
+  liters: number;
+  co2Kg: number;
+  co2Per100Km: number | null;
+}
+
+/** Emisje CO₂ per pojazd (malejąco wg kg). Pusta lista → pusto. */
+export function co2ByVehicle(vehicles: VehicleFuelInput[]): VehicleCo2Row[] {
+  return vehicles
+    .map((v) => ({
+      id: v.id,
+      registration: v.registration,
+      liters: round2(Math.max(0, v.liters)),
+      co2Kg: dieselCo2Kg(v.liters),
+      co2Per100Km: v.consumption != null ? co2PerHundredKm(v.consumption) : null,
+    }))
+    .sort((a, b) => b.co2Kg - a.co2Kg);
+}
