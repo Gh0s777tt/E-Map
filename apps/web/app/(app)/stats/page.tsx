@@ -4,6 +4,7 @@ import { listFuelLogs, listOrders, listTripEvents, listVehicles } from "@e-logis
 import {
   type ClientProfit,
   clientProfitability,
+  clientProfitTrend,
   consumptionFullToFull,
   detectFuelAnomalies,
   type FuelStatsEntry,
@@ -78,6 +79,8 @@ export default function StatsPage() {
       origin: string | null;
       destination: string | null;
       vehicle_id: string | null;
+      load_date: string | null;
+      created_at: string;
     }[]
   >([]);
   const [canManage, setCanManage] = useState(false);
@@ -110,6 +113,8 @@ export default function StatsPage() {
             origin: o.origin,
             destination: o.destination,
             vehicle_id: o.vehicle_id,
+            load_date: o.load_date,
+            created_at: o.created_at,
           })),
         );
         setVehicles(
@@ -196,6 +201,29 @@ export default function StatsPage() {
     );
   }, [orders, fuel]);
 
+  // Wejście do trendu rentowności: zlecenia i koszty paliwa otagowane miesiącem
+  // (zlecenie wg daty załadunku, fallback do utworzenia) + ostatnie 6 miesięcy.
+  const trendInput = useMemo(() => {
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, i) =>
+      new Date(now.getFullYear(), now.getMonth() - 5 + i, 1).toISOString().slice(0, 7),
+    );
+    const trendOrders = orders.map((o) => ({
+      shipper: o.shipper,
+      vehicleId: o.vehicle_id,
+      price: o.price,
+      currency: o.currency,
+      status: o.status,
+      month: (o.load_date ?? o.created_at).slice(0, 7),
+    }));
+    const trendCosts = fuel.map((r) => ({
+      vehicleId: r.vehicle_id,
+      cost: Number(r.price_total ?? 0),
+      month: r.created_at.slice(0, 7),
+    }));
+    return { months, orders: trendOrders, costs: trendCosts };
+  }, [orders, fuel]);
+
   return (
     <div>
       <PageHeader
@@ -278,7 +306,9 @@ export default function StatsPage() {
             </div>
           )}
 
-          {canManage && profit.clients.length > 0 && <ProfitabilitySection data={profit} />}
+          {canManage && profit.clients.length > 0 && (
+            <ProfitabilitySection data={profit} trend={trendInput} />
+          )}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
             {tiles.map((tile) => (
@@ -320,8 +350,24 @@ export default function StatsPage() {
   );
 }
 
-function ProfitabilitySection({ data }: { data: ReturnType<typeof clientProfitability> }) {
+function ProfitabilitySection({
+  data,
+  trend,
+}: {
+  data: ReturnType<typeof clientProfitability>;
+  trend: {
+    months: string[];
+    orders: Parameters<typeof clientProfitTrend>[1];
+    costs: Parameters<typeof clientProfitTrend>[2];
+  };
+}) {
   const t = useT();
+  const [trendClient, setTrendClient] = useState("");
+  const activeClient = trendClient || data.clients[0]?.client || "";
+  const series = useMemo(
+    () => clientProfitTrend(activeClient, trend.orders, trend.costs, trend.months),
+    [activeClient, trend],
+  );
 
   function exportCsv() {
     const headers = [
@@ -421,6 +467,55 @@ function ProfitabilitySection({ data }: { data: ReturnType<typeof clientProfitab
           ` ${t("profit.unattributed")} ${data.unattributedCostEur} €.`}
         {data.noVehicleRevenueEur > 0 && ` ${t("profit.noVehicle")} ${data.noVehicleRevenueEur} €.`}
       </p>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>📈 {t("profit.trend.title")}</div>
+        <span style={{ flex: 1 }} />
+        <select
+          value={activeClient}
+          onChange={(e) => setTrendClient(e.target.value)}
+          style={styles.trendSelect}
+        >
+          {data.clients.map((c) => (
+            <option key={c.client} value={c.client}>
+              {c.client}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <div style={{ ...styles.profitRow, color: palette.smoke, fontSize: 12 }}>
+          <span style={{ flex: 1 }}>{t("profit.col.month")}</span>
+          <span style={styles.profitCol}>{t("profit.col.revenue")}</span>
+          <span style={styles.profitCol}>{t("profit.col.cost")}</span>
+          <span style={styles.profitCol}>{t("profit.col.profit")}</span>
+          <span style={styles.profitCol}>{t("profit.col.margin")}</span>
+        </div>
+        {series.map((p) => (
+          <div key={p.month} style={styles.profitRow}>
+            <span style={{ flex: 1 }}>{`${p.month.slice(5)}.${p.month.slice(2, 4)}`}</span>
+            <span style={styles.profitCol}>{p.revenueEur} €</span>
+            <span style={styles.profitCol}>{p.costEur} €</span>
+            <span
+              style={{
+                ...styles.profitCol,
+                color: p.profitEur >= 0 ? "#22c55e" : palette.red,
+                fontWeight: 700,
+              }}
+            >
+              {p.profitEur} €
+            </span>
+            <span
+              style={{
+                ...styles.profitCol,
+                color: p.marginPct != null && p.marginPct >= 0 ? "#22c55e" : palette.red,
+              }}
+            >
+              {p.marginPct != null ? `${p.marginPct}%` : "—"}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -642,6 +737,15 @@ const styles: Record<string, React.CSSProperties> = {
   },
   profitCol: { width: 84, textAlign: "right", flexShrink: 0 },
   profitNote: { color: palette.smoke, fontSize: 12, marginTop: 10, lineHeight: 1.5 },
+  trendSelect: {
+    background: palette.black,
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontSize: 13,
+    maxWidth: 220,
+  },
   anomalyBox: {
     background: "#2a0d0d",
     border: `1px solid ${palette.red}`,

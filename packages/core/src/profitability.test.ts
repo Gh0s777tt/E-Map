@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientProfitability, type ProfitOrderEntry } from "./profitability";
+import { clientProfitability, clientProfitTrend, type ProfitOrderEntry } from "./profitability";
 
 const o = (p: Partial<ProfitOrderEntry>): ProfitOrderEntry => ({
   shipper: "A",
@@ -94,5 +94,52 @@ describe("clientProfitability", () => {
     expect(r.clients).toHaveLength(0);
     expect(r.totalRevenueEur).toBe(0);
     expect(r.totalProfitEur).toBe(0);
+  });
+});
+
+describe("clientProfitTrend", () => {
+  const om = (m: string, p: Partial<ProfitOrderEntry>) => ({ ...o(p), month: m });
+
+  it("liczy punkt per miesiąc dla wskazanego klienta", () => {
+    const orders = [
+      om("2026-01", { shipper: "A", price: 1000 }),
+      om("2026-02", { shipper: "A", price: 2000 }),
+    ];
+    const costs = [
+      { vehicleId: "v1", cost: 200, month: "2026-01" },
+      { vehicleId: "v1", cost: 400, month: "2026-02" },
+    ];
+    const trend = clientProfitTrend("A", orders, costs, ["2026-01", "2026-02"]);
+    expect(trend).toHaveLength(2);
+    expect(trend[0]).toMatchObject({
+      month: "2026-01",
+      revenueEur: 1000,
+      costEur: 200,
+      profitEur: 800,
+    });
+    expect(trend[1]).toMatchObject({
+      month: "2026-02",
+      revenueEur: 2000,
+      costEur: 400,
+      profitEur: 1600,
+    });
+  });
+
+  it("miesiąc bez aktywności klienta → punkt zerowy (bez dziur)", () => {
+    const orders = [om("2026-02", { shipper: "A", price: 500 })];
+    const trend = clientProfitTrend("A", orders, [], ["2026-01", "2026-02", "2026-03"]);
+    expect(trend.map((p) => p.month)).toEqual(["2026-01", "2026-02", "2026-03"]);
+    expect(trend[0]).toMatchObject({ revenueEur: 0, profitEur: 0, marginPct: null });
+    expect(trend[1]?.revenueEur).toBe(500);
+    expect(trend[2]?.revenueEur).toBe(0);
+  });
+
+  it("izoluje wybranego klienta (nie miesza z innymi)", () => {
+    const orders = [
+      om("2026-01", { shipper: "A", price: 1000 }),
+      om("2026-01", { shipper: "B", price: 9000 }),
+    ];
+    const trend = clientProfitTrend("A", orders, [], ["2026-01"]);
+    expect(trend[0]?.revenueEur).toBe(1000);
   });
 });

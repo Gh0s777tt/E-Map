@@ -121,3 +121,40 @@ export function clientProfitability(
     noVehicleRevenueEur: round2(noVehicleRevenue),
   };
 }
+
+export interface ClientTrendPoint {
+  /** Miesiąc w formacie `YYYY-MM`. */
+  month: string;
+  revenueEur: number;
+  costEur: number;
+  profitEur: number;
+  marginPct: number | null;
+}
+
+/**
+ * Trend rentowności jednego nadawcy w czasie. Dla każdego miesiąca z `months`
+ * uruchamia [clientProfitability] na danych z TEGO miesiąca (zlecenia i koszty
+ * paliwa otagowane polem `month`) i wyciąga wiersz wskazanego klienta. Miesiące
+ * bez aktywności klienta dają punkt zerowy — żeby seria nie miała dziur.
+ */
+export function clientProfitTrend(
+  client: string,
+  orders: (ProfitOrderEntry & { month: string })[],
+  vehicleCosts: (VehicleCostEntry & { month: string })[],
+  months: string[],
+): ClientTrendPoint[] {
+  return months.map((month) => {
+    const res = clientProfitability(
+      orders.filter((o) => o.month === month),
+      vehicleCosts.filter((v) => v.month === month),
+    );
+    const c = res.clients.find((x) => x.client === client);
+    return {
+      month,
+      revenueEur: c?.revenueEur ?? 0,
+      costEur: c?.costEur ?? 0,
+      profitEur: c?.profitEur ?? 0,
+      marginPct: c?.marginPct ?? null,
+    };
+  });
+}

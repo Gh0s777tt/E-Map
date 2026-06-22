@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-134-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.1.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-135-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.2.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.2.0] — 📈 Trend rentowności klienta w czasie
+
+- `[#135]` 📈 **Zysk/marża nadawcy miesiąc po miesiącu** — rozszerzenie rentowności klientów ([#126]) o wymiar czasowy:
+  - [core/profitability.ts](packages/core/src/profitability.ts): `clientProfitTrend(client, orders, vehicleCosts, months)` — dla każdego miesiąca uruchamia model atrybucji na danych z tego miesiąca (koszt paliwa pojazdu dzielony na jego zlecenia proporcjonalnie do przychodu) i zwraca punkt (przychód/koszt/zysk/marża) wskazanego klienta; miesiące bez aktywności = punkt zerowy (seria bez dziur).
+  - **UI** ([stats](apps/web/app/(app)/stats/page.tsx)): w sekcji rentowności selektor klienta + tabela ostatnich 6 miesięcy (miesiąc · przychód · koszt · zysk · marża, kolor wg znaku). Zlecenia bucketowane wg daty załadunku (fallback: utworzenia), koszty paliwa wg daty wpisu.
+  - 3 nowe testy rdzenia (punkt/miesiąc, miesiące bez aktywności, izolacja klienta) — łącznie 108 testów. +2 klucze i18n (`profit.trend.title`, `profit.col.month`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 108 testów (parytet i18n ✓) · build ✓ (`/stats`).
 
 ## [1.1.1] — 📊 Dwujęzyczne nagłówki eksportów finansowych (CSV)
 
