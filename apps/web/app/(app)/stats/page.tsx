@@ -1,14 +1,23 @@
 "use client";
 
-import { listFuelLogs, listOrders, listTripEvents, listVehicles } from "@e-logistic/api";
+import {
+  listFuelLogs,
+  listOrders,
+  listTripEvents,
+  listVehicleCosts,
+  listVehicles,
+  type VehicleCost,
+} from "@e-logistic/api";
 import {
   clientProfitability,
   consumptionFullToFull,
   detectFuelAnomalies,
   fleetAlerts,
+  fleetPnl,
   fuelConsumptionSeries,
   orderAnalytics,
   round2,
+  sumCostsByCategory,
   summarizeFuel,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
@@ -41,6 +50,7 @@ export default function StatsPage() {
       created_at: string;
     }[]
   >([]);
+  const [costs, setCosts] = useState<VehicleCost[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -58,16 +68,18 @@ export default function StatsPage() {
         const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
           .toISOString()
           .slice(0, 10);
-        const [f, a, tr, vs, ord] = await Promise.all([
+        const [f, a, tr, vs, ord, vc] = await Promise.all([
           listFuelLogs(sb, { from, limit: 5000 }),
           listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
           listTripEvents(sb, { from, limit: 5000 }),
           listVehicles(sb, m.companyId),
           listOrders(sb, m.companyId, { from, limit: 5000 }),
+          listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
         ]);
         setFuel(f as FuelRaw[]);
         setAdblue(a as FuelRaw[]);
         setTrips(tr as TripRaw[]);
+        setCosts(vc);
         setOrders(
           ord.map((o) => ({
             status: o.status,
@@ -147,12 +159,16 @@ export default function StatsPage() {
   // Rentowność klientów: koszt paliwa per pojazd → przypisany do zleceń proporcjonalnie
   // do przychodu, zsumowany per nadawca. Tylko zlecenia zrealizowane w EUR.
   const profit = useMemo(() => {
-    const vehicleCosts = [
-      ...fuel.reduce(
-        (m, r) => m.set(r.vehicle_id, (m.get(r.vehicle_id) ?? 0) + Number(r.price_total ?? 0)),
-        new Map<string, number>(),
-      ),
-    ].map(([vehicleId, cost]) => ({ vehicleId, cost }));
+    // Koszt per pojazd = paliwo + koszty pozostałe (EUR) — atrybucja proporcjonalna do przychodu.
+    const byVeh = fuel.reduce(
+      (m, r) => m.set(r.vehicle_id, (m.get(r.vehicle_id) ?? 0) + Number(r.price_total ?? 0)),
+      new Map<string, number>(),
+    );
+    for (const c of costs) {
+      if (c.currency !== "EUR") continue;
+      byVeh.set(c.vehicle_id, (byVeh.get(c.vehicle_id) ?? 0) + Number(c.amount));
+    }
+    const vehicleCosts = [...byVeh].map(([vehicleId, cost]) => ({ vehicleId, cost }));
     return clientProfitability(
       orders.map((o) => ({
         shipper: o.shipper,
@@ -163,7 +179,24 @@ export default function StatsPage() {
       })),
       vehicleCosts,
     );
-  }, [orders, fuel]);
+  }, [orders, fuel, costs]);
+
+  // Rachunek zysków i strat floty: przychód − paliwo − pozostałe koszty (tylko EUR).
+  const pnl = useMemo(() => {
+    const fuelEur = fuel.reduce((a, r) => a + Number(r.price_total ?? 0), 0);
+    const eurCosts = costs.filter((c) => c.currency === "EUR");
+    const otherEur = eurCosts.reduce((a, c) => a + Number(c.amount), 0);
+    return {
+      result: fleetPnl(fleet.ordersRevenueEur, fuelEur, otherEur),
+      byCategory: sumCostsByCategory(
+        eurCosts.map((c) => ({
+          vehicleId: c.vehicle_id,
+          category: c.category,
+          amountEur: Number(c.amount),
+        })),
+      ),
+    };
+  }, [fuel, costs, fleet.ordersRevenueEur]);
 
   // Wejście do trendu rentowności: zlecenia i koszty paliwa otagowane miesiącem
   // (zlecenie wg daty załadunku, fallback do utworzenia) + ostatnie 6 miesięcy.
@@ -180,13 +213,22 @@ export default function StatsPage() {
       status: o.status,
       month: (o.load_date ?? o.created_at).slice(0, 7),
     }));
-    const trendCosts = fuel.map((r) => ({
-      vehicleId: r.vehicle_id,
-      cost: Number(r.price_total ?? 0),
-      month: r.created_at.slice(0, 7),
-    }));
+    const trendCosts = [
+      ...fuel.map((r) => ({
+        vehicleId: r.vehicle_id,
+        cost: Number(r.price_total ?? 0),
+        month: r.created_at.slice(0, 7),
+      })),
+      ...costs
+        .filter((c) => c.currency === "EUR")
+        .map((c) => ({
+          vehicleId: c.vehicle_id,
+          cost: Number(c.amount),
+          month: c.cost_date.slice(0, 7),
+        })),
+    ];
     return { months, orders: trendOrders, costs: trendCosts };
-  }, [orders, fuel]);
+  }, [orders, fuel, costs]);
 
   // Alerty progowe (ujemna/niska marża, anomalie spalania, skok kosztu paliwa m/m)
   // — liczone z danych już załadowanych na tym ekranie. Tylko zarząd.
@@ -245,6 +287,54 @@ export default function StatsPage() {
                 value={String(fleet.anomalies)}
                 accent={fleet.anomalies > 0 ? palette.red : "#22c55e"}
               />
+            </div>
+          )}
+
+          {canManage && fleet.vehicles > 0 && (
+            <div style={styles.pnl}>
+              <div style={styles.anHead}>
+                💰 Rachunek zysków i strat (P&amp;L){" "}
+                <span style={{ color: palette.smoke, fontWeight: 400, fontSize: 12 }}>
+                  przychód − paliwo − pozostałe koszty · tylko EUR
+                </span>
+              </div>
+              <div style={styles.fleet}>
+                <FleetStat
+                  label="Przychód (EUR)"
+                  value={`${pnl.result.revenueEur} €`}
+                  accent="#22c55e"
+                />
+                <FleetStat label="Paliwo" value={`${pnl.result.fuelEur} €`} />
+                <FleetStat label="Pozostałe koszty" value={`${pnl.result.otherCostEur} €`} />
+                <FleetStat label="Koszty razem" value={`${pnl.result.totalCostEur} €`} />
+                <FleetStat
+                  label="Zysk netto"
+                  value={`${pnl.result.profitEur} €`}
+                  accent={pnl.result.profitEur >= 0 ? "#22c55e" : palette.red}
+                />
+                <FleetStat
+                  label="Marża"
+                  value={pnl.result.marginPct != null ? `${pnl.result.marginPct}%` : "—"}
+                  accent={
+                    pnl.result.marginPct != null && pnl.result.marginPct >= 0
+                      ? "#22c55e"
+                      : palette.red
+                  }
+                />
+              </div>
+              {pnl.byCategory.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  {pnl.byCategory.map((c) => (
+                    <span key={c.category} style={styles.pnlTag}>
+                      {c.label}: <strong>{c.amountEur} €</strong>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p style={{ color: palette.smoke, fontSize: 12, marginTop: 8 }}>
+                Pozostałe koszty dodasz na karcie pojazdu (naprawy, leasing, ubezpieczenie…).
+                Pozycje w innych walutach są pomijane w sumie.
+              </p>
             </div>
           )}
 

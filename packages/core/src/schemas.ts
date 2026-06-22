@@ -11,6 +11,7 @@ import {
   REPORT_TYPES,
   VEHICLE_TYPES,
 } from "./enums";
+import { VEHICLE_COST_CATEGORIES } from "./vehicleCosts";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data w formacie YYYY-MM-DD");
 
@@ -72,6 +73,18 @@ export const fuelCardSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 export type FuelCardInput = z.infer<typeof fuelCardSchema>;
+
+// ── Koszt pojazdu (inny niż paliwo: naprawy, leasing, ubezpieczenie…) ──
+
+export const vehicleCostSchema = z.object({
+  vehicleId: z.uuid(),
+  category: z.enum(VEHICLE_COST_CATEGORIES),
+  amount: z.number().nonnegative(),
+  currency: z.string().min(1).default("EUR"),
+  costDate: isoDate,
+  description: z.string().max(2000).optional(),
+});
+export type VehicleCostInput = z.infer<typeof vehicleCostSchema>;
 
 // ── Kierowca (kartoteka kadrowa) ────────────────────────────────────
 

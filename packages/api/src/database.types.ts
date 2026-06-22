@@ -1221,6 +1221,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      vehicle_costs: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string;
+          category: string;
+          amount: number;
+          currency: string;
+          cost_date: string;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id: string;
+          category: string;
+          amount: number;
+          currency?: string;
+          cost_date?: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string;
+          category?: string;
+          amount?: number;
+          currency?: string;
+          cost_date?: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       vehicle_defects: {
         Row: {
           id: string;

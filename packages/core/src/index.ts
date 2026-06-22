@@ -19,3 +19,4 @@ export * from "./money";
 export * from "./orders";
 export * from "./profitability";
 export * from "./schemas";
+export * from "./vehicleCosts";

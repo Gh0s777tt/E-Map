@@ -48,7 +48,12 @@ szyfruje platforma Supabase.
 - **`companies`** rozszerzone: `default_vat_rate`, `payment_due_days` (0038), `bank_name`, `bank_account` (0040) — domyślne i dane do przelewu na fakturach.
 - **`drivers`** + `user_id` (0035) — powiązanie kartoteki kierowcy z kontem (RPC `driver_link_user`; `list_drivers` zwraca `user_id`).
 
-> **Analityka bez własnych tabel:** rentowność klientów (`clientProfitability`/`clientProfitTrend`) i alerty progowe (`fleetAlerts`) liczone są w `packages/core` z danych zleceń + paliwa (model atrybucji kosztu opisany w [#126]). Eksporty CSV i dwujęzyczność (PL/EN) po stronie web.
+> **Analityka bez własnych tabel:** rentowność klientów (`clientProfitability`/`clientProfitTrend`) i alerty progowe (`fleetAlerts`) liczone są w `packages/core` z danych zleceń + paliwa + kosztów pojazdu (model atrybucji kosztu opisany w [#126]). Eksporty CSV i dwujęzyczność (PL/EN) po stronie web.
+
+### 0.2 Moduły dodane po v1.4.0 (migracje 0042–0043)
+
+- **`contractors`** (0042) — rejestr nabywców/nadawców per firma: `name`, `tax_id`, `address`, `country`; unikalność `(company_id, name)` pod upsert. Autouzupełnianie na fakturach i zleceniach; budowany organicznie. RLS: członek czyta, owner/dispatcher zarządza.
+- **`vehicle_costs`** (0043) — koszty pojazdu **inne niż paliwo**: `vehicle_id`, `category` (repair/leasing/insurance/tax/fine/parking/tires/other), `amount`, `currency`, `cost_date`, `description`. Razem z kosztem paliwa zasilają **P&L floty** i atrybucję rentowności (`fleetPnl`, `sumCostsByCategory` w core). RLS: członek czyta, owner/dispatcher zarządza.
 
 ---
 

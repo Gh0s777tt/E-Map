@@ -1,14 +1,18 @@
 "use client";
 
 import {
+  deleteVehicleCost,
+  insertVehicleCost,
   latestOdometers,
   listFuelCardsByVehicle,
   listFuelLogs,
   listOrders,
   listServiceTasks,
+  listVehicleCosts,
   listVehicles,
   type Order,
   type ServiceTask,
+  type VehicleCost,
 } from "@e-logistic/api";
 import {
   consumptionFullToFull,
@@ -21,15 +25,21 @@ import {
   fuelConsumptionSeries,
   round2,
   serviceStatus,
+  sumCostsByCategory,
   summarizeFuel,
+  VEHICLE_COST_CATEGORIES,
+  VEHICLE_COST_CATEGORY_LABELS,
+  type VehicleCostCategory,
+  vehicleCostSchema,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
-import { Badge, PageHeader } from "@/components/ui";
+import { Badge, Button, PageHeader } from "@/components/ui";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -62,6 +72,7 @@ const VEH_DOCS: { key: "inspection_expiry" | "insurance_expiry" | "leasing_end";
 
 export default function VehicleCardPage() {
   const t = useT();
+  const confirm = useConfirm();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [vehicle, setVehicle] = useState<DbVehicle | null>(null);
@@ -70,8 +81,18 @@ export default function VehicleCardPage() {
   const [cards, setCards] = useState<FuelCard[]>([]);
   const [fuel, setFuel] = useState<FuelRaw[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [costs, setCosts] = useState<VehicleCost[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  // Formularz kosztu
+  const [costCategory, setCostCategory] = useState<VehicleCostCategory>("repair");
+  const [costAmount, setCostAmount] = useState("");
+  const [costDate, setCostDate] = useState("");
+  const [costDesc, setCostDesc] = useState("");
+  const [costMsg, setCostMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,13 +101,16 @@ export default function VehicleCardPage() {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) return;
-      const [vs, st, od, cd, f, ord] = await Promise.all([
+      setCompanyId(m.companyId);
+      setCanManage(m.role === "owner" || m.role === "dispatcher");
+      const [vs, st, od, cd, f, ord, vc] = await Promise.all([
         listVehicles(sb, m.companyId),
         listServiceTasks(sb, m.companyId),
         latestOdometers(sb, m.companyId),
         listFuelCardsByVehicle(sb, id),
         listFuelLogs(sb, { vehicleId: id, limit: 2000 }),
         listOrders(sb, m.companyId),
+        listVehicleCosts(sb, m.companyId, { vehicleId: id }),
       ]);
       setVehicle((vs as DbVehicle[]).find((v) => v.id === id) ?? null);
       setTasks(st.filter((t) => t.vehicle_id === id));
@@ -94,6 +118,7 @@ export default function VehicleCardPage() {
       setCards(cd as FuelCard[]);
       setFuel(f as FuelRaw[]);
       setOrders((ord as Order[]).filter((o) => o.vehicle_id === id));
+      setCosts(vc);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych pojazdu.");
     } finally {
@@ -132,6 +157,59 @@ export default function VehicleCardPage() {
     );
     return { total: orders.length, delivered: delivered.length, revenueEur };
   }, [orders]);
+
+  // Koszty inne niż paliwo (tylko EUR liczone w sumie i podziale na kategorie).
+  const costSummary = useMemo(() => {
+    const eur = costs.filter((c) => c.currency === "EUR");
+    const totalEur = round2(eur.reduce((a, c) => a + Number(c.amount), 0));
+    const byCategory = sumCostsByCategory(
+      eur.map((c) => ({
+        vehicleId: c.vehicle_id,
+        category: c.category,
+        amountEur: Number(c.amount),
+      })),
+    );
+    return { totalEur, byCategory };
+  }, [costs]);
+
+  async function saveCost() {
+    setCostMsg(null);
+    const parsed = vehicleCostSchema.safeParse({
+      vehicleId: id,
+      category: costCategory,
+      amount: costAmount ? Number(costAmount) : Number.NaN,
+      currency: "EUR",
+      costDate: costDate || today,
+      description: costDesc.trim() || undefined,
+    });
+    if (!parsed.success) {
+      setCostMsg("Podaj kwotę i datę kosztu.");
+      return;
+    }
+    if (!companyId) {
+      setCostMsg("Brak firmy.");
+      return;
+    }
+    try {
+      await insertVehicleCost(getBrowserSupabase(), parsed.data, companyId);
+      setCostAmount("");
+      setCostDesc("");
+      setCostMsg("✅ Koszt dodany.");
+      await load();
+    } catch (e) {
+      setCostMsg(e instanceof Error ? e.message : "Błąd zapisu kosztu.");
+    }
+  }
+
+  async function removeCost(c: VehicleCost) {
+    if (!(await confirm("Usunąć ten koszt?"))) return;
+    try {
+      await deleteVehicleCost(getBrowserSupabase(), c.id);
+      await load();
+    } catch (e) {
+      setCostMsg(e instanceof Error ? e.message : "Błąd usuwania.");
+    }
+  }
 
   return (
     <div style={{ maxWidth: 820 }}>
@@ -246,6 +324,80 @@ export default function VehicleCardPage() {
             />
           </div>
 
+          {/* Koszty (inne niż paliwo) */}
+          <h2 style={styles.h2}>Koszty (naprawy, leasing, ubezpieczenie…)</h2>
+          <div style={styles.statsRow}>
+            <Stat
+              label="Koszty razem (EUR)"
+              value={`${costSummary.totalEur} €`}
+              accent={palette.red}
+            />
+            {costSummary.byCategory.slice(0, 4).map((c) => (
+              <Stat key={c.category} label={c.label} value={`${c.amountEur} €`} />
+            ))}
+          </div>
+
+          {canManage && (
+            <div style={styles.costForm}>
+              <select
+                style={styles.costInput}
+                value={costCategory}
+                onChange={(e) => setCostCategory(e.target.value as VehicleCostCategory)}
+              >
+                {VEHICLE_COST_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {VEHICLE_COST_CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+              <input
+                style={{ ...styles.costInput, maxWidth: 120 }}
+                type="number"
+                inputMode="decimal"
+                value={costAmount}
+                onChange={(e) => setCostAmount(e.target.value)}
+                placeholder="kwota €"
+              />
+              <input
+                style={{ ...styles.costInput, maxWidth: 160 }}
+                type="date"
+                value={costDate}
+                onChange={(e) => setCostDate(e.target.value)}
+              />
+              <input
+                style={styles.costInput}
+                value={costDesc}
+                onChange={(e) => setCostDesc(e.target.value)}
+                placeholder="opis (opcjonalnie)"
+              />
+              <Button onClick={saveCost}>Dodaj</Button>
+            </div>
+          )}
+          {costMsg && <p style={styles.dim}>{costMsg}</p>}
+
+          {costs.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+              {costs.slice(0, 30).map((c) => (
+                <div key={c.id} style={styles.lineRow}>
+                  <strong style={{ minWidth: 130 }}>
+                    {VEHICLE_COST_CATEGORY_LABELS[c.category as VehicleCostCategory] ?? c.category}
+                  </strong>
+                  <span style={{ minWidth: 90, fontWeight: 700 }}>
+                    {round2(Number(c.amount))} {c.currency}
+                  </span>
+                  <span style={styles.dim}>{c.cost_date}</span>
+                  {c.description && <span style={styles.dim}>· {c.description}</span>}
+                  <span style={{ flex: 1 }} />
+                  {canManage && (
+                    <Button variant="danger" onClick={() => removeCost(c)}>
+                      🗑️
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Zlecenia */}
           <h2 style={styles.h2}>Zlecenia</h2>
           <div style={styles.statsRow}>
@@ -310,6 +462,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
   },
   statsRow: { display: "flex", gap: 12, flexWrap: "wrap" },
+  costForm: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 12 },
+  costInput: {
+    flex: 1,
+    minWidth: 120,
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "9px 12px",
+    color: palette.offWhite,
+  },
   statCard: {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,

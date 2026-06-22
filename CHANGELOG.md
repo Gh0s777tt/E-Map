@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-149-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.8.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-150-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.9.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.9.0] — 💰 Koszty pojazdu → dokładny zysk floty (P&L)
+
+- `[#150]` 💰 **Pełny rachunek zysków i strat** (zgłoszone: dodać koszty napraw/leasingu/ubezpieczenia → dokładny przychód/dochód/zysk):
+  - **[Migracja 0043](supabase/migrations/0043_vehicle_costs.sql)** (na prod): tabela `vehicle_costs` — koszty pojazdu inne niż paliwo (`category`: naprawa/leasing/ubezpieczenie/podatek/mandat/parking/opony/inne, `amount`, `currency`, `cost_date`, `description`). RLS: członek czyta, owner/dispatcher zarządza — `audit:rls` ✓ (33 tabele).
+  - **Rdzeń** [core/vehicleCosts.ts](packages/core/src/vehicleCosts.ts): kategorie + etykiety, `sumCostsByCategory`, `sumCostsByVehicle`, **`fleetPnl`** (przychód − paliwo − pozostałe = zysk + marża). Schema Zod `vehicleCostSchema`. 6 testów (118 łącznie).
+  - **api** [data/vehicleCosts.ts](packages/api/src/data/vehicleCosts.ts): `listVehicleCosts` (filtr pojazd/data), `insertVehicleCost`, `deleteVehicleCost`. Typy DB przegenerowane (33 tabele).
+  - **Karta pojazdu** ([vehicles/[id]](apps/web/app/(app)/vehicles/[id]/page.tsx)): sekcja „Koszty" — dodawanie/usuwanie (kategoria, kwota, data, opis), suma i rozbicie na kategorie. Owner/dispatcher.
+  - **Statystyki** ([stats](apps/web/app/(app)/stats/page.tsx)): kafelek **„Rachunek zysków i strat (P&L)"** (przychód · paliwo · pozostałe koszty · zysk netto · marża) + rozbicie kategorii. Koszty pozostałe **wliczone do rentowności klientów i trendu** (atrybucja proporcjonalna jak paliwo). Pozycje w walutach ≠ EUR pomijane w sumach.
+  - **Bramki:** biome czysto · `tsc` ×3 · 118 testów · build ✓ (`/stats`, `/vehicles/[id]`) · `audit:rls` ✓.
 
 ## [1.8.2] — 🃏 Karty paliwowe: ważność jako mies./rok (bez dnia)
 
