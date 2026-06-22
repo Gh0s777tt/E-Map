@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-129-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.99.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-130-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.100.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.100.0] — 🌍 i18n etap 4 (ustawienia + stan floty)
+
+- `[#130]` 🌍 **Strona ustawień w pełni dwujęzyczna** + dokończenie etykiet floty:
+  - **Ustawienia** ([settings](apps/web/app/(app)/settings/page.tsx)) zmigrowane z `createTranslator("pl")` na `useT()` i przełożone w całości: dane firmy (nazwa/NIP/adres/kraj/VAT/termin/bank/IBAN), 2FA (włącz/wyłącz, instrukcja QR, statusy, komunikaty), passkeye (opis, prompt nazwy, komunikaty). ~35 nowych kluczy `settings.*` + wspólne `common.active/disabled/loading/saving/error`.
+  - **Stan floty** ([fleet-status](apps/web/app/(app)/fleet-status/page.tsx)): etykiety `FleetVehicleState` (w trasie / zaplanowane / wolny) przez `fleet.state.*` — domyka stronę zaczętą w etapie 3.
+  - +43 klucze w PL i EN; parytet wymuszony typem (`Record<MessageKey>`) i testem. Pozostałość (nagłówki eksportu CSV, `forms/history`) — ostatni drobny etap.
+  - **Bramki:** biome czysto · `tsc` ×7 · 105 testów (parytet i18n ✓) · build ✓ (`/settings`).
 
 ## [0.99.0] — 🌍 i18n etap 3 (etykiety enumów: statusy zleceń + akcje trasy)
 

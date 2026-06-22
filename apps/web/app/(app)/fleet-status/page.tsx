@@ -37,11 +37,6 @@ type TripRaw = {
   created_at: string;
 };
 
-const STATE_LABEL: Record<FleetVehicleState, string> = {
-  driving: "W trasie",
-  planned: "Zaplanowane",
-  idle: "Wolny",
-};
 const STATE_COLOR: Record<FleetVehicleState, string> = {
   driving: "#f59e0b",
   planned: "#3b82f6",
@@ -170,7 +165,7 @@ export default function FleetStatusPage() {
             <div key={r.vehicleId} style={styles.card}>
               <div style={styles.head}>
                 <strong style={{ fontSize: 16 }}>{r.registration}</strong>
-                <Badge color={STATE_COLOR[r.state]}>{STATE_LABEL[r.state]}</Badge>
+                <Badge color={STATE_COLOR[r.state]}>{t(`fleet.state.${r.state}`)}</Badge>
                 <span style={{ flex: 1 }} />
                 {r.order && (r.order.origin || r.order.destination) && (
                   <Button
