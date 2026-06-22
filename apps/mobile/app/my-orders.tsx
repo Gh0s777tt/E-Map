@@ -4,6 +4,7 @@ import { palette } from "@e-logistic/ui";
 import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
@@ -114,6 +115,8 @@ export default function MyOrdersScreen() {
               <Text style={styles.btnText}>✅ Dostarczone</Text>
             </Pressable>
           )}
+
+          <CargoPhotosMobile orderId={o.id} />
         </View>
       ))}
     </ScrollView>

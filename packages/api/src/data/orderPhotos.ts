@@ -70,6 +70,45 @@ export async function uploadOrderPhoto(
   return data as OrderPhoto;
 }
 
+/**
+ * Wariant binarny uploadu (React Native / Expo nie ma `File`): przyjmuje dane
+ * jako ArrayBuffer/Uint8Array + typ MIME. Reszta jak `uploadOrderPhoto`.
+ */
+export async function uploadOrderPhotoBinary(
+  client: SupabaseClient,
+  companyId: string,
+  orderId: string,
+  data: ArrayBuffer | Uint8Array,
+  opts: { contentType: string; ext?: string; sizeBytes?: number; caption?: string | null },
+): Promise<OrderPhoto> {
+  const rand = crypto.randomUUID().slice(0, 8);
+  const ext = opts.ext ? (opts.ext.startsWith(".") ? opts.ext : `.${opts.ext}`) : "";
+  const path = `${companyId}/${orderId}/${rand}${ext}`;
+
+  const up = await client.storage
+    .from(CARGO_PHOTOS_BUCKET)
+    .upload(path, data, { contentType: opts.contentType, upsert: false });
+  if (up.error) throw up.error;
+
+  const { data: row, error } = await client
+    .from("order_photos")
+    .insert({
+      company_id: companyId,
+      order_id: orderId,
+      path,
+      mime: opts.contentType,
+      size_bytes: opts.sizeBytes ?? null,
+      caption: opts.caption?.trim() || null,
+    })
+    .select(COLS)
+    .single();
+  if (error) {
+    await client.storage.from(CARGO_PHOTOS_BUCKET).remove([path]);
+    throw error;
+  }
+  return row as OrderPhoto;
+}
+
 /** Podpisany URL do podglądu (bucket prywatny). Domyślnie ważny 5 min. */
 export async function getOrderPhotoUrl(
   client: SupabaseClient,

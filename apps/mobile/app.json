@@ -3,7 +3,7 @@
     "name": "E-Logistic",
     "slug": "e-logistic",
     "scheme": "elogistic",
-    "version": "1.15.0",
+    "version": "1.16.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -16,7 +16,17 @@
       "package": "com.ghostempire.elogistic",
       "edgeToEdgeEnabled": true
     },
-    "plugins": ["expo-router", "expo-status-bar"],
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "E-Logistic używa aparatu do zdjęć towaru (dowód zabezpieczenia ładunku).",
+          "photosPermission": "E-Logistic potrzebuje dostępu do zdjęć, by dołączyć zdjęcie towaru do zlecenia."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-156-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.15.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-157-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.16.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.16.0] — 📸 Zdjęcia towaru z aparatu na telefonie (mobile)
+
+- `[#157]` 📸 **Kierowca robi zdjęcia ładunku z telefonu** — domyka dowód zabezpieczenia po stronie mobilnej (backend `order_photos`/bucket `cargo-photos` z [#151]):
+  - **api** [data/orderPhotos.ts](packages/api/src/data/orderPhotos.ts): `uploadOrderPhotoBinary(client, companyId, orderId, data, opts)` — wariant dla React Native (brak `File`): przyjmuje `ArrayBuffer`/`Uint8Array` + `contentType`/`ext`/`sizeBytes`. Upload do Storage + metadane, z rollbackiem przy błędzie.
+  - **Mobile** [components/CargoPhotosMobile.tsx](apps/mobile/components/CargoPhotosMobile.tsx): podgląd miniatur (podpisane URL-e) + **„📷 Zrób zdjęcie"** (`expo-image-picker` `launchCameraAsync`) i **„🖼️ Z galerii"**; zdjęcie → `base64` → `decode` (`base64-arraybuffer`) → `uploadOrderPhotoBinary`. Wpięte w kartę zlecenia na [Moje zlecenia](apps/mobile/app/my-orders.tsx).
+  - **Uprawnienia:** plugin `expo-image-picker` w [app.json](apps/mobile/app.json) z opisami zgody na aparat i galerię (iOS/Android).
+  - **Bezpieczeństwo:** upload przez tę samą warstwę `packages/api` + bucket prywatny + RLS (członek dodaje, owner/dispatcher kasuje) — identycznie jak web.
+  - **Następny krok mobile:** push (`expo-notifications`) o przypisaniu zlecenia.
+  - **Bramki:** biome czysto · `tsc` (api + mobile) ✓ · web build ✓ · 158 testów rdzenia bez zmian. Mobile weryfikowane typecheckiem.
 
 ## [1.15.0] — 📱 „Moje zlecenia" w aplikacji mobilnej (lista + status)
 
