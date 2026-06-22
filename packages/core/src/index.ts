@@ -28,3 +28,4 @@ export * from "./savedPlaces";
 export * from "./schemas";
 export * from "./vehicleCosts";
 export * from "./vehiclePnl";
+export * from "./workTime";

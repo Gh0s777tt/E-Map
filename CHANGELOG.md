@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-181-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.37.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-182-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.38.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.38.0] — ⏱️ Ewidencja czasu pracy kierowcy
+
+- `[#182]` ⏱️ **Nowy moduł: czas pracy** — godziny jazdy / innej pracy / odpoczynku z podsumowaniem:
+  - **Rdzeń** [core/workTime.ts](packages/core/src/workTime.ts): `summarizeWorkTime(entries, {dailyDrivingLimit})` — wiersze dzienne (praca łącznie = jazda + inna praca, flaga przekroczenia jazdy) + podsumowanie okresu (sumy, średnia jazda/dzień, liczba dni z przekroczeniem). Limit konfigurowalny (domyślnie 10 h). Czyste, **5 testów (179 łącznie)**.
+  - **Strona** ([czas-pracy](apps/web/app/(app)/czas-pracy/page.tsx)): kalkulator wielu dni (data, jazda, inna praca, odpoczynek) z natychmiastowym podsumowaniem, oznaczaniem przekroczeń i **eksportem CSV** (owner/dispatcher).
+  - **Nawigacja + i18n** ([layout](apps/web/app/(app)/layout.tsx)): pozycja „Czas pracy"; klucz `nav.workTime` PL/EN (parytet).
+  - **Bramki:** biome czysto · `tsc` ×7 · 179 testów · parytet i18n · build ✓ (`/czas-pracy`).
+  - *Sygnalizacja limitu (10 h) to nie interpretacja prawna (561/2006 / Pakiet Mobilności) — limit jest konfigurowalny.*
 
 ## [1.37.0] — 🎨 Presety stylów: serwis, rozliczenia, dokumenty, zespół
 
