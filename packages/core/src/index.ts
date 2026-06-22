@@ -12,4 +12,5 @@ export * from "./fleet";
 export * from "./ids";
 export * from "./invoice";
 export * from "./money";
+export * from "./orders";
 export * from "./schemas";

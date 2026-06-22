@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-118-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.92.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-119-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.93.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.93.0] — 🔢 Analiza zleceń (top klienci / trasy / średnia stawka)
+
+- `[#119]` 🔢 **Analiza zleceń na statystykach** ([stats](apps/web/app/(app)/stats/page.tsx)):
+  - core [orderAnalytics](packages/core/src/orders.ts) (funkcja czysta, +4 testy): **top nadawcy** wg przychodu EUR, **najczęstsze trasy** wg liczby, **średnia stawka EUR** — pomija anulowane.
+  - **Sekcja na /stats**: dwie karty — „🏆 Top klienci (przychód EUR)" i „📍 Najczęstsze trasy" + średnia stawka. Liczone w `useMemo` z już wczytanych zleceń.
+  - **Bramki:** biome czysto · `tsc` ×7 · **97 testów** · build ✓ (`/stats`).
 
 ## [0.92.0] — 💰 Pasek należności + filtr statusu płatności (faktury)
 
