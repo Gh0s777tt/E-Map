@@ -205,7 +205,19 @@ export default function OrdersPage() {
         setMsg("Brak firmy.");
         return;
       }
-      await saveOrder(sb, m.companyId, parsed.data, editingId ?? undefined);
+      // Czy przypisanie kierowcy faktycznie się zmieniło (do natychmiastowego push).
+      const prevAssigned = editingId
+        ? (orders.find((o) => o.id === editingId)?.assigned_to ?? "")
+        : "";
+      const id = await saveOrder(sb, m.companyId, parsed.data, editingId ?? undefined);
+      if (assignedTo && assignedTo !== prevAssigned) {
+        // Natychmiastowy push do kierowcy (best-effort — powiadomienie w aplikacji powstaje przez trigger).
+        void fetch("/api/orders/notify-assignment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: id }),
+        }).catch(() => {});
+      }
       setMsg(editingId ? "✅ Zlecenie zaktualizowane." : "✅ Zlecenie dodane.");
       resetForm();
       await load();
