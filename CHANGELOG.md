@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-169-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.25.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-170-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.26.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.26.0] — 📱 Podpis odbiorcy (POD) w aplikacji kierowcy (mobile)
+
+- `[#170]` 📱 **POD na telefonie** — kierowca zbiera podpis odbiorcy w terenie, bez panelu web i bez nowych natywnych modułów:
+  - **Pole podpisu** ([SignaturePadMobile](apps/mobile/components/SignaturePadMobile.tsx)): `PanResponder` zbiera punkty, podgląd to realne segmenty‑linie (obrót `View`), eksport do **wektorowego SVG** (białe „tło", czarny tusz). Próbkowanie z progiem dystansu, blokada zapisu pustego podpisu.
+  - **Załączniki mobile** ([CargoPhotosMobile](apps/mobile/components/CargoPhotosMobile.tsx)): przycisk **„✍️ Podpis"** + pole odbiorcy → upload SVG przez `uploadOrderPhotoBinary` (`image/svg+xml`) z `caption` w formacie POD (wspólny z web). POD na liście jako etykieta „✍️ POD — odbiorca · data" (RN `<Image>` nie renderuje SVG; podgląd rysunku jest na web/CMR).
+  - **Spójność web↔mobile:** ten sam format `caption` i te same helpery z `core` ([#169]); podpis z telefonu wpina się w poz. 24 listu CMR i eksport PDF na web.
+  - **Bramki:** biome czysto · `tsc` ×7 (mobile włącznie) · 143 testy. *(Web bez zmian — brak redeployu; build aplikacji mobilnej: EAS po stronie właściciela.)*
+  - ⚠️ *Interakcję rysowania należy przeklikać na urządzeniu dotykowym; budowa SVG i upload są deterministyczne.*
 
 ## [1.25.0] — 🧾 Podpis odbiorcy (POD) wpięty w dokument CMR → PDF
 
