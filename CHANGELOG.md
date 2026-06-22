@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-101-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.77.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-102-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.78.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.78.0] — 📊 Trend m/m w zestawieniu miesięcznym
+
+- `[#102]` 📊 **Porównanie miesiąc-do-miesiąca + mini-wykres** ([monthly](apps/web/app/(app)/monthly/page.tsx)):
+  - Karty podsumowania pokazują **Δ vs poprzedni miesiąc** (▲/▼ + kwota): przychód i wynik „w górę = dobrze", koszty (paliwo/AdBlue) „w dół = dobrze" (kolor zielony/czerwony wg kierunku).
+  - **Mini-wykres słupkowy przychodu** z ostatnich 6 miesięcy (BarChart), kończący na wybranym miesiącu.
+  - core [monthlyFleetTrend](packages/core/src/billing.ts) + [monthsEndingAt](packages/core/src/billing.ts) (funkcje czyste, +4 testy): sumy per miesiąc dla listy miesięcy + generator listy „YYYY-MM" z przeniesieniem roku.
+  - **Bramki:** biome czysto · `tsc` ×7 · **85 testów** · build ✓ (`/monthly`).
 
 ## [0.77.0] — 🗺️ „Pokaż na mapie" ze zlecenia (prefill trasy)
 
