@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-94-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.70.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-95-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.71.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.71.0] — 🔐 Sejf dokumentów (Supabase Storage)
+
+- `[#095]` 🔐 **Sejf dokumentów** (nowy moduł — bezpieczne przechowywanie plików):
+  - [Migracja 0031](supabase/migrations/0031_document_vault.sql): prywatny bucket Storage `documents` (pliki pod ścieżką `{company_id}/…`), tabela `documents` (metadane: nazwa, kategoria, pojazd, rozmiar, **termin ważności**) + RLS. Polityki na `storage.objects` gating po `company_id` z pierwszego segmentu ścieżki (porównanie tekstowe z `memberships` — bez ryzyka rzutowania uuid). **Odczyt: każdy aktywny członek firmy; wgrywanie/kasowanie: owner/dispatcher.**
+  - **Przypomnienia o terminach** dokumentów dołączone do `generate_expiry_notifications` (typ `document_expiry`, dedup po dacie).
+  - api [data/documents.ts](packages/api/src/data/documents.ts): `listDocuments`, `uploadDocument` (z rollbackiem osieroconego obiektu), `getDocumentUrl` (podpisany URL — bucket prywatny), `deleteDocument`. Typy DB (30 tabel).
+  - **Strona [/documents](apps/web/app/(app)/documents/page.tsx)** — wgrywanie (plik max 25 MB, nazwa, kategoria, pojazd, termin), lista z filtrem kategorii, pobieranie (podpisany link), badge ważności (przeterminowany/wkrótce/ok), kasowanie. Link w nawigacji.
+  - core [catalog.ts](packages/core/src/catalog.ts): `DOCUMENT_CATEGORIES` (OC, przegląd, leasing, dowód rej., licencja, CMR…).
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓ (`/documents`).
 
 ## [0.70.0] — 📊 Zlecenia → pulpit floty (przychód)
 

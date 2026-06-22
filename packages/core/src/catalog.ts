@@ -148,6 +148,20 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: "Anulowane",
 };
 
+/** Kategorie dokumentów w sejfie (Storage). Wartość = string (rozszerzalne). */
+export const DOCUMENT_CATEGORIES = [
+  "OC / ubezpieczenie",
+  "Przegląd techniczny",
+  "Leasing / umowa",
+  "Dowód rejestracyjny",
+  "Licencja / zezwolenie",
+  "Umowa przewozu",
+  "Faktura / rachunek",
+  "CMR / list przewozowy",
+  "Tachograf",
+  "Inne",
+] as const;
+
 /** Układy/części pojazdu do zgłaszania usterek. */
 export const DEFECT_PARTS = [
   "Hamulce (klocki/tarcze)",

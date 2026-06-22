@@ -186,6 +186,48 @@ export interface Database {
         };
         Relationships: [];
       };
+      documents: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string | null;
+          name: string;
+          path: string;
+          size_bytes: number | null;
+          mime: string | null;
+          category: string | null;
+          expiry_date: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id?: string | null;
+          name: string;
+          path: string;
+          size_bytes?: number | null;
+          mime?: string | null;
+          category?: string | null;
+          expiry_date?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string | null;
+          name?: string;
+          path?: string;
+          size_bytes?: number | null;
+          mime?: string | null;
+          category?: string | null;
+          expiry_date?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       driver_assignments: {
         Row: {
           id: string;
