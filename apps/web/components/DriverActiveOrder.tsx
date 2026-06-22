@@ -30,7 +30,7 @@ export function DriverActiveOrder() {
       try {
         const sb = getBrowserSupabase();
         const m = await getCachedMembership(sb);
-        if (!m || m.role !== "driver") return;
+        if (m?.role !== "driver") return;
         setShow(true);
         setOrders(await listMyOrders(sb));
       } catch {
