@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-142-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.4.4-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-143-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.5.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.5.0] — 🧾 Faktura: formatowanie kwot + podsumowanie VAT (dopracowanie wydruku/PDF)
+
+- `[#143]` 🧾 **Dokument faktury bliżej standardu** (druk/PDF działał już przez `window.print` — teraz wygląda poprawnie):
+  - **Formatowanie kwot** — [core/money.ts](packages/core/src/money.ts) `formatMoney(value, currency?)`: 2 miejsca, spacja jako separator tysięcy, przecinek dziesiętny (`1 234,50 EUR`). Zastosowane do wszystkich kwot na [fakturze](apps/web/app/(app)/invoices/page.tsx) (pozycje, sumy) — koniec surowych `1234.5`.
+  - **Podsumowanie VAT wg stawek** — [core/invoice.ts](packages/core/src/invoice.ts) `vatSummary(items)` grupuje pozycje po stawce (netto/VAT/brutto), sortuje malejąco; tabela „Podsumowanie VAT" pod pozycjami (wymagane na fakturze przy wielu stawkach).
+  - 7 nowych testów rdzenia (`formatMoney`, `round2`, `vatSummary`) — łącznie 124.
+  - **Bramki:** biome czysto · `tsc` ×7 · 124 testy · build ✓ (`/invoices`).
 
 ## [1.4.4] — ⚙️ Ujednolicenie `engines.node` → >=26 (P3 z audytu)
 
