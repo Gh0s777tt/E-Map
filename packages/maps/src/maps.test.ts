@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { itemsNearRoute, pointToRouteKm } from "./disruptions";
 import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
 import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
 import { buildHereUrl, decodeFlexiblePolyline } from "./here";
+import { buildHereTrafficUrl, jamSeverity, parseHereTraffic } from "./heretraffic";
 import { MockRoutingProvider } from "./mock";
 import { routeMultiLeg } from "./multileg";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
@@ -191,5 +193,87 @@ describe("HERE adapter", () => {
   it("dla vana używa trybu car", () => {
     const url = buildHereUrl({ waypoints: [BERLIN, WARSAW], profile: { kind: "van" } }, "KEY");
     expect(url).toContain("transportMode=car");
+  });
+});
+
+describe("utrudnienia na trasie", () => {
+  const POZNAN: LatLng = { lat: 52.4064, lng: 16.9252 };
+  const route: LatLng[] = [BERLIN, POZNAN, WARSAW];
+
+  it("pointToRouteKm = 0 dla punktu na trasie", () => {
+    expect(pointToRouteKm(POZNAN, route)).toBe(0);
+  });
+
+  it("pointToRouteKm liczy odległość do najbliższego wierzchołka", () => {
+    const near = pointToRouteKm({ lat: 52.42, lng: 16.95 }, route);
+    expect(near).toBeGreaterThan(0);
+    expect(near).toBeLessThan(5);
+  });
+
+  it("itemsNearRoute zwraca tylko bliskie, posortowane wg odległości", () => {
+    const reports = [
+      { id: "a", lat: 52.41, lng: 16.93 }, // ~Poznań, blisko
+      { id: "b", lat: 48.0, lng: 2.0 }, // Francja, daleko
+      { id: "c", lat: 52.52, lng: 13.41 }, // ~Berlin, blisko
+    ];
+    const near = itemsNearRoute(reports, route, 10);
+    expect(near).toHaveLength(2);
+    expect(near.map((r) => r.id).sort()).toEqual(["a", "c"]); // 'b' (daleko) odfiltrowane
+    expect(near[0]?.distanceKm).toBeLessThanOrEqual(
+      near[1]?.distanceKm ?? Number.POSITIVE_INFINITY,
+    );
+  });
+
+  it("pusta trasa → brak utrudnień", () => {
+    expect(itemsNearRoute([{ id: "a", lat: 52, lng: 16 }], [], 10)).toEqual([]);
+  });
+});
+
+describe("HERE Traffic", () => {
+  it("buduje URL flow z bbox (west,south,east,north) i kluczem", () => {
+    const url = buildHereTrafficUrl({ west: 13, south: 52, east: 14, north: 53 }, "KEY");
+    expect(url).toContain("data.traffic.hereapi.com/v7/flow");
+    expect(url).toContain("locationReferencing=shape");
+    expect(url).toContain("bbox%3A13%2C52%2C14%2C53"); // zakodowane "bbox:13,52,14,53"
+    expect(url).toContain("apiKey=KEY");
+  });
+
+  it("kategoryzuje jamFactor", () => {
+    expect(jamSeverity(0)).toBe("free");
+    expect(jamSeverity(2)).toBe("moderate");
+    expect(jamSeverity(5)).toBe("heavy");
+    expect(jamSeverity(9)).toBe("blocked");
+  });
+
+  it("parsuje odcinki z kształtem i jamFactor, pomija niekompletne", () => {
+    const flows = parseHereTraffic({
+      results: [
+        {
+          currentFlow: { jamFactor: 6.5 },
+          location: {
+            shape: {
+              links: [
+                {
+                  points: [
+                    { lat: 52.5, lng: 13.4 },
+                    { lat: 52.6, lng: 13.5 },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        { currentFlow: {}, location: { shape: { links: [] } } }, // brak jamFactor
+        { currentFlow: { jamFactor: 3 }, location: { shape: { links: [{ points: [] }] } } }, // <2 pkt
+      ],
+    });
+    expect(flows).toHaveLength(1);
+    expect(flows[0]?.jamFactor).toBe(6.5);
+    expect(flows[0]?.shape).toHaveLength(2);
+  });
+
+  it("odporne na śmieci", () => {
+    expect(parseHereTraffic(null)).toEqual([]);
+    expect(parseHereTraffic({})).toEqual([]);
   });
 });

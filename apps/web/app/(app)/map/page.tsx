@@ -30,9 +30,12 @@ import {
   type GeoHit,
   geocode,
   haversineKm,
+  itemsNearRoute,
+  jamSeverity,
   type LatLng,
   type Poi,
   type RouteResult,
+  type TrafficFlow,
 } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from "maplibre-gl";
@@ -49,6 +52,17 @@ const SAVED_CAT_ICON: Record<SavedPlaceCategory, string> = {
   company: "🏢",
   parking: "🅿️",
   other: "📍",
+};
+
+/** Promień (km) uznania zgłoszenia za „utrudnienie na trasie". */
+const DISRUPTION_RADIUS_KM = 5;
+
+/** Kolor warstwy ruchu HERE wg natężenia (jamFactor → severity). */
+const TRAFFIC_COLOR: Record<ReturnType<typeof jamSeverity>, string> = {
+  free: "#22c55e",
+  moderate: "#eab308",
+  heavy: "#f97316",
+  blocked: "#ef4444",
 };
 
 type MaplibreModule = typeof import("maplibre-gl");
@@ -201,6 +215,9 @@ export default function MapPage() {
   const [reportMode, setReportMode] = useState(false);
   const [reportType, setReportType] = useState<ReportType>("accident");
   const [reportMsg, setReportMsg] = useState<string | null>(null);
+  const [disruptions, setDisruptions] = useState<(Report & { distanceKm: number })[]>([]);
+  const [trafficOn, setTrafficOn] = useState(false);
+  const [trafficMsg, setTrafficMsg] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
   // Koszt paliwa trasy (silnik billing) + zapisane miejsca.
@@ -301,6 +318,93 @@ export default function MapPage() {
       },
     } as import("maplibre-gl").AddLayerObject);
   }, []);
+
+  // Utrudnienia na trasie ze zgłoszeń społeczności (korki/wypadki/zamknięcia
+  // blisko wyznaczonej trasy) — darmowa alternatywa dla płatnego API ruchu.
+  const recomputeDisruptions = useCallback(() => {
+    const geo = routeGeoRef.current;
+    if (!geo || geo.length === 0) {
+      setDisruptions([]);
+      return;
+    }
+    setDisruptions(itemsNearRoute(reportsRef.current, geo, DISRUPTION_RADIUS_KM));
+  }, []);
+
+  // Warstwa natężenia ruchu (HERE Traffic) — kolorowe odcinki wg jamFactor.
+  const drawTraffic = useCallback((flows: TrafficFlow[]) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const fc = {
+      type: "FeatureCollection" as const,
+      features: flows.map((f) => ({
+        type: "Feature" as const,
+        properties: { color: TRAFFIC_COLOR[jamSeverity(f.jamFactor)] },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: f.shape.map((p) => [p.lng, p.lat] as [number, number]),
+        },
+      })),
+    };
+    const existing = map.getSource("traffic");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(fc);
+      return;
+    }
+    map.addSource("traffic", { type: "geojson", data: fc });
+    const layer = {
+      id: "traffic-layer",
+      type: "line",
+      source: "traffic",
+      paint: { "line-color": ["get", "color"], "line-width": 4, "line-opacity": 0.7 },
+    } as import("maplibre-gl").AddLayerObject;
+    // Pod warstwą trasy, by trasa pozostała widoczna na wierzchu.
+    if (map.getLayer("route")) map.addLayer(layer, "route");
+    else map.addLayer(layer);
+  }, []);
+
+  const fetchTrafficForView = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const b = map.getBounds();
+    try {
+      const res = await fetch("/api/traffic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          west: b.getWest(),
+          south: b.getSouth(),
+          east: b.getEast(),
+          north: b.getNorth(),
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        flows?: TrafficFlow[];
+        configured?: boolean;
+        unavailable?: boolean;
+        tooLarge?: boolean;
+      } | null;
+      if (!data) return;
+      if (res.status === 501 || data.configured === false) {
+        setTrafficMsg("Ruch na żywo wymaga klucza HERE (plan z Traffic).");
+        drawTraffic([]);
+        return;
+      }
+      if (data.tooLarge) {
+        setTrafficMsg("Przybliż mapę, by pobrać ruch.");
+        drawTraffic([]);
+        return;
+      }
+      if (data.unavailable) {
+        setTrafficMsg("Ruch HERE chwilowo niedostępny (plan/limit).");
+        drawTraffic([]);
+        return;
+      }
+      setTrafficMsg(null);
+      drawTraffic(data.flows ?? []);
+    } catch {
+      setTrafficMsg("Nie udało się pobrać ruchu.");
+    }
+  }, [drawTraffic]);
 
   const drawRoute = useCallback((geometry: LatLng[]) => {
     const map = mapRef.current;
@@ -494,6 +598,7 @@ export default function MapPage() {
             const sb = getBrowserSupabase();
             reportsRef.current = (await listActiveMapReports(sb)) as Report[];
             drawReports();
+            recomputeDisruptions();
             channel = sb
               .channel("map-reports")
               .on(
@@ -504,6 +609,7 @@ export default function MapPage() {
                   if (r.lat != null && r.lng != null) {
                     reportsRef.current = [...reportsRef.current.filter((x) => x.id !== r.id), r];
                     drawReports();
+                    recomputeDisruptions();
                   }
                 },
               )
@@ -519,7 +625,29 @@ export default function MapPage() {
       for (const m of markersRef.current) m.remove();
       map?.remove();
     };
-  }, [applyOverlays, drawReports]);
+  }, [applyOverlays, drawReports, recomputeDisruptions]);
+
+  // ── Warstwa ruchu HERE: pobierz dla widoku + odświeżaj przy przesuwaniu ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapReady || !map) return;
+    if (!trafficOn) {
+      drawTraffic([]);
+      setTrafficMsg(null);
+      return;
+    }
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const onMove = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => void fetchTrafficForView(), 600);
+    };
+    void fetchTrafficForView();
+    map.on("moveend", onMove);
+    return () => {
+      if (t) clearTimeout(t);
+      map.off("moveend", onMove);
+    };
+  }, [trafficOn, mapReady, fetchTrafficForView, drawTraffic]);
 
   // ── Znaczniki przystanków (DOM — przetrwają zmianę stylu) ──
   useEffect(() => {
@@ -853,6 +981,7 @@ export default function MapPage() {
       setResult(r);
       routeGeoRef.current = r.geometry;
       drawRoute(r.geometry);
+      recomputeDisruptions();
       const map = mapRef.current;
       const ml = mlRef.current;
       if (map && ml && r.geometry.length > 1) {
@@ -1353,6 +1482,25 @@ export default function MapPage() {
           )}
           {reportMsg && <div style={{ fontSize: 12, color: palette.red }}>{reportMsg}</div>}
 
+          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <label style={styles.check}>
+            <input
+              type="checkbox"
+              checked={trafficOn}
+              onChange={(e) => setTrafficOn(e.target.checked)}
+            />{" "}
+            🚦 Ruch na żywo (HERE)
+          </label>
+          {trafficOn && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
+              <span style={{ color: TRAFFIC_COLOR.free }}>● płynnie</span>
+              <span style={{ color: TRAFFIC_COLOR.moderate }}>● umiarkowanie</span>
+              <span style={{ color: TRAFFIC_COLOR.heavy }}>● gęsto</span>
+              <span style={{ color: TRAFFIC_COLOR.blocked }}>● zator</span>
+            </div>
+          )}
+          {trafficMsg && <div style={{ fontSize: 12, color: palette.smoke }}>{trafficMsg}</div>}
+
           {result && (
             <div style={styles.result}>
               <Row k="Dystans" v={`${result.distanceKm} km`} />
@@ -1368,6 +1516,36 @@ export default function MapPage() {
               <div style={{ height: 1, background: palette.graphite, margin: "2px 0" }} />
               <Row k="Razem (myto+paliwo)" v={`${grandTotal} ${result.currency}`} />
               <Row k="Dostawca" v={result.provider} />
+            </div>
+          )}
+
+          {result && (
+            <div style={styles.disruptions}>
+              <span style={styles.label}>
+                🚧 Utrudnienia na trasie{" "}
+                <span style={{ color: palette.smoke }}>
+                  (≤ {DISRUPTION_RADIUS_KM} km · zgłoszenia kierowców)
+                </span>
+              </span>
+              {disruptions.length === 0 ? (
+                <div style={{ fontSize: 12, color: palette.smoke, marginTop: 4 }}>
+                  Brak zgłoszeń przy trasie. 👍
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                  {disruptions.slice(0, 12).map((d) => (
+                    <div key={d.id} style={styles.disruptionRow}>
+                      <span style={{ color: REPORT_COLOR[d.type], fontWeight: 700 }}>
+                        ● {REPORT_LABEL[d.type]}
+                      </span>
+                      <span style={{ color: palette.smoke, fontSize: 12 }}>{d.distanceKm} km</span>
+                      {d.comment && (
+                        <span style={{ color: palette.smoke, fontSize: 12 }}>· {d.comment}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1492,6 +1670,14 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 6,
     fontSize: 14,
   },
+  disruptions: {
+    marginTop: 8,
+    padding: "10px 12px",
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+  },
+  disruptionRow: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
   priceRow: {
     display: "flex",
     gap: 8,

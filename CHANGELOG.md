@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-152-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.11.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-153-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.12.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.12.0] — 🚦 Ruch na żywo: utrudnienia ze zgłoszeń (1) + HERE Traffic (2)
+
+- `[#153]` 🚦 **Ruch i utrudnienia na mapie** (zgłoszone — zrobione obie wersje: darmowa + płatna):
+  - **Wersja 1 — utrudnienia na trasie ze zgłoszeń (darmowa):** [maps/disruptions.ts](packages/maps/src/disruptions.ts) `pointToRouteKm` + `itemsNearRoute` (czyste; 4 testy) wykrywają zgłoszenia społeczności (korki/wypadki/zamknięcia) **≤ 5 km od wyznaczonej trasy**. Panel „🚧 Utrudnienia na trasie" na [mapie](apps/web/app/(app)/map/page.tsx) listuje je z rodzajem i odległością; aktualizacja po wyznaczeniu trasy i realtime przy nowych zgłoszeniach. Zero kosztów (reużywa `map_reports`).
+  - **Wersja 2 — HERE Traffic (płatna, łagodna degradacja):** [maps/heretraffic.ts](packages/maps/src/heretraffic.ts) `buildHereTrafficUrl`/`parseHereTraffic`/`jamSeverity` (4 testy) + trasa serwerowa [/api/traffic](apps/web/app/api/traffic/route.ts) (klucz `HERE_API_KEY` tylko serwerowo; brak klucza → `501`, plan bez Traffic/błąd → `{unavailable}`; ograniczenie wielkości bbox). Na mapie przełącznik **„🚦 Ruch na żywo (HERE)"** rysuje kolorowe odcinki wg natężenia (zielony→żółty→pomarańczowy→czerwony), odświeżane przy przesuwaniu mapy; legenda + komunikat, gdy ruch niedostępny.
+  - **Bramki:** biome czysto · `tsc` ×3 · **33 testy map** (8 nowych) · build ✓ (`/map`, `/api/traffic`).
 
 ## [1.11.0] — 📌 Zapisane miejsca (POI) + delta trasy po dodaniu punktu
 
