@@ -1,7 +1,21 @@
 import { palette } from "@e-logistic/ui";
+import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "../components/AuthProvider";
+
+/** Tap w powiadomienie push → przejście do ekranu wskazanego w `data.url`. */
+function useNotificationTap() {
+  const router = useRouter();
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const url = response.notification.request.content.data?.url;
+      if (typeof url === "string" && url.startsWith("/")) router.push(url as never);
+      else router.push("/my-orders");
+    });
+    return () => sub.remove();
+  }, [router]);
+}
 
 /** Bramka: bez sesji → /login; z sesją na /login → pulpit. */
 function useProtectedRoute() {
@@ -19,6 +33,7 @@ function useProtectedRoute() {
 
 function RootNav() {
   useProtectedRoute();
+  useNotificationTap();
   return (
     <Stack
       screenOptions={{

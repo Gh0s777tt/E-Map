@@ -390,6 +390,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      expo_push_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          company_id: string | null;
+          token: string;
+          platform: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          company_id?: string | null;
+          token: string;
+          platform?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          company_id?: string | null;
+          token?: string;
+          platform?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       fuel_cards: {
         Row: {
           id: string;
