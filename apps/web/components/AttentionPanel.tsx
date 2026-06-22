@@ -57,7 +57,8 @@ export function AttentionPanel() {
       try {
         const sb = getBrowserSupabase();
         const m = await getCachedMembership(sb);
-        if (!m) return;
+        // Panel zarządczy (terminy floty/faktur) — tylko owner/dispatcher.
+        if (!m || (m.role !== "owner" && m.role !== "dispatcher")) return;
         const [vehs, cards, tasks, odo, docs, invs] = await Promise.all([
           listVehiclesExpiry(sb, m.companyId),
           listFuelCardsSafe(sb, m.companyId),
