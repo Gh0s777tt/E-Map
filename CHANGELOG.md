@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-125-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.95.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-126-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.96.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.96.0] — 💸 Rentowność klientów (przychód − przypisany koszt)
+
+- `[#126]` 💸 **Który klient naprawdę zarabia** — sekcja „Rentowność klientów" na [statystykach](apps/web/app/(app)/stats/page.tsx) (tylko owner/dispatcher):
+  - [core/profitability.ts](packages/core/src/profitability.ts): `clientProfitability(orders, vehicleCosts)` — przychód EUR per nadawca minus **przypisany** koszt paliwa. Model atrybucji (jawne przybliżenie): koszt paliwa pojazdu rozdzielany na jego zlecenia **proporcjonalnie do przychodu**, sumowany per nadawca. Zwraca przychód/koszt/zysk/marżę + `unattributedCostEur` (paliwo pojazdów bez przychodu EUR) i `noVehicleRevenueEur` (przychód bez pojazdu) — żeby nie udawać dokładności, której nie ma.
+  - Liczy tylko zlecenia **zrealizowane w EUR** (`delivered`/`invoiced`). Pomija puste przebiegi, myto, pensje, AdBlue, leasing — wskaźnik względny, nie księgowość (jasno zaznaczone w UI).
+  - Tabela: klient · zlecenia · przychód · koszt · zysk (kolor wg znaku) · marża %, sortowana wg zysku; totale floty na górze.
+  - 8 nowych testów ([profitability.test.ts](packages/core/src/profitability.test.ts)): proporcjonalna atrybucja, marża, sortowanie, filtr statusu/waluty, koszt nieprzypisany, brak pojazdu, pusty nadawca.
+  - **Bramki:** biome czysto · `tsc` ×7 · 105 testów · build ✓ (`/stats`).
 
 ## [0.95.2] — 🧪 Audyt RLS w CI (gate przy każdym PR)
 

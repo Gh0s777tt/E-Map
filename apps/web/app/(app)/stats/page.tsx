@@ -2,6 +2,8 @@
 
 import { listFuelLogs, listOrders, listTripEvents, listVehicles } from "@e-logistic/api";
 import {
+  type ClientProfit,
+  clientProfitability,
   consumptionFullToFull,
   detectFuelAnomalies,
   type FuelStatsEntry,
@@ -83,8 +85,10 @@ export default function StatsPage() {
       shipper: string | null;
       origin: string | null;
       destination: string | null;
+      vehicle_id: string | null;
     }[]
   >([]);
+  const [canManage, setCanManage] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -94,6 +98,7 @@ export default function StatsPage() {
         const sb = getBrowserSupabase();
         const m = await getCachedMembership(sb);
         if (!m) return;
+        setCanManage(m.role === "owner" || m.role === "dispatcher");
         const [f, a, tr, vs, ord] = await Promise.all([
           listFuelLogs(sb, { limit: 2000 }),
           listFuelLogs(sb, { table: "adblue_logs", limit: 2000 }),
@@ -112,6 +117,7 @@ export default function StatsPage() {
             shipper: o.shipper,
             origin: o.origin,
             destination: o.destination,
+            vehicle_id: o.vehicle_id,
           })),
         );
         setVehicles(
@@ -176,6 +182,27 @@ export default function StatsPage() {
 
   // Analiza zleceń: top nadawcy, najczęstsze trasy, średnia stawka (raz na zmianę zleceń).
   const analytics = useMemo(() => orderAnalytics(orders, 5), [orders]);
+
+  // Rentowność klientów: koszt paliwa per pojazd → przypisany do zleceń proporcjonalnie
+  // do przychodu, zsumowany per nadawca. Tylko zlecenia zrealizowane w EUR.
+  const profit = useMemo(() => {
+    const vehicleCosts = [
+      ...fuel.reduce(
+        (m, r) => m.set(r.vehicle_id, (m.get(r.vehicle_id) ?? 0) + Number(r.price_total ?? 0)),
+        new Map<string, number>(),
+      ),
+    ].map(([vehicleId, cost]) => ({ vehicleId, cost }));
+    return clientProfitability(
+      orders.map((o) => ({
+        shipper: o.shipper,
+        vehicleId: o.vehicle_id,
+        price: o.price,
+        currency: o.currency,
+        status: o.status,
+      })),
+      vehicleCosts,
+    );
+  }, [orders, fuel]);
 
   return (
     <div>
@@ -259,6 +286,8 @@ export default function StatsPage() {
             </div>
           )}
 
+          {canManage && profit.clients.length > 0 && <ProfitabilitySection data={profit} />}
+
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
             {tiles.map((tile) => (
               <button
@@ -295,6 +324,82 @@ export default function StatsPage() {
           onBack={() => setSelected(null)}
         />
       )}
+    </div>
+  );
+}
+
+function ProfitabilitySection({ data }: { data: ReturnType<typeof clientProfitability> }) {
+  return (
+    <div style={styles.profitWrap}>
+      <div style={styles.anHead}>
+        💸 Rentowność klientów{" "}
+        <span style={{ color: palette.smoke, fontWeight: 400, fontSize: 12 }}>
+          (przybliżenie — koszt = paliwo)
+        </span>
+      </div>
+      <div style={styles.profitTotals}>
+        <FleetStat label="Przychód (EUR)" value={`${data.totalRevenueEur} €`} accent="#22c55e" />
+        <FleetStat label="Koszt paliwa (przyp.)" value={`${data.totalAttributedCostEur} €`} />
+        <FleetStat
+          label="Zysk"
+          value={`${data.totalProfitEur} €`}
+          accent={data.totalProfitEur >= 0 ? "#22c55e" : palette.red}
+        />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ ...styles.profitRow, color: palette.smoke, fontSize: 12 }}>
+          <span style={{ flex: 1 }}>Klient</span>
+          <span style={styles.profitCol}>Zl.</span>
+          <span style={styles.profitCol}>Przychód</span>
+          <span style={styles.profitCol}>Koszt</span>
+          <span style={styles.profitCol}>Zysk</span>
+          <span style={styles.profitCol}>Marża</span>
+        </div>
+        {data.clients.map((c: ClientProfit) => (
+          <div key={c.client} style={styles.profitRow}>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {c.client}
+            </span>
+            <span style={styles.profitCol}>{c.orders}</span>
+            <span style={styles.profitCol}>{c.revenueEur} €</span>
+            <span style={styles.profitCol}>{c.costEur} €</span>
+            <span
+              style={{
+                ...styles.profitCol,
+                color: c.profitEur >= 0 ? "#22c55e" : palette.red,
+                fontWeight: 700,
+              }}
+            >
+              {c.profitEur} €
+            </span>
+            <span
+              style={{
+                ...styles.profitCol,
+                color: c.marginPct != null && c.marginPct >= 0 ? "#22c55e" : palette.red,
+              }}
+            >
+              {c.marginPct != null ? `${c.marginPct}%` : "—"}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p style={styles.profitNote}>
+        Koszt przypisany = paliwo pojazdu rozdzielone na jego zlecenia proporcjonalnie do przychodu
+        (tylko zlecenia zrealizowane w EUR). Pomija puste przebiegi, myto, pensje, AdBlue i leasing
+        — traktuj jako wskaźnik względny, nie księgowość.
+        {data.unattributedCostEur > 0 &&
+          ` Nieprzypisany koszt paliwa (pojazdy bez przychodu EUR): ${data.unattributedCostEur} €.`}
+        {data.noVehicleRevenueEur > 0 &&
+          ` Przychód bez przypisanego pojazdu (koszt zaniżony): ${data.noVehicleRevenueEur} €.`}
+      </p>
     </div>
   );
 }
@@ -497,6 +602,24 @@ const styles: Record<string, React.CSSProperties> = {
   },
   anHead: { fontWeight: 800, fontSize: 14, marginBottom: 8 },
   anRow: { display: "flex", gap: 10, alignItems: "center", padding: "5px 0", fontSize: 14 },
+  profitWrap: {
+    marginTop: 24,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 12,
+    padding: "14px 16px",
+  },
+  profitTotals: { display: "flex", gap: 12, flexWrap: "wrap" },
+  profitRow: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    padding: "6px 0",
+    fontSize: 14,
+    borderBottom: `1px solid ${palette.graphite}`,
+  },
+  profitCol: { width: 84, textAlign: "right", flexShrink: 0 },
+  profitNote: { color: palette.smoke, fontSize: 12, marginTop: 10, lineHeight: 1.5 },
   anomalyBox: {
     background: "#2a0d0d",
     border: `1px solid ${palette.red}`,
