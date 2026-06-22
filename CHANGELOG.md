@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-111-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.86.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-112-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.87.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.87.0] — 🏢 Dane firmy do edycji w Ustawieniach
+
+- `[#112]` 🏢 **Edycja danych firmy** (sprzedawca na fakturach/CMR) w [Ustawieniach](apps/web/app/(app)/settings/page.tsx):
+  - Karta „Dane firmy": nazwa, NIP, adres, kraj. **Edycja tylko dla właściciela** (RLS `companies_update` = owner); pozostali widzą dane w trybie odczytu.
+  - Dzięki temu sprzedawca na fakturach (`create_invoice`/ręczna) i przewoźnik na CMR są poprawne bez wchodzenia do bazy.
+  - api [data/companies.ts](packages/api/src/data/companies.ts): `updateCompany`.
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/settings`).
 
 ## [0.86.0] — 📑 Ujednolicony eksport CSV (faktury, kierowcy, pojazdy, dokumenty)
 

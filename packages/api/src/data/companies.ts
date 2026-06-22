@@ -22,3 +22,28 @@ export async function getCompany(
   if (error) throw error;
   return (data as Company) ?? null;
 }
+
+export interface CompanyPatch {
+  name: string;
+  taxId?: string | null;
+  address?: string | null;
+  country?: string | null;
+}
+
+/** Aktualizacja danych firmy (sprzedawca na fakturach/CMR). RLS: owner. */
+export async function updateCompany(
+  client: SupabaseClient,
+  companyId: string,
+  patch: CompanyPatch,
+): Promise<void> {
+  const { error } = await client
+    .from("companies")
+    .update({
+      name: patch.name,
+      tax_id: patch.taxId ?? null,
+      address: patch.address ?? null,
+      country: patch.country ?? null,
+    })
+    .eq("id", companyId);
+  if (error) throw error;
+}

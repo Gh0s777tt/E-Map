@@ -1,5 +1,6 @@
 "use client";
 
+import { getCompany, updateCompany } from "@e-logistic/api";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
@@ -7,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { PushToggle } from "@/components/PushToggle";
 import { Button } from "@/components/ui";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const t = createTranslator("pl");
@@ -27,6 +29,58 @@ export default function SettingsPage() {
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
   const [pkBusy, setPkBusy] = useState(false);
   const [pkMsg, setPkMsg] = useState<string | null>(null);
+
+  // Dane firmy (sprzedawca na fakturach/CMR) — edycja tylko dla właściciela.
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [cName, setCName] = useState("");
+  const [cTaxId, setCTaxId] = useState("");
+  const [cAddress, setCAddress] = useState("");
+  const [cCountry, setCCountry] = useState("");
+  const [cMsg, setCMsg] = useState<string | null>(null);
+  const [cBusy, setCBusy] = useState(false);
+
+  const loadCompany = useCallback(async () => {
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) return;
+      setIsOwner(m.role === "owner");
+      setCompanyId(m.companyId);
+      const c = await getCompany(sb, m.companyId);
+      if (c) {
+        setCName(c.name ?? "");
+        setCTaxId(c.tax_id ?? "");
+        setCAddress(c.address ?? "");
+        setCCountry(c.country ?? "");
+      }
+    } catch {
+      // brak firmy / dostępu
+    }
+  }, []);
+
+  async function saveCompany() {
+    if (!companyId) return;
+    setCMsg(null);
+    if (!cName.trim()) {
+      setCMsg("Nazwa firmy jest wymagana.");
+      return;
+    }
+    setCBusy(true);
+    try {
+      await updateCompany(getBrowserSupabase(), companyId, {
+        name: cName.trim(),
+        taxId: cTaxId.trim() || undefined,
+        address: cAddress.trim() || undefined,
+        country: cCountry.trim() || undefined,
+      });
+      setCMsg("✅ Zapisano dane firmy.");
+    } catch (e) {
+      setCMsg(e instanceof Error ? e.message : "Błąd zapisu danych firmy.");
+    } finally {
+      setCBusy(false);
+    }
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -64,7 +118,8 @@ export default function SettingsPage() {
   useEffect(() => {
     refresh();
     loadPasskeys();
-  }, [refresh, loadPasskeys]);
+    loadCompany();
+  }, [refresh, loadPasskeys, loadCompany]);
 
   async function addPasskey() {
     setPkBusy(true);
@@ -189,6 +244,63 @@ export default function SettingsPage() {
         Bezpieczeństwo konta — weryfikacja dwuetapowa (2FA) kodem z aplikacji (Google Authenticator,
         Authy, 1Password…).
       </p>
+
+      {companyId && (
+        <div style={styles.card}>
+          <strong style={{ fontSize: 16 }}>🏢 Dane firmy (sprzedawca na fakturach/CMR)</strong>
+          {isOwner ? (
+            <>
+              <label style={styles.field}>
+                <span style={styles.label}>Nazwa firmy</span>
+                <input
+                  style={styles.cInput}
+                  value={cName}
+                  onChange={(e) => setCName(e.target.value)}
+                />
+              </label>
+              <label style={styles.field}>
+                <span style={styles.label}>NIP</span>
+                <input
+                  style={styles.cInput}
+                  value={cTaxId}
+                  onChange={(e) => setCTaxId(e.target.value)}
+                />
+              </label>
+              <label style={styles.field}>
+                <span style={styles.label}>Adres</span>
+                <input
+                  style={styles.cInput}
+                  value={cAddress}
+                  onChange={(e) => setCAddress(e.target.value)}
+                />
+              </label>
+              <label style={styles.field}>
+                <span style={styles.label}>Kraj</span>
+                <input
+                  style={{ ...styles.cInput, maxWidth: 120 }}
+                  value={cCountry}
+                  onChange={(e) => setCCountry(e.target.value)}
+                  placeholder="PL"
+                />
+              </label>
+              <div>
+                <Button onClick={saveCompany} disabled={cBusy}>
+                  {cBusy ? "Zapisywanie…" : "Zapisz dane firmy"}
+                </Button>
+              </div>
+              {cMsg && <p style={{ color: palette.smoke, fontSize: 13 }}>{cMsg}</p>}
+            </>
+          ) : (
+            <p style={{ color: palette.smoke, fontSize: 14 }}>
+              {cName || "—"}
+              {cTaxId ? ` · NIP ${cTaxId}` : ""}
+              {cAddress ? ` · ${cAddress}` : ""}
+              <br />
+              Dane firmy może edytować tylko właściciel.
+            </p>
+          )}
+        </div>
+      )}
 
       <div style={styles.card}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -324,6 +436,16 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "10px 12px",
     color: palette.offWhite,
     maxWidth: 200,
+  },
+  field: { display: "flex", flexDirection: "column", gap: 4 },
+  label: { fontSize: 12, color: palette.smoke },
+  cInput: {
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "10px 12px",
+    color: palette.offWhite,
+    width: "100%",
   },
   primary: {
     background: palette.red,
