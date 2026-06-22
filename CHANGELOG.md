@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-174-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.30.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-175-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.31.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.31.0] — 📊 Pulpit KPI (operacyjny skrót na start dnia)
+
+- `[#175]` 📊 **Pasek KPI na pulpicie** ([KpiStrip](apps/web/components/KpiStrip.tsx)) — dla owner/dispatcher, liczony na żywo, spina dotychczasowe moduły w jeden widok:
+  - **Zlecenia w toku** (nowe/przypisane/w trakcie) i **do zafakturowania** (dostarczone) → `/orders`.
+  - **Wynik bieżącego miesiąca (EUR)** (przychód − paliwo − AdBlue, kolor wg znaku) + przychód → `/monthly`.
+  - **Diety (mies.)** — należne diety bieżącego miesiąca per waluta → `/diety`.
+  - Karty klikalne (deep-link), dla kierowcy pasek się nie renderuje; uzupełnia istniejący panel „Co wymaga uwagi" (terminy).
+  - **Bramki:** biome czysto · `tsc` ×7 · 156 testów · build ✓ (`/dashboard`).
 
 ## [1.30.0] — 📅 Diety w zestawieniu miesięcznym + data podróży
 
