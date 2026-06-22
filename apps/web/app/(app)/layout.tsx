@@ -75,6 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/documents", label: "Sejf dokumentów" },
     { href: "/fuel-prices", label: "Ceny diesla" },
     { href: "/service", label: "Serwis" },
+    ...(allowed.includes("settlements") ? [{ href: "/monthly", label: "Zestawienie msc." }] : []),
     ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
   ];
 

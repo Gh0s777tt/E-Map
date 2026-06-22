@@ -8,6 +8,7 @@ import {
   effectiveFuelPrice,
   fuelConsumptionSeries,
   fuelCost,
+  monthlyFleetSummary,
   summarizeFuel,
   tripCost,
   tripDistanceKm,
@@ -172,5 +173,63 @@ describe("consumptionFullToFull", () => {
         { odometerKm: 1300, liters: 50, isFull: false },
       ]),
     ).toBeNull();
+  });
+});
+
+describe("monthlyFleetSummary", () => {
+  const base = {
+    month: "2026-06",
+    orders: [
+      // przychód EUR, dostarczone — wliczone do v1
+      { vehicleId: "v1", price: 2000, currency: "EUR", status: "delivered", date: "2026-06-10" },
+      // zafakturowane EUR — wliczone do v1
+      { vehicleId: "v1", price: 1000, currency: "EUR", status: "invoiced", date: "2026-06-20" },
+      // nowy status — pominięte
+      { vehicleId: "v1", price: 500, currency: "EUR", status: "new", date: "2026-06-05" },
+      // inna waluta — pominięte z sumy EUR
+      { vehicleId: "v2", price: 3000, currency: "PLN", status: "delivered", date: "2026-06-12" },
+      // inny miesiąc — pominięte
+      { vehicleId: "v1", price: 999, currency: "EUR", status: "delivered", date: "2026-05-30" },
+    ],
+    fuel: [
+      { vehicleId: "v1", priceTotal: 600, date: "2026-06-03" },
+      { vehicleId: "v1", priceTotal: 400, date: "2026-06-18" },
+      { vehicleId: "v2", priceTotal: 250, date: "2026-06-09" },
+      { vehicleId: "v1", priceTotal: 100, date: "2026-07-01" }, // inny miesiąc
+    ],
+    adblue: [{ vehicleId: "v1", priceTotal: 80, date: "2026-06-15" }],
+  };
+
+  it("liczy przychód EUR i koszty per pojazd z atrybucją miesięczną", () => {
+    const s = monthlyFleetSummary(base);
+    const v1 = s.rows.find((r) => r.vehicleId === "v1");
+    expect(v1).toEqual({
+      vehicleId: "v1",
+      revenueEur: 3000,
+      fuelCost: 1000,
+      adblueCost: 80,
+      net: 1920,
+    });
+    // v2: brak przychodu EUR (PLN pominięte), koszt paliwa 250 → net -250
+    const v2 = s.rows.find((r) => r.vehicleId === "v2");
+    expect(v2?.net).toBe(-250);
+  });
+
+  it("sumuje totals i sortuje malejąco po net", () => {
+    const s = monthlyFleetSummary(base);
+    expect(s.totals).toEqual({ revenueEur: 3000, fuelCost: 1250, adblueCost: 80, net: 1670 });
+    expect(s.rows[0]?.vehicleId).toBe("v1"); // najwyższy net pierwszy
+  });
+
+  it("pozycje bez pojazdu trafiają do wiersza null", () => {
+    const s = monthlyFleetSummary({
+      month: "2026-06",
+      orders: [
+        { vehicleId: null, price: 500, currency: "EUR", status: "delivered", date: "2026-06-01" },
+      ],
+      fuel: [],
+      adblue: [],
+    });
+    expect(s.rows.find((r) => r.vehicleId === null)?.revenueEur).toBe(500);
   });
 });
