@@ -16,7 +16,8 @@ import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
-import { Badge, BarChart, PageHeader } from "@/components/ui";
+import { Badge, BarChart, Button, PageHeader } from "@/components/ui";
+import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { tripActionLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -320,31 +321,63 @@ export default function StatsPage() {
 }
 
 function ProfitabilitySection({ data }: { data: ReturnType<typeof clientProfitability> }) {
+  const t = useT();
+
+  function exportCsv() {
+    const headers = [
+      t("profit.col.client"),
+      t("profit.col.orders"),
+      t("profit.col.revenue"),
+      t("profit.col.cost"),
+      t("profit.col.profit"),
+      t("profit.col.margin"),
+    ];
+    const rows = data.clients.map((c) => [
+      c.client,
+      c.orders,
+      c.revenueEur,
+      c.costEur,
+      c.profitEur,
+      c.marginPct != null ? c.marginPct : "",
+    ]);
+    downloadCsv(`rentownosc_${csvDateStamp()}.csv`, headers, rows);
+  }
+
   return (
     <div style={styles.profitWrap}>
-      <div style={styles.anHead}>
-        💸 Rentowność klientów{" "}
-        <span style={{ color: palette.smoke, fontWeight: 400, fontSize: 12 }}>
-          (przybliżenie — koszt = paliwo)
-        </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={styles.anHead}>
+          💸 {t("profit.title")}{" "}
+          <span style={{ color: palette.smoke, fontWeight: 400, fontSize: 12 }}>
+            {t("profit.approx")}
+          </span>
+        </div>
+        <span style={{ flex: 1 }} />
+        <Button variant="ghost" onClick={exportCsv}>
+          ⬇️ CSV
+        </Button>
       </div>
       <div style={styles.profitTotals}>
-        <FleetStat label="Przychód (EUR)" value={`${data.totalRevenueEur} €`} accent="#22c55e" />
-        <FleetStat label="Koszt paliwa (przyp.)" value={`${data.totalAttributedCostEur} €`} />
         <FleetStat
-          label="Zysk"
+          label={t("profit.total.revenue")}
+          value={`${data.totalRevenueEur} €`}
+          accent="#22c55e"
+        />
+        <FleetStat label={t("profit.total.cost")} value={`${data.totalAttributedCostEur} €`} />
+        <FleetStat
+          label={t("profit.total.profit")}
           value={`${data.totalProfitEur} €`}
           accent={data.totalProfitEur >= 0 ? "#22c55e" : palette.red}
         />
       </div>
       <div style={{ marginTop: 12 }}>
         <div style={{ ...styles.profitRow, color: palette.smoke, fontSize: 12 }}>
-          <span style={{ flex: 1 }}>Klient</span>
-          <span style={styles.profitCol}>Zl.</span>
-          <span style={styles.profitCol}>Przychód</span>
-          <span style={styles.profitCol}>Koszt</span>
-          <span style={styles.profitCol}>Zysk</span>
-          <span style={styles.profitCol}>Marża</span>
+          <span style={{ flex: 1 }}>{t("profit.col.client")}</span>
+          <span style={styles.profitCol}>{t("profit.col.ordersShort")}</span>
+          <span style={styles.profitCol}>{t("profit.col.revenue")}</span>
+          <span style={styles.profitCol}>{t("profit.col.cost")}</span>
+          <span style={styles.profitCol}>{t("profit.col.profit")}</span>
+          <span style={styles.profitCol}>{t("profit.col.margin")}</span>
         </div>
         {data.clients.map((c: ClientProfit) => (
           <div key={c.client} style={styles.profitRow}>
@@ -383,13 +416,10 @@ function ProfitabilitySection({ data }: { data: ReturnType<typeof clientProfitab
         ))}
       </div>
       <p style={styles.profitNote}>
-        Koszt przypisany = paliwo pojazdu rozdzielone na jego zlecenia proporcjonalnie do przychodu
-        (tylko zlecenia zrealizowane w EUR). Pomija puste przebiegi, myto, pensje, AdBlue i leasing
-        — traktuj jako wskaźnik względny, nie księgowość.
+        {t("profit.note")}
         {data.unattributedCostEur > 0 &&
-          ` Nieprzypisany koszt paliwa (pojazdy bez przychodu EUR): ${data.unattributedCostEur} €.`}
-        {data.noVehicleRevenueEur > 0 &&
-          ` Przychód bez przypisanego pojazdu (koszt zaniżony): ${data.noVehicleRevenueEur} €.`}
+          ` ${t("profit.unattributed")} ${data.unattributedCostEur} €.`}
+        {data.noVehicleRevenueEur > 0 && ` ${t("profit.noVehicle")} ${data.noVehicleRevenueEur} €.`}
       </p>
     </div>
   );

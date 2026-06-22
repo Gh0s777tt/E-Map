@@ -183,6 +183,23 @@ export const en: Record<MessageKey, string> = {
   "orders.csv.loadDate": "Loading",
   "orders.csv.unloadDate": "Unloading",
 
+  "profit.title": "Client profitability",
+  "profit.approx": "(approximation — cost = fuel)",
+  "profit.total.revenue": "Revenue (EUR)",
+  "profit.total.cost": "Fuel cost (attr.)",
+  "profit.total.profit": "Profit",
+  "profit.col.client": "Client",
+  "profit.col.ordersShort": "Ord.",
+  "profit.col.orders": "Orders",
+  "profit.col.revenue": "Revenue",
+  "profit.col.cost": "Cost",
+  "profit.col.profit": "Profit",
+  "profit.col.margin": "Margin",
+  "profit.note":
+    "Attributed cost = the vehicle's fuel split across its orders in proportion to revenue (realized EUR orders only). Excludes empty runs, tolls, wages, AdBlue and leasing — treat it as a relative indicator, not accounting.",
+  "profit.unattributed": "Unattributed fuel cost (vehicles with no EUR revenue):",
+  "profit.noVehicle": "Revenue without an assigned vehicle (cost understated):",
+
   "sync.draft": "Draft",
   "sync.queued": "Queued",
   "sync.synced": "Synced",
