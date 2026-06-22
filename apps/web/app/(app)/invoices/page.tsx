@@ -18,6 +18,7 @@ import {
 import {
   formatMoney,
   invoicePaymentStatus,
+  monthlyVatRegister,
   type PaymentStatus,
   round2,
   vatSummary,
@@ -48,6 +49,7 @@ export default function InvoicesPage() {
   const [currency, setCurrency] = useState("EUR");
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [payFilter, setPayFilter] = useState<"all" | PaymentStatus | "cancelled">("all");
+  const [vatMonth, setVatMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,6 +141,42 @@ export default function InvoicesPage() {
       i.currency,
     ]);
     downloadCsv(`faktury_${csvDateStamp()}.csv`, headers, rows);
+  }
+
+  /** Eksport księgowy: rejestr VAT sprzedaży za wybrany miesiąc (pozycje + podsumowanie wg stawek). */
+  function exportVatRegister() {
+    const reg = monthlyVatRegister(invoices, vatMonth);
+    const headers = [
+      t("invoices.csv.number"),
+      t("common.date"),
+      t("invoices.csv.buyer"),
+      t("invoices.csv.taxId"),
+      "Stawka VAT (%)",
+      t("invoices.csv.net"),
+      t("invoices.csv.vat"),
+      t("invoices.csv.gross"),
+      t("orders.csv.currency"),
+    ];
+    const rows: (string | number)[][] = invoices
+      .filter((i) => i.status !== "cancelled" && (i.issue_date ?? "").startsWith(vatMonth))
+      .map((i) => [
+        i.number,
+        i.issue_date,
+        i.buyer_name ?? "",
+        i.buyer_tax_id ?? "",
+        i.vat_rate,
+        i.net,
+        i.vat_amount,
+        i.gross,
+        i.currency,
+      ]);
+    rows.push([]);
+    rows.push(["Podsumowanie wg stawek VAT"]);
+    for (const r of reg.rows) {
+      rows.push([`Stawka ${r.vatRate}%`, "", "", "", r.vatRate, r.net, r.vat, r.gross, ""]);
+    }
+    rows.push(["RAZEM", "", "", "", "", reg.totalNet, reg.totalVat, reg.totalGross, ""]);
+    downloadCsv(`rejestr_vat_${vatMonth}.csv`, headers, rows);
   }
 
   async function createNew() {
@@ -242,6 +280,20 @@ export default function InvoicesPage() {
           <Button variant="ghost" onClick={exportCsv}>
             ⬇️ CSV
           </Button>
+        )}
+        {canManage && invoices.length > 0 && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input
+              type="month"
+              value={vatMonth}
+              onChange={(e) => setVatMonth(e.target.value)}
+              style={styles.monthInput}
+              title="Miesiąc rejestru VAT"
+            />
+            <Button variant="ghost" onClick={exportVatRegister}>
+              🧮 Rejestr VAT (księgowość)
+            </Button>
+          </div>
         )}
       </div>
       {canManage && showNew && (
@@ -768,6 +820,13 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.graphite}`,
     borderRadius: 8,
     padding: "9px 12px",
+    color: palette.offWhite,
+  },
+  monthInput: {
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "8px 10px",
     color: palette.offWhite,
   },
   doc: {
