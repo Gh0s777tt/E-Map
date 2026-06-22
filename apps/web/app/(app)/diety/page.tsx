@@ -1,8 +1,15 @@
 "use client";
 
-import { computePerDiem, type DietMode, type DietTrip, round2, sumPerDiem } from "@e-logistic/core";
+import {
+  deletePerDiemTrip,
+  insertPerDiemTrip,
+  listPerDiemTrips,
+  type PerDiemTrip,
+} from "@e-logistic/api";
+import { computePerDiem, type DietMode, type DietTrip, sumPerDiem } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Button, PageHeader } from "@/components/ui";
@@ -25,79 +32,157 @@ function emptyRow(): Row {
   };
 }
 
-const MODE_LABEL: Record<DietMode, string> = {
-  domestic: "krajowa",
-  foreign: "zagraniczna",
-};
+const MODE_LABEL: Record<DietMode, string> = { domestic: "krajowa", foreign: "zagraniczna" };
+
+/** PerDiemTrip (DB) → DietTrip (rdzeń) do policzenia należnej diety. */
+function toTrip(t: PerDiemTrip): DietTrip {
+  return {
+    destination: t.destination ?? "",
+    mode: t.mode,
+    hours: t.hours,
+    dailyRate: t.daily_rate,
+    currency: t.currency,
+  };
+}
 
 export default function PerDiemPage() {
+  const confirm = useConfirm();
   const [driver, setDriver] = useState("");
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
+  const [saved, setSaved] = useState<PerDiemTrip[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [denied, setDenied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const m = await getCachedMembership(getBrowserSupabase());
-        if (!m || !(m.role === "owner" || m.role === "dispatcher")) setDenied(true);
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) return;
+      const manage = m.role === "owner" || m.role === "dispatcher";
+      setCanManage(manage);
+      setCompanyId(m.companyId);
+      if (manage) setSaved(await listPerDiemTrips(sb, m.companyId));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Nie udało się pobrać diet.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const results = useMemo(
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const draftResults = useMemo(
     () => rows.filter((r) => r.hours > 0 && r.dailyRate > 0).map((r) => computePerDiem(r)),
     [rows],
   );
-  const totals = useMemo(() => sumPerDiem(results), [results]);
+  const savedResults = useMemo(() => saved.map((s) => computePerDiem(toTrip(s))), [saved]);
+  const savedTotals = useMemo(() => sumPerDiem(savedResults), [savedResults]);
 
   function patch(id: string, p: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
   }
 
+  async function saveDrafts() {
+    if (!companyId) return;
+    const valid = rows.filter((r) => r.hours > 0 && r.dailyRate > 0);
+    if (valid.length === 0) {
+      setErr("Uzupełnij czas i stawkę co najmniej jednej podróży.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const sb = getBrowserSupabase();
+      for (const r of valid) {
+        await insertPerDiemTrip(
+          sb,
+          {
+            driverName: driver,
+            destination: r.destination,
+            mode: r.mode,
+            hours: r.hours,
+            dailyRate: r.dailyRate,
+            currency: r.currency,
+          },
+          companyId,
+        );
+      }
+      setRows([emptyRow()]);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Błąd zapisu diet.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeSaved(t: PerDiemTrip) {
+    if (!(await confirm("Usunąć zapisaną podróż?"))) return;
+    try {
+      await deletePerDiemTrip(getBrowserSupabase(), t.id);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Błąd usuwania.");
+    }
+  }
+
   function exportCsv() {
     const headers = ["Kierowca", "Cel", "Typ", "Czas (h)", "Doby", "Stawka", "Kwota", "Waluta"];
-    const body: (string | number)[][] = results.map((r) => [
-      driver,
-      r.destination || "—",
-      MODE_LABEL[r.mode],
-      r.fullDays * 24 + r.remainderHours,
-      r.days,
-      round2(r.amount / (r.days || 1)),
-      r.amount,
-      r.currency,
-    ]);
+    const body: (string | number)[][] = saved.map((s) => {
+      const r = computePerDiem(toTrip(s));
+      return [
+        s.driver_name ?? "",
+        s.destination ?? "—",
+        MODE_LABEL[s.mode],
+        s.hours,
+        r.days,
+        s.daily_rate,
+        r.amount,
+        s.currency,
+      ];
+    });
     body.push([]);
     body.push(["Podsumowanie wg waluty", "", "", "", "", "", "", ""]);
-    for (const t of totals) body.push(["", "", "", "", t.days, "", t.amount, t.currency]);
-    downloadCsv(`diety_${driver || "kierowca"}_${csvDateStamp()}.csv`, headers, body);
+    for (const t of savedTotals) body.push(["", "", "", "", t.days, "", t.amount, t.currency]);
+    downloadCsv(`diety_${csvDateStamp()}.csv`, headers, body);
   }
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 980 }}>
-        <PageHeader title="Diety kierowcy" subtitle="Kalkulator diet z podróży służbowych." />
+      <div style={{ maxWidth: 1000 }}>
+        <PageHeader
+          title="Diety kierowcy"
+          subtitle="Kalkulator i ewidencja diet z podróży służbowych."
+        />
         <ListStatus loading error={null} />
       </div>
     );
   }
 
-  if (denied) {
+  if (!canManage) {
     return (
-      <div style={{ maxWidth: 980 }}>
-        <PageHeader title="Diety kierowcy" subtitle="Kalkulator diet z podróży służbowych." />
+      <div style={{ maxWidth: 1000 }}>
+        <PageHeader
+          title="Diety kierowcy"
+          subtitle="Kalkulator i ewidencja diet z podróży służbowych."
+        />
         <p style={{ color: palette.smoke }}>Dostęp tylko dla właściciela / spedytora.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 980 }}>
+    <div style={{ maxWidth: 1000 }}>
       <PageHeader
         title="Diety kierowcy"
-        subtitle="Kalkulator diet (per diem) z podróży służbowych — krajowych i zagranicznych. Stawki dobowe ustalasz sam (urzędowe zmienia ustawodawca)."
+        subtitle="Kalkulator i ewidencja diet (per diem) — krajowych i zagranicznych. Stawki dobowe ustalasz sam (urzędowe zmienia ustawodawca)."
       />
 
       <div style={{ ...f.field, maxWidth: 320, marginBottom: 14 }}>
@@ -107,7 +192,6 @@ export default function PerDiemPage() {
           value={driver}
           onChange={(e) => setDriver(e.target.value)}
           placeholder="Imię i nazwisko"
-          list="drivers-dl"
         />
       </div>
 
@@ -181,20 +265,70 @@ export default function PerDiemPage() {
         })}
       </div>
 
+      {err && <p style={{ color: palette.red, fontSize: 13, marginTop: 8 }}>{err}</p>}
+
       <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <Button variant="ghost" onClick={() => setRows((rs) => [...rs, emptyRow()])}>
           ➕ Dodaj podróż
         </Button>
         <span style={{ flex: 1 }} />
-        <Button onClick={exportCsv} disabled={results.length === 0}>
-          ⬇️ CSV (zestawienie)
+        <Button onClick={saveDrafts} disabled={busy || draftResults.length === 0}>
+          {busy ? "Zapisuję…" : "💾 Zapisz do ewidencji"}
         </Button>
       </div>
 
-      {totals.length > 0 && (
+      <div style={{ display: "flex", alignItems: "center", marginTop: 28, marginBottom: 8 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Ewidencja diet</h2>
+        <span style={{ color: palette.smoke, fontSize: 13, marginLeft: 8 }}>
+          {saved.length > 0 ? `${saved.length} podróży` : "brak zapisanych"}
+        </span>
+        <span style={{ flex: 1 }} />
+        <Button variant="ghost" onClick={exportCsv} disabled={saved.length === 0}>
+          ⬇️ CSV
+        </Button>
+      </div>
+
+      {saved.length > 0 ? (
+        <div style={f.card}>
+          {saved.map((s) => {
+            const r = computePerDiem(toTrip(s));
+            return (
+              <div key={s.id} style={f.listRow}>
+                <span style={{ flex: 1, minWidth: 120 }}>
+                  <strong>{s.destination || "—"}</strong>
+                  <span style={{ color: palette.smoke, fontSize: 12 }}>
+                    {" "}
+                    · {MODE_LABEL[s.mode]}
+                    {s.driver_name ? ` · ${s.driver_name}` : ""}
+                  </span>
+                </span>
+                <span style={{ ...f.cell, width: 90 }}>{s.hours} h</span>
+                <span style={{ ...f.cell, width: 70 }}>{r.days} dób</span>
+                <span style={{ width: 130, fontWeight: 700, color: palette.red }}>
+                  {r.amount} {s.currency}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeSaved(s)}
+                  style={styles.del}
+                  aria-label="Usuń"
+                >
+                  🗑️
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p style={{ color: palette.smoke }}>
+          Brak zapisanych diet — dodaj podróże powyżej i zapisz do ewidencji.
+        </p>
+      )}
+
+      {savedTotals.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Podsumowanie — należne diety</div>
-          {totals.map((t) => (
+          {savedTotals.map((t) => (
             <div key={t.currency} style={{ ...f.listRow, ...styles.totalRow }}>
               <span style={{ flex: 1 }}>
                 {t.count} {t.count === 1 ? "podróż" : "podróże/-y"} · {t.days} dób
