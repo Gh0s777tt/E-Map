@@ -18,6 +18,23 @@ Połączenie jak w [apply-migration.mjs](../scripts/apply-migration.mjs): pooler
 Skrypt jest **tylko do odczytu** (pyta katalog systemowy `pg_*`, nic nie zmienia).
 Kod wyjścia: `0` = czysto, `1` = wykryto problem, `2` = błąd połączenia.
 
+## W CI (GitHub Actions)
+
+Job **Audyt RLS** w [.github/workflows/ci.yml](../.github/workflows/ci.yml) odpala `pnpm audit:rls`
+przy każdym `push`/`pull_request` na `main`. Łączenie przez sekret repo **`SUPABASE_DB_URL`**:
+
+```
+postgresql://postgres.<REF>:<HASŁO>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres
+```
+
+Skrypt rozkłada URL ręcznie i wymusza `ssl: { rejectUnauthorized: false }` (pooler ma
+self-signed chain), więc sufiks `?sslmode=...` nie ma znaczenia. Gdy sekret nie jest ustawiony,
+job pomija się z ostrzeżeniem (nie blokuje PR). Sekret ustawia się raz:
+
+```bash
+gh secret set SUPABASE_DB_URL --repo <owner>/<repo>   # wartość ze stdin (bez śladu w historii)
+```
+
 ## Co sprawdza ([scripts/audit-rls.mjs](../scripts/audit-rls.mjs))
 
 | # | Reguła | Dlaczego |

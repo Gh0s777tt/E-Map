@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-124-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.95.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-125-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.95.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.95.2] — 🧪 Audyt RLS w CI (gate przy każdym PR)
+
+- `[#125]` 🧪 **Bramka RLS odpala się automatycznie** — audyt z #124 wpięty w GitHub Actions, więc regresję izolacji wyłapie PR, nie produkcja:
+  - [.github/workflows/ci.yml](.github/workflows/ci.yml): nowy job **Audyt RLS** (`push`/`pull_request` → main) — instaluje zależności i odpala `pnpm audit:rls` z sekretem `SUPABASE_DB_URL`. Brak sekretu → job pomija się z ostrzeżeniem (nie blokuje PR przed konfiguracją).
+  - [scripts/audit-rls.mjs](scripts/audit-rls.mjs): ścieżka `SUPABASE_DB_URL` rozkłada URL ręcznie i wymusza `ssl: rejectUnauthorized:false` — pooler Supabase ma self-signed chain, a `sslmode` w stringu nadpisywał opcję ssl pg-a (CI łączy się tak samo jak lokalnie).
+  - Sekret `SUPABASE_DB_URL` ustawiony w repo (Actions). Weryfikacja lokalna obu form URL (z `?sslmode=require` i bez) — ✓ łączy się i zwraca zielony wynik. Runnery wiszą w kolejce (znany problem z billingiem), więc gate potwierdzony lokalnie.
+  - [docs/SECURITY-RLS.md](docs/SECURITY-RLS.md): sekcja CI + format sekretu.
+  - **Bramki:** biome czysto · `tsc` ×7 · 97 testów · `audit:rls` ✓ (lokalnie, oba tryby połączenia).
 
 ## [0.95.1] — 🔒 Audyt RLS (bramka izolacji multi-tenant)
 
