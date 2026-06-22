@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-106-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.81.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-107-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.82.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.82.0] — 🚛 Karta pojazdu 360° (dokumenty + serwis + paliwo + zlecenia)
+
+- `[#107]` 🚛 **Karta pojazdu 360°** ([/vehicles/[id]](apps/web/app/(app)/vehicles/[id]/page.tsx)) — symetria do karty kierowcy, **bez migracji** (agregacja istniejących danych):
+  - **Dokumenty/terminy**: przegląd / OC / leasing ze statusem ważności + ubezpieczyciel/VIN.
+  - **Serwis**: zadania wg przebiegu z `serviceStatus` względem bieżącego licznika (max z tankowań).
+  - **Karty paliwowe** przypisane do pojazdu.
+  - **Paliwo**: tankowań, litry, wydatek, średnie spalanie (full-to-full), liczba **anomalii**.
+  - **Zlecenia**: liczba, dostarczone, przychód EUR + ostatnie zlecenia pojazdu.
+  - Wejście: przycisk **„📇 Karta"** przy pojeździe na liście ([vehicles](apps/web/app/(app)/vehicles/page.tsx)).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/vehicles/[id]`).
 
 ## [0.81.0] — 👤 Karta kierowcy 360° (dokumenty + historia zleceń)
 
