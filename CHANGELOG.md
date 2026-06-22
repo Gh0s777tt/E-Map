@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-98-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.74.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-99-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.75.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.75.0] — 📈 Zestawienie miesięczne floty (przychód vs koszty)
+
+- `[#099]` 📈 **Miesięczne rozliczenie floty dla księgowości**:
+  - core [monthlyFleetSummary](packages/core/src/billing.ts) (funkcja czysta + 3 testy): przychód ze zleceń (status `delivered`/`invoiced`, EUR) zestawiony z kosztami **paliwa** i **AdBlue** — **per pojazd**, z atrybucją po miesiącu (`YYYY-MM`). Pozycje bez pojazdu → wiersz „Bez pojazdu"; inne waluty świadomie pomijane (bez kursów).
+  - **Nowa strona [/monthly](apps/web/app/(app)/monthly/page.tsx)** — wybór miesiąca, tabela per pojazd (przychód / paliwo / AdBlue / wynik) + wiersz RAZEM, karty podsumowania, **eksport CSV** (Excel) i wydruk/PDF. Dane liczone na bieżąco (`useMemo`) bez ponownego pobierania przy zmianie miesiąca.
+  - Strażnik modułu **Rozliczenia** (jak `/settlements`); link w nawigacji widoczny przy dostępie do modułu.
+  - **Bramki:** biome czysto · `tsc` ×7 · **81 testów** · build ✓ (`/monthly`).
 
 ## [0.74.0] — 👤 Przypisanie kierowcy do zlecenia + „Moje zlecenia"
 

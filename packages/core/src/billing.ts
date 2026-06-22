@@ -322,6 +322,98 @@ export function latestUnitPrice(
   return null;
 }
 
+// ── Zestawienie miesięczne floty (przychód ze zleceń vs koszty) ─────
+
+export interface MonthlyOrderEntry {
+  vehicleId: string | null;
+  price: number | null;
+  currency: string;
+  status: string;
+  /** Data atrybucji (YYYY-MM-DD) — np. data załadunku lub utworzenia zlecenia. */
+  date: string;
+}
+
+export interface MonthlyCostEntry {
+  vehicleId: string | null;
+  priceTotal: number | null;
+  /** Data zdarzenia (YYYY-MM-DD). */
+  date: string;
+}
+
+export interface MonthlyVehicleRow {
+  vehicleId: string | null;
+  revenueEur: number;
+  fuelCost: number;
+  adblueCost: number;
+  /** Przychód − koszty (paliwo + AdBlue). */
+  net: number;
+}
+
+export interface MonthlyFleetSummary {
+  month: string;
+  rows: MonthlyVehicleRow[];
+  totals: { revenueEur: number; fuelCost: number; adblueCost: number; net: number };
+}
+
+/**
+ * Miesięczne zestawienie floty: przychód ze zleceń (status `delivered`/`invoiced`,
+ * waluta EUR) zestawiony z kosztami paliwa i AdBlue — per pojazd. Atrybucja po
+ * miesiącu `YYYY-MM` (prefiks daty). Pozycje bez pojazdu trafiają do wiersza `null`.
+ * Inne waluty zleceń są świadomie pomijane w sumie EUR (bez kursów). Funkcja czysta.
+ */
+export function monthlyFleetSummary(input: {
+  month: string;
+  orders: MonthlyOrderEntry[];
+  fuel: MonthlyCostEntry[];
+  adblue: MonthlyCostEntry[];
+}): MonthlyFleetSummary {
+  const rev = new Map<string | null, number>();
+  const fc = new Map<string | null, number>();
+  const ac = new Map<string | null, number>();
+  const add = (m: Map<string | null, number>, k: string | null, v: number) =>
+    m.set(k, (m.get(k) ?? 0) + v);
+  const inMonth = (d: string) => d.slice(0, 7) === input.month;
+
+  for (const o of input.orders) {
+    if (!inMonth(o.date) || o.currency !== "EUR") continue;
+    if (o.status !== "delivered" && o.status !== "invoiced") continue;
+    add(rev, o.vehicleId, o.price ?? 0);
+  }
+  for (const f of input.fuel) {
+    if (inMonth(f.date)) add(fc, f.vehicleId, f.priceTotal ?? 0);
+  }
+  for (const a of input.adblue) {
+    if (inMonth(a.date)) add(ac, a.vehicleId, a.priceTotal ?? 0);
+  }
+
+  const keys = new Set<string | null>([...rev.keys(), ...fc.keys(), ...ac.keys()]);
+  const rows: MonthlyVehicleRow[] = [];
+  for (const k of keys) {
+    const revenueEur = round2(rev.get(k) ?? 0);
+    const fuelCostV = round2(fc.get(k) ?? 0);
+    const adblueCostV = round2(ac.get(k) ?? 0);
+    rows.push({
+      vehicleId: k,
+      revenueEur,
+      fuelCost: fuelCostV,
+      adblueCost: adblueCostV,
+      net: round2(revenueEur - fuelCostV - adblueCostV),
+    });
+  }
+  rows.sort((a, b) => b.net - a.net);
+
+  return {
+    month: input.month,
+    rows,
+    totals: {
+      revenueEur: round2(rows.reduce((s, r) => s + r.revenueEur, 0)),
+      fuelCost: round2(rows.reduce((s, r) => s + r.fuelCost, 0)),
+      adblueCost: round2(rows.reduce((s, r) => s + r.adblueCost, 0)),
+      net: round2(rows.reduce((s, r) => s + r.net, 0)),
+    },
+  };
+}
+
 // ── Podsumowanie paliwa (statystyki) ────────────────────────────────
 
 export interface FuelStatsEntry {
