@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyVatRegister, type VatRegisterInvoice } from "./accounting";
+import { costRegister, monthlyVatRegister, type VatRegisterInvoice } from "./accounting";
 
 const inv = (over: Partial<VatRegisterInvoice>): VatRegisterInvoice => ({
   status: "issued",
@@ -41,5 +41,24 @@ describe("monthlyVatRegister", () => {
     const reg = monthlyVatRegister([inv({})], "2026-01");
     expect(reg).toMatchObject({ count: 0, totalNet: 0, totalVat: 0, totalGross: 0 });
     expect(reg.rows).toEqual([]);
+  });
+});
+
+describe("costRegister", () => {
+  it("grupuje wg kategorii malejąco i sumuje", () => {
+    const reg = costRegister([
+      { category: "Paliwo", amount: 300 },
+      { category: "Paliwo", amount: 200 },
+      { category: "Leasing / rata", amount: 1000 },
+      { category: "AdBlue", amount: 50 },
+    ]);
+    expect(reg.count).toBe(4);
+    expect(reg.groups[0]).toEqual({ category: "Leasing / rata", amount: 1000, count: 1 });
+    expect(reg.groups[1]).toEqual({ category: "Paliwo", amount: 500, count: 2 });
+    expect(reg.total).toBe(1550);
+  });
+
+  it("pusto → zero", () => {
+    expect(costRegister([])).toEqual({ groups: [], total: 0, count: 0 });
   });
 });

@@ -71,3 +71,39 @@ export function monthlyVatRegister(invoices: VatRegisterInvoice[], month: string
     count: inMonth.length,
   };
 }
+
+export interface CostEntry {
+  category: string;
+  amount: number;
+}
+
+export interface CostGroup {
+  category: string;
+  amount: number;
+  count: number;
+}
+
+export interface CostRegister {
+  groups: CostGroup[];
+  total: number;
+  count: number;
+}
+
+/** Rejestr kosztów: grupuje wpisy wg kategorii (malejąco wg kwoty) + suma. */
+export function costRegister(entries: CostEntry[]): CostRegister {
+  const byCat = new Map<string, CostGroup>();
+  for (const e of entries) {
+    const g = byCat.get(e.category) ?? { category: e.category, amount: 0, count: 0 };
+    g.amount += e.amount;
+    g.count += 1;
+    byCat.set(e.category, g);
+  }
+  const groups = [...byCat.values()]
+    .map((g) => ({ category: g.category, amount: round2(g.amount), count: g.count }))
+    .sort((a, b) => b.amount - a.amount);
+  return {
+    groups,
+    total: round2(groups.reduce((a, g) => a + g.amount, 0)),
+    count: entries.length,
+  };
+}

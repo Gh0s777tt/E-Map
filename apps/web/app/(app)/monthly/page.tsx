@@ -1,7 +1,14 @@
 "use client";
 
-import { getCompany, listFuelLogs, listOrders } from "@e-logistic/api";
 import {
+  getCompany,
+  listFuelLogs,
+  listOrders,
+  listVehicleCosts,
+  type VehicleCost,
+} from "@e-logistic/api";
+import {
+  costRegister,
   effectiveModules,
   type MonthlyCostEntry,
   type MonthlyOrderEntry,
@@ -9,6 +16,8 @@ import {
   monthlyFleetTrend,
   monthsEndingAt,
   round2,
+  VEHICLE_COST_CATEGORY_LABELS,
+  type VehicleCostCategory,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -31,6 +40,7 @@ export default function MonthlyPage() {
   const [orders, setOrders] = useState<MonthlyOrderEntry[]>([]);
   const [fuel, setFuel] = useState<MonthlyCostEntry[]>([]);
   const [adblue, setAdblue] = useState<MonthlyCostEntry[]>([]);
+  const [costs, setCosts] = useState<VehicleCost[]>([]);
   const [companyName, setCompanyName] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -57,13 +67,15 @@ export default function MonthlyPage() {
       const toDate = new Date(`${month}-01T00:00:00Z`);
       toDate.setUTCMonth(toDate.getUTCMonth() + 1);
       const to = toDate.toISOString().slice(0, 10); // 1. dzień kolejnego miesiąca
-      const [ord, f, a, comp] = await Promise.all([
+      const [ord, f, a, vc, comp] = await Promise.all([
         listOrders(sb, m.companyId, { from, to }),
         listFuelLogs(sb, { from, to, limit: 5000 }),
         listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
+        listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
         getCompany(sb, m.companyId),
       ]);
       setCompanyName(comp?.name ?? "");
+      setCosts(vc);
       setOrders(
         ord.map((o) => ({
           vehicleId: o.vehicle_id,
@@ -140,6 +152,53 @@ export default function MonthlyPage() {
     downloadCsv(`zestawienie_${month}.csv`, headers, rows);
   }
 
+  /** Eksport księgowy: rejestr kosztów miesiąca (paliwo + AdBlue + koszty pojazdu) + podsumowanie wg kategorii. */
+  function exportCostRegister() {
+    const inMonth = (d: string) => d.startsWith(month);
+    const catLabel = (c: string) => VEHICLE_COST_CATEGORY_LABELS[c as VehicleCostCategory] ?? c;
+    type Entry = { date: string; vehicleId: string | null; category: string; amount: number };
+    const entries: Entry[] = [
+      ...fuel
+        .filter((r) => inMonth(r.date))
+        .map((r) => ({
+          date: r.date,
+          vehicleId: r.vehicleId,
+          category: "Paliwo",
+          amount: round2(Number(r.priceTotal ?? 0)),
+        })),
+      ...adblue
+        .filter((r) => inMonth(r.date))
+        .map((r) => ({
+          date: r.date,
+          vehicleId: r.vehicleId,
+          category: "AdBlue",
+          amount: round2(Number(r.priceTotal ?? 0)),
+        })),
+      ...costs
+        .filter((c) => c.currency === "EUR" && inMonth(c.cost_date))
+        .map((c) => ({
+          date: c.cost_date,
+          vehicleId: c.vehicle_id,
+          category: catLabel(c.category),
+          amount: round2(Number(c.amount)),
+        })),
+    ].sort((a, b) => a.date.localeCompare(b.date));
+
+    const reg = costRegister(entries.map((e) => ({ category: e.category, amount: e.amount })));
+    const headers = [t("common.date"), t("common.vehicle"), "Kategoria", "Kwota (EUR)"];
+    const rows: (string | number)[][] = entries.map((e) => [
+      e.date,
+      regOf(e.vehicleId),
+      e.category,
+      e.amount,
+    ]);
+    rows.push([]);
+    rows.push(["Podsumowanie wg kategorii"]);
+    for (const g of reg.groups) rows.push([g.category, "", `${g.count} szt.`, g.amount]);
+    rows.push([t("common.total"), "", `${reg.count} szt.`, reg.total]);
+    downloadCsv(`rejestr_kosztow_${month}.csv`, headers, rows);
+  }
+
   if (denied) {
     return (
       <div style={{ maxWidth: 900 }}>
@@ -179,6 +238,9 @@ export default function MonthlyPage() {
         <span style={{ flex: 1 }} />
         <Button variant="ghost" onClick={exportCsv}>
           ⬇️ Eksport CSV
+        </Button>
+        <Button variant="ghost" onClick={exportCostRegister}>
+          🧮 Rejestr kosztów (księgowość)
         </Button>
         <Button variant="ghost" onClick={() => window.print()}>
           🖨️ Drukuj / PDF
