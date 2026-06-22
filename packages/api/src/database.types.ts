@@ -552,6 +552,48 @@ export interface Database {
         };
         Relationships: [];
       };
+      invoice_items: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          position: number;
+          description: string;
+          quantity: number;
+          unit_price: number;
+          vat_rate: number;
+          net: number;
+          vat_amount: number;
+          gross: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          invoice_id: string;
+          position?: number;
+          description: string;
+          quantity?: number;
+          unit_price?: number;
+          vat_rate?: number;
+          net?: number;
+          vat_amount?: number;
+          gross?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          invoice_id?: string;
+          position?: number;
+          description?: string;
+          quantity?: number;
+          unit_price?: number;
+          vat_rate?: number;
+          net?: number;
+          vat_amount?: number;
+          gross?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       invoices: {
         Row: {
           id: string;
@@ -1268,6 +1310,7 @@ export interface Database {
       driver_documents: { Args: Record<string, unknown>; Returns: Json };
       driver_save: { Args: Record<string, unknown>; Returns: Json };
       driver_set_documents: { Args: Record<string, unknown>; Returns: Json };
+      duplicate_invoice: { Args: Record<string, unknown>; Returns: Json };
       fuel_card_pin: { Args: Record<string, unknown>; Returns: Json };
       fuel_card_set_pin: { Args: Record<string, unknown>; Returns: Json };
       generate_expiry_notifications: { Args: Record<string, unknown>; Returns: Json };
