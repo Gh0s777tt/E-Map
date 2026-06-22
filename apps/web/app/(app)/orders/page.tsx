@@ -24,6 +24,7 @@ import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { PodDoc } from "@/components/PodDoc";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { orderStatusLabel } from "@/lib/labels";
@@ -50,6 +51,7 @@ export default function OrdersPage() {
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [cmrOrder, setCmrOrder] = useState<Order | null>(null);
+  const [podOrder, setPodOrder] = useState<Order | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -316,6 +318,17 @@ export default function OrdersPage() {
     );
   }
 
+  if (podOrder) {
+    return (
+      <PodDoc
+        order={podOrder}
+        company={company}
+        vehicleReg={regOf(podOrder.vehicle_id)}
+        onBack={() => setPodOrder(null)}
+      />
+    );
+  }
+
   return (
     <div style={{ maxWidth: 920 }}>
       <PageHeader
@@ -522,6 +535,9 @@ export default function OrdersPage() {
               <div style={styles.cardActions}>
                 <Button variant="ghost" onClick={() => setCmrOrder(o)}>
                   📄 CMR
+                </Button>
+                <Button variant="ghost" onClick={() => setPodOrder(o)}>
+                  🧾 POD
                 </Button>
                 {(o.origin || o.destination) && (
                   <Button variant="ghost" onClick={() => showOnMap(o)}>
