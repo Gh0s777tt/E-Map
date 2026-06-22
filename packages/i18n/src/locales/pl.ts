@@ -17,6 +17,19 @@ export const pl = {
   "nav.settlements": "Rozliczenia",
   "nav.reports": "Usterki",
   "nav.settings": "Ustawienia",
+  "nav.orders": "Zlecenia",
+  "nav.fleetStatus": "Status floty",
+  "nav.myOrders": "Moje zlecenia",
+  "nav.service": "Serwis",
+  "nav.documents": "Sejf dokumentów",
+  "nav.invoices": "Faktury",
+  "nav.monthly": "Zestawienie msc.",
+  "nav.fuelPrices": "Ceny diesla",
+  "nav.team": "Zespół",
+  "nav.group.orders": "Zlecenia",
+  "nav.group.forms": "Formularze",
+  "nav.group.fleet": "Flota",
+  "nav.group.finance": "Finanse",
 
   "auth.signIn": "Zaloguj się",
   "auth.signUp": "Zarejestruj się",
@@ -78,6 +91,7 @@ export const pl = {
   "common.edit": "Edytuj",
   "common.delete": "Usuń",
   "common.history": "Historia",
+  "common.language": "Język",
 } as const;
 
 export type MessageKey = keyof typeof pl;
