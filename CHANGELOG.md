@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-135-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.2.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-136-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.3.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.3.0] — 🔔 Alerty progowe floty (marża / spalanie / koszt paliwa)
+
+- `[#136]` 🔔 **Sygnały „coś wymaga reakcji"** na ekranie statystyk (zarząd), liczone z danych już załadowanych — bez nowej infrastruktury:
+  - [core/alerts.ts](packages/core/src/alerts.ts): `fleetAlerts(input)` — czyste reguły progowe nad policzonymi agregatami: **ujemna marża** klienta (krytyczne), **niska marża** poniżej progu (domyślnie 5%), **anomalie spalania** pojazdu (z `detectFuelAnomalies`), **skok kosztu paliwa m/m** powyżej progu (domyślnie 30%). Progi konfigurowalne; sort: krytyczne → ostrzeżenia.
+  - **UI** ([stats](apps/web/app/(app)/stats/page.tsx)): baner „🔔 Alerty" nad pulpitem floty (owner/dispatcher) — kropka severity, rodzaj, cel (klient/pojazd/miesiąc), wartość. Reużywa policzonej rentowności, anomalii i miesięcznych kosztów paliwa.
+  - 9 testów rdzenia (progi, pomijanie, sortowanie) — łącznie 117. +5 kluczy i18n (`alerts.*`).
+  - Świadomie: alerty „przeglądowe" w aplikacji (nie push) — generowanie powiadomień push wymaga osobnej infrastruktury serwerowej (kolejny krok).
+  - **Bramki:** biome czysto · `tsc` ×7 · 117 testów (parytet i18n ✓) · build ✓ (`/stats`).
 
 ## [1.2.0] — 📈 Trend rentowności klienta w czasie
 
