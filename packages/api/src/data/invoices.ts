@@ -19,11 +19,12 @@ export interface Invoice {
   gross: number;
   currency: string;
   status: string;
+  due_date: string | null;
   created_at: string;
 }
 
 const COLS =
-  "id, order_id, number, issue_date, seller_name, seller_tax_id, seller_address, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
+  "id, order_id, number, issue_date, due_date, seller_name, seller_tax_id, seller_address, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
 
 export async function listInvoices(client: SupabaseClient, companyId: string): Promise<Invoice[]> {
   const { data, error } = await client
@@ -35,15 +36,18 @@ export async function listInvoices(client: SupabaseClient, companyId: string): P
   return (data ?? []) as Invoice[];
 }
 
-/** Wystawia fakturę ze zlecenia (RPC, owner/dispatcher). Zwraca numer + brutto. */
+/**
+ * Wystawia fakturę ze zlecenia (RPC, owner/dispatcher). Gdy `vatRate` pominięty,
+ * RPC bierze domyślny VAT z ustawień firmy. Zwraca numer + brutto.
+ */
 export async function createInvoiceFromOrder(
   client: SupabaseClient,
   orderId: string,
-  vatRate = 23,
+  vatRate?: number,
 ): Promise<{ id: string; number: string; gross: number }> {
   const { data, error } = await client.rpc("create_invoice", {
     p_order: orderId,
-    p_vat_rate: vatRate,
+    p_vat_rate: vatRate ?? null,
   });
   if (error) throw error;
   return data as unknown as { id: string; number: string; gross: number };
