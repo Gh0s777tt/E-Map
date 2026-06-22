@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-100-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.76.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-101-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.77.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.77.0] — 🗺️ „Pokaż na mapie" ze zlecenia (prefill trasy)
+
+- `[#101]` 🗺️ **Trasa zlecenia jednym kliknięciem na mapie**:
+  - Przycisk **„🗺️ Mapa"** na zleceniu ([orders](apps/web/app/(app)/orders/page.tsx)) i w **„Moje zlecenia"** ([my-orders](apps/web/app/(app)/my-orders/page.tsx)) — otwiera `/map?from=…&to=…` (skąd → dokąd ze zlecenia).
+  - **Mapa** ([map](apps/web/app/(app)/map/page.tsx)) czyta parametry `from`/`to`, **geokoduje** oba punkty, ustawia start/koniec i **automatycznie wyznacza trasę** (routing TIR + myto). Gdy geokoder nie znajdzie punktu — wstawia samą etykietę do dokończenia ręcznie.
+  - `plan()` przyjmuje opcjonalne współrzędne (prefill bez czekania na stan); jednorazowy prefill po gotowości mapy.
+  - **Bramki:** biome czysto · `tsc` ×7 · 81 testów · build ✓ (`/map`, `/orders`, `/my-orders`).
 
 ## [0.76.0] — 🔔 Powiadomienie kierowcy o przypisaniu zlecenia
 

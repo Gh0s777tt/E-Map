@@ -150,6 +150,7 @@ export default function MapPage() {
   const terrainOnRef = useRef(true);
   const globeOnRef = useRef(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefillDone = useRef(false);
 
   const [stops, setStops] = useState<Stop[]>([
     { key: "s-start", label: "Berlin", lat: 52.52, lng: 13.405 },
@@ -740,14 +741,15 @@ export default function MapPage() {
     }
   }
 
-  async function plan() {
+  async function plan(override?: { lat: number; lng: number }[]) {
     setBusy(true);
     try {
+      const waypoints = override ?? stops.map((st) => ({ lat: st.lat, lng: st.lng }));
       const res = await fetch("/api/route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          waypoints: stops.map((st) => ({ lat: st.lat, lng: st.lng })),
+          waypoints,
           profile: kindHeavy
             ? {
                 kind: "truck",
@@ -779,6 +781,61 @@ export default function MapPage() {
       setBusy(false);
     }
   }
+
+  // Prefill trasy z parametrów ?from=...&to=... (np. „Pokaż na mapie" ze zlecenia).
+  // Geokoduje oba punkty, ustawia start/koniec i automatycznie wyznacza trasę.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: jednorazowy prefill po gotowości mapy
+  useEffect(() => {
+    if (prefillDone.current || !mapReady) return;
+    const sp = new URLSearchParams(window.location.search);
+    const from = sp.get("from")?.trim();
+    const to = sp.get("to")?.trim();
+    if (!from && !to) return;
+    prefillDone.current = true;
+    (async () => {
+      try {
+        const [fh, th] = await Promise.all([
+          from ? geocode(from, { maptilerKey: MAPTILER_KEY }) : Promise.resolve([] as GeoHit[]),
+          to ? geocode(to, { maptilerKey: MAPTILER_KEY }) : Promise.resolve([] as GeoHit[]),
+        ]);
+        const start = fh[0];
+        const end = th[0];
+        setStops((s) => {
+          const next = [...s];
+          const first = next[0];
+          const last = next[next.length - 1];
+          if (first) {
+            next[0] = start
+              ? { ...first, label: start.label, lat: start.lat, lng: start.lng }
+              : from
+                ? { ...first, label: from }
+                : first;
+          }
+          if (last) {
+            next[next.length - 1] = end
+              ? { ...last, label: end.label, lat: end.lat, lng: end.lng }
+              : to
+                ? { ...last, label: to }
+                : last;
+          }
+          return next;
+        });
+        setQueries((q) => ({
+          ...q,
+          "s-start": start?.label ?? from ?? q["s-start"] ?? "",
+          "s-end": end?.label ?? to ?? q["s-end"] ?? "",
+        }));
+        if (start && end) {
+          await plan([
+            { lat: start.lat, lng: start.lng },
+            { lat: end.lat, lng: end.lng },
+          ]);
+        }
+      } catch {
+        // brak geokodowania → zostają same etykiety, użytkownik dokończy ręcznie
+      }
+    })();
+  }, [mapReady]);
 
   const fuelTotal = result
     ? fuelCost(
@@ -1039,7 +1096,7 @@ export default function MapPage() {
             />
           </div>
 
-          <Button onClick={plan} disabled={busy} style={{ marginTop: 6 }}>
+          <Button onClick={() => plan()} disabled={busy} style={{ marginTop: 6 }}>
             {busy ? "Liczę…" : "Wytycz trasę"}
           </Button>
 

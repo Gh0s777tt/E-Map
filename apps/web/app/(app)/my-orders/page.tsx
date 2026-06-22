@@ -9,6 +9,7 @@ import {
 } from "@e-logistic/api";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CmrDoc } from "@/components/CmrDoc";
 import { ListStatus } from "@/components/ListStatus";
@@ -28,6 +29,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
 
 export default function MyOrdersPage() {
   const { vehicles } = useFleet();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
   const [cmrOrder, setCmrOrder] = useState<Order | null>(null);
@@ -61,6 +63,13 @@ export default function MyOrdersPage() {
 
   const regOf = (id: string | null) =>
     id ? (vehicles.find((v) => v.id === id)?.registration ?? "—") : "—";
+
+  function showOnMap(o: Order) {
+    const p = new URLSearchParams();
+    if (o.origin) p.set("from", o.origin);
+    if (o.destination) p.set("to", o.destination);
+    router.push(`/map?${p.toString()}`);
+  }
 
   async function advance(o: Order, status: OrderStatus) {
     setMsg(null);
@@ -125,6 +134,11 @@ export default function MyOrdersPage() {
                 <Button variant="ghost" onClick={() => setCmrOrder(o)}>
                   📄 CMR
                 </Button>
+                {(o.origin || o.destination) && (
+                  <Button variant="ghost" onClick={() => showOnMap(o)}>
+                    🗺️ Mapa
+                  </Button>
+                )}
                 <span style={{ flex: 1 }} />
                 {(o.status === "new" || o.status === "assigned") && (
                   <Button onClick={() => advance(o, "in_progress")}>▶️ W trakcie</Button>
