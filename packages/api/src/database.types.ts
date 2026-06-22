@@ -617,6 +617,7 @@ export interface Database {
           gross: number;
           currency: string;
           created_at: string;
+          status: string;
         };
         Insert: {
           id?: string;
@@ -637,6 +638,7 @@ export interface Database {
           gross?: number;
           currency?: string;
           created_at?: string;
+          status?: string;
         };
         Update: {
           id?: string;
@@ -657,6 +659,7 @@ export interface Database {
           gross?: number;
           currency?: string;
           created_at?: string;
+          status?: string;
         };
         Relationships: [];
       };

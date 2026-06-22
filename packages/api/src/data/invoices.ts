@@ -18,11 +18,12 @@ export interface Invoice {
   vat_amount: number;
   gross: number;
   currency: string;
+  status: string;
   created_at: string;
 }
 
 const COLS =
-  "id, order_id, number, issue_date, seller_name, seller_tax_id, seller_address, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, created_at";
+  "id, order_id, number, issue_date, seller_name, seller_tax_id, seller_address, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
 
 export async function listInvoices(client: SupabaseClient, companyId: string): Promise<Invoice[]> {
   const { data, error } = await client
@@ -50,6 +51,16 @@ export async function createInvoiceFromOrder(
 
 export async function deleteInvoice(client: SupabaseClient, id: string): Promise<void> {
   const { error } = await client.from("invoices").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** Zmiana statusu faktury (np. anulowanie). RLS: owner/dispatcher; zmiana audytowana. */
+export async function setInvoiceStatus(
+  client: SupabaseClient,
+  id: string,
+  status: "issued" | "cancelled",
+): Promise<void> {
+  const { error } = await client.from("invoices").update({ status }).eq("id", id);
   if (error) throw error;
 }
 
