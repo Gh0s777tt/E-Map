@@ -452,6 +452,8 @@ function InvoiceDoc({
             <div style={{ fontWeight: 700 }}>{inv.seller_name ?? "—"}</div>
             {inv.seller_tax_id && <div style={styles.muted}>NIP: {inv.seller_tax_id}</div>}
             {inv.seller_address && <div style={styles.muted}>{inv.seller_address}</div>}
+            {inv.seller_bank && <div style={styles.muted}>Bank: {inv.seller_bank}</div>}
+            {inv.seller_account && <div style={styles.muted}>Nr konta: {inv.seller_account}</div>}
           </div>
           <div style={styles.party}>
             <div style={styles.partyLabel}>Nabywca</div>

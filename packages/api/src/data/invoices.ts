@@ -9,6 +9,8 @@ export interface Invoice {
   seller_name: string | null;
   seller_tax_id: string | null;
   seller_address: string | null;
+  seller_bank: string | null;
+  seller_account: string | null;
   buyer_name: string | null;
   buyer_tax_id: string | null;
   buyer_address: string | null;
@@ -25,7 +27,7 @@ export interface Invoice {
 }
 
 const COLS =
-  "id, order_id, number, issue_date, due_date, paid_at, seller_name, seller_tax_id, seller_address, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
+  "id, order_id, number, issue_date, due_date, paid_at, seller_name, seller_tax_id, seller_address, seller_bank, seller_account, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
 
 export async function listInvoices(client: SupabaseClient, companyId: string): Promise<Invoice[]> {
   const { data, error } = await client

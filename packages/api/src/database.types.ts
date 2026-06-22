@@ -167,6 +167,8 @@ export interface Database {
           updated_at: string;
           default_vat_rate: number;
           payment_due_days: number;
+          bank_name: string | null;
+          bank_account: string | null;
         };
         Insert: {
           id?: string;
@@ -178,6 +180,8 @@ export interface Database {
           updated_at?: string;
           default_vat_rate?: number;
           payment_due_days?: number;
+          bank_name?: string | null;
+          bank_account?: string | null;
         };
         Update: {
           id?: string;
@@ -189,6 +193,8 @@ export interface Database {
           updated_at?: string;
           default_vat_rate?: number;
           payment_due_days?: number;
+          bank_name?: string | null;
+          bank_account?: string | null;
         };
         Relationships: [];
       };
@@ -626,6 +632,8 @@ export interface Database {
           status: string;
           due_date: string | null;
           paid_at: string | null;
+          seller_bank: string | null;
+          seller_account: string | null;
         };
         Insert: {
           id?: string;
@@ -649,6 +657,8 @@ export interface Database {
           status?: string;
           due_date?: string | null;
           paid_at?: string | null;
+          seller_bank?: string | null;
+          seller_account?: string | null;
         };
         Update: {
           id?: string;
@@ -672,6 +682,8 @@ export interface Database {
           status?: string;
           due_date?: string | null;
           paid_at?: string | null;
+          seller_bank?: string | null;
+          seller_account?: string | null;
         };
         Relationships: [];
       };

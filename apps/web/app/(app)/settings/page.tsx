@@ -39,6 +39,8 @@ export default function SettingsPage() {
   const [cCountry, setCCountry] = useState("");
   const [cVat, setCVat] = useState("23");
   const [cDueDays, setCDueDays] = useState("14");
+  const [cBank, setCBank] = useState("");
+  const [cAccount, setCAccount] = useState("");
   const [cMsg, setCMsg] = useState<string | null>(null);
   const [cBusy, setCBusy] = useState(false);
 
@@ -57,6 +59,8 @@ export default function SettingsPage() {
         setCCountry(c.country ?? "");
         setCVat(String(c.default_vat_rate ?? 23));
         setCDueDays(String(c.payment_due_days ?? 14));
+        setCBank(c.bank_name ?? "");
+        setCAccount(c.bank_account ?? "");
       }
     } catch {
       // brak firmy / dostępu
@@ -79,6 +83,8 @@ export default function SettingsPage() {
         country: cCountry.trim() || undefined,
         defaultVatRate: Number(cVat) || 0,
         paymentDueDays: Math.max(0, Math.round(Number(cDueDays) || 0)),
+        bankName: cBank.trim() || undefined,
+        bankAccount: cAccount.trim() || undefined,
       });
       setCMsg("✅ Zapisano dane firmy.");
     } catch (e) {
@@ -311,6 +317,24 @@ export default function SettingsPage() {
                   />
                 </label>
               </div>
+              <label style={styles.field}>
+                <span style={styles.label}>Bank</span>
+                <input
+                  style={styles.cInput}
+                  value={cBank}
+                  onChange={(e) => setCBank(e.target.value)}
+                  placeholder="np. mBank"
+                />
+              </label>
+              <label style={styles.field}>
+                <span style={styles.label}>Nr konta (IBAN)</span>
+                <input
+                  style={styles.cInput}
+                  value={cAccount}
+                  onChange={(e) => setCAccount(e.target.value)}
+                  placeholder="PL00 0000 0000 0000 0000 0000 0000"
+                />
+              </label>
               <div>
                 <Button onClick={saveCompany} disabled={cBusy}>
                   {cBusy ? "Zapisywanie…" : "Zapisz dane firmy"}
