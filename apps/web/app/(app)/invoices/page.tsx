@@ -12,7 +12,13 @@ import {
   setInvoicePaid,
   setInvoiceStatus,
 } from "@e-logistic/api";
-import { invoicePaymentStatus, type PaymentStatus, round2 } from "@e-logistic/core";
+import {
+  formatMoney,
+  invoicePaymentStatus,
+  type PaymentStatus,
+  round2,
+  vatSummary,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -385,6 +391,18 @@ function InvoiceDoc({
       }
     : { net: inv.net, vat: inv.vat_amount, gross: inv.gross };
 
+  // Podsumowanie VAT wg stawek (z pozycji lub z nagłówka faktury bez pozycji).
+  const vatRows = vatSummary(
+    items.length
+      ? items.map((i) => ({
+          vatRate: i.vat_rate,
+          net: i.net,
+          vatAmount: i.vat_amount,
+          gross: i.gross,
+        }))
+      : [{ vatRate: inv.vat_rate, net: inv.net, vatAmount: inv.vat_amount, gross: inv.gross }],
+  );
+
   async function addLine() {
     setMsg(null);
     const q = Number(qty);
@@ -492,12 +510,12 @@ function InvoiceDoc({
                 <tr key={it.id}>
                   <td style={styles.td}>{it.description}</td>
                   <td style={styles.tdR}>{it.quantity}</td>
-                  <td style={styles.tdR}>{it.unit_price}</td>
-                  <td style={styles.tdR}>{it.net}</td>
+                  <td style={styles.tdR}>{formatMoney(it.unit_price)}</td>
+                  <td style={styles.tdR}>{formatMoney(it.net)}</td>
                   <td style={styles.tdR}>
-                    {it.vat_amount} ({it.vat_rate}%)
+                    {formatMoney(it.vat_amount)} ({it.vat_rate}%)
                   </td>
-                  <td style={styles.tdR}>{it.gross}</td>
+                  <td style={styles.tdR}>{formatMoney(it.gross)}</td>
                   {canManage && (
                     <td className="no-print" style={styles.tdR}>
                       <button type="button" style={styles.del} onClick={() => removeLine(it.id)}>
@@ -511,12 +529,12 @@ function InvoiceDoc({
               <tr>
                 <td style={styles.td}>{inv.description ?? "Usługa transportowa"}</td>
                 <td style={styles.tdR}>1</td>
-                <td style={styles.tdR}>{inv.net}</td>
-                <td style={styles.tdR}>{inv.net}</td>
+                <td style={styles.tdR}>{formatMoney(inv.net)}</td>
+                <td style={styles.tdR}>{formatMoney(inv.net)}</td>
                 <td style={styles.tdR}>
-                  {inv.vat_amount} ({inv.vat_rate}%)
+                  {formatMoney(inv.vat_amount)} ({inv.vat_rate}%)
                 </td>
-                <td style={styles.tdR}>{inv.gross}</td>
+                <td style={styles.tdR}>{formatMoney(inv.gross)}</td>
                 {canManage && <td className="no-print" style={styles.tdR} />}
               </tr>
             )}
@@ -526,15 +544,39 @@ function InvoiceDoc({
               <td style={{ ...styles.td, fontWeight: 800 }}>Razem</td>
               <td style={styles.tdR} />
               <td style={styles.tdR} />
-              <td style={{ ...styles.tdR, fontWeight: 700 }}>{totals.net}</td>
-              <td style={{ ...styles.tdR, fontWeight: 700 }}>{totals.vat}</td>
+              <td style={{ ...styles.tdR, fontWeight: 700 }}>{formatMoney(totals.net)}</td>
+              <td style={{ ...styles.tdR, fontWeight: 700 }}>{formatMoney(totals.vat)}</td>
               <td style={{ ...styles.tdR, fontWeight: 800, color: palette.red }}>
-                {totals.gross} {inv.currency}
+                {formatMoney(totals.gross, inv.currency)}
               </td>
               {canManage && <td className="no-print" style={styles.tdR} />}
             </tr>
           </tfoot>
         </table>
+
+        <div style={styles.vatBox}>
+          <div style={styles.partyLabel}>Podsumowanie VAT</div>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Stawka</th>
+                <th style={styles.thR}>Netto</th>
+                <th style={styles.thR}>VAT</th>
+                <th style={styles.thR}>Brutto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vatRows.map((v) => (
+                <tr key={v.rate}>
+                  <td style={styles.td}>{v.rate}%</td>
+                  <td style={styles.tdR}>{formatMoney(v.net)}</td>
+                  <td style={styles.tdR}>{formatMoney(v.vat)}</td>
+                  <td style={styles.tdR}>{formatMoney(v.gross)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {canManage && (
           <div className="no-print" style={styles.addRow}>
@@ -672,6 +714,7 @@ const styles: Record<string, React.CSSProperties> = {
   muted: { color: "#555", fontSize: 13 },
   parties: { display: "flex", gap: 24, flexWrap: "wrap" },
   party: { flex: 1, minWidth: 220 },
+  vatBox: { alignSelf: "flex-end", width: "min(360px, 100%)" },
   partyLabel: { fontSize: 11, textTransform: "uppercase", color: "#888", marginBottom: 4 },
   table: { width: "100%", borderCollapse: "collapse", fontSize: 14 },
   th: { textAlign: "left", borderBottom: "2px solid #111", padding: "8px 6px" },
