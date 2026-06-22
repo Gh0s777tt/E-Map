@@ -1,8 +1,17 @@
 "use client";
 
-import type { Company, Order } from "@e-logistic/api";
+import {
+  type Company,
+  getOrderPhotoUrl,
+  listOrderPhotos,
+  type Order,
+  type OrderPhoto,
+} from "@e-logistic/api";
+import { isPodCaption, parsePodCaption } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 /** Drukowalny międzynarodowy list przewozowy CMR (uproszczony) ze zlecenia. */
 export function CmrDoc({
@@ -23,6 +32,29 @@ export function CmrDoc({
   ]
     .filter(Boolean)
     .join(", ");
+
+  // Wczytuje najnowszy podpis odbiorcy (POD) zlecenia, by wstawić go w poz. 24.
+  const [pod, setPod] = useState<{ url: string; recipient: string | null; when: string | null }>();
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const sb = getBrowserSupabase();
+        const photos = await listOrderPhotos(sb, order.id);
+        const sig = photos.find((p: OrderPhoto) => isPodCaption(p.caption));
+        if (!sig) return;
+        const url = await getOrderPhotoUrl(sb, sig.path, 1800).catch(() => "");
+        if (!url || !alive) return;
+        const info = parsePodCaption(sig.caption);
+        setPod({ url, recipient: info.recipient, when: info.when });
+      } catch {
+        // brak podpisu / brak dostępu — zostają puste linie podpisu
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [order.id]);
   return (
     <div style={{ maxWidth: 820 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }} className="no-print">
@@ -88,12 +120,30 @@ export function CmrDoc({
         )}
 
         <div style={cmr.signs}>
-          {["22 · Podpis nadawcy", "23 · Podpis przewoźnika", "24 · Podpis odbiorcy"].map((s) => (
+          {["22 · Podpis nadawcy", "23 · Podpis przewoźnika"].map((s) => (
             <div key={s} style={cmr.sign}>
               <div style={cmr.signLine} />
               <div style={cmr.muted}>{s}</div>
             </div>
           ))}
+          <div style={cmr.sign}>
+            {pod ? (
+              <>
+                {/* biome-ignore lint/performance/noImgElement: e-podpis z podpisanego URL Storage (bucket prywatny, nie next/image) */}
+                <img src={pod.url} alt="Podpis odbiorcy" style={cmr.signImg} />
+                <div style={cmr.muted}>
+                  24 · Podpis odbiorcy
+                  {pod.recipient ? ` — ${pod.recipient}` : ""}
+                  {pod.when ? ` (${pod.when})` : ""}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={cmr.signLine} />
+                <div style={cmr.muted}>24 · Podpis odbiorcy</div>
+              </>
+            )}
+          </div>
         </div>
 
         <p style={cmr.muted}>
@@ -156,4 +206,12 @@ const cmr: Record<string, React.CSSProperties> = {
   signs: { display: "flex", gap: 16, marginTop: 8 },
   sign: { flex: 1, textAlign: "center" },
   signLine: { borderBottom: "1px solid #999", height: 40 },
+  signImg: {
+    height: 40,
+    maxWidth: "100%",
+    objectFit: "contain",
+    borderBottom: "1px solid #999",
+    display: "block",
+    margin: "0 auto",
+  },
 };

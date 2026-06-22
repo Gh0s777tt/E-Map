@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-168-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.24.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-169-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.25.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.25.0] — 🧾 Podpis odbiorcy (POD) wpięty w dokument CMR → PDF
+
+- `[#169]` 🧾 **Realny e-podpis odbiorcy na liście CMR** — domknięcie POD [#168]: drukowalny CMR zawiera teraz faktyczny podpis ze zlecenia, gotowy do „Drukuj / Zapisz PDF":
+  - **Rdzeń** [core/pod.ts](packages/core/src/pod.ts): `isPodCaption` / `parsePodCaption` / `buildPodCaption` — wspólny format `caption` podpisu (`POD: <odbiorca> · <data>`), czysty i współdzielony. **7 testów (143 łącznie)**.
+  - **Dokument CMR** ([CmrDoc](apps/web/components/CmrDoc.tsx)): wczytuje najnowszy podpis POD zlecenia (podpisany URL, ważny 30 min) i wstawia go w **poz. 24 „Podpis odbiorcy"** wraz z nazwiskiem i datą; brak podpisu → pusta linia jak dawniej. Wydruk/PDF przez `window.print()`.
+  - **Załączniki** ([CargoPhotos](apps/web/components/CargoPhotos.tsx)): przejście na wspólne helpery z `core` (spójny zapis/odczyt podpisu, etykieta odbiorcy/daty pod miniaturą).
+  - **Bramki:** biome czysto · `tsc` ×7 · 143 testy · build ✓ (`/orders`).
+  - ⚠️ *Sam wydruk do PDF zależy od przeglądarki/OS; logika złożenia dokumentu jest deterministyczna.*
 
 ## [1.24.0] — 🧾 e-CMR / dowód dostawy (POD) — podpis odbiorcy
 
