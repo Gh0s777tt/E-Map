@@ -990,6 +990,51 @@ export interface Database {
         };
         Relationships: [];
       };
+      per_diem_trips: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_name: string | null;
+          destination: string | null;
+          mode: string;
+          hours: number;
+          daily_rate: number;
+          currency: string;
+          trip_date: string | null;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          driver_name?: string | null;
+          destination?: string | null;
+          mode: string;
+          hours: number;
+          daily_rate: number;
+          currency?: string;
+          trip_date?: string | null;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_name?: string | null;
+          destination?: string | null;
+          mode?: string;
+          hours?: number;
+          daily_rate?: number;
+          currency?: string;
+          trip_date?: string | null;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       poi_reviews: {
         Row: {
           id: string;

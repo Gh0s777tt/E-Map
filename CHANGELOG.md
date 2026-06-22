@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-172-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.28.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-173-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.29.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.29.0] — 💾 Diety kierowcy — trwała ewidencja w bazie (RLS)
+
+- `[#173]` 💾 **Persystencja diet** — domknięcie modułu [#172]: zapisane podróże trafiają do bazy i wracają jako ewidencja do rozliczeń:
+  - **Migracja** [0047_per_diem_trips.sql](supabase/migrations/0047_per_diem_trips.sql): tabela `per_diem_trips` (kierowca, cel, typ, czas, stawka dobowa, waluta, data, notatka) + indeksy. **RLS multi-tenant**: członek czyta, owner/dispatcher zarządza (jak `vehicle_costs`). Zastosowana na prod, audyt RLS czysty (37 tabel).
+  - **Warstwa danych** [perDiemTrips.ts](packages/api/src/data/perDiemTrips.ts): `listPerDiemTrips` / `insertPerDiemTrip` / `deletePerDiemTrip` + typy; regeneracja `database.types.ts`.
+  - **Strona** ([diety](apps/web/app/(app)/diety/page.tsx)): „💾 Zapisz do ewidencji" zapisuje wprowadzone podróże; sekcja **„Ewidencja diet"** ładuje zapisane (kwoty liczone rdzeniem), pozwala usuwać i eksportować CSV; podsumowanie należnych diet per waluta z bazy.
+  - **Bramki:** biome czysto · `tsc` ×7 · 156 testów · audyt RLS ✓ (37 tabel) · build ✓ (`/diety`).
 
 ## [1.28.0] — 🧮 Diety kierowcy (per diem) — kalkulator + zestawienie
 
