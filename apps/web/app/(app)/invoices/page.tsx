@@ -2,6 +2,7 @@
 
 import {
   addInvoiceItem,
+  createBlankInvoice,
   deleteInvoice,
   deleteInvoiceItem,
   duplicateInvoice,
@@ -27,6 +28,11 @@ export default function InvoicesPage() {
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<Invoice | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerTaxId, setBuyerTaxId] = useState("");
+  const [buyerAddress, setBuyerAddress] = useState("");
+  const [currency, setCurrency] = useState("EUR");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +79,39 @@ export default function InvoicesPage() {
     }
   }
 
+  async function createNew() {
+    setMsg(null);
+    if (!buyerName.trim()) {
+      setMsg("Podaj nabywcę.");
+      return;
+    }
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) {
+        setMsg("Brak firmy.");
+        return;
+      }
+      const r = await createBlankInvoice(sb, m.companyId, {
+        buyerName: buyerName.trim(),
+        buyerTaxId: buyerTaxId.trim() || undefined,
+        buyerAddress: buyerAddress.trim() || undefined,
+        currency: currency.trim() || "EUR",
+      });
+      setShowNew(false);
+      setBuyerName("");
+      setBuyerTaxId("");
+      setBuyerAddress("");
+      setCurrency("EUR");
+      const list = await listInvoices(sb, m.companyId);
+      setInvoices(list);
+      const created = list.find((i) => i.id === r.id);
+      if (created) setSelected(created); // otwórz dokument, by dodać pozycje
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Błąd tworzenia faktury.");
+    }
+  }
+
   if (selected) {
     return (
       <InvoiceDoc
@@ -88,8 +127,45 @@ export default function InvoicesPage() {
     <div style={{ maxWidth: 820 }}>
       <PageHeader
         title="Faktury"
-        subtitle="Faktury wystawione ze zleceń. Kliknij, aby otworzyć dokument (pozycje, druk/PDF, duplikat)."
+        subtitle="Faktury ze zleceń lub wystawione ręcznie. Kliknij, aby otworzyć dokument (pozycje, druk/PDF, duplikat)."
       />
+
+      {canManage && (
+        <div style={{ marginTop: 8 }}>
+          <Button variant="ghost" onClick={() => setShowNew((s) => !s)}>
+            {showNew ? "Anuluj" : "➕ Nowa faktura (ręczna)"}
+          </Button>
+        </div>
+      )}
+      {canManage && showNew && (
+        <div style={styles.newForm}>
+          <input
+            style={styles.nfInput}
+            placeholder="Nabywca (nazwa)"
+            value={buyerName}
+            onChange={(e) => setBuyerName(e.target.value)}
+          />
+          <input
+            style={styles.nfInput}
+            placeholder="NIP nabywcy"
+            value={buyerTaxId}
+            onChange={(e) => setBuyerTaxId(e.target.value)}
+          />
+          <input
+            style={styles.nfInput}
+            placeholder="Adres nabywcy"
+            value={buyerAddress}
+            onChange={(e) => setBuyerAddress(e.target.value)}
+          />
+          <input
+            style={{ ...styles.nfInput, maxWidth: 90 }}
+            placeholder="Waluta"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          />
+          <Button onClick={createNew}>Utwórz i dodaj pozycje</Button>
+        </div>
+      )}
       {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
       <ListStatus
         loading={loading}
@@ -372,6 +448,26 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "left",
   },
   dim: { color: palette.smoke, fontSize: 13 },
+  newForm: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    alignItems: "center",
+    marginTop: 12,
+    padding: "12px 16px",
+    borderRadius: 12,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+  },
+  nfInput: {
+    flex: 1,
+    minWidth: 140,
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "9px 12px",
+    color: palette.offWhite,
+  },
   doc: {
     marginTop: 16,
     background: palette.white,
