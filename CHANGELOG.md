@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-102-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.78.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-103-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.79.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.79.0] — 🚚 Status floty na żywo
+
+- `[#103]` 🚚 **Operacyjny pulpit „Status floty"** ([fleet-status](apps/web/app/(app)/fleet-status/page.tsx)):
+  - Każdy pojazd z aktualnym stanem: **W trasie** (aktywne zlecenie `in_progress`), **Zaplanowane** (zlecenie `assigned`) lub **Wolny** — z trasą, kierowcą, datami i **ostatnim zdarzeniem trasy** (załadunek/rozładunek/serwis…).
+  - Liczniki stanów (w trasie / zaplanowane / wolne), sortowanie jadące → zaplanowane → wolne, przycisk **„🗺️ Mapa"** dla aktywnej trasy, odświeżanie.
+  - core [buildFleetStatus](packages/core/src/fleet.ts) (funkcja czysta, +3 testy): klasyfikacja stanu + dołączenie najnowszego zdarzenia per pojazd.
+  - **Bramki:** biome czysto · `tsc` ×7 · **88 testów** · build ✓ (`/fleet-status`).
 
 ## [0.78.0] — 📊 Trend m/m w zestawieniu miesięcznym
 
