@@ -10,6 +10,7 @@ import {
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { Button, PageHeader } from "@/components/ui";
@@ -236,26 +237,15 @@ export default function ContractorsPage() {
   );
 }
 
+// Style z wspólnych presetów (@/components/formStyles) — koniec powielania.
 const styles: Record<string, React.CSSProperties> = {
-  form: { display: "flex", flexDirection: "column", gap: 14, marginTop: 20, maxWidth: 560 },
-  grid: { display: "flex", gap: 12 },
-  field: { display: "flex", flexDirection: "column", gap: 4, flex: 1 },
-  label: { fontSize: 12, color: palette.smoke },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    width: "100%",
-  },
-  card: {
-    borderRadius: 10,
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    overflow: "hidden",
-  },
-  row: { display: "flex", gap: 12, alignItems: "center", padding: "10px 14px" },
-  cell: { color: palette.smoke, fontSize: 14, minWidth: 90 },
-  meta: { color: palette.smoke, fontSize: 12 },
+  form: f.formWrap,
+  grid: f.grid,
+  field: f.field,
+  label: f.label,
+  input: f.input,
+  card: f.card,
+  row: f.listRow,
+  cell: f.cell,
+  meta: f.meta,
 };
