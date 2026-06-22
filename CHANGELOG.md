@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-91-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.67.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-92-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.68.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.68.0] — 💶 Zlecenia: podsumowanie przychodów + eksport CSV
+
+- `[#092]` 💶 **Dopracowanie modułu Zleceń** ([orders](apps/web/app/(app)/orders/page.tsx)):
+  - **Pasek podsumowania**: liczba zleceń, łączna wartość (EUR), „do zafakturowania" (dostarczone, czekają na fakturę) — w `useMemo`.
+  - **Eksport CSV** przefiltrowanej listy (nr, status, nadawca/odbiorca, trasa, ładunek, waga, stawka, waluta, pojazd, daty) — BOM dla Excela.
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓.
 
 ## [0.67.0] — 📑 Zlecenia / ładunki (rdzeń spedytora)
 

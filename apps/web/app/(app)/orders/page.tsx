@@ -6,6 +6,8 @@ import {
   ORDER_STATUSES,
   type OrderStatus,
   orderSchema,
+  round2,
+  toCsv,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,6 +26,16 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   invoiced: "#a855f7",
   cancelled: palette.red,
 };
+
+function download(filename: string, text: string) {
+  const blob = new Blob([`﻿${text}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function OrdersPage() {
   const { vehicles, source } = useFleet();
@@ -80,6 +92,19 @@ export default function OrdersPage() {
     () => (filter === "all" ? orders : orders.filter((o) => o.status === filter)),
     [orders, filter],
   );
+
+  // Podsumowanie (wartość liczona dla zleceń w EUR — mieszane waluty pomijane w sumie).
+  const summary = useMemo(() => {
+    const eur = (arr: Order[]) =>
+      round2(arr.filter((o) => o.currency === "EUR").reduce((a, o) => a + (o.price ?? 0), 0));
+    const delivered = filtered.filter((o) => o.status === "delivered");
+    return {
+      count: filtered.length,
+      valueEur: eur(filtered),
+      deliveredCount: delivered.length,
+      deliveredValueEur: eur(delivered),
+    };
+  }, [filtered]);
 
   function resetForm() {
     setEditingId(null);
@@ -172,6 +197,40 @@ export default function OrdersPage() {
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Błąd usuwania.");
     }
+  }
+
+  function exportCsv() {
+    const headers = [
+      "Nr",
+      "Status",
+      "Nadawca",
+      "Odbiorca",
+      "Skąd",
+      "Dokąd",
+      "Ładunek",
+      "Waga (kg)",
+      "Stawka",
+      "Waluta",
+      "Pojazd",
+      "Załadunek",
+      "Rozładunek",
+    ];
+    const rows = filtered.map((o) => [
+      o.reference_no ?? "",
+      ORDER_STATUS_LABELS[o.status],
+      o.shipper ?? "",
+      o.consignee ?? "",
+      o.origin ?? "",
+      o.destination ?? "",
+      o.cargo ?? "",
+      o.weight_kg ?? "",
+      o.price ?? "",
+      o.currency,
+      regOf(o.vehicle_id),
+      o.load_date ?? "",
+      o.unload_date ?? "",
+    ]);
+    download(`zlecenia_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, rows));
   }
 
   return (
@@ -289,6 +348,21 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {orders.length > 0 && (
+        <div style={styles.summary}>
+          <span>
+            📦 Zleceń: <strong>{summary.count}</strong>
+          </span>
+          <span>
+            💶 Wartość (EUR): <strong style={{ color: palette.red }}>{summary.valueEur}</strong>
+          </span>
+          <span>
+            📤 Do zafakturowania: <strong>{summary.deliveredCount}</strong> (
+            {summary.deliveredValueEur} EUR)
+          </span>
+        </div>
+      )}
+
       <div style={styles.filters}>
         {(["all", ...ORDER_STATUSES] as const).map((s) => (
           <button
@@ -301,7 +375,10 @@ export default function OrdersPage() {
           </button>
         ))}
         <span style={{ flex: 1 }} />
-        <span style={{ color: palette.smoke, fontSize: 13 }}>
+        <Button variant="ghost" onClick={exportCsv}>
+          ⬇️ CSV
+        </Button>
+        <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
           {filtered.length} z {orders.length}
         </span>
       </div>
@@ -404,7 +481,18 @@ const styles: Record<string, React.CSSProperties> = {
     color: palette.offWhite,
     width: "100%",
   },
-  filters: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 24 },
+  summary: {
+    display: "flex",
+    gap: 20,
+    flexWrap: "wrap",
+    marginTop: 24,
+    padding: "12px 16px",
+    borderRadius: 12,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    fontSize: 14,
+  },
+  filters: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 16 },
   chip: {
     background: "transparent",
     color: palette.smoke,
