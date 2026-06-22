@@ -28,6 +28,7 @@ export function LocaleSwitcher() {
   useEffect(() => setActive(readCookie()), []);
 
   function pick(l: Locale) {
+    // biome-ignore lint/suspicious/noDocumentCookie: prosty zapis ciasteczka języka; Cookie Store API jest async i nie wszędzie wspierane
     document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
     setActive(l);
     router.refresh();

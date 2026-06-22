@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-136-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.3.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-137-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.3.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.3.1] — 🔍 Drugi audyt całościowy (v1.3.0) + 0 ostrzeżeń Biome
+
+- `[#137]` 🔍 **Pełny audyt po ~90 wydaniach** ([docs/AUDIT-2026-06-22.md](docs/AUDIT-2026-06-22.md)) — 4 równoległe analizy + bramki deterministyczne. Werdykt: kod dojrzały i bezpieczny (brak P0/P1), główne ryzyka to wydajność stron analitycznych (listy bez okna czasu) i zamrożona `docs/`. Raport zawiera priorytetyzowany backlog poaudytowy.
+  - **Bezpieczeństwo A−** (RLS gate ✓, PII/PIN szyfrowane, brak sekretów) · **Jakość A−** (0 TODO, 0 `as any`) · **Wydajność C+** · **Docs D** (DATA-MODEL/ARCHITECTURE zamrożone).
+- 🧹 **Biome → 0 ostrzeżeń**: optional chain w [DriverActiveOrder](apps/web/components/DriverActiveOrder.tsx) + udokumentowany `biome-ignore` dla zapisu ciasteczka języka w [LocaleSwitcher](apps/web/components/LocaleSwitcher.tsx).
+- **Bramki:** biome czysto (0 ostrzeżeń) · `tsc` ×7 · 117 testów · `audit:rls` ✓.
 
 ## [1.3.0] — 🔔 Alerty progowe floty (marża / spalanie / koszt paliwa)
 
