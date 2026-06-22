@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-99-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.75.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-100-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.76.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.76.0] — 🔔 Powiadomienie kierowcy o przypisaniu zlecenia
+
+- `[#100]` 🔔 **Kierowca dostaje powiadomienie o nowym zleceniu**:
+  - [Migracja 0033](supabase/migrations/0033_notify_order_assignment.sql): trigger na `orders` tworzy powiadomienie w aplikacji dla przypisanego kierowcy (nowy rekord lub zmiana `assigned_to`). Trafia do **dzwonka (realtime)** i — przez cron — jako **web push**. Nie powiadamia o przypisaniu samego siebie; dedup per (zlecenie, kierowca).
+  - **Natychmiastowy push** (nie czeka na cron): endpoint [/api/orders/notify-assignment](apps/web/app/api/orders/notify-assignment/route.ts) — owner/dispatcher, zlecenie w obrębie firmy; wysyła push do subskrypcji kierowcy (link do `/my-orders`). Wywoływany przez stronę Zleceń przy zmianie przypisania (best-effort).
+  - **Bramki:** biome czysto · `tsc` ×7 · 81 testów · build ✓ (`/api/orders/notify-assignment`).
 
 ## [0.75.0] — 📈 Zestawienie miesięczne floty (przychód vs koszty)
 
