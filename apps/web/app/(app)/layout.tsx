@@ -71,6 +71,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ...items.map((i) => ({ href: i.href, label: t(i.key) })),
     { href: "/orders", label: "Zlecenia" },
     { href: "/invoices", label: "Faktury" },
+    { href: "/documents", label: "Sejf dokumentów" },
     { href: "/fuel-prices", label: "Ceny diesla" },
     { href: "/service", label: "Serwis" },
     ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
