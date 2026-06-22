@@ -16,6 +16,7 @@ import {
   LICENSE_CATEGORIES,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { Badge, Button } from "@/components/ui";
@@ -425,6 +426,9 @@ export function DriverRoster() {
                       {q}
                     </span>
                   ))}
+                  <Link href={`/drivers/${d.id}`} className="app-navlink" style={styles.cardLink}>
+                    📇 Karta
+                  </Link>
                   <Button variant="ghost" onClick={() => revealDocs(d.id)}>
                     🔓 Dokumenty
                   </Button>
@@ -529,5 +533,11 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.graphite}`,
     borderRadius: 6,
     padding: "2px 8px",
+  },
+  cardLink: {
+    fontSize: 13,
+    padding: "9px 12px",
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
   },
 };

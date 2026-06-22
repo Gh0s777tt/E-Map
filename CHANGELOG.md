@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-105-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.80.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-106-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.81.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.81.0] — 👤 Karta kierowcy 360° (dokumenty + historia zleceń)
+
+- `[#106]` 👤 **Karta kierowcy 360°** ([/drivers/[id]](apps/web/app/(app)/drivers/[id]/page.tsx)):
+  - [Migracja 0035](supabase/migrations/0035_driver_user_link.sql): `drivers.user_id` → powiązanie kartoteki z **kontem aplikacji**; `list_drivers` zwraca `user_id`; RPC `driver_link_user` (owner/dispatcher, walidacja członkostwa, audyt).
+  - **Jedna karta** łączy: dokumenty i terminy (prawo jazdy / kod 95 / badania / ADR ze statusem ważności), uprawnienia (kategorie, kwalifikacje), notatki, **powiązane konto** (dropdown) oraz **historię zleceń** (liczba, dostarczone, przychód EUR + ostatnie zlecenia) — gdy konto powiązane.
+  - Wejście z kartoteki: przycisk **„📇 Karta"** przy kierowcy ([DriverRoster](apps/web/components/DriverRoster.tsx)).
+  - api [data/drivers.ts](packages/api/src/data/drivers.ts): `DriverRow.user_id`, `linkDriverUser`. Typy DB (31 tabel, 25 funkcji).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/drivers/[id]`).
 
 ## [0.80.0] — 🧾 Faktury wieloliniowe + duplikat
 

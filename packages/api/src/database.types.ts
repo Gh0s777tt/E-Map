@@ -304,6 +304,7 @@ export interface Database {
           code95_expiry: string | null;
           medical_expiry: string | null;
           adr_expiry: string | null;
+          user_id: string | null;
         };
         Insert: {
           id?: string;
@@ -323,6 +324,7 @@ export interface Database {
           code95_expiry?: string | null;
           medical_expiry?: string | null;
           adr_expiry?: string | null;
+          user_id?: string | null;
         };
         Update: {
           id?: string;
@@ -342,6 +344,7 @@ export interface Database {
           code95_expiry?: string | null;
           medical_expiry?: string | null;
           adr_expiry?: string | null;
+          user_id?: string | null;
         };
         Relationships: [];
       };
@@ -1308,6 +1311,7 @@ export interface Database {
       create_invoice: { Args: Record<string, unknown>; Returns: Json };
       dev_stats: { Args: Record<string, unknown>; Returns: Json };
       driver_documents: { Args: Record<string, unknown>; Returns: Json };
+      driver_link_user: { Args: Record<string, unknown>; Returns: Json };
       driver_save: { Args: Record<string, unknown>; Returns: Json };
       driver_set_documents: { Args: Record<string, unknown>; Returns: Json };
       duplicate_invoice: { Args: Record<string, unknown>; Returns: Json };
