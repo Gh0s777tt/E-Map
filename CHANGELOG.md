@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-143-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.5.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-144-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.6.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.6.0] — 📇 Rejestr kontrahentów (etap 1: autouzupełnianie nabywcy na fakturze)
+
+- `[#144]` 📇 **Kontrahenci zamiast wolnego tekstu** — fundament rejestru + headline autouzupełnianie:
+  - **[Migracja 0042](supabase/migrations/0042_contractors.sql)** (na prod): tabela `contractors` (`name`/`tax_id`/`address`/`country`) per firma, unikalność `(company_id, name)` pod upsert, RLS (członek czyta, owner/dispatcher zarządza) — `pnpm audit:rls` ✓.
+  - **api** [data/contractors.ts](packages/api/src/data/contractors.ts): `listContractors`, `upsertContractor` (onConflict (company_id, name)), `deleteContractor`. Typy DB przegenerowane (32 tabele).
+  - **Faktury** ([invoices](apps/web/app/(app)/invoices/page.tsx)): pole „Nabywca" z podpowiedziami (`<datalist>`) z rejestru; wybór znanego kontrahenta **auto-uzupełnia NIP i adres**. Wystawienie faktury **dopisuje nabywcę do rejestru** (rośnie organicznie).
+  - **Etap 2 (kolejny increment):** autouzupełnianie nadawcy/odbiorcy na zleceniach + strona zarządzania kontrahentami (edycja/usuwanie).
+  - **Bramki:** biome czysto · `tsc` ×7 · 124 testy · build ✓ (`/invoices`) · `audit:rls` ✓.
 
 ## [1.5.0] — 🧾 Faktura: formatowanie kwot + podsumowanie VAT (dopracowanie wydruku/PDF)
 
