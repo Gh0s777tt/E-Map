@@ -15,6 +15,7 @@ export interface DriverRow {
   code95_expiry: string | null;
   medical_expiry: string | null;
   adr_expiry: string | null;
+  user_id: string | null;
 }
 
 /**
@@ -89,5 +90,20 @@ export async function getDriverDocuments(client: SupabaseClient, driverId: strin
 
 export async function deleteDriver(client: SupabaseClient, driverId: string) {
   const { error } = await client.from("drivers").delete().eq("id", driverId);
+  if (error) throw error;
+}
+
+/** Powiązuje kartotekę kierowcy z kontem aplikacji (lub odłącza: userId = null). RPC, owner/dispatcher. */
+export async function linkDriverUser(
+  client: SupabaseClient,
+  driverId: string,
+  companyId: string,
+  userId: string | null,
+): Promise<void> {
+  const { error } = await client.rpc("driver_link_user", {
+    p_driver: driverId,
+    p_company: companyId,
+    p_user: userId,
+  });
   if (error) throw error;
 }
