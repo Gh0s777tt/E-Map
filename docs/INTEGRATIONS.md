@@ -15,6 +15,14 @@ Nie tworzymy martwych atrap bez specyfikacji — poniżej dokładnie, co jest po
 - **Co daje:** średnia krajowa cena oleju napędowego przeliczona na **€/L** (~29 krajów EU/EEA), ranking „gdzie taniej". Cache 6 h + rate‑limit.
 - **Uwaga:** ceny orientacyjne (średnie krajowe), nie per‑stacja. Komplementarne do Tankerkönig (DE, per‑stacja).
 
+## 0a. Fakturownia — eksport faktur (legalna faktura VAT) ✅ wdrożone (#145)
+
+- **Kod:** [`/api/fakturownia/export`](../apps/web/app/api/fakturownia/export/route.ts) (serwer, token w env) + mapper [`toFakturowniaInvoice`](../packages/core/src/fakturownia.ts) (czysty, testowany) + przycisk „📤 Fakturownia" w dokumencie faktury (owner/dispatcher, faktura niezanulowana).
+- **Env:** `FAKTUROWNIA_API_TOKEN` (sekret) + `FAKTUROWNIA_DOMAIN` (subdomena konta). Bez nich endpoint zwraca `501` z komunikatem, przycisk degraduje się łagodnie.
+- **Co daje:** nasza faktura jest „uproszczona" (nie zastępuje urzędowego formularza); eksport tworzy w Fakturowni **legalną fakturę VAT z numeracją** (`POST /invoices.json`, `kind:"vat"`), zwraca **publiczny link do PDF** (token udostępniania — bez ujawniania `api_token`). Pozycje, sprzedawca (NIP/bank), nabywca (NIP/adres), waluta i termin mapowane 1:1.
+- **Bezpieczeństwo:** autoryzacja sesją + rola owner/dispatcher; faktura tylko z własnej firmy (RLS). Token wyłącznie serwerowo.
+- **Etap 2 (opcjonalnie):** synchronizacja kontrahentów ↔ `clients`, wysyłka e‑mail przez `POST /invoices/{id}/send_by_email.json`, KSeF.
+
 ## 1. Ceny paliwa — Tankerkönig (DE) ✅ wdrożone
 
 - **Kod:** [`packages/maps/src/fuelprice.ts`](../packages/maps/src/fuelprice.ts) + [`/api/fuel-prices`](../apps/web/app/api/fuel-prices/route.ts) + przycisk na `/map`.
