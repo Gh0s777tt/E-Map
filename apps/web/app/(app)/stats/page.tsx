@@ -10,6 +10,7 @@ import {
 } from "@e-logistic/api";
 import {
   clientProfitability,
+  co2ByClient,
   co2ByVehicle,
   co2PerHundredKm,
   consumptionFullToFull,
@@ -217,6 +218,22 @@ export default function StatsPage() {
     [tiles],
   );
 
+  // Emisje CO₂ przypisane do klientów (atrybucja jak rentowność).
+  const co2ClientRows = useMemo(
+    () =>
+      co2ByClient(
+        orders.map((o) => ({
+          shipper: o.shipper,
+          vehicleId: o.vehicle_id,
+          price: o.price,
+          currency: o.currency,
+          status: o.status,
+        })),
+        tiles.map((t) => ({ vehicleId: t.id, liters: t.totalLiters })),
+      ),
+    [orders, tiles],
+  );
+
   // Wejście do trendu rentowności: zlecenia i koszty paliwa otagowane miesiącem
   // (zlecenie wg daty załadunku, fallback do utworzenia) + ostatnie 6 miesięcy.
   const trendInput = useMemo(() => {
@@ -413,7 +430,9 @@ export default function StatsPage() {
             <ProfitabilitySection data={profit} trend={trendInput} />
           )}
 
-          {canManage && co2Rows.length > 0 && <EmissionsSection rows={co2Rows} />}
+          {canManage && co2Rows.length > 0 && (
+            <EmissionsSection rows={co2Rows} clientRows={co2ClientRows} />
+          )}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
             {tiles.map((tile) => (
