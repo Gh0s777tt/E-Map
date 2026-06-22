@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-157-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.16.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-158-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.17.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.17.0] — 🔔 Push o przypisaniu zlecenia (mobile, Expo)
+
+- `[#158]` 🔔 **Powiadomienia push do aplikacji mobilnej** — kierowca dostaje push, gdy spedytor przypisze mu zlecenie:
+  - **[Migracja 0046](supabase/migrations/0046_expo_push_tokens.sql)** (na prod): tabela `expo_push_tokens` (`user_id`, `company_id`, `token` unikalny, `platform`) — osobno od `push_subscriptions` (Web Push/VAPID), bo Expo używa pojedynczego tokenu. RLS: właściciel zarządza swoimi. `audit:rls` ✓ (36 tabel, `expo_push_tokens` RLS + 3 polityki).
+  - **api** [data/expoPush.ts](packages/api/src/data/expoPush.ts): `saveExpoPushToken` (upsert po tokenie), `deleteExpoPushToken`, `listExpoPushTokensForUsers` (do wysyłki serwerowej).
+  - **Mobile** [lib/push.ts](apps/mobile/lib/push.ts): rejestracja `expo-notifications` (zgoda + `getExpoPushTokenAsync`) → zapis tokenu po zalogowaniu ([AuthProvider](apps/mobile/components/AuthProvider.tsx)); tap w powiadomienie → przejście do „Moje zlecenia" ([_layout](apps/mobile/app/_layout.tsx)). Plugin `expo-notifications` w [app.json](apps/mobile/app.json). Best-effort: brak zgody/`projectId` w dev → push nieaktywny bez crasha.
+  - **Wysyłka** [lib/expoPush.ts](apps/web/lib/expoPush.ts) `sendExpoPush` (Expo Push API) wpięta w [/api/orders/notify-assignment](apps/web/app/api/orders/notify-assignment/route.ts) **obok** Web Push — trasa wysyła teraz oboma kanałami (Expo działa bez VAPID; opcjonalny `EXPO_ACCESS_TOKEN` na wyższe limity).
+  - **Bramki:** biome czysto · `tsc` (api + mobile) ✓ · web build ✓ (`/api/orders/notify-assignment`) · 158 testów rdzenia · `audit:rls` ✓. Mobile weryfikowane typecheckiem.
 
 ## [1.16.0] — 📸 Zdjęcia towaru z aparatu na telefonie (mobile)
 

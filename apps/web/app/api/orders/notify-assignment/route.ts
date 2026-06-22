@@ -1,10 +1,12 @@
 import {
   createSupabaseAdminClient,
   getActiveMembership,
+  listExpoPushTokensForUsers,
   listPushSubscriptionsForDelivery,
 } from "@e-logistic/api";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { sendExpoPush } from "@/lib/expoPush";
 import { pushConfigured, sendPushTo } from "@/lib/push";
 import { getServerSupabase } from "@/lib/supabase/server";
 
@@ -19,10 +21,8 @@ const schema = z.object({ orderId: z.string().uuid() });
  * owner/dispatcher; zlecenie musi należeć do firmy wywołującego.
  */
 export async function POST(request: Request) {
-  if (!pushConfigured()) {
-    // Push nieskonfigurowany → cicho pomijamy (powiadomienie w aplikacji i tak powstaje przez trigger).
-    return NextResponse.json({ skipped: "push" });
-  }
+  // Web Push wymaga VAPID; Expo Push (mobile) nie — dlatego nie pomijamy całej
+  // trasy, gdy brak konfiguracji web push, tylko wysyłamy tym kanałem, który działa.
   const supabase = await getServerSupabase();
   const {
     data: { user },
@@ -51,15 +51,26 @@ export async function POST(request: Request) {
   }
 
   const route = `${order.origin || "?"} → ${order.destination || "?"}`;
-  const subs = await listPushSubscriptionsForDelivery(admin, {
-    companyId: m.companyId,
-    userIds: [order.assigned_to],
-  });
-  const res = await sendPushTo(subs, {
-    title: `Nowe zlecenie${order.reference_no ? ` ${order.reference_no}` : ""}`,
+  const title = `Nowe zlecenie${order.reference_no ? ` ${order.reference_no}` : ""}`;
+
+  // Web Push (przeglądarka/desktop) — tylko gdy skonfigurowane VAPID.
+  const web = pushConfigured()
+    ? await sendPushTo(
+        await listPushSubscriptionsForDelivery(admin, {
+          companyId: m.companyId,
+          userIds: [order.assigned_to],
+        }),
+        { title, body: route, url: "/my-orders", tag: "order-assigned" },
+      )
+    : { sent: 0 };
+
+  // Expo Push (aplikacja mobilna) — bez dodatkowej konfiguracji.
+  const expoTokens = await listExpoPushTokensForUsers(admin, [order.assigned_to]).catch(() => []);
+  const expo = await sendExpoPush(expoTokens, {
+    title,
     body: route,
-    url: "/my-orders",
-    tag: "order-assigned",
+    data: { url: "/my-orders" },
   });
-  return NextResponse.json(res);
+
+  return NextResponse.json({ web, expo });
 }

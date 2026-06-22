@@ -3,7 +3,7 @@
     "name": "E-Logistic",
     "slug": "e-logistic",
     "scheme": "elogistic",
-    "version": "1.16.0",
+    "version": "1.17.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -19,6 +19,7 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
+      "expo-notifications",
       [
         "expo-image-picker",
         {

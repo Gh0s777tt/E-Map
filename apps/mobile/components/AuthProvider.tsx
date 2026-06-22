@@ -1,5 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { registerForPush } from "../lib/push";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 interface AuthState {
@@ -33,10 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data } = await sb.auth.getSession();
         setSession(data.session);
+        if (data.session?.user) void registerForPush(data.session.user.id);
       } finally {
         setLoading(false);
       }
-      unsub = sb.auth.onAuthStateChange((_event, s) => setSession(s)).data.subscription.unsubscribe;
+      unsub = sb.auth.onAuthStateChange((_event, s) => {
+        setSession(s);
+        if (s?.user) void registerForPush(s.user.id);
+      }).data.subscription.unsubscribe;
     })();
     return () => unsub?.();
   }, []);
