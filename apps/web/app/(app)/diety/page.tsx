@@ -48,6 +48,7 @@ function toTrip(t: PerDiemTrip): DietTrip {
 export default function PerDiemPage() {
   const confirm = useConfirm();
   const [driver, setDriver] = useState("");
+  const [tripDate, setTripDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [saved, setSaved] = useState<PerDiemTrip[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -110,6 +111,7 @@ export default function PerDiemPage() {
             hours: r.hours,
             dailyRate: r.dailyRate,
             currency: r.currency,
+            tripDate,
           },
           companyId,
         );
@@ -134,11 +136,22 @@ export default function PerDiemPage() {
   }
 
   function exportCsv() {
-    const headers = ["Kierowca", "Cel", "Typ", "Czas (h)", "Doby", "Stawka", "Kwota", "Waluta"];
+    const headers = [
+      "Kierowca",
+      "Data",
+      "Cel",
+      "Typ",
+      "Czas (h)",
+      "Doby",
+      "Stawka",
+      "Kwota",
+      "Waluta",
+    ];
     const body: (string | number)[][] = saved.map((s) => {
       const r = computePerDiem(toTrip(s));
       return [
         s.driver_name ?? "",
+        s.trip_date ?? "",
         s.destination ?? "—",
         MODE_LABEL[s.mode],
         s.hours,
@@ -149,8 +162,8 @@ export default function PerDiemPage() {
       ];
     });
     body.push([]);
-    body.push(["Podsumowanie wg waluty", "", "", "", "", "", "", ""]);
-    for (const t of savedTotals) body.push(["", "", "", "", t.days, "", t.amount, t.currency]);
+    body.push(["Podsumowanie wg waluty", "", "", "", "", "", "", "", ""]);
+    for (const t of savedTotals) body.push(["", "", "", "", "", t.days, "", t.amount, t.currency]);
     downloadCsv(`diety_${csvDateStamp()}.csv`, headers, body);
   }
 
@@ -185,14 +198,25 @@ export default function PerDiemPage() {
         subtitle="Kalkulator i ewidencja diet (per diem) — krajowych i zagranicznych. Stawki dobowe ustalasz sam (urzędowe zmienia ustawodawca)."
       />
 
-      <div style={{ ...f.field, maxWidth: 320, marginBottom: 14 }}>
-        <span style={f.label}>Kierowca (do zestawienia)</span>
-        <input
-          style={f.input}
-          value={driver}
-          onChange={(e) => setDriver(e.target.value)}
-          placeholder="Imię i nazwisko"
-        />
+      <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ ...f.field, maxWidth: 320 }}>
+          <span style={f.label}>Kierowca (do zestawienia)</span>
+          <input
+            style={f.input}
+            value={driver}
+            onChange={(e) => setDriver(e.target.value)}
+            placeholder="Imię i nazwisko"
+          />
+        </div>
+        <div style={{ ...f.field, maxWidth: 180 }}>
+          <span style={f.label}>Data podróży</span>
+          <input
+            style={f.input}
+            type="date"
+            value={tripDate}
+            onChange={(e) => setTripDate(e.target.value)}
+          />
+        </div>
       </div>
 
       <div style={f.card}>
@@ -300,6 +324,7 @@ export default function PerDiemPage() {
                     {" "}
                     · {MODE_LABEL[s.mode]}
                     {s.driver_name ? ` · ${s.driver_name}` : ""}
+                    {s.trip_date ? ` · ${s.trip_date}` : ""}
                   </span>
                 </span>
                 <span style={{ ...f.cell, width: 90 }}>{s.hours} h</span>

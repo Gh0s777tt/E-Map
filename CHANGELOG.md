@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-173-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.29.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-174-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.30.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.30.0] — 📅 Diety w zestawieniu miesięcznym + data podróży
+
+- `[#174]` 📅 **Diety wpięte w „Zestawienie msc."** — koszty rozliczane w jednym miejscu, z poprawną wielowalutowością:
+  - **Data podróży** ([diety](apps/web/app/(app)/diety/page.tsx)): pole „Data podróży" (domyślnie dziś) zapisywane do `trip_date`; data widoczna w ewidencji i CSV (nowa kolumna).
+  - **Zestawienie** ([monthly](apps/web/app/(app)/monthly/page.tsx)): sekcja **„Diety kierowców — <miesiąc>"** z należnymi dietami filtrowanymi po dacie podróży, **osobno per waluta** (nie sumowane do wyniku EUR — bez kursów). Diety dołączone też do CSV „Rejestr kosztów (księgowość)" jako oddzielny blok per waluta.
+  - **Bramki:** biome czysto · `tsc` ×7 · 156 testów · build ✓ (`/monthly`, `/diety`).
 
 ## [1.29.0] — 💾 Diety kierowcy — trwała ewidencja w bazie (RLS)
 

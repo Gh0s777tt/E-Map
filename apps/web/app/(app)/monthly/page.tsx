@@ -4,11 +4,15 @@ import {
   getCompany,
   listFuelLogs,
   listOrders,
+  listPerDiemTrips,
   listVehicleCosts,
+  type PerDiemTrip,
   type VehicleCost,
 } from "@e-logistic/api";
 import {
+  computePerDiem,
   costRegister,
+  type DietTrip,
   effectiveModules,
   type MonthlyCostEntry,
   type MonthlyOrderEntry,
@@ -16,6 +20,7 @@ import {
   monthlyFleetTrend,
   monthsEndingAt,
   round2,
+  sumPerDiem,
   VEHICLE_COST_CATEGORY_LABELS,
   type VehicleCostCategory,
 } from "@e-logistic/core";
@@ -41,6 +46,7 @@ export default function MonthlyPage() {
   const [fuel, setFuel] = useState<MonthlyCostEntry[]>([]);
   const [adblue, setAdblue] = useState<MonthlyCostEntry[]>([]);
   const [costs, setCosts] = useState<VehicleCost[]>([]);
+  const [perDiems, setPerDiems] = useState<PerDiemTrip[]>([]);
   const [companyName, setCompanyName] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -67,15 +73,17 @@ export default function MonthlyPage() {
       const toDate = new Date(`${month}-01T00:00:00Z`);
       toDate.setUTCMonth(toDate.getUTCMonth() + 1);
       const to = toDate.toISOString().slice(0, 10); // 1. dzień kolejnego miesiąca
-      const [ord, f, a, vc, comp] = await Promise.all([
+      const [ord, f, a, vc, pd, comp] = await Promise.all([
         listOrders(sb, m.companyId, { from, to }),
         listFuelLogs(sb, { from, to, limit: 5000 }),
         listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
         listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
+        listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
         getCompany(sb, m.companyId),
       ]);
       setCompanyName(comp?.name ?? "");
       setCosts(vc);
+      setPerDiems(pd);
       setOrders(
         ord.map((o) => ({
           vehicleId: o.vehicle_id,
@@ -125,6 +133,21 @@ export default function MonthlyPage() {
     [month, orders, fuel, adblue],
   );
   const prev = trend.length >= 2 ? trend[trend.length - 2] : null;
+
+  // Diety należne w wybranym miesiącu (filtr po dacie podróży), osobno per waluta.
+  const perDiemTotals = useMemo(() => {
+    const toTrip = (p: PerDiemTrip): DietTrip => ({
+      destination: p.destination ?? "",
+      mode: p.mode,
+      hours: p.hours,
+      dailyRate: p.daily_rate,
+      currency: p.currency,
+    });
+    const results = perDiems
+      .filter((p) => p.trip_date?.startsWith(month))
+      .map((p) => computePerDiem(toTrip(p)));
+    return sumPerDiem(results);
+  }, [perDiems, month]);
 
   function exportCsv() {
     const headers = [
@@ -196,6 +219,15 @@ export default function MonthlyPage() {
     rows.push(["Podsumowanie wg kategorii"]);
     for (const g of reg.groups) rows.push([g.category, "", `${g.count} szt.`, g.amount]);
     rows.push([t("common.total"), "", `${reg.count} szt.`, reg.total]);
+
+    // Diety osobno per waluta (nie sumowane do EUR — bez kursów).
+    if (perDiemTotals.length > 0) {
+      rows.push([]);
+      rows.push(["Diety kierowców (wg waluty)"]);
+      for (const d of perDiemTotals) {
+        rows.push([`${d.days} dób`, "", `${d.count} podróże/-y`, `${d.amount} ${d.currency}`]);
+      }
+    }
     downloadCsv(`rejestr_kosztow_${month}.csv`, headers, rows);
   }
 
@@ -354,6 +386,31 @@ export default function MonthlyPage() {
         </>
       )}
 
+      {!loading && !loadErr && perDiemTotals.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
+            Diety kierowców — {month}{" "}
+            <span style={{ color: palette.smoke, fontSize: 12, fontWeight: 400 }}>
+              (należne, wg waluty)
+            </span>
+          </h2>
+          {perDiemTotals.map((d) => (
+            <div key={d.currency} style={styles.dietRow}>
+              <span style={{ color: palette.smoke }}>
+                {d.count} {d.count === 1 ? "podróż" : "podróże/-y"} · {d.days} dób
+              </span>
+              <strong style={{ color: palette.red }}>
+                {d.amount} {d.currency}
+              </strong>
+            </div>
+          ))}
+          <p style={{ color: palette.smoke, fontSize: 12, marginTop: 8 }}>
+            Diety liczone osobno per waluta (nie sumowane do wyniku EUR — bez kursów). Filtr po
+            dacie podróży.
+          </p>
+        </div>
+      )}
+
       <style>{`
         .print-only { display: none; }
         @media print {
@@ -441,4 +498,11 @@ const styles: Record<string, React.CSSProperties> = {
   },
   td: { padding: "8px 10px", borderBottom: `1px solid ${palette.graphite}` },
   tdR: { padding: "8px 10px", borderBottom: `1px solid ${palette.graphite}`, textAlign: "right" },
+  dietRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "8px 10px",
+    borderBottom: `1px solid ${palette.graphite}`,
+    maxWidth: 420,
+  },
 };
