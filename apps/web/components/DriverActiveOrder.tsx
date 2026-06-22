@@ -1,10 +1,12 @@
 "use client";
 
 import { listMyOrders, type Order } from "@e-logistic/api";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@e-logistic/core";
+import type { OrderStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
+import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -19,6 +21,7 @@ const STATUS_COLOR: Record<string, string> = {
  * zalogowanego kierowcy + skrót do „Moje zlecenia". Widoczne tylko dla roli driver.
  */
 export function DriverActiveOrder() {
+  const t = useT();
   const [show, setShow] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
 
@@ -53,7 +56,7 @@ export function DriverActiveOrder() {
           <span
             style={{ ...styles.badge, background: STATUS_COLOR[active.status] ?? palette.smoke }}
           >
-            {ORDER_STATUS_LABELS[active.status as OrderStatus]}
+            {orderStatusLabel(t, active.status as OrderStatus)}
           </span>
           <span style={styles.dim}>
             📍 {active.origin || "?"} → {active.destination || "?"}

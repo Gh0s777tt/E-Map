@@ -110,6 +110,13 @@ export const en: Record<MessageKey, string> = {
   "trip.action.service": "Service",
   "trip.action.other": "Other",
 
+  "order.status.new": "New",
+  "order.status.assigned": "Assigned",
+  "order.status.in_progress": "In progress",
+  "order.status.delivered": "Delivered",
+  "order.status.invoiced": "Invoiced",
+  "order.status.cancelled": "Cancelled",
+
   "sync.draft": "Draft",
   "sync.queued": "Queued",
   "sync.synced": "Synced",
@@ -123,4 +130,5 @@ export const en: Record<MessageKey, string> = {
   "common.history": "History",
   "common.language": "Language",
   "common.noNumber": "(no number)",
+  "common.all": "All",
 };

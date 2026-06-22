@@ -7,13 +7,15 @@ import {
   type Order,
   setOrderStatus,
 } from "@e-logistic/api";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@e-logistic/core";
+import type { OrderStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CmrDoc } from "@/components/CmrDoc";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, Button, PageHeader } from "@/components/ui";
+import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -28,6 +30,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
 };
 
 export default function MyOrdersPage() {
+  const t = useT();
   const { vehicles } = useFleet();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -75,7 +78,7 @@ export default function MyOrdersPage() {
     setMsg(null);
     try {
       await setOrderStatus(getBrowserSupabase(), o.id, status);
-      setMsg(`✅ Status: ${ORDER_STATUS_LABELS[status]}`);
+      setMsg(`✅ Status: ${orderStatusLabel(t, status)}`);
       await load();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Błąd zmiany statusu.");
@@ -116,7 +119,7 @@ export default function MyOrdersPage() {
             <div key={o.id} style={styles.card}>
               <div style={styles.cardHead}>
                 <strong>{o.reference_no || "(bez numeru)"}</strong>
-                <Badge color={STATUS_COLOR[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge>
+                <Badge color={STATUS_COLOR[o.status]}>{orderStatusLabel(t, o.status)}</Badge>
               </div>
               <div style={styles.cardBody}>
                 {(o.origin || o.destination) && (
