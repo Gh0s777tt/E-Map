@@ -3,7 +3,7 @@
     "name": "E-Logistic",
     "slug": "e-logistic",
     "scheme": "elogistic",
-    "version": "1.14.0",
+    "version": "1.15.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

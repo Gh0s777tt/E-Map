@@ -27,8 +27,14 @@ export default function Home() {
       </Text>
       <Text style={styles.subtitle}>{t("app.tagline")}</Text>
 
-      <Link href="/fuel" asChild>
+      <Link href="/my-orders" asChild>
         <Pressable style={styles.cta}>
+          <Text style={styles.ctaText}>📋 Moje zlecenia</Text>
+        </Pressable>
+      </Link>
+
+      <Link href="/fuel" asChild>
+        <Pressable style={styles.ctaSecondary}>
           <Text style={styles.ctaText}>⛽ {t("form.fuel.title")}</Text>
         </Pressable>
       </Link>
