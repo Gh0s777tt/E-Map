@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-176-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.32.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-177-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.33.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.33.0] — 🚚 Karta pojazdu: mini P&L (zysk per pojazd)
+
+- `[#177]` 💰 **Zysk pojazdu w jednym miejscu** — karta pojazdu spina przychód, paliwo i koszty w prosty rachunek wyniku:
+  - **Rdzeń** [core/vehiclePnl.ts](packages/core/src/vehiclePnl.ts): `vehiclePnl({revenueEur, fuelEur, costsEur})` → przychód − paliwo − koszty = **zysk** + **marża %** (null bez przychodu; ujemne wejścia jak zero). Czyste, **5 testów (165 łącznie)**.
+  - **Karta pojazdu** ([vehicles/[id]](apps/web/app/(app)/vehicles/[id]/page.tsx)): sekcja **„💰 Zysk pojazdu (P&L)"** u góry — przychód / − paliwo / − koszty / zysk / marża (kolor wg znaku). Składowe były już liczone osobno; teraz domknięte w wynik.
+  - **Bramki:** biome czysto · `tsc` ×7 · 165 testów · build ✓ (`/vehicles/[id]`).
+  - *EUR: zlecenia dostarczone/zafakturowane + paliwo + koszty (inne waluty pomijane — bez kursów).*
 
 ## [1.32.0] — 📤 Eksport zleceń na giełdę transportową (CSV)
 
