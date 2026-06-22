@@ -2,18 +2,19 @@
 
 import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
 import { type FuelLogInput, type TripEventInput, toCsv } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
+import type { MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { Button } from "@/components/ui";
 import { vehicleLabel } from "@/lib/demo";
+import { tripActionLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { listOutbox, type OutboxItem, removeOutbox, trySync } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-const t = createTranslator("pl");
-
+type T = (key: MessageKey) => string;
 type Kind = "fuel" | "adblue" | "trip";
 type Status = "queued" | "synced" | "error";
 
@@ -29,19 +30,15 @@ type Row = {
   dbId?: string;
 };
 
-const STATUS: Record<Status, { label: string; color: string }> = {
-  queued: { label: "W kolejce", color: palette.warning },
-  synced: { label: "Zsynchronizowano", color: palette.success },
-  error: { label: "Błąd", color: palette.red },
+const STATUS_COLOR: Record<Status, string> = {
+  queued: palette.warning,
+  synced: palette.success,
+  error: palette.red,
 };
-const KIND_LABEL: Record<Kind, string> = { fuel: "Paliwo", adblue: "AdBlue", trip: "Trip" };
-const ACTION_PL: Record<string, string> = {
-  load: "Załadunek",
-  unload: "Rozładunek",
-  start: "Rozpoczęcie",
-  end: "Zakończenie",
-  service: "Serwis",
-  other: "Inne",
+const STATUS_KEY: Record<Status, MessageKey> = {
+  queued: "sync.queued",
+  synced: "sync.synced",
+  error: "sync.error",
 };
 
 function download(filename: string, text: string) {
@@ -54,7 +51,7 @@ function download(filename: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
-function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
+function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row {
   const when = new Date(item.createdAt).toLocaleString("pl-PL");
   if (item.kind === "trip") {
     const i = item.input as TripEventInput;
@@ -63,7 +60,7 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
       key: `local/${item.id}`,
       kind: "trip",
       vehicle: labelOf(i.vehicleId),
-      title: `${labelOf(i.vehicleId)} · ${ACTION_PL[i.action] ?? i.action} · ${i.odometerKm} km${w}`,
+      title: `${labelOf(i.vehicleId)} · ${tripActionLabel(t, i.action)} · ${i.odometerKm} km${w}`,
       sub: `${i.place.country} · ${when}`,
       status: item.status,
       error: item.error,
@@ -84,6 +81,7 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string): Row {
 }
 
 export default function FormsHistoryPage() {
+  const t = useT();
   const [rows, setRows] = useState<Row[]>([]);
   const [source, setSource] = useState<"baza" | "lokalne">("lokalne");
   const [kindFilter, setKindFilter] = useState<Kind | "all">("all");
@@ -138,7 +136,7 @@ export default function FormsHistoryPage() {
           key: `trip/${r.id}`,
           kind: "trip",
           vehicle: labelOf(r.vehicle_id),
-          title: `${labelOf(r.vehicle_id)} · ${ACTION_PL[r.action] ?? r.action} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
+          title: `${labelOf(r.vehicle_id)} · ${tripActionLabel(t, r.action)} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
           sub: `${r.country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
           status: "synced",
           dbId: r.id,
@@ -146,7 +144,7 @@ export default function FormsHistoryPage() {
 
         const pending = outbox
           .filter((i) => i.status !== "synced")
-          .map((i) => localRow(i, labelOf));
+          .map((i) => localRow(i, labelOf, t));
 
         setRows(
           [...pending, ...fuelRows("fuel", fuel), ...fuelRows("adblue", adblue), ...tripRows].sort(
@@ -159,9 +157,9 @@ export default function FormsHistoryPage() {
     } catch {
       // offline → lokalne
     }
-    setRows(outbox.map((i) => localRow(i, vehicleLabel)));
+    setRows(outbox.map((i) => localRow(i, vehicleLabel, t)));
     setSource("lokalne");
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -193,20 +191,26 @@ export default function FormsHistoryPage() {
   );
 
   const KIND_FILTERS: { value: Kind | "all"; label: string }[] = [
-    { value: "all", label: "Wszystkie" },
-    { value: "fuel", label: "Paliwo" },
-    { value: "adblue", label: "AdBlue" },
-    { value: "trip", label: "Trip" },
+    { value: "all", label: t("common.all") },
+    { value: "fuel", label: t("history.kind.fuel") },
+    { value: "adblue", label: t("history.kind.adblue") },
+    { value: "trip", label: t("history.kind.trip") },
   ];
 
   function exportCsv() {
-    const headers = ["Typ", "Pojazd", "Opis", "Szczegóły", "Status"];
+    const headers = [
+      t("history.csv.type"),
+      t("common.vehicle"),
+      t("history.csv.desc"),
+      t("history.csv.details"),
+      t("common.status"),
+    ];
     const csvRows = filtered.map((r) => [
-      KIND_LABEL[r.kind],
+      t(`history.kind.${r.kind}`),
       r.vehicle,
       r.title,
       r.sub,
-      STATUS[r.status].label,
+      t(STATUS_KEY[r.status]),
     ]);
     download(`historia_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, csvRows));
   }
@@ -215,11 +219,12 @@ export default function FormsHistoryPage() {
     <div style={{ maxWidth: 760 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("common.history")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>
-        Wysłane formularze · źródło: <strong>{source}</strong> (offline-first).
+        {t("history.subtitle")}{" "}
+        <strong>{t(source === "baza" ? "history.source.db" : "history.source.local")}</strong>
       </p>
 
       {rows.length === 0 ? (
-        <p style={{ color: palette.smoke, marginTop: 24 }}>Brak zapisanych formularzy.</p>
+        <p style={{ color: palette.smoke, marginTop: 24 }}>{t("history.empty")}</p>
       ) : (
         <>
           <div style={styles.filters}>
@@ -241,7 +246,7 @@ export default function FormsHistoryPage() {
                 onChange={(e) => setVehicleFilter(e.target.value)}
                 style={styles.select}
               >
-                <option value="all">Wszystkie pojazdy</option>
+                <option value="all">{t("history.allVehicles")}</option>
                 {vehicleOptions.map((v) => (
                   <option key={v} value={v}>
                     {v}
@@ -258,39 +263,37 @@ export default function FormsHistoryPage() {
             </span>
           </div>
           {filtered.length === 0 ? (
-            <p style={{ color: palette.smoke, marginTop: 20 }}>
-              Brak wyników dla wybranych filtrów.
-            </p>
+            <p style={{ color: palette.smoke, marginTop: 20 }}>{t("history.noResults")}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
               {filtered.map((r) => {
-                const st = STATUS[r.status];
+                const color = STATUS_COLOR[r.status];
                 return (
                   <div key={r.key} style={styles.row}>
-                    <span style={styles.kind}>{KIND_LABEL[r.kind]}</span>
+                    <span style={styles.kind}>{t(`history.kind.${r.kind}`)}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700 }}>{r.title}</div>
                       <div style={{ color: palette.smoke, fontSize: 13 }}>{r.sub}</div>
                       {r.error && <div style={{ color: palette.red, fontSize: 12 }}>{r.error}</div>}
                     </div>
-                    <span style={{ ...styles.badge, color: st.color, borderColor: st.color }}>
-                      {st.label}
+                    <span style={{ ...styles.badge, color, borderColor: color }}>
+                      {t(STATUS_KEY[r.status])}
                     </span>
                     {r.status === "synced" && r.dbId && (
                       <Link
                         href={`/forms/${r.kind}?edit=${r.dbId}`}
                         style={{ ...styles.btn, textDecoration: "none" }}
                       >
-                        Edytuj
+                        {t("common.edit")}
                       </Link>
                     )}
                     {r.status !== "synced" && r.outboxId && (
                       <>
                         <Button variant="ghost" onClick={() => resync(r.outboxId as string)}>
-                          Ponów
+                          {t("common.retry")}
                         </Button>
                         <Button variant="danger" onClick={() => remove(r.outboxId as string)}>
-                          Usuń
+                          {t("common.delete")}
                         </Button>
                       </>
                     )}

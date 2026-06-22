@@ -12,13 +12,7 @@ import {
   saveOrder,
   setOrderStatus,
 } from "@e-logistic/api";
-import {
-  ORDER_STATUS_LABELS,
-  ORDER_STATUSES,
-  type OrderStatus,
-  orderSchema,
-  round2,
-} from "@e-logistic/core";
+import { ORDER_STATUSES, type OrderStatus, orderSchema, round2 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -266,23 +260,23 @@ export default function OrdersPage() {
 
   function exportCsv() {
     const headers = [
-      "Nr",
-      "Status",
-      "Nadawca",
-      "Odbiorca",
-      "Skąd",
-      "Dokąd",
-      "Ładunek",
-      "Waga (kg)",
-      "Stawka",
-      "Waluta",
-      "Pojazd",
-      "Załadunek",
-      "Rozładunek",
+      t("orders.csv.number"),
+      t("common.status"),
+      t("orders.csv.shipper"),
+      t("orders.csv.consignee"),
+      t("orders.csv.from"),
+      t("orders.csv.to"),
+      t("orders.csv.cargo"),
+      t("orders.csv.weight"),
+      t("orders.csv.rate"),
+      t("orders.csv.currency"),
+      t("common.vehicle"),
+      t("orders.csv.loadDate"),
+      t("orders.csv.unloadDate"),
     ];
     const rows = filtered.map((o) => [
       o.reference_no ?? "",
-      ORDER_STATUS_LABELS[o.status],
+      orderStatusLabel(t, o.status),
       o.shipper ?? "",
       o.consignee ?? "",
       o.origin ?? "",

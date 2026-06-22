@@ -157,6 +157,31 @@ export const pl = {
   "settings.passkey.removeError": "Błąd usuwania.",
   "settings.passkey.unnamed": "Klucz",
 
+  "history.subtitle": "Wysłane formularze — offline-first. Źródło:",
+  "history.source.db": "baza",
+  "history.source.local": "lokalne",
+  "history.empty": "Brak zapisanych formularzy.",
+  "history.noResults": "Brak wyników dla wybranych filtrów.",
+  "history.allVehicles": "Wszystkie pojazdy",
+  "history.kind.fuel": "Paliwo",
+  "history.kind.adblue": "AdBlue",
+  "history.kind.trip": "Trip",
+  "history.csv.type": "Typ",
+  "history.csv.desc": "Opis",
+  "history.csv.details": "Szczegóły",
+
+  "orders.csv.number": "Nr",
+  "orders.csv.shipper": "Nadawca",
+  "orders.csv.consignee": "Odbiorca",
+  "orders.csv.from": "Skąd",
+  "orders.csv.to": "Dokąd",
+  "orders.csv.cargo": "Ładunek",
+  "orders.csv.weight": "Waga (kg)",
+  "orders.csv.rate": "Stawka",
+  "orders.csv.currency": "Waluta",
+  "orders.csv.loadDate": "Załadunek",
+  "orders.csv.unloadDate": "Rozładunek",
+
   "sync.draft": "Szkic",
   "sync.queued": "W kolejce",
   "sync.synced": "Zsynchronizowano",
@@ -176,6 +201,9 @@ export const pl = {
   "common.loading": "Ładowanie…",
   "common.saving": "Zapisywanie…",
   "common.error": "Błąd",
+  "common.retry": "Ponów",
+  "common.status": "Status",
+  "common.vehicle": "Pojazd",
 } as const;
 
 export type MessageKey = keyof typeof pl;
