@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-113-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.88.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-114-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.89.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.89.0] — 🔔 Centrum powiadomień: pojedyncze przeczytane + filtr
+
+- `[#114]` 🔔 **Lepsze centrum powiadomień** ([NotificationBell](apps/web/components/NotificationBell.tsx)):
+  - Otwarcie dzwonka **nie oznacza już wszystkiego jako przeczytane** — można je przejrzeć.
+  - Każde nieprzeczytane ma przycisk **„✓"** (oznacz pojedyncze); przeczytane są wyszarzone (●/○).
+  - Filtr **„tylko nieprzeczytane"** + przycisk **„Oznacz wszystkie"** w nagłówku panelu. Aktualizacja optymistyczna.
+  - api [data/notifications.ts](packages/api/src/data/notifications.ts): `markNotificationRead` (pojedyncze; obok `markNotificationsRead`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓.
 
 ## [0.88.0] — 🗑️ Anulowanie faktury (zamiast usuwania)
 
