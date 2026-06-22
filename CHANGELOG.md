@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-95-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.71.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-96-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.72.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.72.0] — 📄 List przewozowy CMR ze zlecenia
+
+- `[#096]` 📄 **Generator CMR (list przewozowy)** — domknięcie przepływu zlecenie → CMR → faktura:
+  - Przycisk **„📄 CMR"** na każdym zleceniu ([orders](apps/web/app/(app)/orders/page.tsx)) otwiera **drukowalny międzynarodowy list przewozowy** (druk/PDF, `window.print()`).
+  - Dane wypełniane automatycznie ze zlecenia: nadawca, odbiorca, miejsce/data załadunku i rozładunku, rodzaj towaru, waga brutto, nr rejestracyjny pojazdu, uwagi. **Przewoźnik** = dane firmy (nazwa, adres, NIP).
+  - Klasyczny układ ponumerowanych pól CMR + miejsca na podpisy (nadawca/przewoźnik/odbiorca).
+  - api [data/companies.ts](packages/api/src/data/companies.ts): `getCompany` (dane firmy do dokumentu, RLS = własna firma).
+  - Uwaga: dokument **uproszczony** — nie zastępuje urzędowego formularza; pełną zgodność (konwencja CMR) potwierdza przewoźnik.
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓ (`/orders`).
 
 ## [0.71.0] — 🔐 Sejf dokumentów (Supabase Storage)
 

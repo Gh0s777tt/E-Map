@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  type Company,
   createInvoiceFromOrder,
   deleteOrder,
+  getCompany,
   listOrders,
   type Order,
   saveOrder,
@@ -48,6 +50,8 @@ export default function OrdersPage() {
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [company, setCompany] = useState<Company | null>(null);
+  const [cmrOrder, setCmrOrder] = useState<Order | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -80,7 +84,12 @@ export default function OrdersPage() {
         return;
       }
       setCanManage(m.role === "owner" || m.role === "dispatcher");
-      setOrders(await listOrders(sb, m.companyId));
+      const [ord, comp] = await Promise.all([
+        listOrders(sb, m.companyId),
+        getCompany(sb, m.companyId),
+      ]);
+      setOrders(ord);
+      setCompany(comp);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zleceń.");
     } finally {
@@ -254,6 +263,17 @@ export default function OrdersPage() {
       o.unload_date ?? "",
     ]);
     download(`zlecenia_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, rows));
+  }
+
+  if (cmrOrder) {
+    return (
+      <CmrDoc
+        order={cmrOrder}
+        company={company}
+        vehicleReg={regOf(cmrOrder.vehicle_id)}
+        onBack={() => setCmrOrder(null)}
+      />
+    );
   }
 
   return (
@@ -438,6 +458,11 @@ export default function OrdersPage() {
                 {o.vehicle_id && <span style={styles.dim}>🚚 {regOf(o.vehicle_id)}</span>}
                 {o.load_date && <span style={styles.dim}>zał. {o.load_date}</span>}
               </div>
+              <div style={styles.cardActions}>
+                <Button variant="ghost" onClick={() => setCmrOrder(o)}>
+                  📄 CMR
+                </Button>
+              </div>
               {canManage && (
                 <div style={styles.cardActions}>
                   {o.status === "delivered" && (
@@ -495,6 +520,160 @@ function Field({
     </label>
   );
 }
+
+/** Drukowalny międzynarodowy list przewozowy CMR (uproszczony) ze zlecenia. */
+function CmrDoc({
+  order,
+  company,
+  vehicleReg,
+  onBack,
+}: {
+  order: Order;
+  company: Company | null;
+  vehicleReg: string;
+  onBack: () => void;
+}) {
+  const carrier = [
+    company?.name,
+    company?.address,
+    company?.tax_id ? `NIP ${company.tax_id}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return (
+    <div style={{ maxWidth: 820 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }} className="no-print">
+        <Button variant="ghost" onClick={onBack}>
+          ← Zlecenia
+        </Button>
+        <span style={{ flex: 1 }} />
+        <Button onClick={() => window.print()}>🖨️ Drukuj / PDF</Button>
+      </div>
+
+      <div style={cmr.doc}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>LIST PRZEWOZOWY CMR</div>
+            <div style={cmr.muted}>Międzynarodowy samochodowy list przewozowy (uproszczony)</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontWeight: 800, color: palette.red }}>E-Logistic</div>
+            {order.reference_no && <div style={cmr.muted}>Zlecenie: {order.reference_no}</div>}
+          </div>
+        </div>
+
+        <div style={cmr.grid}>
+          <Box n={1} title="Nadawca">
+            <strong>{order.shipper || "—"}</strong>
+            {order.origin && <div style={cmr.muted}>{order.origin}</div>}
+          </Box>
+          <Box n={2} title="Odbiorca">
+            <strong>{order.consignee || "—"}</strong>
+            {order.destination && <div style={cmr.muted}>{order.destination}</div>}
+          </Box>
+          <Box n={3} title="Miejsce przeznaczenia (rozładunek)">
+            {order.destination || "—"}
+            {order.unload_date && <div style={cmr.muted}>Data: {order.unload_date}</div>}
+          </Box>
+          <Box n={4} title="Miejsce i data załadowania">
+            {order.origin || "—"}
+            {order.load_date && <div style={cmr.muted}>Data: {order.load_date}</div>}
+          </Box>
+        </div>
+
+        <Box n="6–9" title="Rodzaj towaru / opakowanie / ilość">
+          {order.cargo || "—"}
+        </Box>
+
+        <div style={cmr.grid}>
+          <Box n={11} title="Waga brutto (kg)">
+            {order.weight_kg != null ? `${order.weight_kg} kg` : "—"}
+          </Box>
+          <Box n={16} title="Przewoźnik">
+            {carrier || "—"}
+            {company?.country && <div style={cmr.muted}>{company.country}</div>}
+          </Box>
+          <Box n={25} title="Nr rejestracyjny pojazdu">
+            {vehicleReg}
+          </Box>
+        </div>
+
+        {order.notes && (
+          <Box n={13} title="Zlecenia / uwagi nadawcy">
+            {order.notes}
+          </Box>
+        )}
+
+        <div style={cmr.signs}>
+          {["22 · Podpis nadawcy", "23 · Podpis przewoźnika", "24 · Podpis odbiorcy"].map((s) => (
+            <div key={s} style={cmr.sign}>
+              <div style={cmr.signLine} />
+              <div style={cmr.muted}>{s}</div>
+            </div>
+          ))}
+        </div>
+
+        <p style={cmr.muted}>
+          Dokument uproszczony wygenerowany w E-Logistic na podstawie zlecenia. Nie zastępuje
+          urzędowego formularza CMR — pełną zgodność (konwencja CMR) potwierdza przewoźnik.
+        </p>
+      </div>
+
+      <style>{`@media print { .no-print { display: none !important; } .app-sidebar { display: none !important; } }`}</style>
+    </div>
+  );
+}
+
+function Box({
+  n,
+  title,
+  children,
+}: {
+  n: number | string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={cmr.box}>
+      <div style={cmr.boxHead}>
+        <span style={cmr.boxNum}>{n}</span> {title}
+      </div>
+      <div style={{ fontSize: 14 }}>{children}</div>
+    </div>
+  );
+}
+
+const cmr: Record<string, React.CSSProperties> = {
+  doc: {
+    marginTop: 16,
+    background: palette.white,
+    color: "#111",
+    borderRadius: 12,
+    padding: 28,
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  muted: { color: "#555", fontSize: 12 },
+  grid: { display: "flex", gap: 12, flexWrap: "wrap" },
+  box: {
+    flex: 1,
+    minWidth: 220,
+    border: "1px solid #bbb",
+    borderRadius: 6,
+    padding: "8px 10px",
+  },
+  boxHead: { fontSize: 11, textTransform: "uppercase", color: "#888", marginBottom: 4 },
+  boxNum: {
+    display: "inline-block",
+    minWidth: 18,
+    fontWeight: 800,
+    color: palette.red,
+  },
+  signs: { display: "flex", gap: 16, marginTop: 8 },
+  sign: { flex: 1, textAlign: "center" },
+  signLine: { borderBottom: "1px solid #999", height: 40 },
+};
 
 const styles: Record<string, React.CSSProperties> = {
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 16, maxWidth: 720 },
