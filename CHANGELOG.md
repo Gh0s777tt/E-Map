@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-103-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.79.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-104-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.79.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.79.1] — 🧭 Zwijane sekcje w bocznym pasku (kompaktowa nawigacja)
+
+- `[#104]` 🧭 **Boczny pasek pogrupowany w zwijane sekcje** ([SidebarNav](apps/web/components/SidebarNav.tsx)) — wcześniej ~18 płaskich linków zajmowało dużo miejsca:
+  - Sekcje: **Zlecenia** (Zlecenia, Status floty, Moje zlecenia, Mapa), **Formularze** (Paliwo, AdBlue, Trip), **Flota** (Pojazdy, Kierowcy, Karty, Serwis, Sejf dokumentów, Usterki), **Finanse** (Faktury, Rozliczenia, Zestawienie msc., Ceny diesla, Statystyki). Pulpit i Ustawienia/Zespół poza sekcjami.
+  - Domyślnie zwinięte; **rozwija się sekcja zawierająca bieżącą stronę**, nagłówek aktywnej sekcji podświetlony na czerwono. Klik nagłówka rozwija/zwija.
+  - Gating modułów zachowany (sekcje/pozycje znikają bez uprawnień; puste sekcje pomijane).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓.
 
 ## [0.79.0] — 🚚 Status floty na żywo
 

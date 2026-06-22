@@ -3,7 +3,7 @@
 import { palette } from "@e-logistic/ui";
 import { useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
-import { type NavItem, SidebarNav } from "@/components/SidebarNav";
+import { type NavGroup, SidebarNav } from "@/components/SidebarNav";
 import { SignOutButton } from "@/components/SignOutButton";
 
 /**
@@ -12,11 +12,11 @@ import { SignOutButton } from "@/components/SignOutButton";
  * rozwijana po kliknięciu i zwijana po wyborze pozycji. Czysto CSS + 1 stan.
  */
 export function AppSidebar({
-  navItems,
+  navGroups,
   email,
   supabaseConfigured,
 }: {
-  navItems: NavItem[];
+  navGroups: NavGroup[];
   email: string;
   supabaseConfigured: boolean;
 }) {
@@ -39,7 +39,7 @@ export function AppSidebar({
         </button>
       </div>
       <div className="app-sidebar-body">
-        <SidebarNav items={navItems} onNavigate={() => setOpen(false)} />
+        <SidebarNav groups={navGroups} onNavigate={() => setOpen(false)} />
         {supabaseConfigured && (
           <div style={{ marginBottom: 8 }}>
             <NotificationBell />
