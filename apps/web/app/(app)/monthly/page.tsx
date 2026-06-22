@@ -1,6 +1,6 @@
 "use client";
 
-import { listFuelLogs, listOrders } from "@e-logistic/api";
+import { getCompany, listFuelLogs, listOrders } from "@e-logistic/api";
 import {
   effectiveModules,
   type MonthlyCostEntry,
@@ -29,6 +29,7 @@ export default function MonthlyPage() {
   const [orders, setOrders] = useState<MonthlyOrderEntry[]>([]);
   const [fuel, setFuel] = useState<MonthlyCostEntry[]>([]);
   const [adblue, setAdblue] = useState<MonthlyCostEntry[]>([]);
+  const [companyName, setCompanyName] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
@@ -47,11 +48,13 @@ export default function MonthlyPage() {
         setDenied(true);
         return;
       }
-      const [ord, f, a] = await Promise.all([
+      const [ord, f, a, comp] = await Promise.all([
         listOrders(sb, m.companyId),
         listFuelLogs(sb, { limit: 5000 }),
         listFuelLogs(sb, { table: "adblue_logs", limit: 5000 }),
+        getCompany(sb, m.companyId),
       ]);
+      setCompanyName(comp?.name ?? "");
       setOrders(
         ord.map((o) => ({
           vehicleId: o.vehicle_id,
@@ -134,7 +137,13 @@ export default function MonthlyPage() {
   }
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 900 }} className="monthly-print">
+      {/* Nagłówek tylko do druku/PDF (firma + miesiąc) */}
+      <div className="print-only" style={styles.printHead}>
+        <strong style={{ fontSize: 18 }}>{companyName || "E-Logistic"}</strong>
+        <div>Zestawienie miesięczne floty — {month}</div>
+      </div>
+
       <PageHeader
         title="Zestawienie miesięczne (flota)"
         subtitle="Przychód ze zleceń (dostarczone i zafakturowane, EUR) zestawiony z kosztami paliwa i AdBlue — per pojazd, dla wybranego miesiąca. Eksport CSV (Excel) i wydruk/PDF."
@@ -196,7 +205,7 @@ export default function MonthlyPage() {
           </div>
 
           {trend.length > 1 && (
-            <div style={{ marginTop: 24 }}>
+            <div style={{ marginTop: 24 }} className="no-print">
               <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
                 Przychód — ostatnie {trend.length} mies.{" "}
                 <span style={{ color: palette.smoke, fontSize: 12, fontWeight: 400 }}>
@@ -268,7 +277,17 @@ export default function MonthlyPage() {
         </>
       )}
 
-      <style>{`@media print { .no-print { display: none !important; } }`}</style>
+      <style>{`
+        .print-only { display: none; }
+        @media print {
+          .no-print, .app-sidebar { display: none !important; }
+          .print-only { display: block !important; }
+          .app-main { padding: 0 !important; }
+          .monthly-print, .monthly-print * { color: #111 !important; background: transparent !important; }
+          .monthly-print table { border-collapse: collapse; width: 100%; }
+          .monthly-print th, .monthly-print td { border: 1px solid #bbb !important; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -309,6 +328,7 @@ function Delta({ now, prev, invert }: { now: number; prev: number | null; invert
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  printHead: { marginBottom: 12, lineHeight: 1.4 },
   controls: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginTop: 16 },
   field: { display: "flex", flexDirection: "column", gap: 4 },
   label: { fontSize: 12, color: palette.smoke },

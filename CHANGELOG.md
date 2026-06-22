@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-119-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.93.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-120-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.93.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.93.1] — 🖨️ Czysty PDF rozliczenia miesięcznego
+
+- `[#120]` 🖨️ **Drukowalny układ zestawienia miesięcznego** ([monthly](apps/web/app/(app)/monthly/page.tsx)):
+  - Print stylesheet: **białe tło, czarny tekst**, ukryty sidebar/kontrolki/wykres; tabela z obramowaniem — czytelny PDF dla księgowej.
+  - **Nagłówek tylko do druku**: nazwa firmy + miesiąc (firma z `getCompany`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 97 testów · build ✓ (`/monthly`).
 
 ## [0.93.0] — 🔢 Analiza zleceń (top klienci / trasy / średnia stawka)
 
