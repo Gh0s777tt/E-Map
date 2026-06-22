@@ -29,6 +29,7 @@ function RootNav() {
     >
       <Stack.Screen name="index" options={{ title: "E-Logistic" }} />
       <Stack.Screen name="login" options={{ title: "Logowanie", headerShown: false }} />
+      <Stack.Screen name="my-orders" options={{ title: "Moje zlecenia" }} />
       <Stack.Screen name="fuel" options={{ title: "Tankowanie" }} />
       <Stack.Screen name="adblue" options={{ title: "AdBlue" }} />
       <Stack.Screen name="trip" options={{ title: "Trasa" }} />

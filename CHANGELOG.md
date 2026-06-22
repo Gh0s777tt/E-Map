@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-155-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.14.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-156-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.15.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.15.0] — 📱 „Moje zlecenia" w aplikacji mobilnej (lista + status)
+
+- `[#156]` 📱 **Kierowca obsługuje zlecenia z telefonu** — trzeci increment mobilny:
+  - **Ekran** [apps/mobile/app/my-orders.tsx](apps/mobile/app/my-orders.tsx): lista zleceń przypisanych do zalogowanego kierowcy (`listMyOrders` — RLS zawęża do niego), z numerem, statusem (plakietka w kolorze), trasą, ładunkiem/wagą, rejestracją pojazdu i datą załadunku. Pull-to-refresh.
+  - **Zmiana statusu**: „▶️ W trakcie" (z `new`/`assigned`) i „✅ Dostarczone" (z `in_progress`) przez `setOrderStatus` (serwer i tak utwardza dozwolone przejścia kierowcy).
+  - Wpięte w nawigację ([_layout](apps/mobile/app/_layout.tsx)) + pozycja **„📋 Moje zlecenia"** jako główny przycisk na pulpicie ([index](apps/mobile/app/index.tsx)). Reużycie `useFleet` (rejestracje) i klienta z `packages/api`.
+  - **Następny krok:** zdjęcia towaru z aparatu (`expo-image-picker` + upload do bucketu `cargo-photos`) — backend gotowy z [#151].
+  - **Bramki:** biome czysto · `tsc` (mobile) ✓ · 158 testów rdzenia bez zmian. Mobile weryfikowane typecheckiem.
 
 ## [1.14.0] — 📱 Mobilne formularze → Supabase (offline outbox)
 
