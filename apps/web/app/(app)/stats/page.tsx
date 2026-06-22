@@ -6,6 +6,7 @@ import {
   detectFuelAnomalies,
   type FuelStatsEntry,
   fuelConsumptionSeries,
+  orderAnalytics,
   round2,
   summarizeFuel,
 } from "@e-logistic/core";
@@ -75,7 +76,14 @@ export default function StatsPage() {
   const [adblue, setAdblue] = useState<FuelRaw[]>([]);
   const [trips, setTrips] = useState<TripRaw[]>([]);
   const [orders, setOrders] = useState<
-    { status: string; price: number | null; currency: string }[]
+    {
+      status: string;
+      price: number | null;
+      currency: string;
+      shipper: string | null;
+      origin: string | null;
+      destination: string | null;
+    }[]
   >([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -96,7 +104,16 @@ export default function StatsPage() {
         setFuel(f as FuelRaw[]);
         setAdblue(a as FuelRaw[]);
         setTrips(tr as TripRaw[]);
-        setOrders(ord.map((o) => ({ status: o.status, price: o.price, currency: o.currency })));
+        setOrders(
+          ord.map((o) => ({
+            status: o.status,
+            price: o.price,
+            currency: o.currency,
+            shipper: o.shipper,
+            origin: o.origin,
+            destination: o.destination,
+          })),
+        );
         setVehicles(
           (vs as { id: string; registration: string }[]).map((v) => ({
             id: v.id,
@@ -157,6 +174,9 @@ export default function StatsPage() {
     };
   }, [tiles, orders]);
 
+  // Analiza zleceń: top nadawcy, najczęstsze trasy, średnia stawka (raz na zmianę zleceń).
+  const analytics = useMemo(() => orderAnalytics(orders, 5), [orders]);
+
   return (
     <div>
       <PageHeader
@@ -194,6 +214,51 @@ export default function StatsPage() {
               />
             </div>
           )}
+
+          {analytics.count > 0 && (
+            <div style={styles.analytics}>
+              <div style={styles.anCol}>
+                <div style={styles.anHead}>🏆 Top klienci (przychód EUR)</div>
+                {analytics.topShippers.map((s) => (
+                  <div key={s.name} style={styles.anRow}>
+                    <span
+                      style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+                    >
+                      {s.name}
+                    </span>
+                    <span style={{ color: palette.smoke, fontSize: 12 }}>{s.count} zl.</span>
+                    <strong style={{ color: "#22c55e" }}>{s.revenueEur} €</strong>
+                  </div>
+                ))}
+              </div>
+              <div style={styles.anCol}>
+                <div style={styles.anHead}>📍 Najczęstsze trasy</div>
+                {analytics.topRoutes.map((r) => (
+                  <div key={r.route} style={styles.anRow}>
+                    <span
+                      style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+                    >
+                      {r.route}
+                    </span>
+                    <strong>{r.count}×</strong>
+                  </div>
+                ))}
+                <div
+                  style={{
+                    ...styles.anRow,
+                    marginTop: 8,
+                    borderTop: `1px solid ${palette.graphite}`,
+                  }}
+                >
+                  <span style={{ flex: 1, color: palette.smoke }}>Śr. stawka (EUR)</span>
+                  <strong style={{ color: palette.red }}>
+                    {analytics.avgRateEur != null ? `${analytics.avgRateEur} €` : "—"}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 24 }}>
             {tiles.map((tile) => (
               <button
@@ -421,6 +486,17 @@ function FleetStat({ label, value, accent }: { label: string; value: string; acc
 
 const styles: Record<string, React.CSSProperties> = {
   fleet: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 },
+  analytics: { display: "flex", gap: 14, flexWrap: "wrap", marginTop: 24 },
+  anCol: {
+    flex: 1,
+    minWidth: 280,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 12,
+    padding: "12px 16px",
+  },
+  anHead: { fontWeight: 800, fontSize: 14, marginBottom: 8 },
+  anRow: { display: "flex", gap: 10, alignItems: "center", padding: "5px 0", fontSize: 14 },
   anomalyBox: {
     background: "#2a0d0d",
     border: `1px solid ${palette.red}`,
