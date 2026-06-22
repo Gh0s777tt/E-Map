@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { Button, PageHeader } from "@/components/ui";
+import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -79,6 +80,21 @@ export default function InvoicesPage() {
     }
   }
 
+  function exportCsv() {
+    const headers = ["Numer", "Data", "Nabywca", "NIP", "Netto", "VAT", "Brutto", "Waluta"];
+    const rows = invoices.map((i) => [
+      i.number,
+      i.issue_date,
+      i.buyer_name ?? "",
+      i.buyer_tax_id ?? "",
+      i.net,
+      i.vat_amount,
+      i.gross,
+      i.currency,
+    ]);
+    downloadCsv(`faktury_${csvDateStamp()}.csv`, headers, rows);
+  }
+
   async function createNew() {
     setMsg(null);
     if (!buyerName.trim()) {
@@ -130,13 +146,18 @@ export default function InvoicesPage() {
         subtitle="Faktury ze zleceń lub wystawione ręcznie. Kliknij, aby otworzyć dokument (pozycje, druk/PDF, duplikat)."
       />
 
-      {canManage && (
-        <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {canManage && (
           <Button variant="ghost" onClick={() => setShowNew((s) => !s)}>
             {showNew ? "Anuluj" : "➕ Nowa faktura (ręczna)"}
           </Button>
-        </div>
-      )}
+        )}
+        {invoices.length > 0 && (
+          <Button variant="ghost" onClick={exportCsv}>
+            ⬇️ CSV
+          </Button>
+        )}
+      </div>
       {canManage && showNew && (
         <div style={styles.newForm}>
           <input

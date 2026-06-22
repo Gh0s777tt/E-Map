@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
+import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -136,6 +137,19 @@ export default function DocumentsPage() {
     }
   }
 
+  function exportCsv() {
+    const headers = ["Nazwa", "Kategoria", "Pojazd", "Rozmiar (B)", "Termin", "Dodano"];
+    const rows = filtered.map((d) => [
+      d.name,
+      d.category ?? "",
+      regOf(d.vehicle_id) ?? "",
+      d.size_bytes ?? "",
+      d.expiry_date ?? "",
+      d.created_at.slice(0, 10),
+    ]);
+    downloadCsv(`dokumenty_${csvDateStamp()}.csv`, headers, rows);
+  }
+
   async function openDoc(d: DocumentMeta) {
     try {
       const url = await getDocumentUrl(getBrowserSupabase(), d.path, 120);
@@ -241,7 +255,7 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {categories.length > 0 && (
+      {docs.length > 0 && (
         <div style={styles.filters}>
           {["all", ...categories].map((c) => (
             <button
@@ -254,6 +268,9 @@ export default function DocumentsPage() {
             </button>
           ))}
           <span style={{ flex: 1 }} />
+          <Button variant="ghost" onClick={exportCsv}>
+            ⬇️ CSV
+          </Button>
           <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
             {filtered.length} z {docs.length}
           </span>

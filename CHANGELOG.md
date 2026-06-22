@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-110-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.85.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-111-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.86.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.86.0] — 📑 Ujednolicony eksport CSV (faktury, kierowcy, pojazdy, dokumenty)
+
+- `[#111]` 📑 **Spójny eksport „⬇️ CSV"** na kolejnych listach (jak w zleceniach/rozliczeniach):
+  - Wspólny helper [lib/csv.ts](apps/web/lib/csv.ts) (`downloadCsv` z BOM UTF-8 + `csvDateStamp`) — koniec z duplikowaniem funkcji `download` po stronach.
+  - **Faktury** ([invoices](apps/web/app/(app)/invoices/page.tsx)): numer, data, nabywca, NIP, netto/VAT/brutto, waluta.
+  - **Kierowcy** ([DriverRoster](apps/web/components/DriverRoster.tsx)): nazwisko/imię, kategorie, uprawnienia, terminy (prawo jazdy/kod 95/badania/ADR).
+  - **Pojazdy** ([vehicles](apps/web/app/(app)/vehicles/page.tsx)): rejestracja, marka/model/typ, VIN, rok, przegląd/OC/leasing, ubezpieczyciel.
+  - **Sejf dokumentów** ([documents](apps/web/app/(app)/documents/page.tsx)): nazwa, kategoria, pojazd, rozmiar, termin, data (eksport wg aktywnego filtra).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓.
 
 ## [0.85.0] — 🧮 Faktura ręczna (bez zlecenia)
 
