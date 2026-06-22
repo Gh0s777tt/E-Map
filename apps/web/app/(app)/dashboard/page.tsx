@@ -1,7 +1,7 @@
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
+import { AttentionPanel } from "@/components/AttentionPanel";
 import { CompanyBanner } from "@/components/CompanyBanner";
-import { RemindersWidget } from "@/components/RemindersWidget";
 
 const CARDS = [
   {
@@ -35,7 +35,7 @@ export default function DashboardPage() {
       </p>
 
       <CompanyBanner />
-      <RemindersWidget />
+      <AttentionPanel />
 
       <div style={{ display: "flex", gap: 16, marginTop: 24, flexWrap: "wrap" }}>
         {CARDS.map((c) => (
