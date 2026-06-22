@@ -19,6 +19,7 @@ export * from "./data/notifications";
 export * from "./data/orderPhotos";
 export * from "./data/orders";
 export * from "./data/push";
+export * from "./data/savedPlaces";
 export * from "./data/service";
 export * from "./data/tripEvents";
 export * from "./data/vehicleCosts";

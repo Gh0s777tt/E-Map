@@ -1128,6 +1128,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      saved_places: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          category: string;
+          lat: number;
+          lng: number;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          category?: string;
+          lat: number;
+          lng: number;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          category?: string;
+          lat?: number;
+          lng?: number;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       service_tasks: {
         Row: {
           id: string;

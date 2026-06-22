@@ -50,11 +50,12 @@ szyfruje platforma Supabase.
 
 > **Analityka bez własnych tabel:** rentowność klientów (`clientProfitability`/`clientProfitTrend`) i alerty progowe (`fleetAlerts`) liczone są w `packages/core` z danych zleceń + paliwa + kosztów pojazdu (model atrybucji kosztu opisany w [#126]). Eksporty CSV i dwujęzyczność (PL/EN) po stronie web.
 
-### 0.2 Moduły dodane po v1.4.0 (migracje 0042–0044)
+### 0.2 Moduły dodane po v1.4.0 (migracje 0042–0045)
 
 - **`contractors`** (0042) — rejestr nabywców/nadawców per firma: `name`, `tax_id`, `address`, `country`; unikalność `(company_id, name)` pod upsert. Autouzupełnianie na fakturach i zleceniach; budowany organicznie. RLS: członek czyta, owner/dispatcher zarządza.
 - **`vehicle_costs`** (0043) — koszty pojazdu **inne niż paliwo**: `vehicle_id`, `category` (repair/leasing/insurance/tax/fine/parking/tires/other), `amount`, `currency`, `cost_date`, `description`. Razem z kosztem paliwa zasilają **P&L floty** i atrybucję rentowności (`fleetPnl`, `sumCostsByCategory` w core). RLS: członek czyta, owner/dispatcher zarządza.
 - **`order_photos`** (0044) — zdjęcia towaru przy zleceniu (dobrowolny dowód zabezpieczenia ładunku): `order_id`, `path`, `mime`, `size_bytes`, `caption`, `uploaded_by` (`default auth.uid()`). Prywatny bucket Storage `cargo-photos` (ścieżka `{company_id}/{order_id}/{uuid}`). RLS: członek czyta; **upload — każdy aktywny członek** (kierowca dokumentuje ładunek); kasowanie — owner/dispatcher (integralność dowodu). Storage.objects: folder[1] = company_id.
+- **`saved_places`** (0045) — zapisane miejsca (ulubione POI floty: stacje paliw, porty, odprawy celne, firmy, parkingi): `name`, `category`, `lat`, `lng`, `created_by` (`default auth.uid()`). Współdzielone w firmie (zastępują lokalny `localStorage`); klik na mapie dodaje punkt do trasy + delta (`routeDelta` w core). RLS: członek czyta i dodaje; kasowanie — autor lub owner/dispatcher.
 
 ---
 
