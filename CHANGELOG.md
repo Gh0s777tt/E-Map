@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-158-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.17.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-159-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.18.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.18.0] — 🏪 Mobile gotowy do publikacji: ikony, splash, EAS
+
+- `[#159]` 🏪 **Przygotowanie aplikacji mobilnej do sklepów** (most do App Store / Google Play):
+  - **Ikony i splash** w barwach marki (czerwień `#E50914` na czerni `#0a0a0a`): [icon](apps/mobile/assets/icon.png) 1024², [adaptive-icon](apps/mobile/assets/adaptive-icon.png) (Android), [splash-icon](apps/mobile/assets/splash-icon.png), [favicon](apps/mobile/assets/favicon.png). Generowane skryptem [scripts/gen-assets.mjs](apps/mobile/scripts/gen-assets.mjs) (poprawne PNG bez zależności, przez `zlib`) — **placeholdery do zastąpienia finalną grafiką**.
+  - **app.json**: `icon`, `splash` (contain, tło `#0a0a0a`), `android.adaptiveIcon`, `web.favicon`, `assetBundlePatterns`.
+  - **[eas.json](apps/mobile/eas.json)**: profile build (`development`/`preview`/`production`) + `submit`.
+  - **Runbook publikacji** w [apps/mobile/README.md](apps/mobile/README.md): `eas init` (też nadaje `projectId` do tokenów push), `expo install --fix`, `eas build`, `eas submit`; sekrety (`EXPO_ACCESS_TOKEN`, `EXPO_PUBLIC_*`).
+  - **Uwaga:** sam build/submit wymaga realnej maszyny + kont Apple/Google (poza tym środowiskiem). Konfiguracja zweryfikowana: biome czysto · `tsc` (mobile) ✓ · PNG-i poprawne (sygnatura + wymiary).
 
 ## [1.17.0] — 🔔 Push o przypisaniu zlecenia (mobile, Expo)
 
