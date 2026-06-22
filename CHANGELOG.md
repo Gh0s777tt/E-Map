@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-117-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.91.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-118-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.92.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.92.0] — 💰 Pasek należności + filtr statusu płatności (faktury)
+
+- `[#118]` 💰 **Należności na liście faktur** ([invoices](apps/web/app/(app)/invoices/page.tsx)):
+  - **Pasek podsumowania** (EUR, bez anulowanych): zafakturowane / opłacone / przeterminowane — liczone w `useMemo`.
+  - **Filtr statusu płatności** (chipy): Wszystkie / Nieopłacone / Przeterminowane / Opłacone / Anulowane + licznik „X z Y".
+  - Reużycie [invoicePaymentStatus](packages/core/src/invoice.ts) z #117; bez zmian w API/DB.
+  - **Bramki:** biome czysto · `tsc` ×7 · 93 testy · build ✓ (`/invoices`).
 
 ## [0.91.0] — 💳 Status płatności faktury + przeterminowane na pulpicie
 
