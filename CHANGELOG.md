@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-123-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.95.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-124-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.95.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.95.1] — 🔒 Audyt RLS (bramka izolacji multi-tenant)
+
+- `[#124]` 🔒 **Powtarzalna kontrola izolacji między firmami** — po 40 migracjach aplikowanych wprost na prod realnym ryzykiem jest rozjazd żywych polityk z plikami; teraz wyłapie go jeden skrypt:
+  - [scripts/audit-rls.mjs](scripts/audit-rls.mjs) (tylko odczyt, `pnpm audit:rls`): RLS na każdej tabeli, ≥1 policy, brak `USING(true)` na SELECT/ALL, zapisy ograniczone do autora/roli, `search_path` na `SECURITY DEFINER`, helpery `is_member_of`/`has_role`. Kod wyjścia do CI; obiekty rozszerzeń (PostGIS) pomijane automatycznie.
+  - [docs/SECURITY-RLS.md](docs/SECURITY-RLS.md): reguły, tabele wspólnotowe (`fuel_prices`/`map_reports`/`pois`/`poi_reviews` — globalny odczyt z założenia, zapis do autora) i ostatni wynik.
+  - **Wynik audytu:** ✓ czysto — 31/31 tabel firmowych izoluje (`is_member_of`/`has_role`), wszystkie 31 funkcji `SECURITY DEFINER` z `search_path`. Zero zmian w schemacie — to weryfikacja, nie naprawa.
+  - **Bramki:** biome czysto · `tsc` ×7 · 97 testów · `audit:rls` ✓.
 
 ## [0.95.0] — 🏦 Dane do przelewu na fakturze (bank / IBAN)
 
