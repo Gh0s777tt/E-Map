@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-170-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.26.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-171-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.27.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.27.0] — 🧾 Samodzielny „Dowód dostawy" (POD) do druku/PDF
+
+- `[#171]` 🧾 **Lekki dokument dowodu dostawy** — krótszy niż pełny list CMR, do szybkiej wysyłki klientowi po dostarczeniu:
+  - **Dokument** ([PodDoc](apps/web/components/PodDoc.tsx)): „DOWÓD DOSTAWY / Proof of Delivery" — trasa (załadunek/rozładunek + daty), strony (nadawca/odbiorca), towar + waga, przewoźnik + pojazd, pieczęć „DOSTARCZONO" (status delivered/invoiced) oraz **podpis odbiorcy** (e-podpis ze zlecenia lub pusta linia na podpis odręczny). Druk/PDF przez `window.print()`.
+  - **Wspólny hook** ([usePodSignature](apps/web/lib/usePodSignature.ts)): wczytanie najnowszego podpisu POD zlecenia (podpisany URL 30 min) — współdzielony przez `PodDoc` i `CmrDoc` (DRY; refaktor `CmrDoc` na hook).
+  - **Akcja** ([orders](apps/web/app/(app)/orders/page.tsx)): przy każdym zleceniu przycisk **„🧾 POD"** obok „📄 CMR".
+  - **Bramki:** biome czysto · `tsc` ×7 · 143 testy · build ✓ (`/orders`).
+  - ⚠️ *Sam wydruk do PDF zależy od przeglądarki/OS; złożenie dokumentu jest deterministyczne.*
 
 ## [1.26.0] — 📱 Podpis odbiorcy (POD) w aplikacji kierowcy (mobile)
 
