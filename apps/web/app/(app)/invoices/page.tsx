@@ -1,6 +1,16 @@
 "use client";
 
-import { deleteInvoice, type Invoice, listInvoices } from "@e-logistic/api";
+import {
+  addInvoiceItem,
+  deleteInvoice,
+  deleteInvoiceItem,
+  duplicateInvoice,
+  type Invoice,
+  type InvoiceItem,
+  listInvoiceItems,
+  listInvoices,
+} from "@e-logistic/api";
+import { round2 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -16,6 +26,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<Invoice | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,16 +62,35 @@ export default function InvoicesPage() {
     }
   }
 
+  async function duplicate(id: string) {
+    if (!(await confirm("Utworzyć duplikat faktury (nowy numer, te same pozycje)?"))) return;
+    try {
+      const r = await duplicateInvoice(getBrowserSupabase(), id);
+      setMsg(`✅ Utworzono duplikat: ${r.number}`);
+      await load();
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : "Błąd duplikowania.");
+    }
+  }
+
   if (selected) {
-    return <InvoiceDoc inv={selected} onBack={() => setSelected(null)} />;
+    return (
+      <InvoiceDoc
+        inv={selected}
+        canManage={canManage}
+        onBack={() => setSelected(null)}
+        onChanged={load}
+      />
+    );
   }
 
   return (
     <div style={{ maxWidth: 820 }}>
       <PageHeader
         title="Faktury"
-        subtitle="Faktury wystawione ze zleceń. Kliknij, aby otworzyć dokument do druku/PDF."
+        subtitle="Faktury wystawione ze zleceń. Kliknij, aby otworzyć dokument (pozycje, druk/PDF, duplikat)."
       />
+      {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
       <ListStatus
         loading={loading}
         error={loadErr}
@@ -82,9 +112,14 @@ export default function InvoicesPage() {
                 </strong>
               </button>
               {canManage && (
-                <Button variant="danger" onClick={() => remove(inv.id)}>
-                  🗑️
-                </Button>
+                <>
+                  <Button variant="ghost" onClick={() => duplicate(inv.id)}>
+                    ⧉
+                  </Button>
+                  <Button variant="danger" onClick={() => remove(inv.id)}>
+                    🗑️
+                  </Button>
+                </>
               )}
             </div>
           ))}
@@ -94,7 +129,81 @@ export default function InvoicesPage() {
   );
 }
 
-function InvoiceDoc({ inv, onBack }: { inv: Invoice; onBack: () => void }) {
+function InvoiceDoc({
+  inv,
+  canManage,
+  onBack,
+  onChanged,
+}: {
+  inv: Invoice;
+  canManage: boolean;
+  onBack: () => void;
+  onChanged: () => void;
+}) {
+  const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [desc, setDesc] = useState("");
+  const [qty, setQty] = useState("1");
+  const [unit, setUnit] = useState("");
+  const [vat, setVat] = useState(String(inv.vat_rate ?? 23));
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    try {
+      setItems(await listInvoiceItems(getBrowserSupabase(), inv.id));
+    } catch {
+      setItems([]);
+    }
+  }, [inv.id]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  // Sumy z pozycji (gdy istnieją) lub z nagłówka faktury (faktury starsze bez pozycji).
+  const totals = items.length
+    ? {
+        net: round2(items.reduce((a, i) => a + i.net, 0)),
+        vat: round2(items.reduce((a, i) => a + i.vat_amount, 0)),
+        gross: round2(items.reduce((a, i) => a + i.gross, 0)),
+      }
+    : { net: inv.net, vat: inv.vat_amount, gross: inv.gross };
+
+  async function addLine() {
+    setMsg(null);
+    const q = Number(qty);
+    const u = Number(unit);
+    if (!desc.trim() || !Number.isFinite(q) || !Number.isFinite(u)) {
+      setMsg("Uzupełnij opis, ilość i cenę.");
+      return;
+    }
+    try {
+      await addInvoiceItem(getBrowserSupabase(), inv.id, {
+        description: desc.trim(),
+        quantity: q,
+        unitPrice: u,
+        vatRate: Number(vat) || 0,
+        position: items.length + 1,
+      });
+      setDesc("");
+      setQty("1");
+      setUnit("");
+      await reload();
+      onChanged();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Błąd dodawania pozycji.");
+    }
+  }
+
+  async function removeLine(id: string) {
+    try {
+      await deleteInvoiceItem(getBrowserSupabase(), id);
+      await reload();
+      onChanged();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Błąd usuwania pozycji.");
+    }
+  }
+
   return (
     <div style={{ maxWidth: 720 }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }} className="no-print">
@@ -133,36 +242,104 @@ function InvoiceDoc({ inv, onBack }: { inv: Invoice; onBack: () => void }) {
           <thead>
             <tr>
               <th style={styles.th}>Opis</th>
+              <th style={styles.thR}>Ilość</th>
+              <th style={styles.thR}>Cena</th>
               <th style={styles.thR}>Netto</th>
               <th style={styles.thR}>VAT</th>
               <th style={styles.thR}>Brutto</th>
+              {canManage && <th className="no-print" style={styles.thR} />}
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={styles.td}>{inv.description ?? "Usługa transportowa"}</td>
-              <td style={styles.tdR}>
-                {inv.net} {inv.currency}
-              </td>
-              <td style={styles.tdR}>
-                {inv.vat_amount} {inv.currency} ({inv.vat_rate}%)
-              </td>
-              <td style={styles.tdR}>
-                {inv.gross} {inv.currency}
-              </td>
-            </tr>
+            {items.length > 0 ? (
+              items.map((it) => (
+                <tr key={it.id}>
+                  <td style={styles.td}>{it.description}</td>
+                  <td style={styles.tdR}>{it.quantity}</td>
+                  <td style={styles.tdR}>{it.unit_price}</td>
+                  <td style={styles.tdR}>{it.net}</td>
+                  <td style={styles.tdR}>
+                    {it.vat_amount} ({it.vat_rate}%)
+                  </td>
+                  <td style={styles.tdR}>{it.gross}</td>
+                  {canManage && (
+                    <td className="no-print" style={styles.tdR}>
+                      <button type="button" style={styles.del} onClick={() => removeLine(it.id)}>
+                        ✕
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td style={styles.td}>{inv.description ?? "Usługa transportowa"}</td>
+                <td style={styles.tdR}>1</td>
+                <td style={styles.tdR}>{inv.net}</td>
+                <td style={styles.tdR}>{inv.net}</td>
+                <td style={styles.tdR}>
+                  {inv.vat_amount} ({inv.vat_rate}%)
+                </td>
+                <td style={styles.tdR}>{inv.gross}</td>
+                {canManage && <td className="no-print" style={styles.tdR} />}
+              </tr>
+            )}
           </tbody>
           <tfoot>
             <tr>
-              <td style={{ ...styles.td, fontWeight: 800 }}>Razem do zapłaty</td>
+              <td style={{ ...styles.td, fontWeight: 800 }}>Razem</td>
               <td style={styles.tdR} />
               <td style={styles.tdR} />
+              <td style={{ ...styles.tdR, fontWeight: 700 }}>{totals.net}</td>
+              <td style={{ ...styles.tdR, fontWeight: 700 }}>{totals.vat}</td>
               <td style={{ ...styles.tdR, fontWeight: 800, color: palette.red }}>
-                {inv.gross} {inv.currency}
+                {totals.gross} {inv.currency}
               </td>
+              {canManage && <td className="no-print" style={styles.tdR} />}
             </tr>
           </tfoot>
         </table>
+
+        {canManage && (
+          <div className="no-print" style={styles.addRow}>
+            <input
+              style={{ ...styles.input, flex: 2, minWidth: 160 }}
+              placeholder="Opis pozycji"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+            />
+            <input
+              style={{ ...styles.input, width: 64 }}
+              type="number"
+              step="0.01"
+              placeholder="Ilość"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+            />
+            <input
+              style={{ ...styles.input, width: 90 }}
+              type="number"
+              step="0.01"
+              placeholder="Cena"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+            />
+            <input
+              style={{ ...styles.input, width: 64 }}
+              type="number"
+              step="1"
+              placeholder="VAT %"
+              value={vat}
+              onChange={(e) => setVat(e.target.value)}
+            />
+            <Button onClick={addLine}>＋ Pozycja</Button>
+          </div>
+        )}
+        {msg && (
+          <p className="no-print" style={{ color: "#b00", fontSize: 13 }}>
+            {msg}
+          </p>
+        )}
 
         <p style={styles.muted}>
           Dokument uproszczony wygenerowany w E-Logistic. Zgodność z przepisami (stawki VAT,
@@ -214,4 +391,19 @@ const styles: Record<string, React.CSSProperties> = {
   thR: { textAlign: "right", borderBottom: "2px solid #111", padding: "8px 6px" },
   td: { padding: "8px 6px", borderBottom: "1px solid #ddd" },
   tdR: { padding: "8px 6px", borderBottom: "1px solid #ddd", textAlign: "right" },
+  addRow: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" },
+  input: {
+    background: "#fff",
+    border: "1px solid #bbb",
+    borderRadius: 8,
+    padding: "8px 10px",
+    color: "#111",
+  },
+  del: {
+    background: "transparent",
+    border: "none",
+    color: palette.red,
+    cursor: "pointer",
+    fontWeight: 700,
+  },
 };

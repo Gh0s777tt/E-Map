@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-104-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.79.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-105-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.80.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.80.0] — 🧾 Faktury wieloliniowe + duplikat
+
+- `[#105]` 🧾 **Pozycje na fakturze + duplikowanie**:
+  - [Migracja 0034](supabase/migrations/0034_invoice_items.sql): tabela `invoice_items` (opis, ilość, cena, VAT) + RLS (przez firmę faktury). **Kwoty pozycji** liczone triggerem BEFORE; **sumy faktury** (netto/VAT/brutto) przeliczane triggerem AFTER = suma pozycji. `create_invoice` dokłada pozycję startową ze zlecenia.
+  - **RPC `duplicate_invoice`** — kopia faktury z pozycjami pod nowym numerem (numeracja FV/ROK/NNNN, blokada advisory), audyt.
+  - api [data/invoices.ts](packages/api/src/data/invoices.ts): `listInvoiceItems`, `addInvoiceItem`, `deleteInvoiceItem`, `duplicateInvoice`. Typy DB (31 tabel, 24 funkcje).
+  - **Strona [/invoices](apps/web/app/(app)/invoices/page.tsx)**: dokument pokazuje **pozycje** (ilość/cena/netto/VAT/brutto) z sumą; owner/dispatcher **dodaje i usuwa pozycje** (sumy przeliczają się na żywo). Przycisk **„⧉ Duplikat"** na liście. Faktury starsze (bez pozycji) renderują się jak dotąd (jednoliniowo).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/invoices`).
 
 ## [0.79.1] — 🧭 Zwijane sekcje w bocznym pasku (kompaktowa nawigacja)
 
