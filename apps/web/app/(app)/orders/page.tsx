@@ -237,12 +237,12 @@ export default function OrdersPage() {
   async function invoice(o: Order) {
     if (
       !(await confirm(
-        `Wystawić fakturę za zlecenie ${o.reference_no || "(bez numeru)"} (VAT 23%)?`,
+        `Wystawić fakturę za zlecenie ${o.reference_no || "(bez numeru)"} (VAT wg ustawień firmy)?`,
       ))
     )
       return;
     try {
-      const r = await createInvoiceFromOrder(getBrowserSupabase(), o.id, 23);
+      const r = await createInvoiceFromOrder(getBrowserSupabase(), o.id);
       setMsg(`✅ Faktura ${r.number} (brutto ${r.gross} ${o.currency}) — patrz zakładka Faktury.`);
       await load();
     } catch (e) {

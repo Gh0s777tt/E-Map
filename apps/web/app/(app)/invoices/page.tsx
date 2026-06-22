@@ -337,6 +337,7 @@ function InvoiceDoc({
               )}
             </div>
             <div style={styles.muted}>Data wystawienia: {inv.issue_date}</div>
+            {inv.due_date && <div style={styles.muted}>Termin płatności: {inv.due_date}</div>}
           </div>
           <div style={{ textAlign: "right", fontWeight: 800, color: palette.red }}>E-Logistic</div>
         </div>

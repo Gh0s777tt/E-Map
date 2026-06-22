@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-115-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.89.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-116-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.90.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.90.0] — 🧾 Domyślny VAT + termin płatności (z ustawień firmy)
+
+- `[#116]` 🧾 **Fakturowe ustawienia firmy** zamiast sztywnego VAT 23%:
+  - [Migracja 0038](supabase/migrations/0038_invoice_defaults.sql): `companies.default_vat_rate`, `companies.payment_due_days`, `invoices.due_date`. `create_invoice`/`create_blank_invoice` biorą **VAT i termin płatności z firmy** (gdy nie podano); `due_date = data wystawienia + dni`.
+  - **Ustawienia** ([settings](apps/web/app/(app)/settings/page.tsx)): właściciel ustawia **domyślny VAT (%)** i **termin płatności (dni)** obok danych firmy.
+  - **Faktura**: dokument pokazuje **„Termin płatności"**; wystawianie ze zlecenia nie wymusza już 23% (bierze domyślny z firmy).
+  - api [data/companies.ts](packages/api/src/data/companies.ts): `Company` + `updateCompany` z nowymi polami; [data/invoices.ts](packages/api/src/data/invoices.ts): `Invoice.due_date`, `createInvoiceFromOrder` z opcjonalnym VAT.
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/settings`, `/invoices`).
 
 ## [0.89.1] — ♻️ Porządki: wspólny eksport CSV (mniej duplikacji)
 

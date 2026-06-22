@@ -37,6 +37,8 @@ export default function SettingsPage() {
   const [cTaxId, setCTaxId] = useState("");
   const [cAddress, setCAddress] = useState("");
   const [cCountry, setCCountry] = useState("");
+  const [cVat, setCVat] = useState("23");
+  const [cDueDays, setCDueDays] = useState("14");
   const [cMsg, setCMsg] = useState<string | null>(null);
   const [cBusy, setCBusy] = useState(false);
 
@@ -53,6 +55,8 @@ export default function SettingsPage() {
         setCTaxId(c.tax_id ?? "");
         setCAddress(c.address ?? "");
         setCCountry(c.country ?? "");
+        setCVat(String(c.default_vat_rate ?? 23));
+        setCDueDays(String(c.payment_due_days ?? 14));
       }
     } catch {
       // brak firmy / dostępu
@@ -73,6 +77,8 @@ export default function SettingsPage() {
         taxId: cTaxId.trim() || undefined,
         address: cAddress.trim() || undefined,
         country: cCountry.trim() || undefined,
+        defaultVatRate: Number(cVat) || 0,
+        paymentDueDays: Math.max(0, Math.round(Number(cDueDays) || 0)),
       });
       setCMsg("✅ Zapisano dane firmy.");
     } catch (e) {
@@ -283,6 +289,28 @@ export default function SettingsPage() {
                   placeholder="PL"
                 />
               </label>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <label style={styles.field}>
+                  <span style={styles.label}>Domyślny VAT (%)</span>
+                  <input
+                    style={{ ...styles.cInput, maxWidth: 120 }}
+                    type="number"
+                    step="1"
+                    value={cVat}
+                    onChange={(e) => setCVat(e.target.value)}
+                  />
+                </label>
+                <label style={styles.field}>
+                  <span style={styles.label}>Termin płatności (dni)</span>
+                  <input
+                    style={{ ...styles.cInput, maxWidth: 140 }}
+                    type="number"
+                    step="1"
+                    value={cDueDays}
+                    onChange={(e) => setCDueDays(e.target.value)}
+                  />
+                </label>
+              </div>
               <div>
                 <Button onClick={saveCompany} disabled={cBusy}>
                   {cBusy ? "Zapisywanie…" : "Zapisz dane firmy"}

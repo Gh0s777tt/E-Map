@@ -165,6 +165,8 @@ export interface Database {
           country: string | null;
           created_at: string;
           updated_at: string;
+          default_vat_rate: number;
+          payment_due_days: number;
         };
         Insert: {
           id?: string;
@@ -174,6 +176,8 @@ export interface Database {
           country?: string | null;
           created_at?: string;
           updated_at?: string;
+          default_vat_rate?: number;
+          payment_due_days?: number;
         };
         Update: {
           id?: string;
@@ -183,6 +187,8 @@ export interface Database {
           country?: string | null;
           created_at?: string;
           updated_at?: string;
+          default_vat_rate?: number;
+          payment_due_days?: number;
         };
         Relationships: [];
       };
@@ -618,6 +624,7 @@ export interface Database {
           currency: string;
           created_at: string;
           status: string;
+          due_date: string | null;
         };
         Insert: {
           id?: string;
@@ -639,6 +646,7 @@ export interface Database {
           currency?: string;
           created_at?: string;
           status?: string;
+          due_date?: string | null;
         };
         Update: {
           id?: string;
@@ -660,6 +668,7 @@ export interface Database {
           currency?: string;
           created_at?: string;
           status?: string;
+          due_date?: string | null;
         };
         Relationships: [];
       };
