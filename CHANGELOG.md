@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-167-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.23.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-168-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.24.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.24.0] — 🧾 e-CMR / dowód dostawy (POD) — podpis odbiorcy
+
+- `[#168]` 🧾 **Podpis odbiorcy przy zleceniu (Proof of Delivery)** — elektroniczny dowód odbioru ładunku, bez nowej tabeli (reużycie infrastruktury załączników):
+  - **Pole podpisu** ([SignaturePad](apps/web/components/SignaturePad.tsx)): canvas „papier" (białe tło, czarny tusz), High-DPI + Pointer Events (mysz · dotyk · rysik), eksport do PNG, „Wyczyść"/„Anuluj"/„Zapisz". Blokada zapisu pustego podpisu.
+  - **Załączniki zlecenia** ([CargoPhotos](apps/web/components/CargoPhotos.tsx)): przycisk **„✍️ Podpis (POD)"** → pole „odbiorca" + podpis; zapis jako załącznik PNG do bucketu `cargo-photos` z `caption = "POD: <odbiorca> · <data/godz.>"`. POD wyróżniony w siatce (badge „✍️ POD", czerwona ramka, podpis pod miniaturą). Działa wszędzie, gdzie są załączniki — **panel spedytora (`/orders`)** i **panel kierowcy (`/my-orders`)**.
+  - **Bez migracji / RLS bez zmian:** podpis to obraz w istniejącej tabeli `order_photos` (upload: członek firmy; usuwanie: owner/dispatcher).
+  - **Bramki:** biome czysto · `tsc` ×7 · 136 testów · build ✓ (`/orders`, `/my-orders`).
+  - ⚠️ *Interakcję pisaka należy przeklikać na urządzeniu dotykowym; logika rysowania i eksport są deterministyczne.*
 
 ## [1.23.0] — 🌱 Emisje CO₂ per klient (atrybucja jak rentowność)
 
