@@ -2,30 +2,15 @@ export const dynamic = "force-dynamic";
 
 import { getActiveMembership } from "@e-logistic/api";
 import { type AppModule, effectiveModules } from "@e-logistic/core";
-import { createTranslator, type MessageKey } from "@e-logistic/i18n";
+import { createTranslator } from "@e-logistic/i18n";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { HelpCenter } from "@/components/HelpCenter";
+import type { NavGroup } from "@/components/SidebarNav";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 const t = createTranslator("pl");
-
-// `mod` = moduł wymagany do pokazania pozycji (null = zawsze widoczna).
-const NAV: { href: string; key: MessageKey; mod: AppModule | null }[] = [
-  { href: "/dashboard", key: "nav.dashboard", mod: null },
-  { href: "/vehicles", key: "nav.vehicles", mod: "vehicles" },
-  { href: "/drivers", key: "nav.drivers", mod: "drivers" },
-  { href: "/cards", key: "nav.cards", mod: "cards" },
-  { href: "/forms/fuel", key: "form.fuel.title", mod: "forms" },
-  { href: "/forms/adblue", key: "form.adblue.title", mod: "forms" },
-  { href: "/forms/trip", key: "form.trip.title", mod: "forms" },
-  { href: "/reports", key: "nav.reports", mod: "reports" },
-  { href: "/map", key: "nav.map", mod: "map" },
-  { href: "/stats", key: "nav.stats", mod: "stats" },
-  { href: "/settlements", key: "nav.settlements", mod: "settlements" },
-  { href: "/settings", key: "nav.settings", mod: null },
-];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabaseConfigured = Boolean(
@@ -66,23 +51,64 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
-  const items = NAV.filter((i) => i.mod === null || allowed.includes(i.mod));
-  const navItems = [
-    ...items.map((i) => ({ href: i.href, label: t(i.key) })),
-    { href: "/orders", label: "Zlecenia" },
-    { href: "/fleet-status", label: "Status floty" },
-    { href: "/my-orders", label: "Moje zlecenia" },
-    { href: "/invoices", label: "Faktury" },
-    { href: "/documents", label: "Sejf dokumentów" },
-    { href: "/fuel-prices", label: "Ceny diesla" },
-    { href: "/service", label: "Serwis" },
-    ...(allowed.includes("settlements") ? [{ href: "/monthly", label: "Zestawienie msc." }] : []),
-    ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
-  ];
+  // Nawigacja zgrupowana w zwijane sekcje (kompaktowy pasek). `has` = dostęp do modułu.
+  const has = (mod: AppModule) => allowed.includes(mod);
+  const navGroups: NavGroup[] = [
+    { title: null, items: [{ href: "/dashboard", label: t("nav.dashboard") }] },
+    {
+      title: "Zlecenia",
+      items: [
+        { href: "/orders", label: "Zlecenia" },
+        { href: "/fleet-status", label: "Status floty" },
+        { href: "/my-orders", label: "Moje zlecenia" },
+        ...(has("map") ? [{ href: "/map", label: t("nav.map") }] : []),
+      ],
+    },
+    ...(has("forms")
+      ? [
+          {
+            title: "Formularze",
+            items: [
+              { href: "/forms/fuel", label: t("form.fuel.title") },
+              { href: "/forms/adblue", label: t("form.adblue.title") },
+              { href: "/forms/trip", label: t("form.trip.title") },
+            ],
+          },
+        ]
+      : []),
+    {
+      title: "Flota",
+      items: [
+        ...(has("vehicles") ? [{ href: "/vehicles", label: t("nav.vehicles") }] : []),
+        ...(has("drivers") ? [{ href: "/drivers", label: t("nav.drivers") }] : []),
+        ...(has("cards") ? [{ href: "/cards", label: t("nav.cards") }] : []),
+        { href: "/service", label: "Serwis" },
+        { href: "/documents", label: "Sejf dokumentów" },
+        ...(has("reports") ? [{ href: "/reports", label: t("nav.reports") }] : []),
+      ],
+    },
+    {
+      title: "Finanse",
+      items: [
+        { href: "/invoices", label: "Faktury" },
+        ...(has("settlements") ? [{ href: "/settlements", label: t("nav.settlements") }] : []),
+        ...(has("settlements") ? [{ href: "/monthly", label: "Zestawienie msc." }] : []),
+        { href: "/fuel-prices", label: "Ceny diesla" },
+        ...(has("stats") ? [{ href: "/stats", label: t("nav.stats") }] : []),
+      ],
+    },
+    {
+      title: null,
+      items: [
+        { href: "/settings", label: t("nav.settings") },
+        ...(isOwner ? [{ href: "/team", label: "Zespół" }] : []),
+      ],
+    },
+  ].filter((g) => g.items.length > 0);
 
   return (
     <div className="app-shell">
-      <AppSidebar navItems={navItems} email={email} supabaseConfigured={supabaseConfigured} />
+      <AppSidebar navGroups={navGroups} email={email} supabaseConfigured={supabaseConfigured} />
       <main className="app-main">
         <ConfirmProvider>{children}</ConfirmProvider>
       </main>

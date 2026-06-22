@@ -76,6 +76,40 @@ body {
 .app-navlink-active:hover {
   background: #e50914;
 }
+.app-navgroup {
+  display: flex;
+  flex-direction: column;
+}
+.app-navgroup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #8a8a8a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 12px 4px;
+  cursor: pointer;
+}
+.app-navgroup-head:hover {
+  color: #f5f5f5;
+}
+.app-navgroup-head-active {
+  color: #e50914;
+}
+.app-navgroup-caret {
+  font-size: 10px;
+}
+.app-navgroup-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 8px;
+}
 .app-main {
   flex: 1;
   min-width: 0;
