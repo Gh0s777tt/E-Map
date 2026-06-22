@@ -17,9 +17,11 @@ import {
 } from "@e-logistic/api";
 import {
   FREIGHT_EXPORT_HEADERS,
+  filterSortOrders,
   freightExportRows,
   freightRowCells,
   ORDER_STATUSES,
+  type OrderSort,
   type OrderStatus,
   orderSchema,
   round2,
@@ -64,6 +66,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<OrderSort>("date_desc");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [referenceNo, setReferenceNo] = useState("");
@@ -134,8 +138,8 @@ export default function OrdersPage() {
   }
 
   const filtered = useMemo(
-    () => (filter === "all" ? orders : orders.filter((o) => o.status === filter)),
-    [orders, filter],
+    () => filterSortOrders(orders, { text: query, status: filter, sort }),
+    [orders, filter, query, sort],
   );
 
   // Podsumowanie (wartość liczona dla zleceń w EUR — mieszane waluty pomijane w sumie).
@@ -506,6 +510,26 @@ export default function OrdersPage() {
         </div>
       )}
 
+      <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+        <input
+          style={styles.search}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="🔎 Szukaj: nadawca, odbiorca, trasa, nr…"
+        />
+        <select
+          style={styles.sortSel}
+          value={sort}
+          onChange={(e) => setSort(e.target.value as OrderSort)}
+          aria-label="Sortowanie"
+        >
+          <option value="date_desc">Data ↓ (najnowsze)</option>
+          <option value="date_asc">Data ↑ (najstarsze)</option>
+          <option value="price_desc">Stawka ↓</option>
+          <option value="price_asc">Stawka ↑</option>
+        </select>
+      </div>
+
       <div style={styles.filters}>
         {(["all", ...ORDER_STATUSES] as const).map((s) => (
           <button
@@ -661,7 +685,23 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.graphite}`,
     fontSize: 14,
   },
-  filters: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 16 },
+  filters: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 10 },
+  search: {
+    flex: 1,
+    minWidth: 220,
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "9px 12px",
+    color: palette.offWhite,
+  },
+  sortSel: {
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "9px 12px",
+    color: palette.offWhite,
+  },
   chip: {
     background: "transparent",
     color: palette.smoke,

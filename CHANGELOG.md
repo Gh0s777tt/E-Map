@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-178-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.34.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-179-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.35.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.35.0] — 🗂️ Wyszukiwarka, filtr i sortowanie zleceń
+
+- `[#179]` 🔎 **Szybkie znajdowanie zleceń** przy rosnącej liczbie:
+  - **Rdzeń** [core/orderFilter.ts](packages/core/src/orderFilter.ts): `filterSortOrders(orders, {text, status, sort})` — wyszukiwanie tekstowe (referencja/nadawca/odbiorca/trasa, bez wielkości liter), filtr statusu i sortowanie (data ↓/↑, stawka ↓/↑). Czyste, generyczne (zachowuje typ wejścia). **6 testów (174 łącznie)**.
+  - **Zlecenia** ([orders](apps/web/app/(app)/orders/page.tsx)): pole **🔎 Szukaj** + select sortowania nad chipami statusu. Wyszukiwanie/sort obejmuje też podsumowanie i eksporty (CSV, giełda).
+  - **Bramki:** biome czysto · `tsc` ×7 · 174 testy · build ✓ (`/orders`).
 
 ## [1.34.0] — 🚚 Ranking rentowności floty (P&L per pojazd)
 

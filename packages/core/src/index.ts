@@ -19,6 +19,7 @@ export * from "./freightExport";
 export * from "./ids";
 export * from "./invoice";
 export * from "./money";
+export * from "./orderFilter";
 export * from "./orders";
 export * from "./perDiem";
 export * from "./pod";
