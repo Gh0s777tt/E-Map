@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-140-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.4.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-141-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.4.3-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.4.3] — 🧹 Rozbicie strony statystyk na moduły (P2 jakość z audytu)
+
+- `[#141]` 🧹 **Dekompozycja `stats/page.tsx`** — realizacja #5 z [backlogu poaudytowego](docs/AUDIT-2026-06-22.md). Najdłuższa strona analityczna (876 linii) rozbita na skupione moduły współlokowane w trasie `(app)/stats/`:
+  - [shared.tsx](apps/web/app/(app)/stats/shared.tsx) — wspólne typy (`FuelRaw`/`TripRaw`), helpery (`entry`, `monthlyCost`), prymitywy (`FleetStat`, `Stat`) i obiekt `styles`.
+  - [ProfitabilitySection.tsx](apps/web/app/(app)/stats/ProfitabilitySection.tsx), [VehicleDetail.tsx](apps/web/app/(app)/stats/VehicleDetail.tsx) (+ `FuelBlock`), [AlertsBanner.tsx](apps/web/app/(app)/stats/AlertsBanner.tsx).
+  - [page.tsx](apps/web/app/(app)/stats/page.tsx): **876 → 337 linii**; każdy moduł poniżej progu ~400 z audytu.
+  - **Czysty refaktor** — przeniesienie kodu bez zmiany logiki, zweryfikowane `tsc` + `next build` (zachowanie identyczne).
+  - Pozostaje w backlogu: rozbicie `map/page.tsx` (1380 l., wymaga ostrożnej, ręcznie testowanej refaktoryzacji) oraz wspólne presety stylów w `@e-logistic/ui`.
+  - **Bramki:** biome czysto (0 ostrzeżeń) · `tsc` ×7 · 117 testów · build ✓ (`/stats`).
 
 ## [1.4.2] — 🗂️ Indeks faktura↔zlecenie + utwardzenie statusu zlecenia (P2 z audytu)
 
