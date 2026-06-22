@@ -11,6 +11,7 @@ import type { OrderStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { CargoPhotos } from "@/components/CargoPhotos";
 import { CmrDoc } from "@/components/CmrDoc";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
@@ -150,6 +151,7 @@ export default function MyOrdersPage() {
                   <Button onClick={() => advance(o, "delivered")}>✅ Dostarczone</Button>
                 )}
               </div>
+              <CargoPhotos orderId={o.id} />
             </div>
           ))}
         </div>
