@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-154-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.13.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-155-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.14.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.14.0] — 📱 Mobilne formularze → Supabase (offline outbox)
+
+- `[#155]` 📱 **Formularze mobilne zapisują realnie do bazy** (paliwo, AdBlue, trasa) — koniec zapisu „tylko lokalnie do pamięci ekranu":
+  - **Outbox offline-first** [apps/mobile/lib/outbox.ts](apps/mobile/lib/outbox.ts) — odpowiednik webowego, na **AsyncStorage**: `enqueue`/`trySync`/`flushQueued`/`listOutbox`. Zapis najpierw lokalnie (status `queued`), potem best-effort sync do Supabase (`insertFuelLog`/`insertTripEvent` z `packages/api`); brak sieci/sesji → wpis czeka w kolejce i synchronizuje się przy następnym wejściu na ekran.
+  - **Realny wybór pojazdu** — hook [useFleet](apps/mobile/lib/useFleet.ts) (`getActiveMembership` + `listVehicles`) + komponent [VehiclePicker](apps/mobile/components/VehiclePicker.tsx); koniec z `DEMO_VEHICLE`.
+  - **Wspólny formularz cieczy** [LiquidForm](apps/mobile/components/LiquidForm.tsx) dla paliwa i AdBlue (ta sama walidacja `fuelLogSchema`); [trasa](apps/mobile/app/trip.tsx) z akcjami i wagą. Każdy ekran pokazuje status ostatnich wpisów (⏳ w kolejce / ✅ zsynchronizowane / ⚠️ błąd).
+  - **Bezpieczeństwo:** zapisy idą przez tę samą warstwę `packages/api` co web — RLS (kierowca pisze do swojej firmy) działa identycznie.
+  - **Bramki:** biome czysto · `tsc` (mobile) ✓ · 158 testów rdzenia bez zmian. Mobile weryfikowane typecheckiem (urządzenie/symulator poza tym środowiskiem).
 
 ## [1.13.0] — 📱 Aplikacja mobilna: logowanie + sesja (fundament iOS/Android)
 
