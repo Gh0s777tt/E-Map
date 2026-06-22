@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-161-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.18.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-162-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.18.3-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.18.3] — 🎨 Wspólne tokeny + presety stylów (spłata długu [P3] z audytu)
+
+- `[#162]` 🎨 **Koniec powielania styli** — realizacja [P3] z [audytu v1.18](docs/AUDIT-v1.18.md):
+  - **Tokeny w `@e-logistic/ui`** [tokens.ts](packages/ui/src/tokens.ts): `radius` (sm/md/lg/xl/pill), `space` (xs…xxl), `fontSize` (xs…xl) — liczby **współdzielone web (px) ↔ mobile (dp)**, jeden kanon skali obok `palette`.
+  - **Presety web** [components/formStyles.ts](apps/web/components/formStyles.ts) (CSSProperties z palety + tokenów): `field`, `label`, `input`, `grid`, `formWrap`, `card`, `listRow`, `cell`, `meta` — koniec kopiowania tych samych obiektów `styles` na każdej stronie.
+  - **Adopcja**: [kontrahenci](apps/web/app/(app)/contractors/page.tsx) korzystają z presetów (lokalny `styles` = referencje do `formStyles`) — identyczne wartości, zero zmiany wizualnej; wzorzec do migracji kolejnych stron przyrostowo.
+  - **Architektura:** `CSSProperties` jest DOM-owe, więc presety web są w aplikacji web; mobile reużywa same tokeny liczbowe (RN StyleSheet).
+  - **Bramki:** biome czysto · `tsc` ×7 · 158 testów · build ✓ (`/contractors`).
 
 ## [1.18.2] — 🧹 Rozbicie `map/page.tsx` (spłata długu [P2] z audytu)
 
