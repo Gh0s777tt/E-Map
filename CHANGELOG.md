@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-159-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.18.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-160-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.18.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.18.1] — 🔍 Trzeci audyt całościowy (v1.18, przed publikacją mobile)
+
+- `[#160]` 🔍 **Pełny audyt web + mobile** ([docs/AUDIT-v1.18.md](docs/AUDIT-v1.18.md)) — po dołożeniu aplikacji mobilnej (v1.13–v1.18). Werdykt: brak P0/P1; web produkcyjny, mobile gotowy do EAS build po finalnej grafice i QA na urządzeniu.
+  - **Oceny:** Bezpieczeństwo **A** · Jakość **A** · Wydajność **B+** · Docs **A−** · Gotowość mobile **B+**.
+  - **Bramki:** biome czysto (218 plików) · `tsc` ×7 · 158 testów · `next build` ✓ (30 stron, 12 API) · `audit:rls` ✓ (36 tabel). **0 TODO/FIXME · 0 `as any` · 0 sekretów w repo.**
+  - **Backlog:** [P2] `map/page.tsx` (1694 l.) do rozbicia; [P2] QA mobile na urządzeniu; [P3] finalna grafika + presety stylów `@e-logistic/ui`. Checklista przed sklepami w raporcie.
 
 ## [1.18.0] — 🏪 Mobile gotowy do publikacji: ikony, splash, EAS
 
