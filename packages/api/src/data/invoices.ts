@@ -29,12 +29,24 @@ export interface Invoice {
 const COLS =
   "id, order_id, number, issue_date, due_date, paid_at, seller_name, seller_tax_id, seller_address, seller_bank, seller_account, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
 
-export async function listInvoices(client: SupabaseClient, companyId: string): Promise<Invoice[]> {
-  const { data, error } = await client
+/**
+ * Faktury firmy (najnowsze pierwsze). `opts` ogranicza zakres: `from`/`to` po
+ * `created_at`, `limit` zabezpiecza przed pobraniem całej historii.
+ */
+export async function listInvoices(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { from?: string; to?: string; limit?: number },
+): Promise<Invoice[]> {
+  let query = client
     .from("invoices")
     .select(COLS)
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  if (opts?.to) query = query.lte("created_at", opts.to);
+  if (opts?.limit) query = query.limit(opts.limit);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Invoice[];
 }

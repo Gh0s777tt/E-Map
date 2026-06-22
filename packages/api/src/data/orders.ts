@@ -25,12 +25,24 @@ export interface Order {
 const COLS =
   "id, reference_no, shipper, consignee, origin, destination, cargo, weight_kg, price, currency, status, vehicle_id, assigned_to, load_date, unload_date, notes, created_at";
 
-export async function listOrders(client: SupabaseClient, companyId: string): Promise<Order[]> {
-  const { data, error } = await client
+/**
+ * Zlecenia firmy (najnowsze pierwsze). `opts` ogranicza zakres dla stron analitycznych:
+ * `from`/`to` filtrują po `created_at`, `limit` zabezpiecza przed pobraniem całej historii.
+ */
+export async function listOrders(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { from?: string; to?: string; limit?: number },
+): Promise<Order[]> {
+  let query = client
     .from("orders")
     .select(COLS)
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  if (opts?.to) query = query.lte("created_at", opts.to);
+  if (opts?.limit) query = query.limit(opts.limit);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Order[];
 }

@@ -96,12 +96,18 @@ export default function StatsPage() {
         const m = await getCachedMembership(sb);
         if (!m) return;
         setCanManage(m.role === "owner" || m.role === "dispatcher");
+        // Okno analizy: ostatnie 24 miesiące (pokrywa trend 6 mies., alerty m/m i
+        // wykresy) zamiast pobierania całej historii — z limitem bezpieczeństwa.
+        const now = new Date();
+        const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
+          .toISOString()
+          .slice(0, 10);
         const [f, a, tr, vs, ord] = await Promise.all([
-          listFuelLogs(sb, { limit: 2000 }),
-          listFuelLogs(sb, { table: "adblue_logs", limit: 2000 }),
-          listTripEvents(sb, { limit: 2000 }),
+          listFuelLogs(sb, { from, limit: 5000 }),
+          listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
+          listTripEvents(sb, { from, limit: 5000 }),
           listVehicles(sb, m.companyId),
-          listOrders(sb, m.companyId),
+          listOrders(sb, m.companyId, { from, limit: 5000 }),
         ]);
         setFuel(f as FuelRaw[]);
         setAdblue(a as FuelRaw[]);
@@ -251,7 +257,7 @@ export default function StatsPage() {
       <PageHeader
         title={t("nav.stats")}
         subtitle={
-          'Wybierz pojazd, by zobaczyć jego tankowania i trasy. Spalanie liczone „od pełna do pełna"; tankowania częściowe są wliczane do litrów i kosztów.'
+          'Dane z ostatnich 24 miesięcy. Wybierz pojazd, by zobaczyć jego tankowania i trasy. Spalanie liczone „od pełna do pełna"; tankowania częściowe są wliczane do litrów i kosztów.'
         }
       />
 

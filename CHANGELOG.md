@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-137-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.3.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-138-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.4.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.4.0] — 🚀 Okno czasu na stronach analitycznych (P1 z audytu)
+
+- `[#138]` 🚀 **Koniec pobierania całych tabel firmy klient‑side** — realizacja #1 z [backlogu poaudytowego](docs/AUDIT-2026-06-22.md):
+  - **api**: `listOrders`/`listInvoices` przyjmują teraz `{ from?, to?, limit? }` (filtr po `created_at`) — analogicznie do `listFuelLogs`/`listTripEvents` ([orders.ts](packages/api/src/data/orders.ts), [invoices.ts](packages/api/src/data/invoices.ts)). Wstecznie zgodne (bez opcji = jak dotąd).
+  - **Zestawienie miesięczne** ([monthly](apps/web/app/(app)/monthly/page.tsx)): ładuje **tylko okno 6 miesięcy** kończące na wybranym (zamiast `limit: 5000` ×2 + całej historii zleceń) i **przeładowuje przy zmianie miesiąca**. ~10k wierszy → ≤6 mies.
+  - **Statystyki** ([stats](apps/web/app/(app)/stats/page.tsx)): okno **ostatnich 24 miesięcy** (pokrywa trend 6 mies., alerty m/m i wykresy) z limitem bezpieczeństwa, zamiast arbitralnego `limit: 2000`. Podtytuł jasno informuje o oknie.
+  - **Bramki:** biome czysto · `tsc` ×7 · 117 testów · build ✓ (`/monthly`, `/stats`).
 
 ## [1.3.1] — 🔍 Drugi audyt całościowy (v1.3.0) + 0 ostrzeżeń Biome
 

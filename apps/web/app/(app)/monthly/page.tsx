@@ -50,10 +50,17 @@ export default function MonthlyPage() {
         setDenied(true);
         return;
       }
+      // Okno danych = 6 miesięcy kończących na wybranym (trend + porównanie m/m).
+      // Przeładowanie przy zmianie miesiąca — zamiast pobierania całej historii.
+      const window6 = monthsEndingAt(month, 6);
+      const from = window6.length ? `${window6[0]}-01` : undefined;
+      const toDate = new Date(`${month}-01T00:00:00Z`);
+      toDate.setUTCMonth(toDate.getUTCMonth() + 1);
+      const to = toDate.toISOString().slice(0, 10); // 1. dzień kolejnego miesiąca
       const [ord, f, a, comp] = await Promise.all([
-        listOrders(sb, m.companyId),
-        listFuelLogs(sb, { limit: 5000 }),
-        listFuelLogs(sb, { table: "adblue_logs", limit: 5000 }),
+        listOrders(sb, m.companyId, { from, to }),
+        listFuelLogs(sb, { from, to, limit: 5000 }),
+        listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
         getCompany(sb, m.companyId),
       ]);
       setCompanyName(comp?.name ?? "");
@@ -86,7 +93,7 @@ export default function MonthlyPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [month]);
 
   useEffect(() => {
     load();
