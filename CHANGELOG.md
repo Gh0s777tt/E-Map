@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-133-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.1.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-134-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.1.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.1.1] — 📊 Dwujęzyczne nagłówki eksportów finansowych (CSV)
+
+- `[#134]` 📊 **Eksporty wysyłane na zewnątrz po PL/EN** — nagłówki CSV przez `t()` tam, gdzie język ma realne znaczenie:
+  - **Faktury** ([invoices](apps/web/app/(app)/invoices/page.tsx)): numer, data, nabywca, NIP, netto, VAT, brutto, waluta (eksport dla zagranicznego nabywcy).
+  - **Zestawienie miesięczne** ([monthly](apps/web/app/(app)/monthly/page.tsx)): pojazd, przychód, paliwo, AdBlue, wynik + wiersz „RAZEM" (eksport dla księgowości).
+  - +12 kluczy (`invoices.csv.*`, `monthly.csv.*`, `common.date/total`), z dużym reużyciem istniejących (`common.vehicle`, `orders.csv.currency`). Parytet i18n wymuszony typem i testem.
+  - Świadomie poza zakresem: eksporty wewnętrzne (rozliczenia per pojazd, pojazdy, dokumenty, usterki, kierowcy) — dane operacyjne dla floty PL, niski zysk z tłumaczenia.
+  - **Bramki:** biome czysto · `tsc` ×7 · 105 testów (parytet i18n ✓) · build ✓ (`/invoices`, `/monthly`).
 
 ## [1.1.0] — 🧾 Eksport rentowności klientów do CSV (+ sekcja dwujęzyczna)
 

@@ -183,6 +183,18 @@ export const en: Record<MessageKey, string> = {
   "orders.csv.loadDate": "Loading",
   "orders.csv.unloadDate": "Unloading",
 
+  "invoices.csv.number": "No.",
+  "invoices.csv.buyer": "Buyer",
+  "invoices.csv.taxId": "Tax ID",
+  "invoices.csv.net": "Net",
+  "invoices.csv.vat": "VAT",
+  "invoices.csv.gross": "Gross",
+
+  "monthly.csv.revenue": "Revenue EUR",
+  "monthly.csv.fuel": "Fuel",
+  "monthly.csv.adblue": "AdBlue",
+  "monthly.csv.result": "Result",
+
   "profit.title": "Client profitability",
   "profit.approx": "(approximation — cost = fuel)",
   "profit.total.revenue": "Revenue (EUR)",
@@ -222,4 +234,6 @@ export const en: Record<MessageKey, string> = {
   "common.retry": "Retry",
   "common.status": "Status",
   "common.vehicle": "Vehicle",
+  "common.date": "Date",
+  "common.total": "TOTAL",
 };
