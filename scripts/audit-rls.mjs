@@ -27,7 +27,20 @@ import pg from "pg";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function connConfig() {
-  if (process.env.SUPABASE_DB_URL) return { connectionString: process.env.SUPABASE_DB_URL };
+  // Z URL-a rozkładamy pola ręcznie i wymuszamy ssl bez weryfikacji — pooler
+  // Supabase ma self-signed chain, a `sslmode` w connection stringu potrafi
+  // nadpisać opcję ssl pg-a. Dzięki temu CI łączy się tak samo jak lokalnie.
+  if (process.env.SUPABASE_DB_URL) {
+    const u = new URL(process.env.SUPABASE_DB_URL);
+    return {
+      host: u.hostname,
+      port: u.port ? Number(u.port) : 5432,
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+      database: u.pathname.replace(/^\//, "") || "postgres",
+      ssl: { rejectUnauthorized: false },
+    };
+  }
   const env = readFileSync(resolve(ROOT, "apps/web/.env.local"), "utf8");
   const pwMatch = env.match(/SUPABASE_DB_PASSWORD\s*=\s*"?([^"\r\n]+)"?/);
   const refMatch = env.match(/SUPABASE_DB_REF\s*=\s*"?([^"\r\n]+)"?/);
