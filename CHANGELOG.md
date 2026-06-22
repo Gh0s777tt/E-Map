@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-144-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.6.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-145-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.7.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.7.0] — 📤 Integracja z Fakturownią: eksport faktury VAT
+
+- `[#145]` 📤 **Eksport faktury do Fakturowni** (legalna faktura VAT + numeracja + PDF) — nasza faktura jest „uproszczona"; Fakturownia daje dokument urzędowy:
+  - **Mapper rdzenia** [core/fakturownia.ts](packages/core/src/fakturownia.ts) `toFakturowniaInvoice` — faktura E-Logistic → ładunek `POST /invoices.json` (`kind:"vat"`, sprzedawca z NIP/bankiem, nabywca z NIP/adresem, pozycje `total_price_gross`+`tax`, waluta, `payment_to`). Czysty, 4 testy.
+  - **Trasa serwerowa** [/api/fakturownia/export](apps/web/app/api/fakturownia/export/route.ts) — token i subdomena **wyłącznie po stronie serwera** (`FAKTUROWNIA_API_TOKEN`/`FAKTUROWNIA_DOMAIN`); autoryzacja sesją + owner/dispatcher; faktura tylko z własnej firmy (RLS). Zwraca **publiczny link do PDF** (token udostępniania — bez ujawniania `api_token`). Bez kluczy → `501` + łagodna degradacja.
+  - **UI:** przycisk „📤 Fakturownia" w dokumencie faktury (owner/dispatcher, faktura niezanulowana).
+  - **Wzorzec:** sekret w env jak GraphHopper (`/api/route`); [.env.example](.env.example) + [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) zaktualizowane.
+  - **Bramki:** biome czysto · `tsc` ×7 · 128 testów · build ✓ (`/api/fakturownia/export`, `/invoices`).
 
 ## [1.6.0] — 📇 Rejestr kontrahentów (etap 1: autouzupełnianie nabywcy na fakturze)
 

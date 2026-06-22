@@ -400,6 +400,35 @@ function InvoiceDoc({
   const [unit, setUnit] = useState("");
   const [vat, setVat] = useState(String(inv.vat_rate ?? 23));
   const [msg, setMsg] = useState<string | null>(null);
+  const [fakBusy, setFakBusy] = useState(false);
+  const [fakMsg, setFakMsg] = useState<string | null>(null);
+
+  async function exportToFakturownia() {
+    setFakBusy(true);
+    setFakMsg(null);
+    try {
+      const res = await fetch("/api/fakturownia/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: inv.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        number?: string;
+        pdfUrl?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        setFakMsg(`⚠️ ${data.error ?? "Eksport nieudany."}`);
+        return;
+      }
+      setFakMsg(`✅ Wyeksportowano do Fakturowni${data.number ? ` (nr ${data.number})` : ""}.`);
+      if (data.pdfUrl) window.open(data.pdfUrl, "_blank", "noopener");
+    } catch {
+      setFakMsg("⚠️ Błąd połączenia z Fakturownią.");
+    } finally {
+      setFakBusy(false);
+    }
+  }
 
   const reload = useCallback(async () => {
     try {
@@ -472,11 +501,20 @@ function InvoiceDoc({
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }} className="no-print">
+      <div
+        style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}
+        className="no-print"
+      >
         <Button variant="ghost" onClick={onBack}>
           ← Faktury
         </Button>
+        {fakMsg && <span style={{ fontSize: 13, color: palette.smoke }}>{fakMsg}</span>}
         <span style={{ flex: 1 }} />
+        {canManage && inv.status !== "cancelled" && (
+          <Button variant="ghost" onClick={exportToFakturownia} disabled={fakBusy}>
+            {fakBusy ? "Eksport…" : "📤 Fakturownia"}
+          </Button>
+        )}
         <Button onClick={() => window.print()}>🖨️ Drukuj / PDF</Button>
       </div>
 
