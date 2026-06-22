@@ -12,9 +12,9 @@ import {
   setInvoicePaid,
   setInvoiceStatus,
 } from "@e-logistic/api";
-import { invoicePaymentStatus, round2 } from "@e-logistic/core";
+import { invoicePaymentStatus, type PaymentStatus, round2 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, Button, PageHeader } from "@/components/ui";
@@ -35,6 +35,7 @@ export default function InvoicesPage() {
   const [buyerTaxId, setBuyerTaxId] = useState("");
   const [buyerAddress, setBuyerAddress] = useState("");
   const [currency, setCurrency] = useState("EUR");
+  const [payFilter, setPayFilter] = useState<"all" | PaymentStatus | "cancelled">("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -137,6 +138,40 @@ export default function InvoicesPage() {
     }
   }
 
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const withPay = useMemo(
+    () =>
+      invoices.map((inv) => ({
+        inv,
+        pay: invoicePaymentStatus({
+          paidAt: inv.paid_at,
+          dueDate: inv.due_date,
+          status: inv.status,
+          todayISO: today,
+        }),
+      })),
+    [invoices, today],
+  );
+  const filtered = useMemo(
+    () =>
+      withPay.filter(({ inv, pay }) => {
+        if (payFilter === "all") return true;
+        if (payFilter === "cancelled") return inv.status === "cancelled";
+        return inv.status !== "cancelled" && pay === payFilter;
+      }),
+    [withPay, payFilter],
+  );
+  // Pasek należności — sumy w EUR (mieszane waluty pomijane), bez anulowanych.
+  const summary = useMemo(() => {
+    const eur = withPay.filter(({ inv }) => inv.currency === "EUR" && inv.status !== "cancelled");
+    const sum = (arr: typeof eur) => round2(arr.reduce((a, { inv }) => a + inv.gross, 0));
+    return {
+      invoicedEur: sum(eur),
+      paidEur: sum(eur.filter(({ pay }) => pay === "paid")),
+      overdueEur: sum(eur.filter(({ pay }) => pay === "overdue")),
+    };
+  }, [withPay]);
+
   if (selected) {
     return (
       <InvoiceDoc
@@ -197,6 +232,47 @@ export default function InvoicesPage() {
         </div>
       )}
       {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
+
+      {invoices.length > 0 && (
+        <div style={styles.bandRow}>
+          <span>
+            💶 Zafakturowane (EUR): <strong>{summary.invoicedEur}</strong>
+          </span>
+          <span>
+            ✅ Opłacone: <strong style={{ color: "#22c55e" }}>{summary.paidEur}</strong>
+          </span>
+          <span>
+            ⏰ Przeterminowane: <strong style={{ color: palette.red }}>{summary.overdueEur}</strong>
+          </span>
+        </div>
+      )}
+      {invoices.length > 0 && (
+        <div style={styles.chips}>
+          {(["all", "unpaid", "overdue", "paid", "cancelled"] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setPayFilter(f)}
+              style={payFilter === f ? styles.chipActive : styles.chip}
+            >
+              {f === "all"
+                ? "Wszystkie"
+                : f === "unpaid"
+                  ? "Nieopłacone"
+                  : f === "overdue"
+                    ? "Przeterminowane"
+                    : f === "paid"
+                      ? "Opłacone"
+                      : "Anulowane"}
+            </button>
+          ))}
+          <span style={{ flex: 1 }} />
+          <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
+            {filtered.length} z {invoices.length}
+          </span>
+        </div>
+      )}
+
       <ListStatus
         loading={loading}
         error={loadErr}
@@ -204,17 +280,15 @@ export default function InvoicesPage() {
         emptyText="Brak faktur. Wystaw fakturę z dostarczonego zlecenia (zakładka Zlecenia)."
         onRetry={load}
       />
-      {!loading && !loadErr && invoices.length > 0 && (
+      {!loading && !loadErr && invoices.length > 0 && filtered.length === 0 && (
+        <p style={{ color: palette.smoke, fontSize: 13, marginTop: 12 }}>
+          Brak faktur w tym filtrze.
+        </p>
+      )}
+      {!loading && !loadErr && filtered.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-          {invoices.map((inv) => {
+          {filtered.map(({ inv, pay }) => {
             const cancelled = inv.status === "cancelled";
-            const today = new Date().toISOString().slice(0, 10);
-            const pay = invoicePaymentStatus({
-              paidAt: inv.paid_at,
-              dueDate: inv.due_date,
-              status: inv.status,
-              todayISO: today,
-            });
             return (
               <div key={inv.id} style={{ ...styles.row, opacity: cancelled ? 0.55 : 1 }}>
                 <button type="button" style={styles.rowMain} onClick={() => setSelected(inv)}>
@@ -521,6 +595,37 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "left",
   },
   dim: { color: palette.smoke, fontSize: 13 },
+  bandRow: {
+    display: "flex",
+    gap: 20,
+    flexWrap: "wrap",
+    marginTop: 16,
+    padding: "12px 16px",
+    borderRadius: 12,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    fontSize: 14,
+  },
+  chips: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 12 },
+  chip: {
+    background: "transparent",
+    color: palette.smoke,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "5px 12px",
+    fontSize: 13,
+    cursor: "pointer",
+  },
+  chipActive: {
+    background: palette.red,
+    color: palette.white,
+    border: `1px solid ${palette.red}`,
+    borderRadius: 999,
+    padding: "5px 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
   newForm: {
     display: "flex",
     gap: 8,
