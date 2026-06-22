@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-130-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.100.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-131-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.101.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.101.0] — 🌍 i18n etap 5 (historia formularzy + eksport CSV zleceń)
+
+- `[#131]` 🌍 **Ostatnia w pełni polska strona widokowa + dwujęzyczny eksport zleceń**:
+  - **Historia formularzy** ([forms/history](apps/web/app/(app)/forms/history/page.tsx)) zmigrowana z `createTranslator("pl")` na `useT()` i przełożona w całości: nagłówek/źródło, filtry rodzaju i pojazdu, statusy synchronizacji (reuse `sync.*`), akcje trasy (`tripActionLabel`), przyciski (edytuj/ponów/usuń), nagłówki CSV.
+  - **Eksport CSV zleceń** ([orders](apps/web/app/(app)/orders/page.tsx)): nagłówki i wartość statusu idą teraz przez `t()` (dotąd zaszyte po polsku) — domyka pozycję odkładaną od etapu 3.
+  - +26 kluczy (`history.*`, `orders.csv.*`, wspólne `common.retry/status/vehicle`); parytet wymuszony typem i testem.
+  - **Cały UI widokowy jest dwujęzyczny.** Pozostają jedynie nagłówki CSV w pozostałych eksportach (faktury/rozliczenia/pojazdy/usterki itd.) oraz pełne tłumaczenie etykiet w formularzach CRUD — naturalny dalszy, większy zakres.
+  - **Bramki:** biome czysto · `tsc` ×7 · 105 testów (parytet i18n ✓) · build ✓ (`/forms/history`, `/orders`).
 
 ## [0.100.0] — 🌍 i18n etap 4 (ustawienia + stan floty)
 
