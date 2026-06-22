@@ -2,13 +2,15 @@
 
 import { listDrivers, listInvoices, listOrders, listVehicles } from "@e-logistic/api";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-type Hit = { icon: string; type: string; label: string; sub: string; href: string };
+type Hit = { icon: string; typeKey: MessageKey; label: string; sub: string; href: string };
 
 const MAX = 20;
 
@@ -18,6 +20,7 @@ const MAX = 20;
  */
 export function GlobalSearch() {
   const router = useRouter();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState<Hit[] | null>(null);
   const [q, setQ] = useState("");
@@ -69,7 +72,7 @@ export function GlobalSearch() {
         }[]) {
           hits.push({
             icon: "🚚",
-            type: "Pojazd",
+            typeKey: "search.type.vehicle",
             label: v.registration,
             sub: [v.make, v.model].filter(Boolean).join(" "),
             href: `/vehicles/${v.id}`,
@@ -81,8 +84,8 @@ export function GlobalSearch() {
         for (const d of ds) {
           hits.push({
             icon: "👤",
-            type: "Kierowca",
-            label: `${d.last_name} ${d.first_name}`.trim() || "Kierowca",
+            typeKey: "search.type.driver",
+            label: `${d.last_name} ${d.first_name}`.trim() || t("search.type.driver"),
             sub: d.license_categories.join(", "),
             href: `/drivers/${d.id}`,
           });
@@ -93,8 +96,8 @@ export function GlobalSearch() {
         for (const o of os) {
           hits.push({
             icon: "📦",
-            type: "Zlecenie",
-            label: o.reference_no || "(bez numeru)",
+            typeKey: "search.type.order",
+            label: o.reference_no || t("common.noNumber"),
             sub: `${o.origin || "?"} → ${o.destination || "?"} · ${ORDER_STATUS_LABELS[o.status as OrderStatus] ?? o.status}`,
             href: "/orders",
           });
@@ -105,7 +108,7 @@ export function GlobalSearch() {
         for (const i of inv) {
           hits.push({
             icon: "🧾",
-            type: "Faktura",
+            typeKey: "search.type.invoice",
             label: i.number,
             sub: `${i.buyer_name ?? "—"} · ${i.gross} ${i.currency}`,
             href: "/invoices",
@@ -114,7 +117,7 @@ export function GlobalSearch() {
       }),
     ]);
     setIndex(hits);
-  }, []);
+  }, [t]);
 
   // Po otwarciu: zbuduj indeks (raz) i ustaw focus.
   useEffect(() => {
@@ -129,7 +132,7 @@ export function GlobalSearch() {
   const results = !ql
     ? (index ?? []).slice(0, MAX)
     : (index ?? [])
-        .filter((h) => `${h.label} ${h.sub} ${h.type}`.toLowerCase().includes(ql))
+        .filter((h) => `${h.label} ${h.sub} ${t(h.typeKey)}`.toLowerCase().includes(ql))
         .slice(0, MAX);
 
   function go(h: Hit) {
@@ -158,9 +161,9 @@ export function GlobalSearch() {
         type="button"
         className="app-search-trigger"
         onClick={() => setOpen(true)}
-        aria-label="Szukaj"
+        aria-label={t("search.aria")}
       >
-        🔍 Szukaj…
+        🔍 {t("search.trigger")}
         <span className="app-search-kbd">Ctrl K</span>
       </button>
 
@@ -168,7 +171,7 @@ export function GlobalSearch() {
         <div style={styles.overlay}>
           <button
             type="button"
-            aria-label="Zamknij wyszukiwarkę"
+            aria-label={t("search.closeAria")}
             style={styles.backdrop}
             onClick={() => setOpen(false)}
           />
@@ -176,7 +179,7 @@ export function GlobalSearch() {
             <input
               ref={inputRef}
               style={styles.input}
-              placeholder="Szukaj: pojazd, kierowca, zlecenie, faktura…"
+              placeholder={t("search.placeholder")}
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
@@ -186,21 +189,21 @@ export function GlobalSearch() {
             />
             <div style={styles.results}>
               {index === null ? (
-                <div style={styles.empty}>Ładowanie…</div>
+                <div style={styles.empty}>{t("search.loading")}</div>
               ) : results.length === 0 ? (
-                <div style={styles.empty}>{ql ? "Brak wyników." : "Zacznij pisać…"}</div>
+                <div style={styles.empty}>{ql ? t("search.empty") : t("search.start")}</div>
               ) : (
                 results.map((h, i) => (
                   <button
                     type="button"
-                    key={`${h.type}-${h.href}-${h.label}-${h.sub}`}
+                    key={`${h.typeKey}-${h.href}-${h.label}-${h.sub}`}
                     style={i === sel ? { ...styles.row, ...styles.rowSel } : styles.row}
                     onMouseEnter={() => setSel(i)}
                     onClick={() => go(h)}
                   >
                     <span style={{ width: 24 }}>{h.icon}</span>
                     <span style={{ color: palette.smoke, minWidth: 70, fontSize: 12 }}>
-                      {h.type}
+                      {t(h.typeKey)}
                     </span>
                     <strong>{h.label}</strong>
                     <span style={{ flex: 1 }} />

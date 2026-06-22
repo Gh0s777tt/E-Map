@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-127-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.97.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-128-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.98.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.98.0] — 🌍 i18n etap 2 (kontekst kliencki + powłoka + pulpit)
+
+- `[#128]` 🌍 **Dwujęzyczność dla komponentów klienckich** — etap 1 dawał język serwerowo; teraz dowolny komponent kliencki tłumaczy bez własnego wrappera:
+  - **[LocaleProvider](apps/web/components/LocaleProvider.tsx)** (kontekst + hooki `useT()`/`useLocale()`) zasilany językiem czytanym serwerowo w [layoucie](apps/web/app/(app)/layout.tsx) — bez migotania, reaguje na zmianę języka (`router.refresh`).
+  - **Powłoka aplikacji** dwujęzyczna: [SignOutButton](apps/web/components/SignOutButton.tsx) i [GlobalSearch](apps/web/components/GlobalSearch.tsx) (przycisk, modal, placeholder, typy wyników: pojazd/kierowca/zlecenie/faktura) przez `useT()`.
+  - **Pulpit** ([dashboard](apps/web/app/(app)/dashboard/page.tsx)) — nagłówek + kafelki (formularze/mapa/statystyki) serwerowo przez `t()`.
+  - +27 kluczy w PL i EN (dashboard.\*, search.\*, common.noNumber); parytet wymuszony typem i testem. Kolejne moduły (ustawienia, formularze, widżety pulpitu, etykiety enumów) w następnych etapach.
+  - **Bramki:** biome czysto · `tsc` ×7 · 105 testów (parytet i18n ✓) · build ✓ (`/dashboard`).
 
 ## [0.97.0] — 🌍 i18n etap 1 (przełącznik PL/EN + nawigacja + logowanie)
 

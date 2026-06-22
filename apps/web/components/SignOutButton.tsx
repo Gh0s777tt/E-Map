@@ -1,14 +1,13 @@
 "use client";
 
-import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/LocaleProvider";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-
-const t = createTranslator("pl");
 
 export function SignOutButton() {
   const router = useRouter();
+  const t = useT();
 
   async function signOut() {
     await getBrowserSupabase().auth.signOut();
