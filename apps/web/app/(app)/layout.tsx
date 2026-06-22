@@ -70,6 +70,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const navItems = [
     ...items.map((i) => ({ href: i.href, label: t(i.key) })),
     { href: "/orders", label: "Zlecenia" },
+    { href: "/fleet-status", label: "Status floty" },
     { href: "/my-orders", label: "Moje zlecenia" },
     { href: "/invoices", label: "Faktury" },
     { href: "/documents", label: "Sejf dokumentów" },

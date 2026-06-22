@@ -8,6 +8,7 @@ export * from "./catalog";
 export * from "./csv";
 export * from "./enums";
 export * from "./expiry";
+export * from "./fleet";
 export * from "./ids";
 export * from "./money";
 export * from "./schemas";
