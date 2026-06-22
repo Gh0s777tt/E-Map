@@ -1,14 +1,10 @@
-import { TRIP_ACTIONS, type TripEventInput, tripEventSchema } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
+import { type FuelLogInput, fuelLogSchema } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { VehiclePicker } from "../components/VehiclePicker";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { useFleet } from "../lib/useFleet";
-
-const t = createTranslator("pl");
+import { VehiclePicker } from "./VehiclePicker";
 
 const STATUS_ICON: Record<OutboxItem["status"], string> = {
   queued: "⏳",
@@ -16,23 +12,20 @@ const STATUS_ICON: Record<OutboxItem["status"], string> = {
   error: "⚠️",
 };
 
-export default function TripScreen() {
+/** Wspólny formularz cieczy: paliwo (`fuel`) i AdBlue (`adblue`) — ta sama walidacja. */
+export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const { vehicles, loading } = useFleet();
   const [vehicleId, setVehicleId] = useState<string | null>(null);
-  const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
   const [country, setCountry] = useState("");
   const [odometer, setOdometer] = useState("");
-  const [weight, setWeight] = useState("");
-  const [comment, setComment] = useState("");
+  const [liters, setLiters] = useState("");
+  const [payment, setPayment] = useState<"card" | "cash">("cash");
   const [msg, setMsg] = useState<string | null>(null);
   const [items, setItems] = useState<OutboxItem[]>([]);
 
-  const needsWeight = action === "load" || action === "unload";
-  const commentRequired = action === "service" || action === "other";
-
   const refresh = useCallback(async () => {
-    setItems(await listOutbox("trip"));
-  }, []);
+    setItems(await listOutbox(kind));
+  }, [kind]);
 
   useEffect(() => {
     flushQueued().then(refresh);
@@ -48,38 +41,30 @@ export default function TripScreen() {
       setMsg("Wybierz pojazd.");
       return;
     }
-    const base = {
-      action,
+    const parsed = fuelLogSchema.safeParse({
       vehicleId,
-      place: { country },
+      station: { country },
       odometerKm: Number(odometer),
-      comment: comment || undefined,
-    };
-    const candidate = needsWeight
-      ? { ...base, weightKg: weight ? Number(weight) : undefined }
-      : base;
-
-    const parsed = tripEventSchema.safeParse(candidate);
+      liters: Number(liters),
+      paymentMethod: payment,
+    });
     if (!parsed.success) {
       setMsg(parsed.error.issues[0]?.message ?? "Błąd walidacji");
       return;
     }
-    const item = await enqueue("trip", parsed.data, new Date().toISOString());
+    const item = await enqueue(kind, parsed.data, new Date().toISOString());
     setMsg(
       item.status === "synced"
-        ? `✅ Zapisano i zsynchronizowano: ${t(`trip.action.${parsed.data.action}`)}.`
-        : `📥 Zapisano lokalnie: ${t(`trip.action.${parsed.data.action}`)} — sync w tle.`,
+        ? "✅ Zapisano i zsynchronizowano."
+        : "📥 Zapisano lokalnie — synchronizacja w tle.",
     );
     setOdometer("");
-    setWeight("");
-    setComment("");
+    setLiters("");
     await refresh();
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Stack.Screen options={{ title: t("form.trip.title") }} />
-
       <Text style={styles.label}>Pojazd</Text>
       <VehiclePicker
         vehicles={vehicles}
@@ -88,32 +73,17 @@ export default function TripScreen() {
         onSelect={setVehicleId}
       />
 
-      <Text style={styles.label}>Akcja</Text>
-      <View style={styles.chips}>
-        {TRIP_ACTIONS.map((a) => (
-          <Pressable
-            key={a}
-            style={[styles.chip, action === a && styles.chipActive]}
-            onPress={() => setAction(a)}
-          >
-            <Text style={action === a ? styles.chipTextActive : styles.chipText}>
-              {t(`trip.action.${a}`)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text style={styles.label}>{t("form.field.country")}</Text>
+      <Text style={styles.label}>Kraj</Text>
       <TextInput
         style={styles.input}
         value={country}
         onChangeText={setCountry}
-        placeholder="PL"
+        placeholder="DE"
         placeholderTextColor={palette.smoke}
         autoCapitalize="characters"
       />
 
-      <Text style={styles.label}>{t("form.field.odometer")}</Text>
+      <Text style={styles.label}>Przebieg (km)</Text>
       <TextInput
         style={styles.input}
         value={odometer}
@@ -121,42 +91,42 @@ export default function TripScreen() {
         keyboardType="numeric"
       />
 
-      {needsWeight && (
-        <>
-          <Text style={styles.label}>{t("form.field.weight")}</Text>
-          <TextInput
-            style={styles.input}
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType="numeric"
-          />
-        </>
-      )}
-
-      <Text style={styles.label}>
-        {t("form.field.comment")}
-        {commentRequired ? " (wymagane)" : ""}
-      </Text>
+      <Text style={styles.label}>Litry</Text>
       <TextInput
-        style={[styles.input, { minHeight: 70 }]}
-        value={comment}
-        onChangeText={setComment}
-        multiline
+        style={styles.input}
+        value={liters}
+        onChangeText={setLiters}
+        keyboardType="numeric"
       />
 
+      <Text style={styles.label}>Płatność</Text>
+      <View style={styles.row}>
+        {(["cash", "card"] as const).map((m) => (
+          <Pressable
+            key={m}
+            style={[styles.chip, payment === m && styles.chipActive]}
+            onPress={() => setPayment(m)}
+          >
+            <Text style={payment === m ? styles.chipTextActive : styles.chipText}>
+              {m === "card" ? "Karta" : "Gotówka"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <Pressable style={styles.btn} onPress={submit}>
-        <Text style={styles.btnText}>{t("common.save")}</Text>
+        <Text style={styles.btnText}>Zapisz</Text>
       </Pressable>
       {msg && <Text style={styles.msg}>{msg}</Text>}
 
       {items.length > 0 && (
         <View style={styles.queue}>
-          <Text style={styles.queueHead}>Ostatnie zdarzenia ({items.length})</Text>
+          <Text style={styles.queueHead}>Ostatnie wpisy ({items.length})</Text>
           {items.slice(0, 10).map((it) => {
-            const input = it.input as TripEventInput;
+            const input = it.input as FuelLogInput;
             return (
               <Text key={it.id} style={styles.queueRow}>
-                {STATUS_ICON[it.status]} {t(`trip.action.${input.action}`)} · {input.place.country}
+                {STATUS_ICON[it.status]} {input.liters} L · {input.station.country}
                 {it.status === "error" && it.error ? ` — ${it.error}` : ""}
               </Text>
             );
@@ -180,17 +150,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: palette.offWhite,
   },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  row: { flexDirection: "row", gap: 10 },
   chip: {
     borderColor: palette.graphite,
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   chipActive: { backgroundColor: palette.red, borderColor: palette.red },
-  chipText: { color: palette.offWhite, fontSize: 13 },
-  chipTextActive: { color: palette.white, fontWeight: "700", fontSize: 13 },
+  chipText: { color: palette.offWhite },
+  chipTextActive: { color: palette.white, fontWeight: "700" },
   btn: {
     marginTop: 14,
     backgroundColor: palette.red,
