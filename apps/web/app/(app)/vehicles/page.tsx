@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { Button, PageHeader } from "@/components/ui";
+import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -243,6 +244,34 @@ export default function VehiclesPage() {
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Błąd usuwania pojazdu.");
     }
+  }
+
+  function exportCsv() {
+    const headers = [
+      "Rejestracja",
+      "Marka",
+      "Model",
+      "Typ",
+      "VIN",
+      "Rok",
+      "Przegląd",
+      "OC",
+      "Leasing",
+      "Ubezpieczyciel",
+    ];
+    const rows = dbVehicles.map((v) => [
+      v.registration,
+      v.make ?? "",
+      v.model ?? "",
+      v.vehicle_type ?? "",
+      v.vin ?? "",
+      v.year ?? "",
+      v.inspection_expiry ?? "",
+      v.insurance_expiry ?? "",
+      v.leasing_end ?? "",
+      v.insurer ?? "",
+    ]);
+    downloadCsv(`pojazdy_${csvDateStamp()}.csv`, headers, rows);
   }
 
   return (
@@ -474,7 +503,15 @@ export default function VehiclesPage() {
         </div>
       )}
 
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Flota</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Flota</h2>
+        <span style={{ flex: 1 }} />
+        {dbVehicles.length > 0 && (
+          <Button variant="ghost" onClick={exportCsv}>
+            ⬇️ CSV
+          </Button>
+        )}
+      </div>
 
       <ListStatus
         loading={loading}

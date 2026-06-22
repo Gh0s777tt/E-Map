@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { Badge, Button } from "@/components/ui";
+import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Driver = Awaited<ReturnType<typeof listDrivers>>[number];
@@ -92,6 +93,30 @@ export function DriverRoster() {
     setMedicalExpiry("");
     setAdrExpiry("");
     setErrors({});
+  }
+
+  function exportCsv() {
+    const headers = [
+      "Nazwisko",
+      "Imię",
+      "Kategorie",
+      "Uprawnienia",
+      "Prawo jazdy",
+      "Kod 95",
+      "Badania",
+      "ADR",
+    ];
+    const rows = drivers.map((d) => [
+      d.last_name,
+      d.first_name,
+      d.license_categories.join(" "),
+      d.qualifications.join("; "),
+      d.license_expiry ?? "",
+      d.code95_expiry ?? "",
+      d.medical_expiry ?? "",
+      d.adr_expiry ?? "",
+    ]);
+    downloadCsv(`kierowcy_${csvDateStamp()}.csv`, headers, rows);
   }
 
   function startEdit(d: Driver) {
@@ -398,6 +423,12 @@ export function DriverRoster() {
         <p style={{ color: palette.smoke, marginTop: 20 }}>Brak kierowców w kartotece.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
+          <div style={{ display: "flex" }}>
+            <span style={{ flex: 1 }} />
+            <Button variant="ghost" onClick={exportCsv}>
+              ⬇️ CSV
+            </Button>
+          </div>
           {drivers.map((d) => {
             const doc = revealed[d.id];
             return (
