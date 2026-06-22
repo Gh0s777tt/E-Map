@@ -206,6 +206,8 @@ export const pl = {
   "profit.col.cost": "Koszt",
   "profit.col.profit": "Zysk",
   "profit.col.margin": "Marża",
+  "profit.col.month": "Miesiąc",
+  "profit.trend.title": "Trend miesięczny (zysk wg klienta)",
   "profit.note":
     "Koszt przypisany = paliwo pojazdu rozdzielone na jego zlecenia proporcjonalnie do przychodu (tylko zlecenia zrealizowane w EUR). Pomija puste przebiegi, myto, pensje, AdBlue i leasing — traktuj jako wskaźnik względny, nie księgowość.",
   "profit.unattributed": "Nieprzypisany koszt paliwa (pojazdy bez przychodu EUR):",
