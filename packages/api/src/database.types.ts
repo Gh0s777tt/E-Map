@@ -1307,6 +1307,7 @@ export interface Database {
       accept_invite: { Args: Record<string, unknown>; Returns: Json };
       bootstrap_company: { Args: Record<string, unknown>; Returns: Json };
       company_members: { Args: Record<string, unknown>; Returns: Json };
+      create_blank_invoice: { Args: Record<string, unknown>; Returns: Json };
       create_invite: { Args: Record<string, unknown>; Returns: Json };
       create_invoice: { Args: Record<string, unknown>; Returns: Json };
       dev_stats: { Args: Record<string, unknown>; Returns: Json };

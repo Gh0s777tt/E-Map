@@ -53,6 +53,30 @@ export async function deleteInvoice(client: SupabaseClient, id: string): Promise
   if (error) throw error;
 }
 
+export interface BlankInvoiceInput {
+  buyerName: string;
+  buyerTaxId?: string;
+  buyerAddress?: string;
+  currency?: string;
+}
+
+/** Tworzy pustą fakturę (bez zlecenia) z dowolnym nabywcą. RPC, owner/dispatcher. */
+export async function createBlankInvoice(
+  client: SupabaseClient,
+  companyId: string,
+  input: BlankInvoiceInput,
+): Promise<{ id: string; number: string }> {
+  const { data, error } = await client.rpc("create_blank_invoice", {
+    p_company: companyId,
+    p_buyer_name: input.buyerName,
+    p_buyer_tax_id: input.buyerTaxId ?? null,
+    p_buyer_address: input.buyerAddress ?? null,
+    p_currency: input.currency ?? "EUR",
+  });
+  if (error) throw error;
+  return data as unknown as { id: string; number: string };
+}
+
 // ── Pozycje faktury (wieloliniowe) ──────────────────────────────────
 
 export interface InvoiceItem {

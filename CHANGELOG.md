@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-109-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.84.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-110-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.85.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.85.0] — 🧮 Faktura ręczna (bez zlecenia)
+
+- `[#110]` 🧮 **Wystawianie faktur bez zlecenia** ([invoices](apps/web/app/(app)/invoices/page.tsx)):
+  - [Migracja 0036](supabase/migrations/0036_blank_invoice.sql): RPC `create_blank_invoice` — pusta faktura z **dowolnym nabywcą** (nazwa/NIP/adres/waluta), numeracja FV/ROK/NNNN (blokada advisory), sprzedawca z danych firmy, audyt. owner/dispatcher.
+  - **Strona Faktury**: przycisk **„➕ Nowa faktura (ręczna)"** → formularz nabywcy → tworzy fakturę i od razu otwiera dokument, gdzie dodaje się **pozycje** (sumy liczy trigger, jak przy fakturze ze zlecenia).
+  - api [data/invoices.ts](packages/api/src/data/invoices.ts): `createBlankInvoice`. Typy DB (31 tabel, 26 funkcji).
+  - **Bramki:** biome czysto · `tsc` ×7 · 88 testów · build ✓ (`/invoices`).
 
 ## [0.84.0] — 🔍 Globalna wyszukiwarka (Ctrl/⌘+K)
 
