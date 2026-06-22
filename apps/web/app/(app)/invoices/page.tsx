@@ -9,9 +9,10 @@ import {
   type InvoiceItem,
   listInvoiceItems,
   listInvoices,
+  setInvoicePaid,
   setInvoiceStatus,
 } from "@e-logistic/api";
-import { round2 } from "@e-logistic/core";
+import { invoicePaymentStatus, round2 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -65,6 +66,15 @@ export default function InvoicesPage() {
       await load();
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Błąd anulowania.");
+    }
+  }
+
+  async function togglePaid(inv: Invoice) {
+    try {
+      await setInvoicePaid(getBrowserSupabase(), inv.id, !inv.paid_at);
+      await load();
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : "Błąd zmiany płatności.");
     }
   }
 
@@ -198,18 +208,38 @@ export default function InvoicesPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
           {invoices.map((inv) => {
             const cancelled = inv.status === "cancelled";
+            const today = new Date().toISOString().slice(0, 10);
+            const pay = invoicePaymentStatus({
+              paidAt: inv.paid_at,
+              dueDate: inv.due_date,
+              status: inv.status,
+              todayISO: today,
+            });
             return (
               <div key={inv.id} style={{ ...styles.row, opacity: cancelled ? 0.55 : 1 }}>
                 <button type="button" style={styles.rowMain} onClick={() => setSelected(inv)}>
                   <strong style={{ minWidth: 130 }}>{inv.number}</strong>
                   <span style={styles.dim}>{inv.issue_date}</span>
-                  {cancelled && <Badge color={palette.red}>Anulowana</Badge>}
+                  {cancelled ? (
+                    <Badge color={palette.red}>Anulowana</Badge>
+                  ) : pay === "paid" ? (
+                    <Badge color="#22c55e">Opłacona</Badge>
+                  ) : pay === "overdue" ? (
+                    <Badge color={palette.red}>Przeterminowana</Badge>
+                  ) : (
+                    <Badge color={palette.smoke}>Nieopłacona</Badge>
+                  )}
                   <span style={{ flex: 1 }} />
                   <span style={styles.dim}>{inv.buyer_name ?? "—"}</span>
                   <strong style={{ color: palette.red, minWidth: 110, textAlign: "right" }}>
                     {inv.gross} {inv.currency}
                   </strong>
                 </button>
+                {canManage && !cancelled && (
+                  <Button variant="ghost" onClick={() => togglePaid(inv)}>
+                    {inv.paid_at ? "↩︎ Cofnij" : "💰 Opłacona"}
+                  </Button>
+                )}
                 {canManage && (
                   <>
                     <Button variant="ghost" onClick={() => duplicate(inv.id)}>

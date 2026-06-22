@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-116-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.90.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-117-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.91.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.91.0] — 💳 Status płatności faktury + przeterminowane na pulpicie
+
+- `[#117]` 💳 **Kontrola należności**:
+  - [Migracja 0039](supabase/migrations/0039_invoice_paid.sql): `invoices.paid_at` (null = nieopłacona) + trigger audytujący oznaczenie/cofnięcie płatności.
+  - core [invoicePaymentStatus](packages/core/src/invoice.ts) (funkcja czysta, +5 testów): `paid` / `overdue` (po terminie, nieopłacona, niezanulowana) / `unpaid`.
+  - **Faktury** ([invoices](apps/web/app/(app)/invoices/page.tsx)): plakietka **Opłacona / Przeterminowana / Nieopłacona** + przycisk **„💰 Opłacona / ↩︎ Cofnij"** (owner/dispatcher). api `setInvoicePaid`, `Invoice.paid_at`.
+  - **Pulpit „Co wymaga uwagi"** ([AttentionPanel](apps/web/components/AttentionPanel.tsx)): **przeterminowane faktury** dołączone do listy (z terminem i kwotą), sortowane wg pilności.
+  - **Bramki:** biome czysto · `tsc` ×7 · **93 testy** · build ✓ (`/invoices`, `/dashboard`).
 
 ## [0.90.0] — 🧾 Domyślny VAT + termin płatności (z ustawień firmy)
 
