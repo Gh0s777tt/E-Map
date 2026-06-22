@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-121-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.93.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-122-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.94.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.94.0] — 👤 Pulpit kierowcy (Twoje zlecenie)
+
+- `[#122]` 👤 **Sensowny ekran startowy dla kierowcy**:
+  - [DriverActiveOrder](apps/web/components/DriverActiveOrder.tsx) na pulpicie (tylko rola driver): **aktywne** (w trakcie) lub **najbliższe** (przypisane) zlecenie — nr, status, trasa, data załadunku + skrót „Otwórz/Moje zlecenia"; licznik kolejnych przypisanych.
+  - **Panel „Co wymaga uwagi"** ([AttentionPanel](apps/web/components/AttentionPanel.tsx)) ograniczony do owner/dispatcher (terminy floty/faktur to sprawa zarządcza) — kierowca go nie widzi.
+  - **Bramki:** biome czysto · `tsc` ×7 · 97 testów · build ✓ (`/dashboard`).
 
 ## [0.93.2] — 🧭 Nawigacja wg roli (kierowca bez narzędzi zarządczych)
 

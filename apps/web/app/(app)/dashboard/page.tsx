@@ -2,6 +2,7 @@ import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { AttentionPanel } from "@/components/AttentionPanel";
 import { CompanyBanner } from "@/components/CompanyBanner";
+import { DriverActiveOrder } from "@/components/DriverActiveOrder";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 const CARDS = [
@@ -36,6 +37,7 @@ export default function DashboardPage() {
       </p>
 
       <CompanyBanner />
+      <DriverActiveOrder />
       <OnboardingChecklist />
       <AttentionPanel />
 
