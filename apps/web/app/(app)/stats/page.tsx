@@ -12,15 +12,14 @@ import {
   round2,
   summarizeFuel,
 } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, BarChart, PageHeader } from "@/components/ui";
+import { tripActionLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-
-const t = createTranslator("pl");
 
 type FuelRaw = {
   id: string;
@@ -40,15 +39,6 @@ type TripRaw = {
   amount: number | null;
   country: string;
   created_at: string;
-};
-
-const ACTION_PL: Record<string, string> = {
-  load: "Załadunek",
-  unload: "Rozładunek",
-  start: "Start",
-  end: "Koniec",
-  service: "Serwis",
-  other: "Inne",
 };
 
 const entry = (r: FuelRaw): FuelStatsEntry & { isFull?: boolean } => ({
@@ -73,6 +63,7 @@ function monthlyCost(rows: FuelRaw[]): { label: string; value: number }[] {
 }
 
 export default function StatsPage() {
+  const t = useT();
   const [vehicles, setVehicles] = useState<{ id: string; registration: string }[]>([]);
   const [fuel, setFuel] = useState<FuelRaw[]>([]);
   const [adblue, setAdblue] = useState<FuelRaw[]>([]);
@@ -417,6 +408,7 @@ function VehicleDetail({
   trips: TripRaw[];
   onBack: () => void;
 }) {
+  const t = useT();
   const cost = useMemo(() => monthlyCost([...fuel, ...adblue]), [fuel, adblue]);
   const consSeries = useMemo(
     () =>
@@ -485,7 +477,7 @@ function VehicleDetail({
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
           {trips.map((r) => (
             <div key={r.id} style={styles.line}>
-              <span style={{ minWidth: 110 }}>{ACTION_PL[r.action] ?? r.action}</span>
+              <span style={{ minWidth: 110 }}>{tripActionLabel(t, r.action)}</span>
               <span style={styles.dim}>{r.country}</span>
               <span style={{ flex: 1 }} />
               {r.weight_kg != null && <span style={styles.dim}>{r.weight_kg} kg</span>}

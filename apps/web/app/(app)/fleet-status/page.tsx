@@ -12,7 +12,9 @@ import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
+import { tripActionLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -45,16 +47,9 @@ const STATE_COLOR: Record<FleetVehicleState, string> = {
   planned: "#3b82f6",
   idle: palette.smoke,
 };
-const ACTION_PL: Record<string, string> = {
-  load: "Załadunek",
-  unload: "Rozładunek",
-  start: "Start",
-  end: "Koniec",
-  service: "Serwis",
-  other: "Inne",
-};
 
 export default function FleetStatusPage() {
+  const t = useT();
   const { source } = useFleet();
   const router = useRouter();
   const [vehicles, setVehicles] = useState<{ id: string; registration: string }[]>([]);
@@ -205,7 +200,7 @@ export default function FleetStatusPage() {
 
               {r.lastEvent && (
                 <div style={{ ...styles.dim, fontSize: 12 }}>
-                  Ostatnio: {ACTION_PL[r.lastEvent.action] ?? r.lastEvent.action}
+                  Ostatnio: {tripActionLabel(t, r.lastEvent.action)}
                   {r.lastEvent.location ? ` · ${r.lastEvent.location}` : ""}
                   {r.lastEvent.country ? ` (${r.lastEvent.country})` : ""} ·{" "}
                   {r.lastEvent.createdAt.slice(0, 16).replace("T", " ")}

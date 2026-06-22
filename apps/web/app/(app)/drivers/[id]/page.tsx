@@ -9,13 +9,15 @@ import {
   listOrders,
   type Order,
 } from "@e-logistic/api";
-import { type ExpiryLevel, expiryStatus, ORDER_STATUS_LABELS, round2 } from "@e-logistic/core";
+import { type ExpiryLevel, expiryStatus, round2 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, PageHeader } from "@/components/ui";
+import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -32,6 +34,7 @@ const EXPIRY_COLOR: Record<ExpiryLevel, string> = {
 };
 
 export default function DriverCardPage() {
+  const t = useT();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [driver, setDriver] = useState<DriverRow | null>(null);
@@ -220,7 +223,7 @@ export default function DriverCardPage() {
                   {myOrders.slice(0, 15).map((o) => (
                     <div key={o.id} style={styles.orderRow}>
                       <strong style={{ minWidth: 110 }}>{o.reference_no || "(bez nr)"}</strong>
-                      <Badge color={palette.smoke}>{ORDER_STATUS_LABELS[o.status]}</Badge>
+                      <Badge color={palette.smoke}>{orderStatusLabel(t, o.status)}</Badge>
                       <span style={styles.dim}>
                         {o.origin || "?"} → {o.destination || "?"}
                       </span>

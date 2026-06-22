@@ -108,6 +108,13 @@ export const pl = {
   "trip.action.service": "Serwis",
   "trip.action.other": "Inne",
 
+  "order.status.new": "Nowe",
+  "order.status.assigned": "Przypisane",
+  "order.status.in_progress": "W trakcie",
+  "order.status.delivered": "Dostarczone",
+  "order.status.invoiced": "Zafakturowane",
+  "order.status.cancelled": "Anulowane",
+
   "sync.draft": "Szkic",
   "sync.queued": "W kolejce",
   "sync.synced": "Zsynchronizowano",
@@ -121,6 +128,7 @@ export const pl = {
   "common.history": "Historia",
   "common.language": "Język",
   "common.noNumber": "(bez numeru)",
+  "common.all": "Wszystkie",
 } as const;
 
 export type MessageKey = keyof typeof pl;

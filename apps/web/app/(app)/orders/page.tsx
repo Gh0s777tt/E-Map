@@ -25,8 +25,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
+import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -41,6 +43,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
 };
 
 export default function OrdersPage() {
+  const t = useT();
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
   const router = useRouter();
@@ -459,7 +462,7 @@ export default function OrdersPage() {
             onClick={() => setFilter(s)}
             style={filter === s ? styles.chipActive : styles.chip}
           >
-            {s === "all" ? "Wszystkie" : ORDER_STATUS_LABELS[s]}
+            {s === "all" ? t("common.all") : orderStatusLabel(t, s)}
           </button>
         ))}
         <span style={{ flex: 1 }} />
@@ -484,7 +487,7 @@ export default function OrdersPage() {
             <div key={o.id} style={styles.card}>
               <div style={styles.cardHead}>
                 <strong>{o.reference_no || "(bez numeru)"}</strong>
-                <Badge color={STATUS_COLOR[o.status]}>{ORDER_STATUS_LABELS[o.status]}</Badge>
+                <Badge color={STATUS_COLOR[o.status]}>{orderStatusLabel(t, o.status)}</Badge>
                 <span style={{ flex: 1 }} />
                 {o.price != null && (
                   <strong style={{ color: palette.red }}>
@@ -528,7 +531,7 @@ export default function OrdersPage() {
                   >
                     {ORDER_STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {ORDER_STATUS_LABELS[s]}
+                        {orderStatusLabel(t, s)}
                       </option>
                     ))}
                   </select>

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-128-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.98.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-129-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.99.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.99.0] — 🌍 i18n etap 3 (etykiety enumów: statusy zleceń + akcje trasy)
+
+- `[#129]` 🌍 **Statusy i akcje po angielsku wszędzie** — najczęstsze etykiety (badge'e, listy, wyszukiwarka) były zaszyte po polsku nawet w trybie EN; teraz idą przez i18n:
+  - **Wspólny helper** [lib/labels.ts](apps/web/lib/labels.ts): `orderStatusLabel(t, status)` (klucze `order.status.*`) i `tripActionLabel(t, action)` (`trip.action.*`, z fallbackiem dla nieznanych wartości z DB).
+  - **Statusy zleceń** zlokalizowane w 6 miejscach: [orders](apps/web/app/(app)/orders/page.tsx) (badge, filtr, select), [my-orders](apps/web/app/(app)/my-orders/page.tsx), [DriverActiveOrder](apps/web/components/DriverActiveOrder.tsx), [GlobalSearch](apps/web/components/GlobalSearch.tsx), [drivers/[id]](apps/web/app/(app)/drivers/[id]/page.tsx), [vehicles/[id]](apps/web/app/(app)/vehicles/[id]/page.tsx).
+  - **Akcje trasy** w [stats](apps/web/app/(app)/stats/page.tsx) (przy okazji migracja z `createTranslator("pl")` na `useT()`) i [fleet-status](apps/web/app/(app)/fleet-status/page.tsx).
+  - +7 kluczy PL/EN (`order.status.*`, `common.all`); akcje korzystają z istniejących `trip.action.*`. Parytet wymuszony typem i testem.
+  - Świadomie odłożone na kolejny etap: eksport CSV (nagłówki PL), strona ustawień, `forms/history`, etykiety stanu floty (`FleetVehicleState`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 105 testów (parytet i18n ✓) · build ✓.
 
 ## [0.98.0] — 🌍 i18n etap 2 (kontekst kliencki + powłoka + pulpit)
 

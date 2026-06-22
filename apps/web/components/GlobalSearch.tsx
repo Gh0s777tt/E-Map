@@ -1,12 +1,13 @@
 "use client";
 
 import { listDrivers, listInvoices, listOrders, listVehicles } from "@e-logistic/api";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@e-logistic/core";
+import type { OrderStatus } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
+import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -98,7 +99,7 @@ export function GlobalSearch() {
             icon: "📦",
             typeKey: "search.type.order",
             label: o.reference_no || t("common.noNumber"),
-            sub: `${o.origin || "?"} → ${o.destination || "?"} · ${ORDER_STATUS_LABELS[o.status as OrderStatus] ?? o.status}`,
+            sub: `${o.origin || "?"} → ${o.destination || "?"} · ${orderStatusLabel(t, o.status as OrderStatus)}`,
             href: "/orders",
           });
         }

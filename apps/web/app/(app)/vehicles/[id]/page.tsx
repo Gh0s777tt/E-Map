@@ -18,7 +18,6 @@ import {
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
   fuelConsumptionSeries,
-  ORDER_STATUS_LABELS,
   round2,
   serviceStatus,
   summarizeFuel,
@@ -28,7 +27,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, PageHeader } from "@/components/ui";
+import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -59,6 +60,7 @@ const VEH_DOCS: { key: "inspection_expiry" | "insurance_expiry" | "leasing_end";
   ];
 
 export default function VehicleCardPage() {
+  const t = useT();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [vehicle, setVehicle] = useState<DbVehicle | null>(null);
@@ -255,7 +257,7 @@ export default function VehicleCardPage() {
               {orders.slice(0, 12).map((o) => (
                 <div key={o.id} style={styles.lineRow}>
                   <strong style={{ minWidth: 110 }}>{o.reference_no || "(bez nr)"}</strong>
-                  <Badge color={palette.smoke}>{ORDER_STATUS_LABELS[o.status]}</Badge>
+                  <Badge color={palette.smoke}>{orderStatusLabel(t, o.status)}</Badge>
                   <span style={styles.dim}>
                     {o.origin || "?"} → {o.destination || "?"}
                   </span>
