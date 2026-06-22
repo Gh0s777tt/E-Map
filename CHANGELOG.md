@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-141-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.4.3-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-142-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.4.4-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.4.4] — ⚙️ Ujednolicenie `engines.node` → >=26 (P3 z audytu)
+
+- `[#142]` ⚙️ **`engines.node`: `>=22` → `>=26`** ([package.json](package.json)) — realizacja #6 z [backlogu poaudytowego](docs/AUDIT-2026-06-22.md). Spójność z resztą deklaracji (CLAUDE.md „Node 26", README badge, `@types/node` 26, CI `setup-node` 26). Środowisko lokalne i CI już na Node 26 — zmiana wyłącznie porządkowa.
+  - **Domyka backlog poaudytowy** (P0/P1/P2/P3): ✅ wydajność · ✅ docs · ✅ indeks+hardening · ✅ rozbicie stats · ✅ engines. Pozostaje świadomie odłożone: rozbicie `map/page.tsx` (ryzyko bez testu wizualnego) i presety stylów w `@e-logistic/ui`.
+  - **Bramki:** biome czysto · `tsc` ×7 · 117 testów (zmiana konfiguracji, bez wpływu na kod).
 
 ## [1.4.3] — 🧹 Rozbicie strony statystyk na moduły (P2 jakość z audytu)
 
