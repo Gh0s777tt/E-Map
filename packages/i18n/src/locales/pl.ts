@@ -31,6 +31,34 @@ export const pl = {
   "nav.group.fleet": "Flota",
   "nav.group.finance": "Finanse",
 
+  "dashboard.title": "Pulpit",
+  "dashboard.subtitle": "E-Logistic · formularze, mapa i statystyki — offline-first + Supabase.",
+  "dashboard.tag.form": "FORMULARZ",
+  "dashboard.tag.map": "MAPA",
+  "dashboard.tag.report": "RAPORT",
+  "dashboard.card.fuel.title": "Paliwo ⛽",
+  "dashboard.card.fuel.desc": "Dodaj tankowanie (offline-first)",
+  "dashboard.card.adblue.title": "AdBlue 💧",
+  "dashboard.card.adblue.desc": "Dodaj uzupełnienie AdBlue",
+  "dashboard.card.trip.title": "Trip 🚚",
+  "dashboard.card.trip.desc": "Załadunek / rozładunek / serwis…",
+  "dashboard.card.map.title": "Mapa 🗺️",
+  "dashboard.card.map.desc": "Routing TIR + myto (mock)",
+  "dashboard.card.stats.title": "Statystyki 📊",
+  "dashboard.card.stats.desc": "Spalanie i koszty per pojazd",
+
+  "search.trigger": "Szukaj…",
+  "search.aria": "Szukaj",
+  "search.closeAria": "Zamknij wyszukiwarkę",
+  "search.placeholder": "Szukaj: pojazd, kierowca, zlecenie, faktura…",
+  "search.loading": "Ładowanie…",
+  "search.empty": "Brak wyników.",
+  "search.start": "Zacznij pisać…",
+  "search.type.vehicle": "Pojazd",
+  "search.type.driver": "Kierowca",
+  "search.type.order": "Zlecenie",
+  "search.type.invoice": "Faktura",
+
   "auth.signIn": "Zaloguj się",
   "auth.signUp": "Zarejestruj się",
   "auth.createAccount": "Utwórz konto",
@@ -92,6 +120,7 @@ export const pl = {
   "common.delete": "Usuń",
   "common.history": "Historia",
   "common.language": "Język",
+  "common.noNumber": "(bez numeru)",
 } as const;
 
 export type MessageKey = keyof typeof pl;

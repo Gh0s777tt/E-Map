@@ -7,12 +7,14 @@ import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { HelpCenter } from "@/components/HelpCenter";
+import { LocaleProvider } from "@/components/LocaleProvider";
 import type { NavGroup } from "@/components/SidebarNav";
 import { getLocale } from "@/lib/locale";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const t = createTranslator(await getLocale());
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const supabaseConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
@@ -109,12 +111,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div className="app-shell">
-      <AppSidebar navGroups={navGroups} email={email} supabaseConfigured={supabaseConfigured} />
-      <main className="app-main">
-        <ConfirmProvider>{children}</ConfirmProvider>
-      </main>
-      <HelpCenter />
-    </div>
+    <LocaleProvider locale={locale}>
+      <div className="app-shell">
+        <AppSidebar navGroups={navGroups} email={email} supabaseConfigured={supabaseConfigured} />
+        <main className="app-main">
+          <ConfirmProvider>{children}</ConfirmProvider>
+        </main>
+        <HelpCenter />
+      </div>
+    </LocaleProvider>
   );
 }

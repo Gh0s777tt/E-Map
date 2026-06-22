@@ -1,40 +1,51 @@
+import { createTranslator, type MessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { AttentionPanel } from "@/components/AttentionPanel";
 import { CompanyBanner } from "@/components/CompanyBanner";
 import { DriverActiveOrder } from "@/components/DriverActiveOrder";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { getLocale } from "@/lib/locale";
 
-const CARDS = [
+const CARDS: { href: string; tagKey: MessageKey; titleKey: MessageKey; descKey: MessageKey }[] = [
   {
     href: "/forms/fuel",
-    tag: "FORMULARZ",
-    title: "Paliwo ⛽",
-    desc: "Dodaj tankowanie (offline-first)",
+    tagKey: "dashboard.tag.form",
+    titleKey: "dashboard.card.fuel.title",
+    descKey: "dashboard.card.fuel.desc",
   },
   {
     href: "/forms/adblue",
-    tag: "FORMULARZ",
-    title: "AdBlue 💧",
-    desc: "Dodaj uzupełnienie AdBlue",
+    tagKey: "dashboard.tag.form",
+    titleKey: "dashboard.card.adblue.title",
+    descKey: "dashboard.card.adblue.desc",
   },
   {
     href: "/forms/trip",
-    tag: "FORMULARZ",
-    title: "Trip 🚚",
-    desc: "Załadunek / rozładunek / serwis…",
+    tagKey: "dashboard.tag.form",
+    titleKey: "dashboard.card.trip.title",
+    descKey: "dashboard.card.trip.desc",
   },
-  { href: "/map", tag: "MAPA", title: "Mapa 🗺️", desc: "Routing TIR + myto (mock)" },
-  { href: "/stats", tag: "RAPORT", title: "Statystyki 📊", desc: "Spalanie i koszty per pojazd" },
+  {
+    href: "/map",
+    tagKey: "dashboard.tag.map",
+    titleKey: "dashboard.card.map.title",
+    descKey: "dashboard.card.map.desc",
+  },
+  {
+    href: "/stats",
+    tagKey: "dashboard.tag.report",
+    titleKey: "dashboard.card.stats.title",
+    descKey: "dashboard.card.stats.desc",
+  },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const t = createTranslator(await getLocale());
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Pulpit</h1>
-      <p style={{ color: palette.smoke }}>
-        E-Logistic · formularze, mapa i statystyki — offline-first + Supabase.
-      </p>
+      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("dashboard.title")}</h1>
+      <p style={{ color: palette.smoke }}>{t("dashboard.subtitle")}</p>
 
       <CompanyBanner />
       <DriverActiveOrder />
@@ -57,9 +68,9 @@ export default function DashboardPage() {
               textDecoration: "none",
             }}
           >
-            <div style={{ color: palette.red, fontSize: 12, letterSpacing: 2 }}>{c.tag}</div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{c.title}</div>
-            <div style={{ color: palette.smoke, fontSize: 13, marginTop: 4 }}>{c.desc}</div>
+            <div style={{ color: palette.red, fontSize: 12, letterSpacing: 2 }}>{t(c.tagKey)}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{t(c.titleKey)}</div>
+            <div style={{ color: palette.smoke, fontSize: 13, marginTop: 4 }}>{t(c.descKey)}</div>
           </Link>
         ))}
       </div>
