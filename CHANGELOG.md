@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-132-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.0.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-133-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.1.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.1.0] — 🧾 Eksport rentowności klientów do CSV (+ sekcja dwujęzyczna)
+
+- `[#133]` 🧾 **CSV dla rentowności klientów** ([stats](apps/web/app/(app)/stats/page.tsx)): przycisk „⬇️ CSV" w sekcji rentowności (owner/dispatcher) — eksport per nadawca (klient, zlecenia, przychód, koszt, zysk, marża) przez wspólny [downloadCsv](apps/web/lib/csv.ts) (BOM UTF-8, Excel-friendly), spójny z resztą eksportów. Domyka [#126].
+- Przy okazji **sekcja rentowności w pełni dwujęzyczna** (była zaszyta po polsku): tytuł, totale, nagłówki tabeli, nota o modelu i przybliżeniach — przez `useT()` + 16 kluczy `profit.*`. Parytet i18n wymuszony typem i testem.
+- **Bramki:** biome czysto · `tsc` ×7 · 105 testów (parytet i18n ✓) · build ✓ (`/stats`).
 
 ## [1.0.0] — 🏁 Kamień milowy: pierwsza pełna wersja
 

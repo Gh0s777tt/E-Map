@@ -182,6 +182,23 @@ export const pl = {
   "orders.csv.loadDate": "Załadunek",
   "orders.csv.unloadDate": "Rozładunek",
 
+  "profit.title": "Rentowność klientów",
+  "profit.approx": "(przybliżenie — koszt = paliwo)",
+  "profit.total.revenue": "Przychód (EUR)",
+  "profit.total.cost": "Koszt paliwa (przyp.)",
+  "profit.total.profit": "Zysk",
+  "profit.col.client": "Klient",
+  "profit.col.ordersShort": "Zl.",
+  "profit.col.orders": "Zlecenia",
+  "profit.col.revenue": "Przychód",
+  "profit.col.cost": "Koszt",
+  "profit.col.profit": "Zysk",
+  "profit.col.margin": "Marża",
+  "profit.note":
+    "Koszt przypisany = paliwo pojazdu rozdzielone na jego zlecenia proporcjonalnie do przychodu (tylko zlecenia zrealizowane w EUR). Pomija puste przebiegi, myto, pensje, AdBlue i leasing — traktuj jako wskaźnik względny, nie księgowość.",
+  "profit.unattributed": "Nieprzypisany koszt paliwa (pojazdy bez przychodu EUR):",
+  "profit.noVehicle": "Przychód bez przypisanego pojazdu (koszt zaniżony):",
+
   "sync.draft": "Szkic",
   "sync.queued": "W kolejce",
   "sync.synced": "Zsynchronizowano",
