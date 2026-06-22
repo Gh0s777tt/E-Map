@@ -19,6 +19,7 @@ export * from "./ids";
 export * from "./invoice";
 export * from "./money";
 export * from "./orders";
+export * from "./perDiem";
 export * from "./pod";
 export * from "./profitability";
 export * from "./savedPlaces";
