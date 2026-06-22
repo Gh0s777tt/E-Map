@@ -7,7 +7,9 @@ import {
   clientProfitTrend,
   consumptionFullToFull,
   detectFuelAnomalies,
+  type FleetAlert,
   type FuelStatsEntry,
+  fleetAlerts,
   fuelConsumptionSeries,
   orderAnalytics,
   round2,
@@ -224,6 +226,26 @@ export default function StatsPage() {
     return { months, orders: trendOrders, costs: trendCosts };
   }, [orders, fuel]);
 
+  // Alerty progowe (ujemna/niska marża, anomalie spalania, skok kosztu paliwa m/m)
+  // — liczone z danych już załadowanych na tym ekranie. Tylko zarząd.
+  const alerts = useMemo(() => {
+    const byMonth = fuel.reduce((m, r) => {
+      const k = r.created_at.slice(0, 7);
+      return m.set(k, (m.get(k) ?? 0) + Number(r.price_total ?? 0));
+    }, new Map<string, number>());
+    const fuelCostByMonth = [...byMonth]
+      .map(([month, cost]) => ({ month, cost }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+    return fleetAlerts({
+      clients: profit.clients,
+      anomalyVehicles: tiles.map((tl) => ({
+        registration: tl.registration,
+        anomalies: tl.anomalies,
+      })),
+      fuelCostByMonth,
+    });
+  }, [profit, tiles, fuel]);
+
   return (
     <div>
       <PageHeader
@@ -239,6 +261,8 @@ export default function StatsPage() {
 
       {!selected ? (
         <>
+          {canManage && alerts.length > 0 && <AlertsBanner alerts={alerts} />}
+
           {fleet.vehicles > 0 && (
             <div style={styles.fleet}>
               <FleetStat label="Pojazdy" value={String(fleet.vehicles)} />
@@ -346,6 +370,41 @@ export default function StatsPage() {
           onBack={() => setSelected(null)}
         />
       )}
+    </div>
+  );
+}
+
+function AlertsBanner({ alerts }: { alerts: FleetAlert[] }) {
+  const t = useT();
+  const fmt = (a: FleetAlert) =>
+    a.kind === "fuelAnomaly"
+      ? `${a.value}×`
+      : a.kind === "fuelSpike"
+        ? `+${a.value}%`
+        : `${a.value}%`;
+  return (
+    <div style={styles.alertWrap}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ fontWeight: 800 }}>🔔 {t("alerts.title")}</span>
+        <span style={styles.alertPill}>{alerts.length}</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {alerts.map((a) => {
+          const color = a.severity === "critical" ? palette.red : palette.warning;
+          return (
+            <div key={a.key} style={styles.alertRow}>
+              <span
+                style={{ width: 8, height: 8, borderRadius: 999, background: color, flexShrink: 0 }}
+              />
+              <span style={{ color: palette.smoke, minWidth: 150, fontSize: 13 }}>
+                {t(`alerts.${a.kind}`)}
+              </span>
+              <strong style={{ flex: 1, minWidth: 0 }}>{a.label}</strong>
+              <span style={{ color, fontWeight: 700, fontSize: 13 }}>{fmt(a)}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -745,6 +804,29 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "6px 10px",
     fontSize: 13,
     maxWidth: 220,
+  },
+  alertWrap: {
+    marginTop: 24,
+    padding: "14px 16px",
+    borderRadius: 12,
+    background: "#2a0d0d",
+    border: `1px solid ${palette.red}`,
+  },
+  alertPill: {
+    background: palette.red,
+    color: palette.white,
+    borderRadius: 999,
+    padding: "1px 9px",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  alertRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    padding: "6px 0",
+    fontSize: 14,
+    borderBottom: `1px solid ${palette.graphite}`,
   },
   anomalyBox: {
     background: "#2a0d0d",

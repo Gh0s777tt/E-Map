@@ -3,6 +3,7 @@
  * Czysty TypeScript, bez zależności od UI. Współdzielony przez web i mobile.
  */
 
+export * from "./alerts";
 export * from "./billing";
 export * from "./catalog";
 export * from "./csv";

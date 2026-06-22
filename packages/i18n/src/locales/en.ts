@@ -209,6 +209,12 @@ export const en: Record<MessageKey, string> = {
   "profit.col.margin": "Margin",
   "profit.col.month": "Month",
   "profit.trend.title": "Monthly trend (profit by client)",
+
+  "alerts.title": "Alerts",
+  "alerts.negativeMargin": "Negative margin",
+  "alerts.lowMargin": "Low margin",
+  "alerts.fuelAnomaly": "Fuel anomalies",
+  "alerts.fuelSpike": "Fuel cost spike (mo/mo)",
   "profit.note":
     "Attributed cost = the vehicle's fuel split across its orders in proportion to revenue (realized EUR orders only). Excludes empty runs, tolls, wages, AdBlue and leasing — treat it as a relative indicator, not accounting.",
   "profit.unattributed": "Unattributed fuel cost (vehicles with no EUR revenue):",
