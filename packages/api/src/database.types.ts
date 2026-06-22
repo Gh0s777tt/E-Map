@@ -510,6 +510,69 @@ export interface Database {
         };
         Relationships: [];
       };
+      invoices: {
+        Row: {
+          id: string;
+          company_id: string;
+          order_id: string | null;
+          number: string;
+          issue_date: string;
+          seller_name: string | null;
+          seller_tax_id: string | null;
+          seller_address: string | null;
+          buyer_name: string | null;
+          buyer_tax_id: string | null;
+          buyer_address: string | null;
+          description: string | null;
+          net: number;
+          vat_rate: number;
+          vat_amount: number;
+          gross: number;
+          currency: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          order_id?: string | null;
+          number: string;
+          issue_date?: string;
+          seller_name?: string | null;
+          seller_tax_id?: string | null;
+          seller_address?: string | null;
+          buyer_name?: string | null;
+          buyer_tax_id?: string | null;
+          buyer_address?: string | null;
+          description?: string | null;
+          net?: number;
+          vat_rate?: number;
+          vat_amount?: number;
+          gross?: number;
+          currency?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          order_id?: string | null;
+          number?: string;
+          issue_date?: string;
+          seller_name?: string | null;
+          seller_tax_id?: string | null;
+          seller_address?: string | null;
+          buyer_name?: string | null;
+          buyer_tax_id?: string | null;
+          buyer_address?: string | null;
+          description?: string | null;
+          net?: number;
+          vat_rate?: number;
+          vat_amount?: number;
+          gross?: number;
+          currency?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       map_reports: {
         Row: {
           id: string;
@@ -1155,6 +1218,7 @@ export interface Database {
       bootstrap_company: { Args: Record<string, unknown>; Returns: Json };
       company_members: { Args: Record<string, unknown>; Returns: Json };
       create_invite: { Args: Record<string, unknown>; Returns: Json };
+      create_invoice: { Args: Record<string, unknown>; Returns: Json };
       dev_stats: { Args: Record<string, unknown>; Returns: Json };
       driver_documents: { Args: Record<string, unknown>; Returns: Json };
       driver_save: { Args: Record<string, unknown>; Returns: Json };

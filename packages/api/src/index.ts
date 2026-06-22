@@ -9,6 +9,7 @@ export * from "./data/drivers";
 export * from "./data/fuelCards";
 export * from "./data/fuelLogs";
 export * from "./data/invites";
+export * from "./data/invoices";
 export * from "./data/mapReports";
 export * from "./data/memberships";
 export * from "./data/notifications";
