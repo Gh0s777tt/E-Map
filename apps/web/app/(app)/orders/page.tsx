@@ -15,7 +15,15 @@ import {
   setOrderStatus,
   upsertContractor,
 } from "@e-logistic/api";
-import { ORDER_STATUSES, type OrderStatus, orderSchema, round2 } from "@e-logistic/core";
+import {
+  FREIGHT_EXPORT_HEADERS,
+  freightExportRows,
+  freightRowCells,
+  ORDER_STATUSES,
+  type OrderStatus,
+  orderSchema,
+  round2,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -307,6 +315,25 @@ export default function OrdersPage() {
     downloadCsv(`zlecenia_${csvDateStamp()}.csv`, headers, rows);
   }
 
+  /** Eksport zleceń do publikacji na giełdzie transportowej (uniwersalny CSV frachtu). */
+  function exportFreight() {
+    const rows = freightExportRows(
+      filtered.map((o) => ({
+        referenceNo: o.reference_no,
+        origin: o.origin,
+        destination: o.destination,
+        loadDate: o.load_date,
+        unloadDate: o.unload_date,
+        cargo: o.cargo,
+        weightKg: o.weight_kg,
+        price: o.price,
+        currency: o.currency,
+        notes: o.notes,
+      })),
+    ).map(freightRowCells);
+    downloadCsv(`gielda_${csvDateStamp()}.csv`, [...FREIGHT_EXPORT_HEADERS], rows);
+  }
+
   if (cmrOrder) {
     return (
       <CmrDoc
@@ -491,6 +518,9 @@ export default function OrdersPage() {
           </button>
         ))}
         <span style={{ flex: 1 }} />
+        <Button variant="ghost" onClick={exportFreight}>
+          📤 Giełda (CSV)
+        </Button>
         <Button variant="ghost" onClick={exportCsv}>
           ⬇️ CSV
         </Button>

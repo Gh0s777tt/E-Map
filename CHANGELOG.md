@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-175-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.31.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-176-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.32.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.32.0] — 📤 Eksport zleceń na giełdę transportową (CSV)
+
+- `[#176]` 📤 **Eksport frachtu do publikacji na giełdach** (Trans.eu / Timocom itp.) — szybkie wystawienie zlecenia jako ogłoszenia:
+  - **Rdzeń** [core/freightExport.ts](packages/core/src/freightExport.ts): `freightExportRows` / `toFreightRow` / `freightRowCells` + `FREIGHT_EXPORT_HEADERS` — mapuje zlecenie na uniwersalny zestaw pól frachtu (referencja, załadunek/rozładunek + daty, ładunek, **waga kg→t**, stawka, waluta, uwagi); pomija pozycje bez trasy. **Czyste, 4 testy (160 łącznie)**.
+  - **Zlecenia** ([orders](apps/web/app/(app)/orders/page.tsx)): przycisk **„📤 Giełda (CSV)"** eksportuje aktualnie filtrowaną listę zleceń w formacie frachtowym (obok zwykłego CSV).
+  - **Bramki:** biome czysto · `tsc` ×7 · 160 testów · build ✓ (`/orders`).
+  - *Uwaga: to wspólny mianownik pól frachtowych (CSV do wklejenia/importu), nie format konkretnego API giełdy.*
 
 ## [1.31.0] — 📊 Pulpit KPI (operacyjny skrót na start dnia)
 
