@@ -198,6 +198,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      contractors: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          tax_id: string | null;
+          address: string | null;
+          country: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          tax_id?: string | null;
+          address?: string | null;
+          country?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          tax_id?: string | null;
+          address?: string | null;
+          country?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       documents: {
         Row: {
           id: string;

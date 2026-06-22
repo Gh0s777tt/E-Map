@@ -2,15 +2,18 @@
 
 import {
   addInvoiceItem,
+  type Contractor,
   createBlankInvoice,
   deleteInvoiceItem,
   duplicateInvoice,
   type Invoice,
   type InvoiceItem,
+  listContractors,
   listInvoiceItems,
   listInvoices,
   setInvoicePaid,
   setInvoiceStatus,
+  upsertContractor,
 } from "@e-logistic/api";
 import {
   formatMoney,
@@ -43,6 +46,7 @@ export default function InvoicesPage() {
   const [buyerTaxId, setBuyerTaxId] = useState("");
   const [buyerAddress, setBuyerAddress] = useState("");
   const [currency, setCurrency] = useState("EUR");
+  const [contractors, setContractors] = useState<Contractor[]>([]);
   const [payFilter, setPayFilter] = useState<"all" | PaymentStatus | "cancelled">("all");
 
   const load = useCallback(async () => {
@@ -56,7 +60,12 @@ export default function InvoicesPage() {
         return;
       }
       setCanManage(m.role === "owner" || m.role === "dispatcher");
-      setInvoices(await listInvoices(sb, m.companyId));
+      const [inv, contr] = await Promise.all([
+        listInvoices(sb, m.companyId),
+        listContractors(sb, m.companyId).catch(() => []),
+      ]);
+      setInvoices(inv);
+      setContractors(contr);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać faktur.");
     } finally {
@@ -95,6 +104,16 @@ export default function InvoicesPage() {
       await load();
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Błąd duplikowania.");
+    }
+  }
+
+  // Wybór nabywcy z rejestru → auto-uzupełnienie NIP i adresu.
+  function pickBuyer(name: string) {
+    setBuyerName(name);
+    const c = contractors.find((x) => x.name === name);
+    if (c) {
+      setBuyerTaxId(c.tax_id ?? "");
+      setBuyerAddress(c.address ?? "");
     }
   }
 
@@ -141,6 +160,12 @@ export default function InvoicesPage() {
         buyerAddress: buyerAddress.trim() || undefined,
         currency: currency.trim() || "EUR",
       });
+      // Rejestr kontrahentów rośnie organicznie z wystawianych faktur.
+      await upsertContractor(sb, m.companyId, {
+        name: buyerName,
+        taxId: buyerTaxId,
+        address: buyerAddress,
+      }).catch(() => {});
       setShowNew(false);
       setBuyerName("");
       setBuyerTaxId("");
@@ -225,8 +250,14 @@ export default function InvoicesPage() {
             style={styles.nfInput}
             placeholder="Nabywca (nazwa)"
             value={buyerName}
-            onChange={(e) => setBuyerName(e.target.value)}
+            list="contractors-dl"
+            onChange={(e) => pickBuyer(e.target.value)}
           />
+          <datalist id="contractors-dl">
+            {contractors.map((c) => (
+              <option key={c.id} value={c.name} />
+            ))}
+          </datalist>
           <input
             style={styles.nfInput}
             placeholder="NIP nabywcy"

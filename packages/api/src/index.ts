@@ -4,6 +4,7 @@
  */
 export * from "./client";
 export * from "./data/companies";
+export * from "./data/contractors";
 export * from "./data/defects";
 export * from "./data/dev";
 export * from "./data/documents";
