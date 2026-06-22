@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-164-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.20.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-165-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.21.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.21.0] — 💶 Eksport księgowy: rejestr VAT sprzedaży (miesiąc)
+
+- `[#165]` 💶 **Rejestr VAT dla biura rachunkowego** — jeden plik CSV z fakturami miesiąca + podsumowaniem wg stawek:
+  - **Rdzeń** [core/accounting.ts](packages/core/src/accounting.ts): `monthlyVatRegister(invoices, month)` — filtruje faktury wystawione (≠ anulowane) z `issue_date` w miesiącu, grupuje wg stawki VAT (netto/VAT/brutto/liczba), zwraca sumy. Czyste, **3 testy (132 łącznie)**.
+  - **Faktury** ([invoices](apps/web/app/(app)/invoices/page.tsx)): wybór miesiąca (`<input type="month">`) + przycisk **„🧮 Rejestr VAT (księgowość)"** → CSV: pozycje (nr, data, nabywca, NIP, stawka, netto, VAT, brutto, waluta) + sekcja „Podsumowanie wg stawek VAT" + wiersz RAZEM. Owner/dispatcher.
+  - **Bramki:** biome czysto · `tsc` ×7 · 132 testy · build ✓ (`/invoices`).
 
 ## [1.20.0] — 🌱 Emisje CO₂ per pojazd + eksport CSV (raport ESG)
 
