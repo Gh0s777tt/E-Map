@@ -31,6 +31,7 @@ import {
   VEHICLE_COST_CATEGORY_LABELS,
   type VehicleCostCategory,
   vehicleCostSchema,
+  vehiclePnl,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -172,6 +173,17 @@ export default function VehicleCardPage() {
     return { totalEur, byCategory };
   }, [costs]);
 
+  // Mini P&L pojazdu: przychód − paliwo − koszty (EUR).
+  const pnl = useMemo(
+    () =>
+      vehiclePnl({
+        revenueEur: orderStats.revenueEur,
+        fuelEur: fuelStats.spend,
+        costsEur: costSummary.totalEur,
+      }),
+    [orderStats.revenueEur, fuelStats.spend, costSummary.totalEur],
+  );
+
   async function saveCost() {
     setCostMsg(null);
     const parsed = vehicleCostSchema.safeParse({
@@ -235,6 +247,27 @@ export default function VehicleCardPage() {
               vehicle.year ? ` · ${vehicle.year}` : ""
             } · ${vehicle.vehicle_type ?? "—"}`}
           />
+
+          {/* Mini P&L pojazdu */}
+          <h2 style={styles.h2}>
+            💰 Zysk pojazdu (P&L){" "}
+            <span style={styles.dim}>· zlecenia dostarczone/zafakturowane, EUR</span>
+          </h2>
+          <div style={styles.statsRow}>
+            <Stat label="Przychód" value={`${pnl.revenue} €`} accent="#22c55e" />
+            <Stat label="− Paliwo" value={`${pnl.fuel} €`} />
+            <Stat label="− Koszty" value={`${pnl.costs} €`} />
+            <Stat
+              label="Zysk"
+              value={`${pnl.net} €`}
+              accent={pnl.net >= 0 ? "#22c55e" : palette.red}
+            />
+            <Stat
+              label="Marża"
+              value={pnl.marginPct != null ? `${pnl.marginPct}%` : "—"}
+              accent={pnl.net >= 0 ? "#22c55e" : palette.red}
+            />
+          </div>
 
           {/* Dokumenty / terminy */}
           <h2 style={styles.h2}>Dokumenty i terminy</h2>
