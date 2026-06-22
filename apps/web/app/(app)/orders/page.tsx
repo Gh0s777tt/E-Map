@@ -21,6 +21,7 @@ import {
   toCsv,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -52,6 +53,7 @@ function download(filename: string, text: string) {
 export default function OrdersPage() {
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
   const [members, setMembers] = useState<CompanyMember[]>([]);
@@ -119,6 +121,13 @@ export default function OrdersPage() {
   );
   const emailOf = (uid: string | null) =>
     uid ? (members.find((mb) => mb.user_id === uid)?.email ?? "—") : null;
+
+  function showOnMap(o: Order) {
+    const p = new URLSearchParams();
+    if (o.origin) p.set("from", o.origin);
+    if (o.destination) p.set("to", o.destination);
+    router.push(`/map?${p.toString()}`);
+  }
 
   const filtered = useMemo(
     () => (filter === "all" ? orders : orders.filter((o) => o.status === filter)),
@@ -509,6 +518,11 @@ export default function OrdersPage() {
                 <Button variant="ghost" onClick={() => setCmrOrder(o)}>
                   📄 CMR
                 </Button>
+                {(o.origin || o.destination) && (
+                  <Button variant="ghost" onClick={() => showOnMap(o)}>
+                    🗺️ Mapa
+                  </Button>
+                )}
               </div>
               {canManage && (
                 <div style={styles.cardActions}>
