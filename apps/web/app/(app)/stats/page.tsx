@@ -10,10 +10,13 @@ import {
 } from "@e-logistic/api";
 import {
   clientProfitability,
+  co2PerHundredKm,
   consumptionFullToFull,
   detectFuelAnomalies,
+  dieselCo2Kg,
   fleetAlerts,
   fleetPnl,
+  formatCo2,
   fuelConsumptionSeries,
   orderAnalytics,
   round2,
@@ -286,6 +289,14 @@ export default function StatsPage() {
                 label="Anomalie spalania"
                 value={String(fleet.anomalies)}
                 accent={fleet.anomalies > 0 ? palette.red : "#22c55e"}
+              />
+              <FleetStat
+                label="🌱 Ślad węglowy (CO₂)"
+                value={formatCo2(dieselCo2Kg(fleet.totalLiters))}
+              />
+              <FleetStat
+                label="CO₂ / 100 km"
+                value={fleet.avgCons != null ? `${co2PerHundredKm(fleet.avgCons)} kg` : "—"}
               />
             </div>
           )}

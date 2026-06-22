@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-162-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.18.3-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-163-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.19.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.19.0] — 🌱 Ślad węglowy floty (CO₂) na statystykach
+
+- `[#163]` 🌱 **Raport emisji CO₂** — pod wymagania ESG/CSRD w transporcie, liczony z już zbieranych danych paliwowych (bez nowej infrastruktury):
+  - **Rdzeń** [core/co2.ts](packages/core/src/co2.ts): `dieselCo2Kg(liters)` (współczynnik tank-to-wheel **2,64 kg CO₂/L**), `co2PerHundredKm(L/100km)` (intensywność), `formatCo2(kg)` (kg/tony). Funkcje czyste, **4 testy (127 łącznie)**.
+  - **Statystyki** ([stats](apps/web/app/(app)/stats/page.tsx)): w pulpicie floty dwa kafelki — **„🌱 Ślad węglowy (CO₂)"** (suma z paliwa) i **„CO₂ / 100 km"** (intensywność ze średniego spalania). Reużywa policzone już agregaty floty.
+  - **Bramki:** biome czysto · `tsc` ×7 · 127 testów · build ✓ (`/stats`).
 
 ## [1.18.3] — 🎨 Wspólne tokeny + presety stylów (spłata długu [P3] z audytu)
 
