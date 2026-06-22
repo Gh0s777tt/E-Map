@@ -18,7 +18,6 @@ import {
   type OrderStatus,
   orderSchema,
   round2,
-  toCsv,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
@@ -27,6 +26,7 @@ import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
+import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -39,16 +39,6 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   invoiced: "#a855f7",
   cancelled: palette.red,
 };
-
-function download(filename: string, text: string) {
-  const blob = new Blob([`﻿${text}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function OrdersPage() {
   const { vehicles, source } = useFleet();
@@ -302,7 +292,7 @@ export default function OrdersPage() {
       o.load_date ?? "",
       o.unload_date ?? "",
     ]);
-    download(`zlecenia_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, rows));
+    downloadCsv(`zlecenia_${csvDateStamp()}.csv`, headers, rows);
   }
 
   if (cmrOrder) {

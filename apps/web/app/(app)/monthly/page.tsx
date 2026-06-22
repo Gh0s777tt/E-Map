@@ -9,27 +9,18 @@ import {
   monthlyFleetTrend,
   monthsEndingAt,
   round2,
-  toCsv,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { BarChart, Button, PageHeader, SetupNotice } from "@/components/ui";
+import { downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 function thisMonth(): string {
   return new Date().toISOString().slice(0, 7);
-}
-function download(filename: string, text: string) {
-  const blob = new Blob([`﻿${text}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function MonthlyPage() {
@@ -128,7 +119,7 @@ export default function MonthlyPage() {
       summary.totals.adblueCost,
       summary.totals.net,
     ]);
-    download(`zestawienie_${month}.csv`, toCsv(headers, rows));
+    downloadCsv(`zestawienie_${month}.csv`, headers, rows);
   }
 
   if (denied) {
