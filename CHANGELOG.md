@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-150-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.9.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-151-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.10.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.10.0] — 📸 Zdjęcia towaru przy zleceniu (dowód zabezpieczenia)
+
+- `[#151]` 📸 **Dobrowolne zdjęcia ładunku** (zgłoszone: dowód, że towar był zabezpieczony):
+  - **[Migracja 0044](supabase/migrations/0044_order_photos.sql)** (na prod): tabela `order_photos` (`order_id`, `path`, `mime`, `size_bytes`, `caption`, `uploaded_by` `default auth.uid()`) + **prywatny bucket `cargo-photos`** (ścieżka `{company_id}/{order_id}/{uuid}`). RLS: członek czyta; **upload — każdy aktywny członek** (kierowca dokumentuje ładunek); kasowanie — owner/dispatcher (integralność dowodu). `audit:rls` ✓ (34 tabele, `order_photos` RLS + 3 polityki).
+  - **api** [data/orderPhotos.ts](packages/api/src/data/orderPhotos.ts): `listOrderPhotos`, `uploadOrderPhoto` (rollback Storage przy błędzie), `getOrderPhotoUrl` (podpisany URL — bucket prywatny), `deleteOrderPhoto`. Typy DB przegenerowane (34 tabele).
+  - **Komponent** [CargoPhotos](apps/web/components/CargoPhotos.tsx): miniatury (podpisane URL-e), upload z aparatu (`capture="environment"`, wiele plików), usuwanie dla owner/dispatcher. Samodzielny (firma/rola z membership).
+  - **Wpięcie:** karta zlecenia kierowcy ([my-orders](apps/web/app/(app)/my-orders/page.tsx)) — robi zdjęcie przy załadunku; lista zleceń dyspozytora ([orders](apps/web/app/(app)/orders/page.tsx)) — podgląd/zarządzanie.
+  - **Bramki:** biome czysto · `tsc` ×2 · 118 testów · build ✓ (`/my-orders`, `/orders`) · `audit:rls` ✓.
 
 ## [1.9.0] — 💰 Koszty pojazdu → dokładny zysk floty (P&L)
 

@@ -828,6 +828,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      order_photos: {
+        Row: {
+          id: string;
+          company_id: string;
+          order_id: string;
+          path: string;
+          mime: string | null;
+          size_bytes: number | null;
+          caption: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          order_id: string;
+          path: string;
+          mime?: string | null;
+          size_bytes?: number | null;
+          caption?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          order_id?: string;
+          path?: string;
+          mime?: string | null;
+          size_bytes?: number | null;
+          caption?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       orders: {
         Row: {
           id: string;

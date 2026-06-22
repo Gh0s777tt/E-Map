@@ -16,6 +16,7 @@ export * from "./data/invoices";
 export * from "./data/mapReports";
 export * from "./data/memberships";
 export * from "./data/notifications";
+export * from "./data/orderPhotos";
 export * from "./data/orders";
 export * from "./data/push";
 export * from "./data/service";

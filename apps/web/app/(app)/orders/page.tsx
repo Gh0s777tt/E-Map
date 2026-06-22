@@ -19,6 +19,7 @@ import { ORDER_STATUSES, type OrderStatus, orderSchema, round2 } from "@e-logist
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CargoPhotos } from "@/components/CargoPhotos";
 import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
@@ -554,6 +555,7 @@ export default function OrdersPage() {
                   </Button>
                 </div>
               )}
+              <CargoPhotos orderId={o.id} />
             </div>
           ))}
         </div>
