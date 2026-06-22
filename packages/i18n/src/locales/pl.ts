@@ -26,6 +26,7 @@ export const pl = {
   "nav.contractors": "Kontrahenci",
   "nav.monthly": "Zestawienie msc.",
   "nav.perDiem": "Diety kierowcy",
+  "nav.workTime": "Czas pracy",
   "nav.fuelPrices": "Ceny diesla",
   "nav.team": "Zespół",
   "nav.group.orders": "Zlecenia",
