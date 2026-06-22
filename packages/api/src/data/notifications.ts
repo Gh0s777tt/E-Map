@@ -31,6 +31,15 @@ export async function markNotificationsRead(client: SupabaseClient) {
   if (error) throw error;
 }
 
+/** Oznacza pojedyncze powiadomienie jako przeczytane. */
+export async function markNotificationRead(client: SupabaseClient, id: string) {
+  const { error } = await client
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 /** Powiadamia kadrę zarządzającą firmy (RPC, member). */
 export async function notifyCompany(
   client: SupabaseClient,
