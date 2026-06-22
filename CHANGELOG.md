@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-131-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.101.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-132-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.0.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.0.0] — 🏁 Kamień milowy: pierwsza pełna wersja
+
+- `[#132]` 🏁 **E-Logistic 1.0.0** — domknięcie spójnej, kompletnej wersji platformy dla kierowców, spedytorów i firm transportowych. Wydanie zamykające serię: flota, formularze offline-first, mapa TIR, statystyki, rozliczenia, **faktury** (numeracja bez luk, status, płatność, bank/IBAN, pozycje), **zlecenia** (przypisania, statusy, CMR), **rentowność klientów**, **sejf dokumentów**, role/RLS, powiadomienia, **dwujęzyczność PL/EN całego UI widokowego**.
+  - **Audyt domknięcia (deterministyczny):** biome czysto · `tsc` ×7 (exit 0) · 105 testów (w tym parytet i18n) · `next build` ✓ · **`pnpm audit:rls` ✓** (izolacja multi-tenant spójna: 31/31 tabel firmowych, wszystkie funkcje `SECURITY DEFINER` z `search_path`).
+  - **Smoke produkcyjny:** kluczowe trasy odpowiadają poprawnie (publiczne `200`, chronione `307`).
+  - **Bezpieczeństwo:** RLS multi-tenant + szyfrowanie PII/PIN (Vault/pgcrypto, odczyt audytowany) + bramka RLS w CI + gitleaks/CodeQL.
+  - **Dokumentacja:** README (badge wersji `1.0.0`, status „produkcja”) i CHANGELOG zsynchronizowane.
+  - Świadomie poza 1.0.0 (dalszy rozwój): tłumaczenie etykiet w formularzach CRUD i nagłówków pozostałych eksportów CSV; profil truck w routingu (płatny tier GraphHopper); aplikacja mobilna (Expo) — szkielet.
 
 ## [0.101.0] — 🌍 i18n etap 5 (historia formularzy + eksport CSV zleceń)
 
