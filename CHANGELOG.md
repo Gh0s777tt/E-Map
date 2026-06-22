@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-97-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.73.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-98-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.74.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.74.0] — 👤 Przypisanie kierowcy do zlecenia + „Moje zlecenia"
+
+- `[#098]` 👤 **Przypisanie kierowcy + samoobsługowy widok kierowcy**:
+  - [Migracja 0032](supabase/migrations/0032_order_assignment.sql): kolumna `orders.assigned_to` (→ `auth.users`) + RPC `order_set_status` z kontrolą uprawnień: **owner/dispatcher → dowolny status**, **przypisany kierowca → tylko operacyjny** (w trakcie / dostarczone). Audytowane.
+  - **Zlecenia** ([orders](apps/web/app/(app)/orders/page.tsx)): pole **„Kierowca"** w formularzu (lista aktywnych kierowców firmy), widoczny przypisany kierowca na karcie zlecenia.
+  - **Nowa strona [/my-orders](apps/web/app/(app)/my-orders/page.tsx)** — kierowca widzi **swoje** zlecenia (bez modułu zleceń): trasa, ładunek, pojazd, daty; oznacza „▶️ W trakcie" / „✅ Dostarczone" i drukuje **CMR**. Link w nawigacji.
+  - **Refaktor:** `CmrDoc` wyniesiony do współdzielonego [komponentu](apps/web/components/CmrDoc.tsx) (używany przez /orders i /my-orders); api `listMyOrders`, `setOrderStatus` przez RPC.
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓ (`/orders`, `/my-orders`).
 
 ## [0.73.0] — ⚠️ Pulpit „Co wymaga uwagi" (zbiorczy panel terminów)
 

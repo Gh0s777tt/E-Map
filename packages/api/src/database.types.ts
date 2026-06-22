@@ -746,6 +746,7 @@ export interface Database {
           notes: string | null;
           created_at: string;
           updated_at: string;
+          assigned_to: string | null;
         };
         Insert: {
           id?: string;
@@ -766,6 +767,7 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
+          assigned_to?: string | null;
         };
         Update: {
           id?: string;
@@ -786,6 +788,7 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
+          assigned_to?: string | null;
         };
         Relationships: [];
       };
@@ -1276,6 +1279,7 @@ export interface Database {
       list_fuel_cards_for_user: { Args: Record<string, unknown>; Returns: Json };
       list_invites: { Args: Record<string, unknown>; Returns: Json };
       notify_company: { Args: Record<string, unknown>; Returns: Json };
+      order_set_status: { Args: Record<string, unknown>; Returns: Json };
     };
     Enums: {
       fuel_card_provider:

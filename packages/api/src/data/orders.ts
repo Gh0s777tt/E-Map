@@ -15,6 +15,7 @@ export interface Order {
   currency: string;
   status: OrderStatus;
   vehicle_id: string | null;
+  assigned_to: string | null;
   load_date: string | null;
   unload_date: string | null;
   notes: string | null;
@@ -22,13 +23,28 @@ export interface Order {
 }
 
 const COLS =
-  "id, reference_no, shipper, consignee, origin, destination, cargo, weight_kg, price, currency, status, vehicle_id, load_date, unload_date, notes, created_at";
+  "id, reference_no, shipper, consignee, origin, destination, cargo, weight_kg, price, currency, status, vehicle_id, assigned_to, load_date, unload_date, notes, created_at";
 
 export async function listOrders(client: SupabaseClient, companyId: string): Promise<Order[]> {
   const { data, error } = await client
     .from("orders")
     .select(COLS)
     .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Order[];
+}
+
+/** Zlecenia przypisane do bieżącego użytkownika (kierowcy). RLS dopuszcza odczyt członka. */
+export async function listMyOrders(client: SupabaseClient): Promise<Order[]> {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await client
+    .from("orders")
+    .select(COLS)
+    .eq("assigned_to", user.id)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Order[];
@@ -47,6 +63,7 @@ function orderToRow(input: OrderInput, companyId: string) {
     price: input.price ?? null,
     currency: input.currency,
     vehicle_id: input.vehicleId ?? null,
+    assigned_to: input.assignedTo ?? null,
     load_date: input.loadDate ?? null,
     unload_date: input.unloadDate ?? null,
     notes: input.notes ?? null,
@@ -70,12 +87,16 @@ export async function saveOrder(
   return data.id;
 }
 
+/**
+ * Zmiana statusu przez RPC z kontrolą uprawnień: owner/dispatcher → dowolny status,
+ * przypisany kierowca → tylko operacyjny (w trakcie / dostarczone). Audytowane.
+ */
 export async function setOrderStatus(
   client: SupabaseClient,
   id: string,
   status: OrderStatus,
 ): Promise<void> {
-  const { error } = await client.from("orders").update({ status }).eq("id", id);
+  const { error } = await client.rpc("order_set_status", { p_order: id, p_status: status });
   if (error) throw error;
 }
 

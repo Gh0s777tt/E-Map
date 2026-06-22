@@ -106,6 +106,7 @@ export const orderSchema = z.object({
   price: z.number().nonnegative().max(10000000).optional(),
   currency: z.string().max(8).default("EUR"),
   vehicleId: z.string().uuid().optional(),
+  assignedTo: z.string().uuid().optional(),
   loadDate: isoDate.optional(),
   unloadDate: isoDate.optional(),
   notes: z.string().max(2000).optional(),
