@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-165-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.21.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-166-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.22.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.22.0] — 💶 Eksport księgowy: rejestr kosztów miesiąca
+
+- `[#166]` 💶 **Rejestr kosztów dla biura rachunkowego** — symetrycznie do rejestru VAT sprzedaży [#165]; zbiorczy CSV kosztów miesiąca:
+  - **Rdzeń** [core/accounting.ts](packages/core/src/accounting.ts): `costRegister(entries)` — grupuje koszty wg kategorii (malejąco wg kwoty) + suma + liczności. Czyste, **2 testy (134 łącznie)**.
+  - **Zestawienie miesięczne** ([monthly](apps/web/app/(app)/monthly/page.tsx)): ładuje też `vehicle_costs`; przycisk **„🧮 Rejestr kosztów (księgowość)"** → CSV: pozycje (data, pojazd, kategoria, kwota EUR) z **paliwa + AdBlue + kosztów pojazdu** (naprawa/leasing/ubezpieczenie/…) za wybrany miesiąc + sekcja „Podsumowanie wg kategorii" + RAZEM. Pozycje w walutach ≠ EUR pomijane.
+  - **Bramki:** biome czysto · `tsc` ×7 · 134 testy · build ✓ (`/monthly`).
 
 ## [1.21.0] — 💶 Eksport księgowy: rejestr VAT sprzedaży (miesiąc)
 
