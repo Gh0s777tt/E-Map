@@ -2,7 +2,14 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { insertMapReport, listActiveMapReports } from "@e-logistic/api";
+import {
+  deleteSavedPlace,
+  insertMapReport,
+  insertSavedPlace,
+  listActiveMapReports,
+  listSavedPlaces,
+  type SavedPlace,
+} from "@e-logistic/api";
 import {
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
@@ -11,6 +18,10 @@ import {
   newId,
   REPORT_TYPES,
   type ReportType,
+  routeDelta,
+  SAVED_PLACE_CATEGORIES,
+  SAVED_PLACE_CATEGORY_LABELS,
+  type SavedPlaceCategory,
   stationMatchesProviders,
 } from "@e-logistic/core";
 import {
@@ -27,8 +38,18 @@ import { palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker, StyleSpecification } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
+import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
+
+const SAVED_CAT_ICON: Record<SavedPlaceCategory, string> = {
+  fuel_station: "⛽",
+  port: "⚓",
+  customs: "🛃",
+  company: "🏢",
+  parking: "🅿️",
+  other: "📍",
+};
 
 type MaplibreModule = typeof import("maplibre-gl");
 type RouteResponse = RouteResult & {
@@ -186,7 +207,10 @@ export default function MapPage() {
   const [consumption, setConsumption] = useState("30");
   const [fuelPrice, setFuelPrice] = useState("1.65");
   const [fuelDiscount, setFuelDiscount] = useState("0");
-  const [saved, setSaved] = useState<{ label: string; lat: number; lng: number }[]>([]);
+  const [saved, setSaved] = useState<SavedPlace[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [savedCat, setSavedCat] = useState<SavedPlaceCategory>("company");
+  const [deltaMsg, setDeltaMsg] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
 
   // Wymiary TIR (do routingu HERE) + filtr stacji wg kart flotowych.
@@ -213,14 +237,19 @@ export default function MapPage() {
     reportTypeRef.current = reportType;
   }, [reportType]);
 
-  // Wczytaj zapisane miejsca + ewentualną trasę z linku (?r=lat,lng,label|…).
+  // Wczytaj zapisane miejsca (z bazy — współdzielone w firmie) + trasę z linku.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("elog_saved_places");
-      if (raw) setSaved(JSON.parse(raw));
-    } catch {
-      // brak/nieprawidłowy zapis
-    }
+    (async () => {
+      try {
+        const sb = getBrowserSupabase();
+        const m = await getCachedMembership(sb);
+        if (!m) return;
+        setCompanyId(m.companyId);
+        setSaved(await listSavedPlaces(sb, m.companyId));
+      } catch {
+        // offline / brak firmy → brak zapisanych miejsc
+      }
+    })();
     try {
       const r = new URLSearchParams(window.location.search).get("r");
       if (r) {
@@ -566,31 +595,83 @@ export default function MapPage() {
     );
   }
 
-  function persistSaved(next: { label: string; lat: number; lng: number }[]) {
-    setSaved(next);
+  async function saveStart() {
+    const start = stops[0];
+    if (!start || !companyId) return;
+    if (saved.some((p) => p.lat === start.lat && p.lng === start.lng)) return;
     try {
-      localStorage.setItem("elog_saved_places", JSON.stringify(next));
+      const created = await insertSavedPlace(getBrowserSupabase(), companyId, {
+        name: start.label || "Zapisane miejsce",
+        category: savedCat,
+        lat: start.lat,
+        lng: start.lng,
+      });
+      setSaved((s) => [...s, created].sort((a, b) => a.name.localeCompare(b.name)));
     } catch {
-      // brak dostępu do localStorage
+      setShareMsg("Nie udało się zapisać miejsca.");
     }
   }
-  function saveStart() {
-    const start = stops[0];
-    if (!start) return;
-    if (saved.some((p) => p.lat === start.lat && p.lng === start.lng)) return;
-    persistSaved([{ label: start.label, lat: start.lat, lng: start.lng }, ...saved].slice(0, 20));
+
+  async function removeSaved(id: string) {
+    try {
+      await deleteSavedPlace(getBrowserSupabase(), id);
+      setSaved((s) => s.filter((p) => p.id !== id));
+    } catch {
+      setShareMsg("Nie udało się usunąć miejsca.");
+    }
   }
-  function addSavedAsStop(p: { label: string; lat: number; lng: number }) {
+
+  // Czytelny opis różnicy trasy po dodaniu miejsca (PL).
+  function describeDelta(name: string, d: ReturnType<typeof routeDelta>): string {
+    if (d.negligible) return `Dodano „${name}" — trasa bez istotnej zmiany.`;
+    const distTxt = `${d.longer ? "dłuższa" : "krótsza"} o ${Math.abs(d.distanceKm)} km`;
+    const timeTxt =
+      d.durationMin > 0
+        ? `dłużej o ${formatDuration(d.durationMin)}`
+        : d.durationMin < 0
+          ? `krócej o ${formatDuration(-d.durationMin)}`
+          : "ten sam czas";
+    const tollTxt =
+      d.tollEur > 0
+        ? `drożej o ${d.tollEur} € myta`
+        : d.tollEur < 0
+          ? `taniej o ${Math.abs(d.tollEur)} € myta`
+          : "myto bez zmian";
+    return `Dodano „${name}": ${distTxt}, ${timeTxt}, ${tollTxt}.`;
+  }
+
+  async function addSavedAsStop(p: SavedPlace) {
+    setDeltaMsg(null);
+    const before = result;
     const key = newId();
-    setStops((s) => {
-      const next = [...s];
-      next.splice(next.length - 1, 0, { key, label: p.label, lat: p.lat, lng: p.lng });
-      return next;
-    });
-    setQueries((q) => ({ ...q, [key]: p.label }));
-  }
-  function removeSaved(idx: number) {
-    persistSaved(saved.filter((_, i) => i !== idx));
+    const next = [...stops];
+    next.splice(next.length - 1, 0, { key, label: p.name, lat: p.lat, lng: p.lng });
+    setStops(next);
+    setQueries((q) => ({ ...q, [key]: p.name }));
+    mapRef.current?.flyTo({ center: [p.lng, p.lat], zoom: 8 });
+    // Jeśli trasa była już wyznaczona — przelicz i pokaż różnicę (delta).
+    if (before) {
+      const after = await plan(next.map((st) => ({ lat: st.lat, lng: st.lng })));
+      if (after) {
+        setDeltaMsg(
+          describeDelta(
+            p.name,
+            routeDelta(
+              {
+                distanceKm: before.distanceKm,
+                durationMin: before.durationMin,
+                tollEur: before.tollCost,
+              },
+              {
+                distanceKm: after.distanceKm,
+                durationMin: after.durationMin,
+                tollEur: after.tollCost,
+              },
+            ),
+          ),
+        );
+      }
+    }
   }
 
   function shareRoute() {
@@ -746,7 +827,7 @@ export default function MapPage() {
     }
   }
 
-  async function plan(override?: { lat: number; lng: number }[]) {
+  async function plan(override?: { lat: number; lng: number }[]): Promise<RouteResponse | null> {
     setBusy(true);
     try {
       const waypoints = override ?? stops.map((st) => ({ lat: st.lat, lng: st.lng }));
@@ -782,6 +863,7 @@ export default function MapPage() {
           map.fitBounds(bounds, { padding: 70, duration: 700 });
         }
       }
+      return r;
     } finally {
       setBusy(false);
     }
@@ -910,25 +992,63 @@ export default function MapPage() {
             </button>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
+            <select
+              value={savedCat}
+              onChange={(e) => setSavedCat(e.target.value as SavedPlaceCategory)}
+              style={{ ...styles.ghost, flex: 1 }}
+              title="Kategoria zapisanego miejsca"
+            >
+              {SAVED_PLACE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {SAVED_CAT_ICON[c]} {SAVED_PLACE_CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </select>
             <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={saveStart}>
               ⭐ Zapisz start
             </button>
-            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={shareRoute}>
-              🔗 Udostępnij
-            </button>
           </div>
+          <button type="button" style={{ ...styles.ghost, width: "100%" }} onClick={shareRoute}>
+            🔗 Udostępnij trasę
+          </button>
           {shareMsg && <div style={{ fontSize: 12, color: palette.smoke }}>{shareMsg}</div>}
+          {deltaMsg && (
+            <div
+              style={{
+                fontSize: 12,
+                color: palette.offWhite,
+                background: palette.black,
+                border: `1px solid ${palette.graphite}`,
+                borderRadius: 8,
+                padding: "8px 10px",
+              }}
+            >
+              📊 {deltaMsg}
+            </div>
+          )}
 
           {saved.length > 0 && (
             <div>
-              <span style={styles.label}>Zapisane miejsca</span>
+              <span style={styles.label}>Zapisane miejsca ({saved.length})</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                {saved.map((p, i) => (
-                  <span key={`${p.lat},${p.lng}`} style={styles.savedChip}>
-                    <button type="button" style={styles.savedAdd} onClick={() => addSavedAsStop(p)}>
-                      {p.label}
+                {saved.map((p) => (
+                  <span key={p.id} style={styles.savedChip}>
+                    <button
+                      type="button"
+                      style={styles.savedAdd}
+                      onClick={() => addSavedAsStop(p)}
+                      title={`Dodaj „${p.name}" do trasy`}
+                    >
+                      {
+                        SAVED_CAT_ICON[
+                          (SAVED_PLACE_CATEGORIES as readonly string[]).includes(p.category)
+                            ? (p.category as SavedPlaceCategory)
+                            : "other"
+                        ]
+                      }{" "}
+                      {p.name}
                     </button>
-                    <button type="button" style={styles.savedDel} onClick={() => removeSaved(i)}>
+                    <button type="button" style={styles.savedDel} onClick={() => removeSaved(p.id)}>
                       ✕
                     </button>
                   </span>

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-151-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.10.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-152-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.11.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.11.0] — 📌 Zapisane miejsca (POI) + delta trasy po dodaniu punktu
+
+- `[#152]` 📌 **Ulubione punkty floty na mapie** (zgłoszone: zapisywać stacje/porty/odprawy/firmy → klik dodaje do trasy + info ile krótsza/dłuższa/tańsza/droższa):
+  - **[Migracja 0045](supabase/migrations/0045_saved_places.sql)** (na prod): tabela `saved_places` (`name`, `category`, `lat`, `lng`, `created_by` `default auth.uid()`) — **współdzielona w firmie** (zastępuje lokalny `localStorage`, per-urządzenie). RLS: członek czyta i dodaje; kasowanie — autor lub owner/dispatcher. `audit:rls` ✓ (35 tabel, `saved_places` RLS + 3 polityki).
+  - **Rdzeń** [core/savedPlaces.ts](packages/core/src/savedPlaces.ts): kategorie (stacja/port/odprawa/firma/parking/inne) + etykiety; **`routeDelta(before, after)`** — różnica dystans/czas/myto + flagi `longer`/`negligible`. 5 testów (123 łącznie).
+  - **api** [data/savedPlaces.ts](packages/api/src/data/savedPlaces.ts): `listSavedPlaces`, `insertSavedPlace`, `deleteSavedPlace`. Typy DB przegenerowane (35 tabel).
+  - **Mapa** ([map](apps/web/app/(app)/map/page.tsx)): zapisane miejsca z bazy (ikona kategorii), wybór kategorii przy „⭐ Zapisz start"; klik **„➕ do trasy"** wstawia punkt przed celem i — gdy trasa jest już wyznaczona — **przelicza i pokazuje deltę** („Dodano „X": dłuższa o 45 km, dłużej o 38 min, drożej o 12 € myta").
+  - **Bramki:** biome czysto · `tsc` ×3 · 123 testy · build ✓ (`/map`) · `audit:rls` ✓.
 
 ## [1.10.0] — 📸 Zdjęcia towaru przy zleceniu (dowód zabezpieczenia)
 
