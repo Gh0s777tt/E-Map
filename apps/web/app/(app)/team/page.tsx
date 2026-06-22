@@ -4,6 +4,7 @@ import { type CompanyMember, listCompanyMembers, updateMember } from "@e-logisti
 import { APP_MODULE_LABELS, APP_MODULES, type AppModule, effectiveModules } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -103,7 +104,7 @@ function MemberRow({
   }
 
   return (
-    <div style={styles.card}>
+    <div style={{ ...f.card, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <strong style={{ minWidth: 220 }}>{member.email}</strong>
         {isOwnerRow ? (
@@ -143,12 +144,6 @@ function MemberRow({
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  card: {
-    padding: 16,
-    borderRadius: 12,
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-  },
   select: {
     background: palette.black,
     border: `1px solid ${palette.graphite}`,

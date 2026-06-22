@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-180-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.36.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-181-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.37.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.37.0] — 🎨 Presety stylów: serwis, rozliczenia, dokumenty, zespół
+
+- `[#181]` 🎨 **Dokończenie migracji na `formStyles`** — spójność do końca, dalsze odchudzenie CSS:
+  - **Serwis** ([service](apps/web/app/(app)/service/page.tsx)) i **Dokumenty** ([documents](apps/web/app/(app)/documents/page.tsx)): `input` + `label` z presetów (1:1, bez zmian wizualnych).
+  - **Rozliczenia** ([settlements](apps/web/app/(app)/settlements/page.tsx)): `label` z presetu (input kompaktowy pozostaje świadomie).
+  - **Zespół** ([team](apps/web/app/(app)/team/page.tsx)): `card` z presetu (zachowany padding; znormalizowany promień).
+  - Inputy kompaktowe (settlements/team-select) zostawione bez zmiany szerokości — bez ryzyka wizualnego.
+  - **Bramki:** biome czysto · `tsc` ×7 · 174 testy · build ✓ (`/service`, `/settlements`, `/documents`, `/team`).
 
 ## [1.36.0] — 🎨 Ujednolicenie stylów: pojazdy i kierowcy na presetach
 
