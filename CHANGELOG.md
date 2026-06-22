@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-179-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.35.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-180-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.36.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.36.0] — 🎨 Ujednolicenie stylów: pojazdy i kierowcy na presetach
+
+- `[#180]` 🎨 **Migracja stron na presety `formStyles`** — mniej powielonego CSS, spójniejszy wygląd:
+  - **Pojazdy** ([vehicles](apps/web/app/(app)/vehicles/page.tsx)): formularz/lista korzystają z presetów (`formWrap`, `grid`, `field`, `label`, `input`, `card`, `listRow`, `cell`, `meta`); usunięto duplikaty i **martwe style** (`primary`/`ghost`/`danger`).
+  - **Kierowcy** ([drivers](apps/web/app/(app)/drivers/page.tsx)): `input`/`card` z presetów; usunięto cały lokalny obiekt `styles` (martwe `primary`/`ghost`).
+  - Bez zmian zachowania — czysta kosmetyka/porządki.
+  - **Bramki:** biome czysto · `tsc` ×7 · 174 testy · build ✓ (`/vehicles`, `/drivers`).
 
 ## [1.35.0] — 🗂️ Wyszukiwarka, filtr i sortowanie zleceń
 
