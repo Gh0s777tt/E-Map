@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-139-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.4.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-140-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.4.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.4.2] — 🗂️ Indeks faktura↔zlecenie + utwardzenie statusu zlecenia (P2 z audytu)
+
+- `[#140]` 🗂️ **Migracja [0041](supabase/migrations/0041_invoice_order_idx_and_status_guard.sql)** (na prod) — realizacja #3 z [backlogu poaudytowego](docs/AUDIT-2026-06-22.md):
+  - **Indeks `invoices(order_id)`** — RPC łączą faktury po `order_id` (dotąd tylko `invoices_company_idx`); koniec seq scan przy dużej liczbie faktur.
+  - **Utwardzenie `order_set_status`** — przypisany kierowca może ustawić **tylko statusy w przód** (`in_progress`/`delivered`); usunięto możliwość cofnięcia na `assigned`. UI kierowcy (`/my-orders`) i tak oferuje wyłącznie „W trakcie"/„Dostarczone" — bez zmiany UX, samo domknięcie po stronie serwera. Funkcja pozostaje `SECURITY DEFINER` z `search_path`; zmiana audytowana.
+  - **Weryfikacja:** indeks obecny ✓, guard zaktualizowany ✓, `pnpm audit:rls` ✓.
+  - **Bramki:** biome czysto · `tsc` ×7 · 117 testów (bez zmian w kodzie — migracja SQL).
 
 ## [1.4.1] — 📚 Aktualizacja docs do v1.4.0 (P0 z audytu)
 
