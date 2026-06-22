@@ -1,6 +1,13 @@
 "use client";
 
-import { deleteOrder, listOrders, type Order, saveOrder, setOrderStatus } from "@e-logistic/api";
+import {
+  createInvoiceFromOrder,
+  deleteOrder,
+  listOrders,
+  type Order,
+  saveOrder,
+  setOrderStatus,
+} from "@e-logistic/api";
 import {
   ORDER_STATUS_LABELS,
   ORDER_STATUSES,
@@ -185,6 +192,22 @@ export default function OrdersPage() {
       await load();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Błąd zmiany statusu.");
+    }
+  }
+
+  async function invoice(o: Order) {
+    if (
+      !(await confirm(
+        `Wystawić fakturę za zlecenie ${o.reference_no || "(bez numeru)"} (VAT 23%)?`,
+      ))
+    )
+      return;
+    try {
+      const r = await createInvoiceFromOrder(getBrowserSupabase(), o.id, 23);
+      setMsg(`✅ Faktura ${r.number} (brutto ${r.gross} ${o.currency}) — patrz zakładka Faktury.`);
+      await load();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Błąd wystawiania faktury.");
     }
   }
 
@@ -417,6 +440,11 @@ export default function OrdersPage() {
               </div>
               {canManage && (
                 <div style={styles.cardActions}>
+                  {o.status === "delivered" && (
+                    <Button variant="ghost" onClick={() => invoice(o)}>
+                      🧾 Faktura
+                    </Button>
+                  )}
                   <select
                     style={styles.statusSel}
                     value={o.status}

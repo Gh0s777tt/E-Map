@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-92-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.68.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-93-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.69.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.69.0] — 🧾 Fakturowanie ze zleceń (domknięcie pętli zlecenie→pieniądze)
+
+- `[#093]` 🧾 **Faktury generowane ze zleceń** (nowy moduł):
+  - [Migracja 0030](supabase/migrations/0030_invoices.sql): tabela `invoices` (snapshot sprzedawcy z firmy, nabywca, netto/VAT/brutto, waluta) + RLS. RPC `create_invoice` z **numeracją FV/ROK/NNNN per firma** (blokada `pg_advisory_xact_lock` → bez kolizji), ustawia zlecenie na `invoiced`, audyt.
+  - api [data/invoices.ts](packages/api/src/data/invoices.ts): `listInvoices`, `createInvoiceFromOrder`, `deleteInvoice`. Typy DB (29 tabel, 22 funkcje).
+  - **Strona [/invoices](apps/web/app/(app)/invoices/page.tsx)** — lista + **drukowalny dokument faktury** (sprzedawca/nabywca, pozycja, netto/VAT/brutto, druk/PDF). Link w nawigacji.
+  - **Zlecenia**: przycisk **„🧾 Faktura"** na dostarczonym zleceniu (owner/dispatcher, VAT 23%) → tworzy fakturę i oznacza zlecenie zafakturowane.
+  - Uwaga: dokument **uproszczony** — pełną zgodność (stawki/odwrotne obciążenie, dane nabywcy) potwierdza wystawca.
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓.
 
 ## [0.68.0] — 💶 Zlecenia: podsumowanie przychodów + eksport CSV
 
