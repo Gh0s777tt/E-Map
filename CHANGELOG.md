@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-122-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.94.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-123-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.95.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.95.0] — 🏦 Dane do przelewu na fakturze (bank / IBAN)
+
+- `[#123]` 🏦 **Bank i numer konta na fakturze** (z ustawień firmy):
+  - [Migracja 0040](supabase/migrations/0040_invoice_bank.sql): `companies.bank_name`, `companies.bank_account` + snapshot na fakturze (`invoices.seller_bank`, `seller_account`) — wypełniany przy wystawianiu (ze zlecenia i ręcznie), więc faktura zachowuje dane z momentu wystawienia.
+  - **Ustawienia** ([settings](apps/web/app/(app)/settings/page.tsx)): pola **Bank** i **Nr konta (IBAN)** w karcie firmy (owner).
+  - **Faktura** ([invoices](apps/web/app/(app)/invoices/page.tsx)): bank i nr konta w bloku sprzedawcy (druk/PDF).
+  - api [data/companies.ts](packages/api/src/data/companies.ts) + [data/invoices.ts](packages/api/src/data/invoices.ts): nowe pola.
+  - **Bramki:** biome czysto · `tsc` ×7 · 97 testów · build ✓ (`/settings`, `/invoices`).
 
 ## [0.94.0] — 👤 Pulpit kierowcy (Twoje zlecenie)
 
