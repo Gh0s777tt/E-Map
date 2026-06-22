@@ -7,6 +7,7 @@ export * from "./alerts";
 export * from "./billing";
 export * from "./cardExpiry";
 export * from "./catalog";
+export * from "./co2";
 export * from "./csv";
 export * from "./duration";
 export * from "./enums";
