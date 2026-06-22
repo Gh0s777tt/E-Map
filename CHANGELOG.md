@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-182-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.38.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-183-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.39.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.39.0] — 🔎 Globalne wyszukiwanie: lepszy ranking (rdzeń + testy)
+
+- `[#183]` 🔎 **Ulepszenie wyszukiwarki Ctrl/⌘+K** — istniejące globalne wyszukiwanie (pojazdy/kierowcy/zlecenia/faktury) przeniesione na przetestowany silnik:
+  - **Rdzeń** [core/search.ts](packages/core/src/search.ts): `searchEntities(query, items, limit)` — dopasowanie wielo‑tokenowe (wszystkie słowa muszą wystąpić) + ranking „tytuł zaczyna się od frazy → zawiera → reszta". Generyczne, zachowuje typ wejścia. **5 testów (184 łącznie)**.
+  - **Komponent** ([GlobalSearch](apps/web/components/GlobalSearch.tsx)): filtr zastąpiony `searchEntities`; zlecenia szukane teraz **także po nadawcy/odbiorcy** (wcześniej tylko trasa/nr), pojazdy po **VIN** — przez pole `keywords`. Lepsza kolejność wyników.
+  - **Bramki:** biome czysto · `tsc` ×7 · 184 testy · build ✓.
 
 ## [1.38.0] — ⏱️ Ewidencja czasu pracy kierowcy
 

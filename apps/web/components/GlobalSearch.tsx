@@ -1,8 +1,7 @@
 "use client";
 
 import { listDrivers, listInvoices, listOrders, listVehicles } from "@e-logistic/api";
-import type { OrderStatus } from "@e-logistic/core";
-import type { MessageKey } from "@e-logistic/i18n";
+import { type OrderStatus, type SearchItem, searchEntities } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,7 +10,8 @@ import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-type Hit = { icon: string; typeKey: MessageKey; label: string; sub: string; href: string };
+/** Pozycja indeksu = wynik wyszukiwania (`SearchItem`) + ikona do UI. */
+type Hit = SearchItem & { icon: string };
 
 const MAX = 20;
 
@@ -70,13 +70,16 @@ export function GlobalSearch() {
           registration: string;
           make: string | null;
           model: string | null;
+          vin: string | null;
         }[]) {
           hits.push({
             icon: "🚚",
-            typeKey: "search.type.vehicle",
-            label: v.registration,
-            sub: [v.make, v.model].filter(Boolean).join(" "),
+            type: t("search.type.vehicle"),
+            id: v.id,
+            title: v.registration,
+            subtitle: [v.make, v.model].filter(Boolean).join(" "),
             href: `/vehicles/${v.id}`,
+            keywords: v.vin ?? "",
           });
         }
       }),
@@ -85,9 +88,10 @@ export function GlobalSearch() {
         for (const d of ds) {
           hits.push({
             icon: "👤",
-            typeKey: "search.type.driver",
-            label: `${d.last_name} ${d.first_name}`.trim() || t("search.type.driver"),
-            sub: d.license_categories.join(", "),
+            type: t("search.type.driver"),
+            id: d.id,
+            title: `${d.last_name} ${d.first_name}`.trim() || t("search.type.driver"),
+            subtitle: d.license_categories.join(", "),
             href: `/drivers/${d.id}`,
           });
         }
@@ -97,10 +101,12 @@ export function GlobalSearch() {
         for (const o of os) {
           hits.push({
             icon: "📦",
-            typeKey: "search.type.order",
-            label: o.reference_no || t("common.noNumber"),
-            sub: `${o.origin || "?"} → ${o.destination || "?"} · ${orderStatusLabel(t, o.status as OrderStatus)}`,
+            type: t("search.type.order"),
+            id: o.id,
+            title: o.reference_no || t("common.noNumber"),
+            subtitle: `${o.origin || "?"} → ${o.destination || "?"} · ${orderStatusLabel(t, o.status as OrderStatus)}`,
             href: "/orders",
+            keywords: [o.shipper, o.consignee].filter(Boolean).join(" "),
           });
         }
       }),
@@ -109,10 +115,12 @@ export function GlobalSearch() {
         for (const i of inv) {
           hits.push({
             icon: "🧾",
-            typeKey: "search.type.invoice",
-            label: i.number,
-            sub: `${i.buyer_name ?? "—"} · ${i.gross} ${i.currency}`,
+            type: t("search.type.invoice"),
+            id: i.id,
+            title: i.number,
+            subtitle: `${i.buyer_name ?? "—"} · ${i.gross} ${i.currency}`,
             href: "/invoices",
+            keywords: i.buyer_name ?? "",
           });
         }
       }),
@@ -130,11 +138,7 @@ export function GlobalSearch() {
   }, [open, index, buildIndex]);
 
   const ql = q.trim().toLowerCase();
-  const results = !ql
-    ? (index ?? []).slice(0, MAX)
-    : (index ?? [])
-        .filter((h) => `${h.label} ${h.sub} ${t(h.typeKey)}`.toLowerCase().includes(ql))
-        .slice(0, MAX);
+  const results = !ql ? (index ?? []).slice(0, MAX) : searchEntities(q, index ?? [], MAX);
 
   function go(h: Hit) {
     setOpen(false);
@@ -197,18 +201,18 @@ export function GlobalSearch() {
                 results.map((h, i) => (
                   <button
                     type="button"
-                    key={`${h.typeKey}-${h.href}-${h.label}-${h.sub}`}
+                    key={`${h.type}-${h.id}-${h.title}`}
                     style={i === sel ? { ...styles.row, ...styles.rowSel } : styles.row}
                     onMouseEnter={() => setSel(i)}
                     onClick={() => go(h)}
                   >
                     <span style={{ width: 24 }}>{h.icon}</span>
                     <span style={{ color: palette.smoke, minWidth: 70, fontSize: 12 }}>
-                      {t(h.typeKey)}
+                      {h.type}
                     </span>
-                    <strong>{h.label}</strong>
+                    <strong>{h.title}</strong>
                     <span style={{ flex: 1 }} />
-                    <span style={{ color: palette.smoke, fontSize: 12 }}>{h.sub}</span>
+                    <span style={{ color: palette.smoke, fontSize: 12 }}>{h.subtitle}</span>
                   </button>
                 ))
               )}
