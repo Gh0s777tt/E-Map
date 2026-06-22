@@ -6,12 +6,15 @@ import {
   type MonthlyCostEntry,
   type MonthlyOrderEntry,
   monthlyFleetSummary,
+  monthlyFleetTrend,
+  monthsEndingAt,
+  round2,
   toCsv,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
-import { Button, PageHeader, SetupNotice } from "@/components/ui";
+import { BarChart, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -101,6 +104,13 @@ export default function MonthlyPage() {
     [month, orders, fuel, adblue],
   );
 
+  // Trend 6 miesięcy kończący na wybranym + poprzedni miesiąc do porównania m/m.
+  const trend = useMemo(
+    () => monthlyFleetTrend({ months: monthsEndingAt(month, 6), orders, fuel, adblue }),
+    [month, orders, fuel, adblue],
+  );
+  const prev = trend.length >= 2 ? trend[trend.length - 2] : null;
+
   function exportCsv() {
     const headers = ["Pojazd", "Przychód EUR", "Paliwo", "AdBlue", "Wynik"];
     const rows: (string | number)[][] = summary.rows.map((r) => [
@@ -171,15 +181,46 @@ export default function MonthlyPage() {
       {!loading && !loadErr && summary.rows.length > 0 && (
         <>
           <div style={styles.cards}>
-            <Card label="Przychód (EUR)" value={`${summary.totals.revenueEur} €`} />
-            <Card label="Koszt paliwa" value={`${summary.totals.fuelCost} €`} />
-            <Card label="Koszt AdBlue" value={`${summary.totals.adblueCost} €`} />
+            <Card
+              label="Przychód (EUR)"
+              value={`${summary.totals.revenueEur} €`}
+              sub={<Delta now={summary.totals.revenueEur} prev={prev?.revenueEur ?? null} />}
+            />
+            <Card
+              label="Koszt paliwa"
+              value={`${summary.totals.fuelCost} €`}
+              sub={<Delta now={summary.totals.fuelCost} prev={prev?.fuelCost ?? null} invert />}
+            />
+            <Card
+              label="Koszt AdBlue"
+              value={`${summary.totals.adblueCost} €`}
+              sub={<Delta now={summary.totals.adblueCost} prev={prev?.adblueCost ?? null} invert />}
+            />
             <Card
               label="Wynik"
               value={`${summary.totals.net} €`}
               accent={summary.totals.net >= 0 ? "#22c55e" : palette.red}
+              sub={<Delta now={summary.totals.net} prev={prev?.net ?? null} />}
             />
           </div>
+
+          {trend.length > 1 && (
+            <div style={{ marginTop: 24 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
+                Przychód — ostatnie {trend.length} mies.{" "}
+                <span style={{ color: palette.smoke, fontSize: 12, fontWeight: 400 }}>
+                  (Δ na kartach = vs poprzedni miesiąc)
+                </span>
+              </h2>
+              <BarChart
+                data={trend.map((t) => ({
+                  label: `${t.month.slice(5)}.${t.month.slice(2, 4)}`,
+                  value: t.revenueEur,
+                }))}
+                unit=" €"
+              />
+            </div>
+          )}
 
           <table style={styles.table}>
             <thead>
@@ -241,14 +282,38 @@ export default function MonthlyPage() {
   );
 }
 
-function Card({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function Card({
+  label,
+  value,
+  accent,
+  sub,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+  sub?: React.ReactNode;
+}) {
   return (
     <div style={styles.card}>
       <div style={{ fontSize: 12, color: palette.smoke }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 800, color: accent ?? palette.offWhite }}>
         {value}
       </div>
+      {sub && <div style={{ marginTop: 2 }}>{sub}</div>}
     </div>
+  );
+}
+
+/** Zmiana wartości m/m. `invert` = niżej znaczy lepiej (koszty). */
+function Delta({ now, prev, invert }: { now: number; prev: number | null; invert?: boolean }) {
+  if (prev == null) return <span style={{ fontSize: 12, color: palette.smoke }}>—</span>;
+  const d = round2(now - prev);
+  if (d === 0) return <span style={{ fontSize: 12, color: palette.smoke }}>= bez zmian</span>;
+  const good = invert ? d < 0 : d > 0;
+  return (
+    <span style={{ fontSize: 12, color: good ? "#22c55e" : palette.red }}>
+      {d > 0 ? "▲" : "▼"} {Math.abs(d)} € m/m
+    </span>
   );
 }
 

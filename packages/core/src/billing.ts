@@ -414,6 +414,49 @@ export function monthlyFleetSummary(input: {
   };
 }
 
+export interface MonthlyTotals {
+  revenueEur: number;
+  fuelCost: number;
+  adblueCost: number;
+  net: number;
+}
+export interface MonthlyTrendPoint extends MonthlyTotals {
+  month: string;
+}
+
+/** Lista `count` miesięcy „YYYY-MM" kończąca się na `anchor` (włącznie), od najstarszego. */
+export function monthsEndingAt(anchor: string, count: number): string[] {
+  const [yStr, mStr] = anchor.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12 || count <= 0) return [];
+  const base = y * 12 + (m - 1);
+  const out: string[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const t = base - i;
+    out.push(`${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`);
+  }
+  return out;
+}
+
+/** Trend floty: sumy (przychód/koszty/wynik) dla każdego z podanych miesięcy. */
+export function monthlyFleetTrend(input: {
+  months: string[];
+  orders: MonthlyOrderEntry[];
+  fuel: MonthlyCostEntry[];
+  adblue: MonthlyCostEntry[];
+}): MonthlyTrendPoint[] {
+  return input.months.map((month) => {
+    const { totals } = monthlyFleetSummary({
+      month,
+      orders: input.orders,
+      fuel: input.fuel,
+      adblue: input.adblue,
+    });
+    return { month, ...totals };
+  });
+}
+
 // ── Podsumowanie paliwa (statystyki) ────────────────────────────────
 
 export interface FuelStatsEntry {

@@ -9,6 +9,8 @@ import {
   fuelConsumptionSeries,
   fuelCost,
   monthlyFleetSummary,
+  monthlyFleetTrend,
+  monthsEndingAt,
   summarizeFuel,
   tripCost,
   tripDistanceKm,
@@ -231,5 +233,38 @@ describe("monthlyFleetSummary", () => {
       adblue: [],
     });
     expect(s.rows.find((r) => r.vehicleId === null)?.revenueEur).toBe(500);
+  });
+});
+
+describe("monthsEndingAt", () => {
+  it("zwraca N miesięcy kończąc na anchor (z przeniesieniem roku)", () => {
+    expect(monthsEndingAt("2026-02", 4)).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
+  });
+
+  it("pojedynczy miesiąc", () => {
+    expect(monthsEndingAt("2026-06", 1)).toEqual(["2026-06"]);
+  });
+
+  it("odporne na zły format / count", () => {
+    expect(monthsEndingAt("xxxx", 3)).toEqual([]);
+    expect(monthsEndingAt("2026-13", 3)).toEqual([]);
+    expect(monthsEndingAt("2026-06", 0)).toEqual([]);
+  });
+});
+
+describe("monthlyFleetTrend", () => {
+  it("liczy totals per miesiąc w zadanej kolejności", () => {
+    const t = monthlyFleetTrend({
+      months: ["2026-05", "2026-06"],
+      orders: [
+        { vehicleId: "v1", price: 1000, currency: "EUR", status: "delivered", date: "2026-05-10" },
+        { vehicleId: "v1", price: 2000, currency: "EUR", status: "invoiced", date: "2026-06-10" },
+      ],
+      fuel: [{ vehicleId: "v1", priceTotal: 300, date: "2026-06-05" }],
+      adblue: [],
+    });
+    expect(t).toHaveLength(2);
+    expect(t[0]).toMatchObject({ month: "2026-05", revenueEur: 1000, net: 1000 });
+    expect(t[1]).toMatchObject({ month: "2026-06", revenueEur: 2000, fuelCost: 300, net: 1700 });
   });
 });
