@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-153-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.12.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-154-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.13.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.13.0] — 📱 Aplikacja mobilna: logowanie + sesja (fundament iOS/Android)
+
+- `[#154]` 📱 **Start budowy realnej aplikacji mobilnej** (Expo) — dotąd `apps/mobile` miał tylko offline'owe formularze bez backendu; teraz to uwierzytelniona aplikacja na bazie współdzielonych pakietów:
+  - **Klient Supabase RN** — [packages/api](packages/api/src/client.ts) `createSupabaseMobileClient(storage)` (sesja w AsyncStorage, `autoRefreshToken`, bez detekcji sesji w URL). Warstwa danych pozostaje niezależna od platformy (te same funkcje co web).
+  - **Mobile** ([apps/mobile](apps/mobile)): `lib/supabase.ts` (leniwy klient + `react-native-url-polyfill` + AsyncStorage), `components/AuthProvider.tsx` (kontekst sesji + `onAuthStateChange`), [ekran logowania](apps/mobile/app/login.tsx) (e-mail/hasło), **bramka tras** w [_layout](apps/mobile/app/_layout.tsx) (bez sesji → `/login`, z sesją → pulpit), pulpit pokazuje zalogowany e-mail + „Wyloguj".
+  - **Konfiguracja:** `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` ([apps/mobile/.env.example](apps/mobile/.env.example)); brak konfiguracji → czytelny komunikat zamiast crasha. Wersje `apps/mobile` i `app.json` zrównane do **1.13.0**.
+  - **macOS:** obsługiwany przez responsywną aplikację web (PWA-ready); natywny wrapper desktop to osobny, późniejszy krok. Ten increment to fundament **iOS/Android** (Expo).
+  - **Następne kroki:** wpięcie formularzy paliwo/AdBlue/trasa do zapisu w Supabase (offline outbox), „Moje zlecenia" mobilnie, push.
+  - **Bramki:** biome czysto · `tsc` ×3 (mobile/api/web) · 158 testów (bez regresji) · web build ✓. Mobile weryfikowane typecheckiem (uruchomienie na urządzeniu/symulatorze poza tym środowiskiem).
 
 ## [1.12.0] — 🚦 Ruch na żywo: utrudnienia ze zgłoszeń (1) + HERE Traffic (2)
 

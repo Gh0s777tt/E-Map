@@ -37,6 +37,33 @@ export function createSupabaseBrowserClient(cfg?: Partial<SupabaseConfig>): Type
   return ssrBrowser<Database>(url, anonKey);
 }
 
+/** Adapter pamięci dla sesji mobilnej (np. AsyncStorage z React Native). */
+export interface MobileAuthStorage {
+  getItem(key: string): Promise<string | null> | string | null;
+  setItem(key: string, value: string): Promise<void> | void;
+  removeItem(key: string): Promise<void> | void;
+}
+
+/**
+ * Klient mobilny (React Native / Expo). Sesja trzymana w przekazanej pamięci
+ * (AsyncStorage), bez detekcji sesji w URL. Warstwa danych (`packages/api`)
+ * jest niezależna od platformy — przyjmuje ten klient tak samo jak webowy.
+ */
+export function createSupabaseMobileClient(
+  storage: MobileAuthStorage,
+  cfg?: Partial<SupabaseConfig>,
+): TypedSupabaseClient {
+  const { url, anonKey } = resolveConfig(cfg);
+  return createClient<Database>(url, anonKey, {
+    auth: {
+      storage,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
 /**
  * Klient service-role (TYLKO serwer — pełne uprawnienia, omija RLS).
  * Używany np. przy logowaniu passkey (weryfikacja + mintowanie sesji).

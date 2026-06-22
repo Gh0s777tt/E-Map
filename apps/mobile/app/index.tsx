@@ -2,12 +2,25 @@ import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { Link } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "../components/AuthProvider";
 
 const t = createTranslator("pl");
 
 export default function Home() {
+  const { session, signOut } = useAuth();
+  const email = session?.user?.email ?? "—";
+
   return (
     <View style={styles.container}>
+      <View style={styles.account}>
+        <Text style={styles.accountEmail} numberOfLines={1}>
+          👤 {email}
+        </Text>
+        <Pressable onPress={() => signOut()} hitSlop={8}>
+          <Text style={styles.signOut}>Wyloguj</Text>
+        </Pressable>
+      </View>
+
       <Text style={styles.brand}>GH0ST EMPIRE</Text>
       <Text style={styles.title}>
         <Text style={styles.accent}>E</Text>-Logistic
@@ -46,6 +59,18 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 24,
   },
+  account: {
+    position: "absolute",
+    top: 12,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  accountEmail: { color: palette.smoke, fontSize: 13, flex: 1 },
+  signOut: { color: palette.red, fontSize: 13, fontWeight: "700" },
   brand: { color: palette.smoke, letterSpacing: 4, fontSize: 12 },
   title: { color: palette.offWhite, fontSize: 44, fontWeight: "800" },
   accent: { color: palette.red },
