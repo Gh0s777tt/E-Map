@@ -7,6 +7,7 @@ import {
   type OrderPhoto,
   uploadOrderPhoto,
 } from "@e-logistic/api";
+import { buildPodCaption, isPodCaption, parsePodCaption } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -14,14 +15,6 @@ import { SignaturePad } from "@/components/SignaturePad";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-
-/** Prefiks podpisu odbiorcy (e-CMR/POD) zapisywany w polu `caption`. */
-const POD_PREFIX = "POD";
-
-/** Czy dany załącznik to podpis odbiorcy (POD), nie zwykłe zdjęcie towaru. */
-function isPod(caption: string | null): boolean {
-  return !!caption && caption.startsWith(POD_PREFIX);
-}
 
 /**
  * Załączniki zlecenia: zdjęcia towaru (dowód zabezpieczenia) + podpis odbiorcy
@@ -91,9 +84,8 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
     setErr(null);
     try {
       const sb = getBrowserSupabase();
-      const who = recipient.trim();
       const stamp = new Date().toLocaleString("pl-PL");
-      const caption = who ? `${POD_PREFIX}: ${who} · ${stamp}` : `${POD_PREFIX} · ${stamp}`;
+      const caption = buildPodCaption(recipient, stamp);
       const file = new File([blob], "pod-podpis.png", { type: "image/png" });
       await uploadOrderPhoto(sb, companyId, orderId, file, caption);
       setPodOpen(false);
@@ -107,7 +99,7 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
   }
 
   async function remove(p: OrderPhoto) {
-    const what = isPod(p.caption) ? "podpis odbiorcy (POD)" : "zdjęcie towaru";
+    const what = isPodCaption(p.caption) ? "podpis odbiorcy (POD)" : "zdjęcie towaru";
     if (!(await confirm(`Usunąć ${what}?`))) return;
     try {
       await deleteOrderPhoto(getBrowserSupabase(), p);
@@ -165,7 +157,8 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
       {photos.length > 0 && (
         <div style={styles.grid}>
           {photos.map((p) => {
-            const pod = isPod(p.caption);
+            const pod = isPodCaption(p.caption);
+            const podInfo = pod ? parsePodCaption(p.caption) : null;
             return (
               <div key={p.id} style={styles.thumb}>
                 {urls[p.id] ? (
@@ -193,7 +186,7 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
                 )}
                 {pod && p.caption && (
                   <span style={styles.cap} title={p.caption}>
-                    {p.caption.slice(POD_PREFIX.length + 1).trim() || "podpis"}
+                    {podInfo?.recipient ?? podInfo?.when ?? "podpis"}
                   </span>
                 )}
               </div>
