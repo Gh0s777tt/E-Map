@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-138-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.4.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-139-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.4.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.4.1] — 📚 Aktualizacja docs do v1.4.0 (P0 z audytu)
+
+- `[#139]` 📚 **Dokumentacja zgodna z kodem** — realizacja #2 z [backlogu poaudytowego](docs/AUDIT-2026-06-22.md) (jedyna ocena „D"):
+  - [docs/DATA-MODEL.md](docs/DATA-MODEL.md): nagłówek v0.51 → **v1.4.0 (migracje 0001–0040)**; nowa sekcja **0.1** opisująca moduły dodane po v0.51 (`service_tasks`, `orders` + `assigned_to`, `invoices` + status/płatność/bank, `invoice_items`, `documents`/sejf, rozszerzenia `companies`/`drivers`, RPC); diagram encji uzupełniony o zlecenia/faktury/pozycje/dokumenty/serwis; nota o analityce bez tabel (rentowność/alerty w core).
+  - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): nagłówek → v1.4.0; sekcja „Stan implementacji" rozszerzona o **moduły biznesowe v1.0–1.4**; sprostowane „i18n ×14" → **PL/EN (docelowo ×14)** (3 miejsca); rozstrzygnięte decyzje otwarte #4 (PIN) i #5 (i18n).
+  - **Bramki:** biome czysto · `tsc` ×7 · 117 testów (bez zmian w kodzie — aktualizacja dokumentacji).
 
 ## [1.4.0] — 🚀 Okno czasu na stronach analitycznych (P1 z audytu)
 
