@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-93-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-0.69.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-94-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-0.70.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [0.70.0] — 📊 Zlecenia → pulpit floty (przychód)
+
+- `[#094]` 📊 **Przychód ze zleceń w statystykach floty** ([stats](apps/web/app/(app)/stats/page.tsx)):
+  - Pasek floty pokazuje teraz **„Przychód (zlecenia EUR)"** — suma wartości zleceń **dostarczonych i zafakturowanych** (waluta EUR), liczona w `useMemo` (zielony akcent).
+  - Dane pobierane razem z resztą (`listOrders` w jednym `Promise.all`), bez dodatkowego round-tripu; przeliczenie tylko przy zmianie zleceń/kafelków.
+  - Domyka widok floty: koszty (paliwo) i przychody (zlecenia) w jednym miejscu.
+  - **Bramki:** biome czysto · `tsc` ×7 · 78 testów · build ✓.
 
 ## [0.69.0] — 🧾 Fakturowanie ze zleceń (domknięcie pętli zlecenie→pieniądze)
 
