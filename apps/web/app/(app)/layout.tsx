@@ -20,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let email = "tryb offline";
   let allowed: AppModule[] = ["vehicles", "drivers", "cards", "forms", "reports", "map", "stats"];
   let isOwner = true;
+  let manage = true; // owner/dispatcher — narzędzia zarządcze (zlecenia, faktury, serwis…)
 
   if (supabaseConfigured) {
     const supabase = await getServerSupabase();
@@ -45,6 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       if (m) {
         allowed = effectiveModules(m.role, m.modules);
         isOwner = m.role === "owner";
+        manage = m.role === "owner" || m.role === "dispatcher";
       }
     } catch {
       // brak firmy → domyślne (member zobaczy onboarding na pulpicie)
@@ -58,8 +60,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       title: "Zlecenia",
       items: [
-        { href: "/orders", label: "Zlecenia" },
-        { href: "/fleet-status", label: "Status floty" },
+        ...(manage ? [{ href: "/orders", label: "Zlecenia" }] : []),
+        ...(manage ? [{ href: "/fleet-status", label: "Status floty" }] : []),
         { href: "/my-orders", label: "Moje zlecenia" },
         ...(has("map") ? [{ href: "/map", label: t("nav.map") }] : []),
       ],
@@ -82,7 +84,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(has("vehicles") ? [{ href: "/vehicles", label: t("nav.vehicles") }] : []),
         ...(has("drivers") ? [{ href: "/drivers", label: t("nav.drivers") }] : []),
         ...(has("cards") ? [{ href: "/cards", label: t("nav.cards") }] : []),
-        { href: "/service", label: "Serwis" },
+        ...(manage ? [{ href: "/service", label: "Serwis" }] : []),
         { href: "/documents", label: "Sejf dokumentów" },
         ...(has("reports") ? [{ href: "/reports", label: t("nav.reports") }] : []),
       ],
@@ -90,7 +92,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       title: "Finanse",
       items: [
-        { href: "/invoices", label: "Faktury" },
+        ...(manage ? [{ href: "/invoices", label: "Faktury" }] : []),
         ...(has("settlements") ? [{ href: "/settlements", label: t("nav.settlements") }] : []),
         ...(has("settlements") ? [{ href: "/monthly", label: "Zestawienie msc." }] : []),
         { href: "/fuel-prices", label: "Ceny diesla" },
