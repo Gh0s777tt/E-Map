@@ -2,6 +2,7 @@
 
 import {
   latestOdometers,
+  listDamageClaims,
   listDocuments,
   listDrivers,
   listFuelCardsSafe,
@@ -10,6 +11,8 @@ import {
   listVehiclesExpiry,
 } from "@e-logistic/api";
 import {
+  DAMAGE_KIND_LABELS,
+  DAMAGE_STATUS_LABELS,
   type ExpiryLevel,
   expiryStatus,
   invoicePaymentStatus,
@@ -68,7 +71,7 @@ export function AttentionPanel() {
         const m = await getCachedMembership(sb);
         // Panel zarządczy (terminy floty/faktur) — tylko owner/dispatcher.
         if (!m || (m.role !== "owner" && m.role !== "dispatcher")) return;
-        const [vehs, cards, tasks, odo, docs, invs, drvs] = await Promise.all([
+        const [vehs, cards, tasks, odo, docs, invs, drvs, claims] = await Promise.all([
           listVehiclesExpiry(sb, m.companyId),
           listFuelCardsSafe(sb, m.companyId),
           listServiceTasks(sb, m.companyId),
@@ -76,6 +79,7 @@ export function AttentionPanel() {
           listDocuments(sb, m.companyId),
           listInvoices(sb, m.companyId),
           listDrivers(sb, m.companyId).catch(() => []),
+          listDamageClaims(sb, m.companyId).catch(() => []),
         ]);
         const today = new Date().toISOString().slice(0, 10);
         const regOf = new Map(vehs.map((v) => [v.id, v.registration]));
@@ -172,6 +176,21 @@ export function AttentionPanel() {
           });
         }
 
+        for (const c of claims) {
+          if (c.status !== "reported" && c.status !== "in_progress") continue;
+          const daysSince = Math.round((Date.parse(today) - Date.parse(c.claim_date)) / 86_400_000);
+          out.push({
+            key: `dmg-${c.id}`,
+            icon: "🛠️",
+            category: "Szkoda",
+            title: `${c.vehicle_id ? (regOf.get(c.vehicle_id) ?? "—") : "—"} · ${DAMAGE_KIND_LABELS[c.kind]}`,
+            detail: `${DAMAGE_STATUS_LABELS[c.status]}${c.cost != null ? ` · ${c.cost} ${c.currency}` : ""}`,
+            level: c.status === "reported" ? "expired" : "soon",
+            urgency: -daysSince,
+            href: "/szkody",
+          });
+        }
+
         for (const d of drvs) {
           const name = `${d.last_name} ${d.first_name}`.trim() || "Kierowca";
           for (const fld of DRV_FIELDS) {
@@ -229,7 +248,11 @@ export function AttentionPanel() {
               <span
                 style={{ color, fontWeight: 700, fontSize: 13, minWidth: 110, textAlign: "right" }}
               >
-                {it.level === "expired" ? "po terminie" : "wkrótce"}
+                {it.category === "Szkoda"
+                  ? "otwarta"
+                  : it.level === "expired"
+                    ? "po terminie"
+                    : "wkrótce"}
               </span>
             </Link>
           );
