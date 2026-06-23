@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-186-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.42.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-187-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.43.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.43.0] — 💸 Saldo do wypłaty na pulpicie KPI
+
+- `[#187]` 💸 **Saldo do wypłaty w pasku KPI** — domknięcie modułu rozliczeń [#186]: na pulpicie obok diet:
+  - **Pasek KPI** ([KpiStrip](apps/web/components/KpiStrip.tsx)): nowa karta **„Saldo do wypłaty"** (bieżące saldo per waluta, liczone rdzeniem `settleDriverPayouts`) → klik do `/wyplaty`. Karta ukrywa zerowe saldo.
+  - Manager widzi na start dnia komplet: zlecenia w toku, do zafakturowania, wynik miesiąca, diety i należności kierowców.
+  - **Bramki:** biome czysto · `tsc` ×7 · 188 testów · build ✓ (`/dashboard`).
 
 ## [1.42.0] — 💸 Rozliczenia kierowcy (zaliczki / wypłaty)
 
