@@ -23,6 +23,7 @@ export const en: Record<MessageKey, string> = {
   "nav.fleetStatus": "Fleet status",
   "nav.myOrders": "My orders",
   "nav.service": "Service",
+  "nav.damages": "Damages / claims",
   "nav.documents": "Document vault",
   "nav.invoices": "Invoices",
   "nav.contractors": "Contractors",

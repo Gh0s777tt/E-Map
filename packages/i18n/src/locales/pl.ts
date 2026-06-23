@@ -21,6 +21,7 @@ export const pl = {
   "nav.fleetStatus": "Status floty",
   "nav.myOrders": "Moje zlecenia",
   "nav.service": "Serwis",
+  "nav.damages": "Szkody / OC",
   "nav.documents": "Sejf dokumentów",
   "nav.invoices": "Faktury",
   "nav.contractors": "Kontrahenci",

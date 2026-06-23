@@ -10,6 +10,7 @@ export * from "./cardExpiry";
 export * from "./catalog";
 export * from "./co2";
 export * from "./csv";
+export * from "./damageClaims";
 export * from "./duration";
 export * from "./enums";
 export * from "./expiry";

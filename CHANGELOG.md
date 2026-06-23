@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-188-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.44.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-189-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.45.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.45.0] — 🛠️ Rejestr szkód / OC
+
+- `[#189]` 🛠️ **Nowy moduł: rejestr szkód** — zgłoszenia szkód pojazdów ze statusem i kosztem:
+  - **Rdzeń** [core/damageClaims.ts](packages/core/src/damageClaims.ts): statusy (zgłoszona/w likwidacji/naprawiona/zamknięta/odrzucona), rodzaje (kolizja/kradzież/szyby/żywioł/wandalizm/inne) + `summarizeDamageClaims` (liczba, otwarte, koszt per waluta). Czyste, **3 testy (191 łącznie)**.
+  - **Migracja** [0051_damage_claims.sql](supabase/migrations/0051_damage_claims.sql): tabela `damage_claims` (pojazd, kierowca, data, rodzaj, status, koszt, ubezpieczyciel, nr szkody, opis) + indeksy + **RLS multi-tenant**. Na prod, audyt RLS czysty (40 tabel).
+  - **Warstwa danych** [damageClaims.ts](packages/api/src/data/damageClaims.ts): `listDamageClaims` / `insertDamageClaim` / `setDamageClaimStatus` / `deleteDamageClaim`.
+  - **Strona** ([szkody](apps/web/app/(app)/szkody/page.tsx)): formularz zgłoszenia (pojazd z floty, rodzaj, status, koszt, ubezpieczyciel, nr), lista ze zmianą statusu i kolorami, podsumowanie (otwarte + koszt per waluta), eksport CSV. Nawigacja „Szkody / OC" + i18n `nav.damages` PL/EN.
+  - **Bramki:** biome czysto · `tsc` ×7 · 191 testów · parytet i18n · audyt RLS ✓ (40 tabel) · build ✓ (`/szkody`).
 
 ## [1.44.0] — 🧾 PDF rozliczenia kierowcy (diety + wypłaty + saldo)
 

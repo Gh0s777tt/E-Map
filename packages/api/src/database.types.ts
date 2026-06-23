@@ -228,6 +228,60 @@ export interface Database {
         };
         Relationships: [];
       };
+      damage_claims: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string | null;
+          driver_name: string | null;
+          claim_date: string;
+          kind: string;
+          status: string;
+          description: string | null;
+          cost: number | null;
+          currency: string;
+          insurer: string | null;
+          claim_number: string | null;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id?: string | null;
+          driver_name?: string | null;
+          claim_date?: string;
+          kind?: string;
+          status?: string;
+          description?: string | null;
+          cost?: number | null;
+          currency?: string;
+          insurer?: string | null;
+          claim_number?: string | null;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string | null;
+          driver_name?: string | null;
+          claim_date?: string;
+          kind?: string;
+          status?: string;
+          description?: string | null;
+          cost?: number | null;
+          currency?: string;
+          insurer?: string | null;
+          claim_number?: string | null;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       documents: {
         Row: {
           id: string;
