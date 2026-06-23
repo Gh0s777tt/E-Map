@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-192-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.48.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-193-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.49.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.49.0] — ⛽ Wykres wydatku na paliwo (6 mies.) na karcie pojazdu
+
+- `[#193]` ⛽ **Trend paliwa na karcie pojazdu** — wykres słupkowy wydatku 6 mies. w sekcji „Paliwo":
+  - **Rdzeń** [core/fuelTrend.ts](packages/core/src/fuelTrend.ts): `fuelByMonth(entries, months)` — sumuje litry i wydatek per miesiąc (zera dla pustych, ujemne→0). Czyste, **3 testy (194 łącznie)**.
+  - **Karta pojazdu** ([vehicles/[id]](apps/web/app/(app)/vehicles/[id]/page.tsx)): pod statystykami paliwa wykres `BarChart` wydatku €/mies. (ostatnie 6 mies.); ukrywa się przy zerowym wydatku.
+  - **Bramki:** biome czysto · `tsc` ×7 · 194 testy · build ✓ (`/vehicles/[id]`).
 
 ## [1.48.0] — 📈 Mini-wykres przychodu (6 mies.) na pulpicie
 

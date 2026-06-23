@@ -22,7 +22,9 @@ import {
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
   formatCardExpiry,
+  fuelByMonth,
   fuelConsumptionSeries,
+  monthsEndingAt,
   round2,
   serviceStatus,
   sumCostsByCategory,
@@ -40,7 +42,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
-import { Badge, Button, PageHeader } from "@/components/ui";
+import { Badge, BarChart, Button, PageHeader } from "@/components/ui";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -57,6 +59,7 @@ type FuelRaw = {
   liters: number;
   price_total: number | null;
   is_full: boolean | null;
+  created_at: string;
 };
 
 const EXPIRY_COLOR: Record<ExpiryLevel, string> = {
@@ -149,6 +152,19 @@ export default function VehicleCardPage() {
       cons: consumptionFullToFull(entries),
       anomalies: detectFuelAnomalies(fuelConsumptionSeries(entries)).length,
     };
+  }, [fuel]);
+
+  // Wydatek na paliwo per miesiąc — ostatnie 6 mies. (wykres na karcie).
+  const fuelMonths = useMemo(() => {
+    const months = monthsEndingAt(new Date().toISOString().slice(0, 7), 6);
+    return fuelByMonth(
+      fuel.map((r) => ({
+        date: r.created_at.slice(0, 10),
+        liters: Number(r.liters),
+        spend: Number(r.price_total ?? 0),
+      })),
+      months,
+    );
   }, [fuel]);
 
   const orderStats = useMemo(() => {
@@ -356,6 +372,20 @@ export default function VehicleCardPage() {
               accent={fuelStats.anomalies > 0 ? palette.red : "#22c55e"}
             />
           </div>
+          {fuelMonths.some((p) => p.spend > 0) && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ ...styles.dim, marginBottom: 6 }}>
+                Wydatek na paliwo — ostatnie 6 mies.
+              </div>
+              <BarChart
+                data={fuelMonths.map((p) => ({
+                  label: `${p.month.slice(5)}.${p.month.slice(2, 4)}`,
+                  value: p.spend,
+                }))}
+                unit=" €"
+              />
+            </div>
+          )}
 
           {/* Koszty (inne niż paliwo) */}
           <h2 style={styles.h2}>Koszty (naprawy, leasing, ubezpieczenie…)</h2>
