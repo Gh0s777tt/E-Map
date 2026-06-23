@@ -87,6 +87,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(has("drivers") ? [{ href: "/drivers", label: t("nav.drivers") }] : []),
         ...(has("cards") ? [{ href: "/cards", label: t("nav.cards") }] : []),
         ...(manage ? [{ href: "/service", label: t("nav.service") }] : []),
+        ...(manage ? [{ href: "/szkody", label: t("nav.damages") }] : []),
         { href: "/documents", label: t("nav.documents") },
         ...(has("reports") ? [{ href: "/reports", label: t("nav.reports") }] : []),
       ],
