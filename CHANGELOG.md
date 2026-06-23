@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-187-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.43.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-188-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.44.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.44.0] — 🧾 PDF rozliczenia kierowcy (diety + wypłaty + saldo)
+
+- `[#188]` 🧾 **Drukowalne „Rozliczenie kierowcy"** — domknięcie modułu HR: jeden dokument do podpisu, jak POD/CMR:
+  - **Dokument** ([PayoutDoc](apps/web/components/PayoutDoc.tsx)): nagłówek (firma + kierowca + data), sekcja **diety** (per waluta), **rozliczenie** (pozycje + rozbicie należność/zaliczki/potrącenia/wypłaty = saldo), pieczęć **„Do wypłaty" = diety + saldo rozliczeń per waluta** oraz linie podpisów. Druk/PDF przez `window.print()`. Dane ładowane po nazwisku (diety + wypłaty).
+  - **`/wyplaty`**: przycisk **„🖨️ Rozliczenie (PDF)"** (aktywny po wpisaniu kierowcy w filtrze) → dokument dla danego kierowcy.
+  - **Bramki:** biome czysto · `tsc` ×7 · 188 testów · build ✓ (`/wyplaty`).
+  - ⚠️ *Wydruk do PDF zależy od przeglądarki/OS; złożenie dokumentu jest deterministyczne. Bez przeliczeń kursowych — kwoty osobno per waluta.*
 
 ## [1.43.0] — 💸 Saldo do wypłaty na pulpicie KPI
 

@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { PayoutDoc } from "@/components/PayoutDoc";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -50,6 +51,7 @@ export default function PayoutsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [printDriver, setPrintDriver] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,6 +171,17 @@ export default function PayoutsPage() {
     );
   }
 
+  if (printDriver && companyId) {
+    return (
+      <PayoutDoc
+        driverName={printDriver}
+        companyId={companyId}
+        company=""
+        onBack={() => setPrintDriver(null)}
+      />
+    );
+  }
+
   return (
     <div style={{ maxWidth: 980 }}>
       <PageHeader
@@ -283,6 +296,13 @@ export default function PayoutsPage() {
           {saved.length > 0 ? `${saved.length} pozycji` : "brak"}
         </span>
         <span style={{ flex: 1 }} />
+        <Button
+          variant="ghost"
+          onClick={() => setPrintDriver(driver.trim())}
+          disabled={!driver.trim()}
+        >
+          🖨️ Rozliczenie (PDF)
+        </Button>
         <Button variant="ghost" onClick={exportCsv} disabled={saved.length === 0}>
           ⬇️ CSV
         </Button>
