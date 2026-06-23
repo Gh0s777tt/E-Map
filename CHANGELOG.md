@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-193-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.49.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-194-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.50.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.50.0] — 🔧 Wykres kosztów pozostałych (6 mies.) na karcie pojazdu
+
+- `[#194]` 🔧 **Trend kosztów (bez paliwa) na karcie pojazdu** — obok wykresu paliwa:
+  - **Karta pojazdu** ([vehicles/[id]](apps/web/app/(app)/vehicles/[id]/page.tsx)): w sekcji kosztów wykres `BarChart` kosztów EUR (naprawy/leasing/ubezpieczenie itd., bez paliwa) per miesiąc — ostatnie 6 mies.; ukrywa się przy zerowych kosztach. Agregacja rdzeniem `fuelByMonth` (suma per miesiąc, współdzielona z wykresem paliwa).
+  - Manager widzi na karcie pełny obraz kosztów pojazdu w czasie: paliwo + pozostałe.
+  - **Bramki:** biome czysto · `tsc` ×7 · 194 testy · build ✓ (`/vehicles/[id]`).
 
 ## [1.49.0] — ⛽ Wykres wydatku na paliwo (6 mies.) na karcie pojazdu
 
