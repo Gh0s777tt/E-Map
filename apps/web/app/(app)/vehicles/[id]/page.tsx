@@ -189,6 +189,17 @@ export default function VehicleCardPage() {
     return { totalEur, byCategory };
   }, [costs]);
 
+  // Koszty (EUR, bez paliwa) per miesiąc — ostatnie 6 mies. (wykres na karcie).
+  const costMonths = useMemo(() => {
+    const months = monthsEndingAt(new Date().toISOString().slice(0, 7), 6);
+    return fuelByMonth(
+      costs
+        .filter((c) => c.currency === "EUR")
+        .map((c) => ({ date: c.cost_date, liters: 0, spend: Number(c.amount) })),
+      months,
+    );
+  }, [costs]);
+
   // Mini P&L pojazdu: przychód − paliwo − koszty (EUR).
   const pnl = useMemo(
     () =>
@@ -399,6 +410,20 @@ export default function VehicleCardPage() {
               <Stat key={c.category} label={c.label} value={`${c.amountEur} €`} />
             ))}
           </div>
+          {costMonths.some((p) => p.spend > 0) && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ ...styles.dim, marginBottom: 6 }}>
+                Koszty (EUR, bez paliwa) — ostatnie 6 mies.
+              </div>
+              <BarChart
+                data={costMonths.map((p) => ({
+                  label: `${p.month.slice(5)}.${p.month.slice(2, 4)}`,
+                  value: p.spend,
+                }))}
+                unit=" €"
+              />
+            </div>
+          )}
 
           {canManage && (
             <div style={styles.costForm}>
