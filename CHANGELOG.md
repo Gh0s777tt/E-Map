@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-191-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.47.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-192-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.48.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.48.0] — 📈 Mini-wykres przychodu (6 mies.) na pulpicie
+
+- `[#192]` 📈 **Trend przychodu na `/dashboard`** — wykres słupkowy 6 miesięcy dla owner/dispatcher:
+  - **Komponent** ([RevenueTrend](apps/web/components/RevenueTrend.tsx)): przychód EUR ze zleceń dostarczonych/zafakturowanych per miesiąc, liczony rdzeniem `monthlyFleetTrend` (paliwo/AdBlue pominięte — tylko przychód), wyświetlany przez `BarChart`. Pod paskiem KPI; ukrywa się przy zerowym przychodzie / dla kierowcy.
+  - Manager widzi tendencję bez wchodzenia w „Zestawienie msc.".
+  - **Bramki:** biome czysto · `tsc` ×7 · 191 testów · build ✓ (`/dashboard`).
 
 ## [1.47.0] — 🎨 Presety stylów: zlecenia, faktury‑msc, raporty, ustawienia
 
