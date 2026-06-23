@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-189-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.45.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-190-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.46.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.46.0] — 🛠️ Otwarte szkody w panelu „Co wymaga uwagi"
+
+- `[#190]` 🛠️ **Otwarte szkody jako alerty** — domknięcie modułu [#189]: szkody w toku nie umkną:
+  - **Panel** ([AttentionPanel](apps/web/components/AttentionPanel.tsx)): szkody o statusie **zgłoszona** (czerwone) / **w likwidacji** (pomarańczowe) liczone na żywo i pokazywane obok terminów pojazdów, kart, serwisu, dokumentów, faktur i kierowców. Tytuł = pojazd · rodzaj; szczegół = status + koszt; klik → `/szkody`. Starsze otwarte szkody wyżej. Etykieta prawej kolumny „otwarta".
+  - **Bramki:** biome czysto · `tsc` ×7 · 191 testów · build ✓ (`/dashboard`).
 
 ## [1.45.0] — 🛠️ Rejestr szkód / OC
 
