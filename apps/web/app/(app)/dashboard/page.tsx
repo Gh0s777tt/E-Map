@@ -6,6 +6,7 @@ import { CompanyBanner } from "@/components/CompanyBanner";
 import { DriverActiveOrder } from "@/components/DriverActiveOrder";
 import { KpiStrip } from "@/components/KpiStrip";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { RevenueTrend } from "@/components/RevenueTrend";
 import { getLocale } from "@/lib/locale";
 
 const CARDS: { href: string; tagKey: MessageKey; titleKey: MessageKey; descKey: MessageKey }[] = [
@@ -51,6 +52,7 @@ export default async function DashboardPage() {
       <CompanyBanner />
       <DriverActiveOrder />
       <KpiStrip />
+      <RevenueTrend />
       <OnboardingChecklist />
       <AttentionPanel />
 
