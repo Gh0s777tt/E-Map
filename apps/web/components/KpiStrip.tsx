@@ -1,7 +1,12 @@
 "use client";
 
-import { listFuelLogs, listOrders, listPerDiemTrips } from "@e-logistic/api";
-import { computePerDiem, monthlyFleetSummary, sumPerDiem } from "@e-logistic/core";
+import { listDriverPayouts, listFuelLogs, listOrders, listPerDiemTrips } from "@e-logistic/api";
+import {
+  computePerDiem,
+  monthlyFleetSummary,
+  settleDriverPayouts,
+  sumPerDiem,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -14,6 +19,7 @@ interface Kpi {
   revenue: number;
   net: number;
   perDiem: string;
+  payout: string;
 }
 
 const OPEN = new Set(["new", "assigned", "in_progress"]);
@@ -22,8 +28,8 @@ type CostRow = { vehicle_id: string; price_total: number | null; created_at: str
 
 /**
  * Pasek KPI na pulpit (owner/dispatcher) — operacyjny skrót na start dnia:
- * zlecenia w toku, do zafakturowania, wynik bieżącego miesiąca (EUR) i należne
- * diety. Liczony na żywo z danych firmy; dla kierowcy nic nie renderuje.
+ * zlecenia w toku, do zafakturowania, wynik bieżącego miesiąca (EUR), należne
+ * diety i saldo do wypłaty. Liczony na żywo; dla kierowcy nic nie renderuje.
  */
 export function KpiStrip() {
   const [kpi, setKpi] = useState<Kpi | null>(null);
@@ -39,11 +45,12 @@ export function KpiStrip() {
         const toD = new Date(`${month}-01T00:00:00Z`);
         toD.setUTCMonth(toD.getUTCMonth() + 1);
         const to = toD.toISOString().slice(0, 10);
-        const [orders, fuel, adblue, pds] = await Promise.all([
+        const [orders, fuel, adblue, pds, pays] = await Promise.all([
           listOrders(sb, m.companyId),
           listFuelLogs(sb, { from, to, limit: 5000 }),
           listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
           listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
+          listDriverPayouts(sb, m.companyId, { limit: 5000 }),
         ]);
         const toCost = (r: CostRow) => ({
           vehicleId: r.vehicle_id,
@@ -75,6 +82,9 @@ export function KpiStrip() {
               }),
             ),
         );
+        const payBalances = settleDriverPayouts(
+          pays.map((p) => ({ kind: p.kind, amount: p.amount, currency: p.currency })),
+        ).filter((b) => b.balance !== 0);
         setKpi({
           inProgress: orders.filter((o) => OPEN.has(o.status)).length,
           toInvoice: orders.filter((o) => o.status === "delivered").length,
@@ -82,6 +92,9 @@ export function KpiStrip() {
           net: summary.totals.net,
           perDiem: pdTotals.length
             ? pdTotals.map((t) => `${t.amount} ${t.currency}`).join(" · ")
+            : "—",
+          payout: payBalances.length
+            ? payBalances.map((b) => `${b.balance} ${b.currency}`).join(" · ")
             : "—",
         });
       } catch {
@@ -105,6 +118,7 @@ export function KpiStrip() {
         sub={`przychód ${kpi.revenue} €`}
       />
       <Card href="/diety" label="Diety (mies.)" value={kpi.perDiem} small />
+      <Card href="/wyplaty" label="Saldo do wypłaty" value={kpi.payout} small />
     </div>
   );
 }
