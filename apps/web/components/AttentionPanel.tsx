@@ -3,6 +3,7 @@
 import {
   latestOdometers,
   listDocuments,
+  listDrivers,
   listFuelCardsSafe,
   listInvoices,
   listServiceTasks,
@@ -40,6 +41,14 @@ const VEH_FIELDS = [
   { col: "leasing_end", label: "Leasing" },
 ] as const;
 
+const DRV_FIELDS = [
+  { col: "license_expiry", label: "Prawo jazdy" },
+  { col: "code95_expiry", label: "Kod 95" },
+  { col: "medical_expiry", label: "Badania lekarskie" },
+  { col: "psychotech_expiry", label: "Psychotechniczne" },
+  { col: "adr_expiry", label: "ADR" },
+] as const;
+
 const MAX_SHOWN = 15;
 
 /**
@@ -59,13 +68,14 @@ export function AttentionPanel() {
         const m = await getCachedMembership(sb);
         // Panel zarządczy (terminy floty/faktur) — tylko owner/dispatcher.
         if (!m || (m.role !== "owner" && m.role !== "dispatcher")) return;
-        const [vehs, cards, tasks, odo, docs, invs] = await Promise.all([
+        const [vehs, cards, tasks, odo, docs, invs, drvs] = await Promise.all([
           listVehiclesExpiry(sb, m.companyId),
           listFuelCardsSafe(sb, m.companyId),
           listServiceTasks(sb, m.companyId),
           latestOdometers(sb, m.companyId),
           listDocuments(sb, m.companyId),
           listInvoices(sb, m.companyId),
+          listDrivers(sb, m.companyId).catch(() => []),
         ]);
         const today = new Date().toISOString().slice(0, 10);
         const regOf = new Map(vehs.map((v) => [v.id, v.registration]));
@@ -160,6 +170,26 @@ export function AttentionPanel() {
             urgency: days,
             href: "/invoices",
           });
+        }
+
+        for (const d of drvs) {
+          const name = `${d.last_name} ${d.first_name}`.trim() || "Kierowca";
+          for (const fld of DRV_FIELDS) {
+            const date = d[fld.col];
+            if (!date) continue;
+            const st = expiryStatus(date, today);
+            if (st.level === "ok") continue;
+            out.push({
+              key: `drv-${d.id}-${fld.col}`,
+              icon: "🪪",
+              category: "Kierowca",
+              title: `${name} · ${fld.label}`,
+              detail: date,
+              level: st.level,
+              urgency: st.daysLeft,
+              href: "/drivers",
+            });
+          }
         }
 
         out.sort((a, b) => rank(a.level) - rank(b.level) || a.urgency - b.urgency);

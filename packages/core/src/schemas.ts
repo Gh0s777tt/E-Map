@@ -102,6 +102,7 @@ export const driverSchema = z.object({
   licenseExpiry: isoDate.optional(),
   code95Expiry: isoDate.optional(),
   medicalExpiry: isoDate.optional(),
+  psychotechExpiry: isoDate.optional(),
   adrExpiry: isoDate.optional(),
 });
 export type DriverInput = z.infer<typeof driverSchema>;

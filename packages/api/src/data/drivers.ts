@@ -14,6 +14,7 @@ export interface DriverRow {
   license_expiry: string | null;
   code95_expiry: string | null;
   medical_expiry: string | null;
+  psychotech_expiry: string | null;
   adr_expiry: string | null;
   user_id: string | null;
 }
@@ -48,6 +49,7 @@ async function saveDriverIdentity(
     p_code95_expiry: input.code95Expiry ?? null,
     p_medical_expiry: input.medicalExpiry ?? null,
     p_adr_expiry: input.adrExpiry ?? null,
+    p_psychotech_expiry: input.psychotechExpiry ?? null,
   });
   if (error) throw error;
   return data as string;

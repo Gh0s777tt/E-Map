@@ -24,7 +24,8 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 const EXPIRY_DOCS: { key: keyof DriverRow; label: string }[] = [
   { key: "license_expiry", label: "Prawo jazdy" },
   { key: "code95_expiry", label: "Kod 95" },
-  { key: "medical_expiry", label: "Badania" },
+  { key: "medical_expiry", label: "Badania lekarskie" },
+  { key: "psychotech_expiry", label: "Psychotechniczne" },
   { key: "adr_expiry", label: "ADR" },
 ];
 const EXPIRY_COLOR: Record<ExpiryLevel, string> = {

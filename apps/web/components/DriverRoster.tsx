@@ -32,7 +32,8 @@ const toggle = (arr: string[], v: string) =>
 const EXPIRY_DOCS = [
   { key: "license_expiry", label: "Prawo jazdy" },
   { key: "code95_expiry", label: "Kod 95" },
-  { key: "medical_expiry", label: "Badania" },
+  { key: "medical_expiry", label: "Badania lek." },
+  { key: "psychotech_expiry", label: "Psychotechn." },
   { key: "adr_expiry", label: "ADR" },
 ] as const;
 
@@ -55,6 +56,7 @@ export function DriverRoster() {
   const [licenseExpiry, setLicenseExpiry] = useState("");
   const [code95Expiry, setCode95Expiry] = useState("");
   const [medicalExpiry, setMedicalExpiry] = useState("");
+  const [psychotechExpiry, setPsychotechExpiry] = useState("");
   const [adrExpiry, setAdrExpiry] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
@@ -91,6 +93,7 @@ export function DriverRoster() {
     setLicenseExpiry("");
     setCode95Expiry("");
     setMedicalExpiry("");
+    setPsychotechExpiry("");
     setAdrExpiry("");
     setErrors({});
   }
@@ -103,7 +106,8 @@ export function DriverRoster() {
       "Uprawnienia",
       "Prawo jazdy",
       "Kod 95",
-      "Badania",
+      "Badania lek.",
+      "Psychotechn.",
       "ADR",
     ];
     const rows = drivers.map((d) => [
@@ -114,6 +118,7 @@ export function DriverRoster() {
       d.license_expiry ?? "",
       d.code95_expiry ?? "",
       d.medical_expiry ?? "",
+      d.psychotech_expiry ?? "",
       d.adr_expiry ?? "",
     ]);
     downloadCsv(`kierowcy_${csvDateStamp()}.csv`, headers, rows);
@@ -135,6 +140,7 @@ export function DriverRoster() {
     setLicenseExpiry(d.license_expiry ?? "");
     setCode95Expiry(d.code95_expiry ?? "");
     setMedicalExpiry(d.medical_expiry ?? "");
+    setPsychotechExpiry(d.psychotech_expiry ?? "");
     setAdrExpiry(d.adr_expiry ?? "");
     setStatus(null);
     setErrors({});
@@ -157,6 +163,7 @@ export function DriverRoster() {
       licenseExpiry: licenseExpiry || undefined,
       code95Expiry: code95Expiry || undefined,
       medicalExpiry: medicalExpiry || undefined,
+      psychotechExpiry: psychotechExpiry || undefined,
       adrExpiry: adrExpiry || undefined,
     });
     if (!parsed.success) {
@@ -323,6 +330,15 @@ export function DriverRoster() {
                 type="date"
                 value={medicalExpiry}
                 onChange={(e) => setMedicalExpiry(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Psychotechniczne do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={psychotechExpiry}
+                onChange={(e) => setPsychotechExpiry(e.target.value)}
               />
             </label>
             <label style={styles.field}>
