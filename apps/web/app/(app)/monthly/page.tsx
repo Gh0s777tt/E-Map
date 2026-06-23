@@ -26,6 +26,7 @@ import {
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { BarChart, Button, PageHeader, SetupNotice } from "@/components/ui";
@@ -259,7 +260,7 @@ export default function MonthlyPage() {
 
       <div style={styles.controls} className="no-print">
         <label style={styles.field}>
-          <span style={styles.label}>Miesiąc</span>
+          <span style={f.label}>Miesiąc</span>
           <input
             style={styles.input}
             type="month"
@@ -465,7 +466,6 @@ const styles: Record<string, React.CSSProperties> = {
   printHead: { marginBottom: 12, lineHeight: 1.4 },
   controls: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginTop: 16 },
   field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontSize: 12, color: palette.smoke },
   input: {
     background: palette.black,
     border: `1px solid ${palette.graphite}`,

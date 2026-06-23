@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-190-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.46.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-191-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.47.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.47.0] — 🎨 Presety stylów: zlecenia, faktury‑msc, raporty, ustawienia
+
+- `[#191]` 🎨 **Dalsza migracja na `formStyles`** — kolejne strony korzystają z presetów, mniej powielonego CSS:
+  - **Zlecenia** ([orders](apps/web/app/(app)/orders/page.tsx)), **Raporty** ([reports](apps/web/app/(app)/reports/page.tsx)), **Ustawienia** ([settings](apps/web/app/(app)/settings/page.tsx)): `input` + `label` z presetów (1:1, bez zmian wizualnych).
+  - **Zestawienie msc.** ([monthly](apps/web/app/(app)/monthly/page.tsx)): `label` z presetu (input kompaktowy pozostaje świadomie).
+  - **Bramki:** biome czysto · `tsc` ×7 · 191 testów · build ✓ (`/orders`, `/reports`, `/settings`, `/monthly`).
 
 ## [1.46.0] — 🛠️ Otwarte szkody w panelu „Co wymaga uwagi"
 

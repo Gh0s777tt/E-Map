@@ -32,6 +32,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";
 import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { PodDoc } from "@/components/PodDoc";
@@ -398,18 +399,18 @@ export default function OrdersPage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Data załadunku</span>
+              <span style={f.label}>Data załadunku</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="date"
                 value={loadDate}
                 onChange={(e) => setLoadDate(e.target.value)}
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Data rozładunku</span>
+              <span style={f.label}>Data rozładunku</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="date"
                 value={unloadDate}
                 onChange={(e) => setUnloadDate(e.target.value)}
@@ -418,18 +419,18 @@ export default function OrdersPage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Waga (kg)</span>
+              <span style={f.label}>Waga (kg)</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 value={weightKg}
                 onChange={(e) => setWeightKg(e.target.value)}
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Stawka</span>
+              <span style={f.label}>Stawka</span>
               <input
-                style={styles.input}
+                style={f.input}
                 type="number"
                 step="0.01"
                 value={price}
@@ -437,17 +438,17 @@ export default function OrdersPage() {
               />
             </label>
             <label style={{ ...styles.field, maxWidth: 90 }}>
-              <span style={styles.label}>Waluta</span>
+              <span style={f.label}>Waluta</span>
               <input
-                style={styles.input}
+                style={f.input}
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Pojazd</span>
+              <span style={f.label}>Pojazd</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
               >
@@ -460,9 +461,9 @@ export default function OrdersPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Kierowca</span>
+              <span style={f.label}>Kierowca</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
               >
@@ -476,9 +477,9 @@ export default function OrdersPage() {
             </label>
           </div>
           <label style={styles.field}>
-            <span style={styles.label}>Notatki</span>
+            <span style={f.label}>Notatki</span>
             <textarea
-              style={{ ...styles.input, minHeight: 50 }}
+              style={{ ...f.input, minHeight: 50 }}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -649,9 +650,9 @@ function Field({
 }) {
   return (
     <label style={styles.field}>
-      <span style={styles.label}>{label}</span>
+      <span style={f.label}>{label}</span>
       <input
-        style={styles.input}
+        style={f.input}
         value={v}
         onChange={(e) => set(e.target.value)}
         placeholder={ph}
@@ -665,15 +666,6 @@ const styles: Record<string, React.CSSProperties> = {
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 16, maxWidth: 720 },
   grid: { display: "flex", gap: 12, flexWrap: "wrap" },
   field: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 160 },
-  label: { fontSize: 12, color: palette.smoke },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    width: "100%",
-  },
   summary: {
     display: "flex",
     gap: 20,
