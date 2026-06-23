@@ -27,6 +27,7 @@ export const pl = {
   "nav.monthly": "Zestawienie msc.",
   "nav.perDiem": "Diety kierowcy",
   "nav.workTime": "Czas pracy",
+  "nav.payouts": "Rozliczenia kier.",
   "nav.fuelPrices": "Ceny diesla",
   "nav.team": "Zespół",
   "nav.group.orders": "Zlecenia",

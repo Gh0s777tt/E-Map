@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-185-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.41.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-186-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.42.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.42.0] — 💸 Rozliczenia kierowcy (zaliczki / wypłaty)
+
+- `[#186]` 💸 **Nowy moduł: rozliczenia kierowcy** — ewidencja należności, zaliczek, potrąceń i wypłat z saldem:
+  - **Rdzeń** [core/payouts.ts](packages/core/src/payouts.ts): `settleDriverPayouts(entries)` — saldo do wypłaty = należność − zaliczki − potrącenia − wypłaty, osobno per waluta (bez kursów). Czyste, **4 testy (188 łącznie)**.
+  - **Migracja** [0050_driver_payouts.sql](supabase/migrations/0050_driver_payouts.sql): tabela `driver_payouts` (kierowca, typ, kwota, waluta, data, notatka) + indeksy + **RLS multi-tenant**. Na prod, audyt RLS czysty (39 tabel).
+  - **Warstwa danych** [driverPayouts.ts](packages/api/src/data/driverPayouts.ts): `listDriverPayouts` / `insertDriverPayout` / `deleteDriverPayout`.
+  - **Strona** ([wyplaty](apps/web/app/(app)/wyplaty/page.tsx)): wprowadzanie pozycji (typ/kwota/waluta/data) + zapis, ewidencja z usuwaniem, **saldo do wypłaty per waluta** i eksport CSV; filtr po kierowcy. Nawigacja „Rozliczenia kier." + i18n `nav.payouts` PL/EN.
+  - **Bramki:** biome czysto · `tsc` ×7 · 188 testów · parytet i18n · audyt RLS ✓ (39 tabel) · build ✓ (`/wyplaty`).
 
 ## [1.41.0] — 🪪 Przypomnienia o badaniach kierowców (panel + psychotechniczne)
 

@@ -297,6 +297,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      driver_payouts: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_name: string | null;
+          kind: string;
+          amount: number;
+          currency: string;
+          entry_date: string;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          driver_name?: string | null;
+          kind: string;
+          amount: number;
+          currency?: string;
+          entry_date?: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_name?: string | null;
+          kind?: string;
+          amount?: number;
+          currency?: string;
+          entry_date?: string;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       driver_profiles: {
         Row: {
           user_id: string;
