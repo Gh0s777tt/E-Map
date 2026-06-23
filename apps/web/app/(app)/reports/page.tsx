@@ -13,6 +13,7 @@ import {
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
@@ -245,9 +246,9 @@ export default function ReportsPage() {
 
         <div style={styles.form}>
           <label style={styles.field}>
-            <span style={styles.label}>Pojazd</span>
+            <span style={f.label}>Pojazd</span>
             <select
-              style={styles.input}
+              style={f.input}
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
             >
@@ -261,9 +262,9 @@ export default function ReportsPage() {
 
           <div style={{ display: "flex", gap: 12 }}>
             <label style={styles.field}>
-              <span style={styles.label}>Układ / część</span>
+              <span style={f.label}>Układ / część</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={part}
                 onChange={(e) => {
                   setPart(e.target.value);
@@ -278,8 +279,8 @@ export default function ReportsPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Strona</span>
-              <select style={styles.input} value={side} onChange={(e) => setSide(e.target.value)}>
+              <span style={f.label}>Strona</span>
+              <select style={f.input} value={side} onChange={(e) => setSide(e.target.value)}>
                 {DEFECT_SIDES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -291,9 +292,9 @@ export default function ReportsPage() {
 
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
             <label style={styles.field}>
-              <span style={styles.label}>Pilność</span>
+              <span style={f.label}>Pilność</span>
               <select
-                style={styles.input}
+                style={f.input}
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value as (typeof DEFECT_SEVERITIES)[number])}
               >
@@ -315,9 +316,9 @@ export default function ReportsPage() {
           </div>
 
           <label style={styles.field}>
-            <span style={styles.label}>Opis *</span>
+            <span style={f.label}>Opis *</span>
             <textarea
-              style={{ ...styles.input, minHeight: 80 }}
+              style={{ ...f.input, minHeight: 80 }}
               value={description}
               onChange={(e) => onDescription(e.target.value)}
               placeholder="np. klocki hamulcowe do wymiany, piszczą z lewej; zapaliła się kontrolka"
@@ -471,17 +472,8 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 480,
   },
   field: { display: "flex", flexDirection: "column", gap: 4, flex: 1 },
-  label: { fontSize: 12, color: palette.smoke },
   err: { color: palette.red, fontSize: 12 },
   check: { color: palette.offWhite, fontSize: 14, display: "flex", alignItems: "center", gap: 6 },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    width: "100%",
-  },
   row: {
     display: "flex",
     gap: 10,

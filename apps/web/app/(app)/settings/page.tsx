@@ -5,6 +5,7 @@ import { palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import * as f from "@/components/formStyles";
 import { useT } from "@/components/LocaleProvider";
 import { PushToggle } from "@/components/PushToggle";
 import { Button } from "@/components/ui";
@@ -262,7 +263,7 @@ export default function SettingsPage() {
           {isOwner ? (
             <>
               <label style={styles.field}>
-                <span style={styles.label}>{t("settings.company.name")}</span>
+                <span style={f.label}>{t("settings.company.name")}</span>
                 <input
                   style={styles.cInput}
                   value={cName}
@@ -270,7 +271,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>{t("settings.company.taxId")}</span>
+                <span style={f.label}>{t("settings.company.taxId")}</span>
                 <input
                   style={styles.cInput}
                   value={cTaxId}
@@ -278,7 +279,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>{t("settings.company.address")}</span>
+                <span style={f.label}>{t("settings.company.address")}</span>
                 <input
                   style={styles.cInput}
                   value={cAddress}
@@ -286,7 +287,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>{t("settings.company.country")}</span>
+                <span style={f.label}>{t("settings.company.country")}</span>
                 <input
                   style={{ ...styles.cInput, maxWidth: 120 }}
                   value={cCountry}
@@ -296,7 +297,7 @@ export default function SettingsPage() {
               </label>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <label style={styles.field}>
-                  <span style={styles.label}>{t("settings.company.vat")}</span>
+                  <span style={f.label}>{t("settings.company.vat")}</span>
                   <input
                     style={{ ...styles.cInput, maxWidth: 120 }}
                     type="number"
@@ -306,7 +307,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label style={styles.field}>
-                  <span style={styles.label}>{t("settings.company.dueDays")}</span>
+                  <span style={f.label}>{t("settings.company.dueDays")}</span>
                   <input
                     style={{ ...styles.cInput, maxWidth: 140 }}
                     type="number"
@@ -317,7 +318,7 @@ export default function SettingsPage() {
                 </label>
               </div>
               <label style={styles.field}>
-                <span style={styles.label}>{t("settings.company.bank")}</span>
+                <span style={f.label}>{t("settings.company.bank")}</span>
                 <input
                   style={styles.cInput}
                   value={cBank}
@@ -326,7 +327,7 @@ export default function SettingsPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.label}>{t("settings.company.account")}</span>
+                <span style={f.label}>{t("settings.company.account")}</span>
                 <input
                   style={styles.cInput}
                   value={cAccount}
@@ -398,7 +399,7 @@ export default function SettingsPage() {
               {t("settings.twofa.manual")} <code style={{ color: palette.offWhite }}>{secret}</code>
             </div>
             <input
-              style={styles.input}
+              style={f.input}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               inputMode="numeric"
@@ -479,16 +480,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 14,
     maxWidth: 420,
   },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    maxWidth: 200,
-  },
   field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontSize: 12, color: palette.smoke },
   cInput: {
     background: palette.black,
     border: `1px solid ${palette.graphite}`,
