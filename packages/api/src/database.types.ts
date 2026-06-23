@@ -347,6 +347,7 @@ export interface Database {
           medical_expiry: string | null;
           adr_expiry: string | null;
           user_id: string | null;
+          psychotech_expiry: string | null;
         };
         Insert: {
           id?: string;
@@ -367,6 +368,7 @@ export interface Database {
           medical_expiry?: string | null;
           adr_expiry?: string | null;
           user_id?: string | null;
+          psychotech_expiry?: string | null;
         };
         Update: {
           id?: string;
@@ -387,6 +389,7 @@ export interface Database {
           medical_expiry?: string | null;
           adr_expiry?: string | null;
           user_id?: string | null;
+          psychotech_expiry?: string | null;
         };
         Relationships: [];
       };

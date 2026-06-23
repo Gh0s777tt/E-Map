@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-184-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.40.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-185-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.41.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.41.0] — 🪪 Przypomnienia o badaniach kierowców (panel + psychotechniczne)
+
+- `[#185]` 🪪 **Terminy kierowców w panelu „Co wymaga uwagi"** + nowy typ badania:
+  - **Migracja** [0049_driver_psychotech_expiry.sql](supabase/migrations/0049_driver_psychotech_expiry.sql): kolumna `psychotech_expiry` (badania psychotechniczne) + aktualizacja RPC `list_drivers`, `driver_save`, `generate_expiry_notifications`. Na prod, audyt RLS czysty (38 tabel).
+  - **Panel** ([AttentionPanel](apps/web/components/AttentionPanel.tsx)): terminy kierowcy (**prawo jazdy / kod 95 / badania lekarskie / psychotechniczne / ADR**) liczone na żywo i pokazywane jako alerty (po terminie / wkrótce), obok pojazdów, kart, serwisu, dokumentów i faktur. Wcześniej terminy kierowcy szły tylko do powiadomień cron, nie do panelu.
+  - **Kartoteka** ([DriverRoster](apps/web/components/DriverRoster.tsx), [drivers/[id]](apps/web/app/(app)/drivers/[id]/page.tsx)): pole „Psychotechniczne do" w formularzu + kolumna w liście, karcie i CSV; `psychotechExpiry` w schemacie `core` i warstwie danych.
+  - **Bramki:** biome czysto · `tsc` ×7 · 184 testy · audyt RLS ✓ (38 tabel) · build ✓ (`/drivers`, `/dashboard`).
 
 ## [1.40.0] — 💾 Czas pracy: trwała ewidencja w bazie (RLS)
 
