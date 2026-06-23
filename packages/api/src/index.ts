@@ -26,3 +26,4 @@ export * from "./data/service";
 export * from "./data/tripEvents";
 export * from "./data/vehicleCosts";
 export * from "./data/vehicles";
+export * from "./data/workTimeEntries";

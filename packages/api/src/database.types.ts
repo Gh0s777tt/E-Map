@@ -1533,6 +1533,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      work_time_entries: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_name: string | null;
+          work_date: string;
+          driving: number;
+          other_work: number;
+          rest: number;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          driver_name?: string | null;
+          work_date: string;
+          driving?: number;
+          other_work?: number;
+          rest?: number;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_name?: string | null;
+          work_date?: string;
+          driving?: number;
+          other_work?: number;
+          rest?: number;
+          note?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {

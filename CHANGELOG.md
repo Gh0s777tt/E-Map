@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-183-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.39.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-184-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.40.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.40.0] — 💾 Czas pracy: trwała ewidencja w bazie (RLS)
+
+- `[#184]` 💾 **Persystencja czasu pracy** — domknięcie modułu [#182]: dni pracy zapisują się do bazy i wracają jako ewidencja:
+  - **Migracja** [0048_work_time_entries.sql](supabase/migrations/0048_work_time_entries.sql): tabela `work_time_entries` (kierowca, data, jazda, inna praca, odpoczynek, notatka) + indeksy. **RLS multi-tenant** (członek czyta, owner/dispatcher zarządza). Na prod, audyt RLS czysty (38 tabel).
+  - **Warstwa danych** [workTimeEntries.ts](packages/api/src/data/workTimeEntries.ts): `listWorkTimeEntries` / `insertWorkTimeEntry` / `deleteWorkTimeEntry` + typy; regeneracja `database.types.ts`.
+  - **Strona** ([czas-pracy](apps/web/app/(app)/czas-pracy/page.tsx)): „💾 Zapisz do ewidencji" + sekcja **„Ewidencja"** (odczyt z bazy, usuwanie, CSV, podsumowanie liczone rdzeniem `summarizeWorkTime`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 184 testy · audyt RLS ✓ (38 tabel) · build ✓ (`/czas-pracy`).
 
 ## [1.39.0] — 🔎 Globalne wyszukiwanie: lepszy ranking (rdzeń + testy)
 
