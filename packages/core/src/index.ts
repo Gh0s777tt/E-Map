@@ -17,6 +17,7 @@ export * from "./expiry";
 export * from "./fakturownia";
 export * from "./fleet";
 export * from "./freightExport";
+export * from "./fuelTrend";
 export * from "./ids";
 export * from "./invoice";
 export * from "./money";
