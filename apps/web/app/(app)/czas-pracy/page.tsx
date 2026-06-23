@@ -1,8 +1,15 @@
 "use client";
 
+import {
+  deleteWorkTimeEntry,
+  insertWorkTimeEntry,
+  listWorkTimeEntries,
+  type WorkTimeRecord,
+} from "@e-logistic/api";
 import { summarizeWorkTime, type WorkTimeEntry } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Button, PageHeader } from "@/components/ui";
@@ -24,30 +31,95 @@ function emptyRow(): Row {
   };
 }
 
+/** WorkTimeRecord (DB) → WorkTimeEntry (rdzeń). */
+function toEntry(r: WorkTimeRecord): WorkTimeEntry {
+  return { date: r.work_date, driving: r.driving, otherWork: r.other_work, rest: r.rest };
+}
+
 export default function WorkTimePage() {
+  const confirm = useConfirm();
   const [driver, setDriver] = useState("");
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
-  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState<WorkTimeRecord[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const m = await getCachedMembership(getBrowserSupabase());
-        setCanManage(!!m && (m.role === "owner" || m.role === "dispatcher"));
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) return;
+      const manage = m.role === "owner" || m.role === "dispatcher";
+      setCanManage(manage);
+      setCompanyId(m.companyId);
+      if (manage) setSaved(await listWorkTimeEntries(sb, m.companyId));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Nie udało się pobrać ewidencji.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const report = useMemo(
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const draft = useMemo(
     () => summarizeWorkTime(rows.filter((r) => r.driving > 0 || r.otherWork > 0 || r.rest > 0)),
     [rows],
   );
+  const report = useMemo(() => summarizeWorkTime(saved.map(toEntry)), [saved]);
 
   function patch(id: string, p: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
+  }
+
+  async function saveDrafts() {
+    if (!companyId) return;
+    const valid = rows.filter((r) => r.driving > 0 || r.otherWork > 0 || r.rest > 0);
+    if (valid.length === 0) {
+      setErr("Uzupełnij co najmniej jeden dzień.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const sb = getBrowserSupabase();
+      for (const r of valid) {
+        await insertWorkTimeEntry(
+          sb,
+          {
+            driverName: driver,
+            workDate: r.date,
+            driving: r.driving,
+            otherWork: r.otherWork,
+            rest: r.rest,
+          },
+          companyId,
+        );
+      }
+      setRows([emptyRow()]);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Błąd zapisu.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeSaved(r: WorkTimeRecord) {
+    if (!(await confirm("Usunąć ten dzień z ewidencji?"))) return;
+    try {
+      await deleteWorkTimeEntry(getBrowserSupabase(), r.id);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Błąd usuwania.");
+    }
   }
 
   function exportCsv() {
@@ -60,15 +132,17 @@ export default function WorkTimePage() {
       "Praca łącznie (h)",
       "Przekroczenie",
     ];
-    const body: (string | number)[][] = report.rows.map((r) => [
-      driver,
-      r.date,
-      r.driving,
-      r.otherWork,
-      r.rest,
-      r.workTotal,
-      r.overDriving ? "TAK" : "",
-    ]);
+    const body: (string | number)[][] = [...saved]
+      .sort((a, b) => a.work_date.localeCompare(b.work_date))
+      .map((rec) => [
+        rec.driver_name ?? "",
+        rec.work_date,
+        rec.driving,
+        rec.other_work,
+        rec.rest,
+        Math.round((rec.driving + rec.other_work) * 100) / 100,
+        rec.driving > 10 ? "TAK" : "",
+      ]);
     const s = report.summary;
     body.push([]);
     body.push([
@@ -80,7 +154,7 @@ export default function WorkTimePage() {
       s.workTotal,
       `${s.overDrivingDays} dni > limitu`,
     ]);
-    downloadCsv(`czas_pracy_${driver || "kierowca"}_${csvDateStamp()}.csv`, headers, body);
+    downloadCsv(`czas_pracy_${csvDateStamp()}.csv`, headers, body);
   }
 
   if (loading) {
@@ -195,15 +269,62 @@ export default function WorkTimePage() {
         })}
       </div>
 
+      {err && <p style={{ color: palette.red, fontSize: 13, marginTop: 8 }}>{err}</p>}
+
       <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <Button variant="ghost" onClick={() => setRows((rs) => [...rs, emptyRow()])}>
           ➕ Dodaj dzień
         </Button>
         <span style={{ flex: 1 }} />
-        <Button onClick={exportCsv} disabled={s.days === 0}>
-          ⬇️ CSV (zestawienie)
+        <Button onClick={saveDrafts} disabled={busy || draft.summary.days === 0}>
+          {busy ? "Zapisuję…" : "💾 Zapisz do ewidencji"}
         </Button>
       </div>
+
+      <div style={{ display: "flex", alignItems: "center", marginTop: 28, marginBottom: 8 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Ewidencja</h2>
+        <span style={{ color: palette.smoke, fontSize: 13, marginLeft: 8 }}>
+          {saved.length > 0 ? `${saved.length} dni` : "brak zapisanych"}
+        </span>
+        <span style={{ flex: 1 }} />
+        <Button variant="ghost" onClick={exportCsv} disabled={saved.length === 0}>
+          ⬇️ CSV
+        </Button>
+      </div>
+
+      {saved.length > 0 ? (
+        <div style={f.card}>
+          {saved.map((rec) => {
+            const over = rec.driving > 10;
+            return (
+              <div key={rec.id} style={f.listRow}>
+                <span style={{ width: 120, fontWeight: 700 }}>{rec.work_date}</span>
+                <span style={{ ...f.cell, width: 130 }}>
+                  {rec.driver_name || <span style={{ color: palette.smoke }}>—</span>}
+                </span>
+                <span style={{ ...f.cell, width: 80 }}>🚛 {rec.driving} h</span>
+                <span style={{ ...f.cell, width: 90 }}>🛠️ {rec.other_work} h</span>
+                <span style={{ ...f.cell, width: 90 }}>😴 {rec.rest} h</span>
+                <span style={{ flex: 1 }}>
+                  {over && <span style={{ color: palette.red, fontSize: 12 }}>⚠️ &gt; 10 h</span>}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeSaved(rec)}
+                  style={styles.del}
+                  aria-label="Usuń"
+                >
+                  🗑️
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p style={{ color: palette.smoke }}>
+          Brak zapisanych dni — dodaj powyżej i zapisz do ewidencji.
+        </p>
+      )}
 
       {s.days > 0 && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
