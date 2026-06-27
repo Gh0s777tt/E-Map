@@ -39,6 +39,8 @@ export const pl = {
   "cmd.action": "Akcja",
   "cmd.theme": "Przełącz motyw (jasny/ciemny)",
   "cmd.print": "Drukuj / eksport PDF",
+  "table.filter": "Filtruj…",
+  "table.empty": "Brak wyników",
   "nav.group.orders": "Zlecenia",
   "nav.group.forms": "Formularze",
   "nav.group.fleet": "Flota",

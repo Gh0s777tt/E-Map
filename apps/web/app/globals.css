@@ -451,6 +451,11 @@ body {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
 }
 
+/* ── Wiersz tabeli danych (DataTable) — subtelny hover ── */
+.el-table-row:hover {
+  background: var(--el-surface-hover);
+}
+
 /* ── Druk / eksport PDF — ukrycie „chrome", zachowanie motywu ── */
 @media print {
   .app-sidebar,

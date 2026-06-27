@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.62.0 · #206 · 2026-06-27 -->
+<!-- SYNC: po v1.63.0 · #207 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.62.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.63.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -36,12 +36,15 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #205 (UI/UX faza 2):** **tryb jasny** (light mode) w całej aplikacji + przełącznik w sidebarze (localStorage, anty-FOUC, i18n PL/EN) · jedno źródło motywu (`Theme`→CSS vars, dark+light) · `cssPalette` (migracja **59 plików** hex→tokeny `var(--el-*)`) · powłoka `.app-*` na tokenach. Mapa świadomie ciemna w obu trybach.
 >
 > **Od #206 (UI/UX faza 3):** **paleta poleceń 2.0** — Ctrl/⌘+K jako launcher: akcje (motyw, druk) + nawigacja do stron (z `navGroups`, wg uprawnień) + encje; logika motywu → `lib/theme.ts` (reuse z `ThemeToggle`); fix `suppressHydrationWarning` (FOUC↔hydratacja). i18n `cmd.*`.
+>
+> **Od #207 (UI/UX faza 4):** **DataTable** — generyczny komponent tabeli (sort klik-nagłówek ▲/▼ z `aria-sort`, filtr + licznik, motyw `--el-*`); logika `lib/dataTable.ts` (`sortRows`/`filterRows`, null na końcu, locale PL) + **6 testów**; pilotowa adopcja na liście kontrahentów. i18n `table.*`.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
 - [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
+- [x] **Data table** — `DataTable` generyczny (sort/filtr), pilot: kontrahenci (#207). 🔜 reużycie: zlecenia/faktury/pojazdy.
 - [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
-- [ ] **Data table** (sort/filtr/zaznaczanie) — listy zleceń/faktur/pojazdów.
+- [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
 - [ ] Użycie toastów/`useToast` w formularzach zamiast inline „status".
 
