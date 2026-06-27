@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-201-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.57.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-202-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.58.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.58.0] — 🧪 Dopełnienie pokrycia: reszta data/api, handlery tras, guard mobile
+
+- `[#202]` 🧪 **Dopełnienie testów + dedup nawigacji mobile**:
+  - **api `data/*`**: +service (`latestOdometers`), savedPlaces, documents, fuelCards (`getFuelCardPin` RPC), drivers (RPC PII + delete) → api **50 testów** (16 modułów).
+  - **handlery tras web**: route (429/400), traffic (429/501/400/tooLarge), fakturownia/export (501/401/403/400 + 404 izolacja firm) → web **27 testów**.
+  - **mobile**: `guardRedirect` (bramka tras) + `notificationTarget` (bezpieczny cel push) → [lib/navigation.ts](apps/mobile/lib/navigation.ts) + testy; [_layout.tsx](apps/mobile/app/_layout.tsx) używa czystych funkcji. Mobile **13 testów**.
+  - **Łącznie 327 testów** (core 202 · api 50 · web 27 · maps 33 · mobile 13 · i18n 2).
+  - **Bramki:** biome czysto · `tsc` ×7 · 327 testów · build ✓ · docs:check ✓.
 
 ## [1.57.0] — ♻️ Dedup walidacji Zod → core (web + mobile)
 

@@ -1,14 +1,14 @@
-<!-- SYNC: po v1.57.0 · #201 · 2026-06-27 -->
+<!-- SYNC: po v1.58.0 · #202 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.57.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.58.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
 > Czekają na dane/umowy/klucze (decyzja właściciela). Specyfikacja wpięcia w [INTEGRATIONS.md](INTEGRATIONS.md).
 
-> **✅ Domknięte od poprzedniej listy (#080 → #201):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
+> **✅ Domknięte od poprzedniej listy (#080 → #202):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
 > `useMemo` w stats · `ListStatus` na listach · settlements jako moduł · test push + `icon-192.png` · ceny diesla EU na mapie/`fuel-prices` ·
 > ujednolicenie Node ≥26 · `apps/mobile/tsconfig` (strict) · **sync dokumentacji do v1.51 (#195)** · cała seria modułów v1.0–1.50
 > (zlecenia, faktury, CMR/POD, rentowność, diety, czas pracy, wypłaty, szkody, serwis, dokumenty, kontrahenci, mapa 3D, aplikacja mobilna).
@@ -26,13 +26,15 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #200:** reszta testów `api` (vehicleCosts, perDiemTrips, workTimeEntries, contractors → 35) + **testy mobile `outbox`** (6) = **289 testów** — wszystkie 6 pakietów pokryte.
 >
 > **Od #201:** dedup walidacji Zod → core (`zodFieldErrors`/`firstZodError`, 8 miejsc web+mobile) = **293 testów**.
+>
+> **Od #202:** reszta `data/*` (service/savedPlaces/documents/fuelCards/drivers) + handlery tras (route/traffic/fakturownia) + guard mobile (`guardRedirect`/`notificationTarget`) = **327 testów**.
 
 ---
 
 ## 🔴 P1 — Testy (rozszerzanie pokrycia)
-- [x] **Testy `packages/api`** — mock Supabase, 11 modułów `data/*` = **35 testów** (#197/#199/#200). Do rozszerzenia: drivers, service, documents, fuelCards, savedPlaces.
-- [x] **Testy tras API** — walidacja URL push (#197) + handlery `push/send` i `notify-assignment` (#198). Do rozszerzenia: pozostałe trasy (route/traffic/fakturownia/passkey).
-- [x] **Testy mobile** — `lib/outbox.ts` (enqueue/sync/error, flush, filtr) z mockiem AsyncStorage/Supabase = **6 testów** (#200). Do rozszerzenia: guard sesji (AuthProvider).
+- [x] **Testy `packages/api`** — mock Supabase, **16 modułów** `data/*` = **50 testów** (#197/#199/#200/#202). Sensowna warstwa danych pokryta (drobne wrappery: companies/dev/invites/notifications — pominięte).
+- [x] **Testy tras API** — push/send + notify-assignment (#198), route/traffic/fakturownia (#202). Passkey (WebAuthn) — świadomie pominięte (mock SimpleWebAuthn, niski zwrot).
+- [x] **Testy mobile** — `lib/outbox.ts` (#200) + `lib/navigation.ts` (`guardRedirect`/`notificationTarget`, #202) = 13 testów. AuthProvider (wiring sesji) — bez testu (wymaga renderera RN, niski zwrot).
 
 ## 🟠 P2 — Wydajność (punktowo; DB ogólnie wzorowe)
 - [ ] **`map/page.tsx` (~1700 l.)** — dekompozycja na 6–8 komponentów (wymaga QA wizualnego mapy).
