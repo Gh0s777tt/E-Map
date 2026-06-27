@@ -1,4 +1,4 @@
-<!-- SYNC: v1.50.0 · #194 · 2026-06-23 — utrzymywane ręcznie do czasu `pnpm docs:check` (badge wersji + blurb „Najnowsze") -->
+<!-- SYNC: v1.51.0 · #195 · 2026-06-27 — weryfikowane bramką `pnpm docs:check` (CI) -->
 <!-- ╔══════════════════════════════════════════════════════════════════╗ -->
 <!-- ║                       E - L O G I S T I C                         ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->
@@ -12,7 +12,7 @@
 
 <br/>
 
-![Wersja](https://img.shields.io/badge/wersja-1.50.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.51.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Status](https://img.shields.io/badge/status-produkcja-22c55e?style=for-the-badge&labelColor=0a0a0a)
 ![Licencja](https://img.shields.io/badge/licencja-PROPRIETARY-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Repo](https://img.shields.io/badge/repo-publiczne-E50914?style=for-the-badge&labelColor=0a0a0a)
@@ -68,6 +68,12 @@ Trzy filary produktu:
 | 🔧 **Usterki** | Zgłaszanie uszkodzeń + graficzny schemat auta (auto‑zaznaczanie), workflow mechanika | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
 | 📊 **Statystyki** | Spalanie (full‑to‑full), koszt po rabatach, AdBlue, podział na pojazdy/tankowania | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
 | 🧾 **Rozliczenia** | Koszt/przychód/zysk/marża per pojazd i okres, eksport CSV + wydruk/PDF | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
+| 📦 **Zlecenia** | Ładunki, przypisanie kierowcy, statusy, **CMR + e‑CMR/POD** (podpis odbiorcy), zdjęcia ładunku, eksport na giełdę | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
+| 🧾 **Faktury** | VAT (numeracja bez luk, status, płatności, bank/IBAN, pozycje, duplikat), eksport Fakturownia + księgowy (VAT/koszty) | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
+| 💰 **Rentowność** | P&L per pojazd i klient, ranking floty, atrybucja kosztów, trendy (6 mies.) | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
+| 🧑‍✈️ **HR kierowcy** | Diety (per diem), czas pracy, wypłaty/zaliczki + PDF rozliczenia, przypomnienia badań (lekarskie/psychotech/ADR) | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
+| 🛠️ **Szkody/OC · Serwis** | Rejestr szkód (status/koszt/ubezpieczyciel), zadania serwisowe wg przebiegu | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
+| 🗂️ **Dokumenty · Kontrahenci** | Sejf dokumentów (Storage, wygasanie), rejestr nabywców/nadawców | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
 | 🗺️ **Mapa TIR** | Routing wg wymiarów/osi + realne myto + ruch, POI, ceny paliwa (DE), filtr stacji wg kart, 3D | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
 | 📡 **Społeczność** | Zgłoszenia realtime (wypadki/policja/wagi/korki) na mapie | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
 | 🔔 **Powiadomienia** | W aplikacji (terminy/przeładowanie/usterki) + push (Web Push, VAPID) | ![](https://img.shields.io/badge/-gotowe-22c55e?labelColor=0a0a0a) |
@@ -126,13 +132,13 @@ E-Logistic/
 ├── packages/
 │   ├── core/           # domena, typy, Zod, silnik rozliczeń (czysty TS)
 │   ├── api/            # klient Supabase, warstwa danych, sync
-│   ├── ui/             # tokeny motywu red/black, współdzielone komponenty
+│   ├── ui/             # tokeny motywu red/black (paleta + skale; komponenty w apkach)
 │   ├── maps/           # abstrakcja RoutingProvider + adaptery (HERE/GraphHopper)
-│   └── i18n/           # tłumaczenia ×14
+│   └── i18n/           # tłumaczenia PL/EN (docelowo ×14)
 ├── supabase/
-│   ├── migrations/     # SQL: schema + RLS + PostGIS
-│   └── functions/      # Edge Functions (Deno)
-├── docs/               # ARCHITECTURE · ROADMAP · DATA-MODEL · ANALIZA
+│   └── migrations/     # SQL: schema + RLS + PostGIS (0001–0051)
+│   # functions/ (Edge Functions/Deno) — PLANOWANE; dziś rolę pełni apps/web/app/api
+├── docs/               # ARCHITECTURE · ROADMAP · DATA-MODEL · ANALIZA · SECURITY-RLS
 └── .github/workflows/  # ci.yml · codeql.yml
 ```
 

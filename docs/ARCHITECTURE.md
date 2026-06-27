@@ -1,12 +1,12 @@
 # 🧠 Architektura — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.4.0 (#138) · 2026-06-22
+> Status: **w realizacji** · stan na v1.51.0 (#195) · 2026-06-27
 > Decyzje wstępne: dokumentacja przed kodem · mapa = hybryda MapLibre+HERE/GraphHopper · web+mobile równolegle.
 >
 > **Stan implementacji** (ten dokument opisuje architekturę **docelową**):
 > - ✅ **Platforma:** Next.js 16 + React 19 + Tailwind 4 (web) · Supabase (Postgres 17 + PostGIS + Auth + RLS + Vault) · MapLibre + `RoutingProvider` (HERE/GraphHopper) · offline przez **outbox** (localStorage) · web‑push · 2FA TOTP + passkeys · szyfrowanie PII/PIN · generowane typy DB · rate‑limiting · **bramka RLS w CI** ([`audit:rls`](../scripts/audit-rls.mjs)).
-> - ✅ **Moduły biznesowe (v1.0–1.4):** flota (pojazdy/kierowcy/karty) · formularze offline (paliwo/AdBlue/trip) + historia · mapa TIR + POI + ceny paliw · statystyki (spalanie/anomalie/koszty) · **zlecenia** (przypisania, statusy, CMR) · **faktury** (numeracja bez luk, status, płatność, bank/IBAN, pozycje, duplikat) · **sejf dokumentów** · rozliczenia + zestawienie miesięczne · **rentowność klientów** (snapshot + trend + CSV) · **alerty progowe** · powiadomienia (in‑app + push) · **dwujęzyczność PL/EN** całego UI widokowego.
-> - 🔜 **Planowane (jeszcze nie w kodzie):** **PowerSync** (offline SQLite ↔ Supabase — dziś rolę pełni outbox), **shadcn/ui**, **TanStack Query**, **Zustand**, **Sentry**, parytet aplikacji **mobile**, profil **truck** w routingu (płatny tier GraphHopper), kolejne języki i18n (dziś PL/EN; docelowo ×14).
+> - ✅ **Moduły biznesowe (v1.0–1.50):** flota (pojazdy/kierowcy/karty) · formularze offline (paliwo/AdBlue/trip) + historia · mapa TIR + POI + ceny paliw + 3D · statystyki (spalanie/anomalie/koszty/CO₂) · **zlecenia** (przypisania, statusy, CMR, **e‑CMR/POD**, zdjęcia ładunku) · **faktury** (numeracja bez luk, status, płatność, bank/IBAN, pozycje, duplikat, eksport Fakturownia + księgowy VAT/koszty) · **sejf dokumentów** · rozliczenia + zestawienie miesięczne · **rentowność klientów i pojazdów** (P&L, snapshot + trend + CSV) · **alerty progowe** · **diety** · **czas pracy** · **wypłaty kierowcy** · **szkody/OC** · przypomnienia badań (psychotech) · **kontrahenci** · koszty pojazdu · zapisane miejsca · powiadomienia (in‑app + push web/Expo) · **aplikacja mobilna kierowcy** (auth/formularze/zlecenia/zdjęcia/POD/push) · **dwujęzyczność PL/EN** całego UI widokowego.
+> - 🔜 **Planowane / rozważane (jeszcze nie w kodzie):** **PowerSync** (offline SQLite ↔ Supabase — dziś rolę pełni outbox), **Supabase Edge Functions** (dziś rolę pełnią trasy `/api` Next.js/Vercel), **shadcn/ui**, **TanStack Query**, **Zustand**, **Sentry**, **mapa w aplikacji mobilnej** (faza M3 — auth/formularze/zlecenia/push już są), profil **truck** w routingu (płatny tier GraphHopper), kolejne języki i18n (dziś PL/EN; docelowo ×14).
 
 ---
 
@@ -33,14 +33,14 @@ apps/
   mobile/   → Expo + React Native (New Architecture) — apka kierowcy
 packages/
   core/     → domena: typy, schematy Zod, silnik rozliczeń (czysty TS, 0 zależności UI)
-  api/      → klient Supabase, repozytoria danych, warstwa sync
-  ui/       → tokeny motywu (red/black), współdzielone prymitywy/ikony
+  api/      → klient Supabase, repozytoria danych, warstwa sync (outbox)
+  ui/       → tokeny motywu (red/black): paleta + skale (komponenty żyją w apkach)
   maps/     → RoutingProvider (interfejs) + adaptery HERE/GraphHopper + typy geo
   i18n/     → tłumaczenia PL/EN (docelowo ×14) + helpery, parytet kluczy w teście
-  config/   → tsconfig bazowy, konfiguracja Biome, współdzielone ustawienia
 supabase/
-  migrations/  → SQL (schema, RLS, PostGIS, indeksy)
-  functions/   → Edge Functions (Deno): zaproszenia, OCR, agregacje, webhooki providerów
+  migrations/  → SQL (schema, RLS, PostGIS, indeksy) — 51 migracji (0001–0051)
+  # functions/ (Edge Functions/Deno) — PLANOWANE; dziś rolę pełnią trasy /api (Next.js/Vercel)
+# Konfiguracja współdzielona w katalogu głównym: tsconfig.base.json · biome.json · turbo.json
 ```
 
 **Zasada:** logika biznesowa (rozliczenia, walidacja, konwersje) żyje wyłącznie w `packages/core`
@@ -53,7 +53,7 @@ i jest testowana jednostkowo. Apki to „cienkie" warstwy prezentacji.
 ```mermaid
 flowchart TB
   subgraph Klient
-    WEB["🖥️ apps/web<br/>Next.js 16 · React 19 · Tailwind 4 · shadcn/ui"]
+    WEB["🖥️ apps/web<br/>Next.js 16 · React 19 · Tailwind 4"]
     MOB["📱 apps/mobile<br/>Expo · RN New Arch · Expo Router"]
   end
   subgraph Współdzielone

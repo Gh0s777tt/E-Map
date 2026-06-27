@@ -32,6 +32,9 @@ jobs:
       - name: Biome (lint + format)
         run: pnpm lint
 
+      - name: Dokumentacja (sync z kodem)
+        run: pnpm docs:check
+
       - name: Typecheck
         run: pnpm -r typecheck
 

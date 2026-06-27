@@ -4,7 +4,7 @@ Stan i plan podłączenia integracji zależnych od API/umów partnerów. Wzorzec
 **kod za flagą env** (jak push/rate‑limiting) — bez klucza funkcja jest ukryta/no‑op, z kluczem działa.
 Nie tworzymy martwych atrap bez specyfikacji — poniżej dokładnie, co jest potrzebne do każdej.
 
-> Status v0.58.0: **Tankerkönig (DE, per‑stacja)** oraz **OpenVan.camp (ceny diesla wg kraju, UE — darmowe)** — wdrożone. DKV/Eurowag/SNAP/Travis wymagają umów/kluczy (niżej).
+> Status v1.51.0: **Tankerkönig (DE, per‑stacja)**, **OpenVan.camp (ceny diesla wg kraju, UE — darmowe)** oraz **Fakturownia (eksport faktur VAT, #145)** — wdrożone. DKV/Eurowag/SNAP/Travis wymagają umów/kluczy (niżej).
 
 ---
 

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-194-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.50.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-195-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.51.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.51.0] — 📚 Synchronizacja dokumentacji z kodem + bramka `docs-check`
+
+- `[#195]` 📚 **Dokumentacja zsynchronizowana z kodem (audyt 360°)** — usunięcie rozjazdów dokument↔kod i bramka, by nie wracały:
+  - **Model danych** ([DATA-MODEL.md](docs/DATA-MODEL.md)): nagłówek → v1.51.0; nowa sekcja **0.3** (migracje 0047–0051: `per_diem_trips`, `work_time_entries`, `drivers.psychotech_expiry`, `driver_payouts`, `damage_claims`); liczba tabel 31 → **40**.
+  - **Roadmapa** ([ROADMAP.md](docs/ROADMAP.md)): nagłówek → v1.51.0; Fazy 0–2 odhaczone `[x]`, status Faz 3–4; sekcja „ponad pierwotny plan (v1.0–1.50)".
+  - **Plan mobile** ([MOBILE-PLAN.md](docs/MOBILE-PLAN.md)): przepisany — aplikacja kierowcy to **MVP** (M1/M2/M4 ✅), nie „szkielet"; zostało M3 (mapa) + publikacja.
+  - **Architektura** ([ARCHITECTURE.md](docs/ARCHITECTURE.md)): nagłówek → v1.51.0; usunięto nieistniejące `packages/config` i `supabase/functions` (rolę pełni `/api`); offline = **outbox**; moduły v1.5–1.50.
+  - **README** ([README.md](README.md)): struktura repo bez `supabase/functions`; tabela modułów +7 (zlecenia, faktury, rentowność, HR kierowcy, szkody/serwis, dokumenty/kontrahenci).
+  - **Backlog** ([BACKLOG.md](docs/BACKLOG.md)): przepisany na wynik audytu (P1 testy · P2 wydajność/mobile · P3 jakość/bezpieczeństwo · P5 KSeF/AI). **CLAUDE / INTEGRATIONS / SECURITY-RLS**: Stack obecny vs docelowy; Fakturownia ✅; audyt RLS → **40/40 tabel, 97 policy**.
+  - **Bramka** [docs-check.mjs](scripts/docs-check.mjs) + skrypt `docs:check` + krok w CI ([ci.yml](.github/workflows/ci.yml)): waliduje wersje (SYNC/badge/CHANGELOG) i nieistniejące katalogi-duchy.
+  - **Bramki:** biome czysto · `tsc` ×7 · 229 testów · build ✓ · **`docs:check` ✓** · audyt RLS ✓ (40 tabel).
 
 ## [1.50.0] — 🔧 Wykres kosztów pozostałych (6 mies.) na karcie pojazdu
 

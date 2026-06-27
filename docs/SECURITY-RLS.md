@@ -63,11 +63,11 @@ nowej pozycji wymaga świadomej decyzji.
 | `pois` | katalog POI (stacje, parkingi) | `is_developer()` |
 | `poi_reviews` | opinie o POI | autor lub `is_developer()` |
 
-## Ostatni wynik (2026‑06‑22, #124)
+## Ostatni wynik (2026‑06‑27, #195)
 
 ```
-Tabele public: 32 (rozszerzeń: 1) · policy: 76 · SECDEF fn: 31
-✓ Pokrycie RLS: 31/31 tabel (RLS + ≥1 policy); 4 oznaczone [wspólnotowa]
+Tabele public: 41 (rozszerzeń: 1) · policy: 97 · SECDEF fn: 31
+✓ Pokrycie RLS: 40/40 tabel (RLS + ≥1 policy); 4 oznaczone [wspólnotowa]
 WYNIK: ✓ izolacja multi-tenant spójna (brak błędów)
 ```
 

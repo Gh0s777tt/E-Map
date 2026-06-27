@@ -1,14 +1,14 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.4.0** (#138) · 2026-06-22
+> Status: **wdrożone** · stan kodu **v1.51.0** (#195) · 2026-06-27
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
 ---
 
-## 0. Aktualny schemat (stan v1.4.0 — migracje 0001–0040)
+## 0. Aktualny schemat (stan v1.51.0 — migracje 0001–0051)
 
-**31 tabel `public` (wszystkie z RLS).** Poniżej rdzeń; sekcja 0.1 obejmuje moduły dodane po v0.51.
+**~40 tabel `public` (wszystkie z RLS).** Poniżej rdzeń; sekcje 0.1–0.3 obejmują moduły dodawane kolejno (liczba tabel weryfikowana automatycznie — patrz [SECURITY-RLS.md](SECURITY-RLS.md) / `pnpm audit:rls`).
 
 **Tabele:**
 - `companies`, `memberships` (`role`, `status`, **`modules` text[]** — 0016), `profiles`, `driver_profiles`.
@@ -57,6 +57,16 @@ szyfruje platforma Supabase.
 - **`order_photos`** (0044) — zdjęcia towaru przy zleceniu (dobrowolny dowód zabezpieczenia ładunku): `order_id`, `path`, `mime`, `size_bytes`, `caption`, `uploaded_by` (`default auth.uid()`). Prywatny bucket Storage `cargo-photos` (ścieżka `{company_id}/{order_id}/{uuid}`). RLS: członek czyta; **upload — każdy aktywny członek** (kierowca dokumentuje ładunek); kasowanie — owner/dispatcher (integralność dowodu). Storage.objects: folder[1] = company_id.
 - **`saved_places`** (0045) — zapisane miejsca (ulubione POI floty: stacje paliw, porty, odprawy celne, firmy, parkingi): `name`, `category`, `lat`, `lng`, `created_by` (`default auth.uid()`). Współdzielone w firmie (zastępują lokalny `localStorage`); klik na mapie dodaje punkt do trasy + delta (`routeDelta` w core). RLS: członek czyta i dodaje; kasowanie — autor lub owner/dispatcher.
 - **`expo_push_tokens`** (0046) — tokeny push Expo aplikacji mobilnej: `user_id`, `company_id`, `token` (unikalny), `platform`. Osobno od `push_subscriptions` (Web Push/VAPID). Każdy użytkownik zarządza własnymi (RLS `user_id = auth.uid()`); wysyłka serwerowa service-role przez Expo Push API (`/api/orders/notify-assignment`).
+
+### 0.3 Moduły HR i ryzyka (migracje 0047–0051)
+
+- **`per_diem_trips`** (0047) — ewidencja podróży do diet: `driver_name`, `destination`, `trip_date`, czas trwania i kwoty; trwała podstawa kalkulatora diet (`perDiem` w core) i zestawienia miesięcznego. RLS: członek czyta, owner/dispatcher zarządza.
+- **`work_time_entries`** (0048) — ewidencja czasu pracy kierowcy: `driver_name`, `work_date`, godziny **jazdy / innej pracy / odpoczynku**, notatka. Podsumowania (sumy, średnia jazda/dzień, dni z przekroczeniem limitu) liczone `summarizeWorkTime` w core. RLS: członek czyta, owner/dispatcher zarządza.
+- **`drivers.psychotech_expiry`** (0049) — nowa kolumna: termin badań **psychotechnicznych**. Wpięta w RPC `list_drivers`/`driver_save` oraz `generate_expiry_notifications` (przypomnienia obok prawa jazdy / kodu 95 / badań lekarskich / ADR).
+- **`driver_payouts`** (0050) — rozliczenia kierowcy: `driver_name`, `type` (należność/zaliczka/potrącenie/wypłata), `amount`, `currency`, `entry_date`, notatka. Saldo do wypłaty per waluta liczone `settleDriverPayouts` w core (bez przeliczeń kursowych). RLS: członek czyta, owner/dispatcher zarządza.
+- **`damage_claims`** (0051) — rejestr szkód / OC: `vehicle_id`, kierowca, `claim_date`, rodzaj (kolizja/kradzież/szyby/żywioł/wandalizm/inne), status (zgłoszona/w likwidacji/naprawiona/zamknięta/odrzucona), koszt, ubezpieczyciel, `claim_number`, opis. Podsumowanie (`summarizeDamageClaims` w core) zasila panel „Co wymaga uwagi" (otwarte szkody). RLS: multi-tenant.
+
+> **Analityka i wykresy bez własnych tabel:** trend przychodu/kosztów/paliwa (`monthlyFleetTrend`, `fuelByMonth`) oraz globalne wyszukiwanie (`searchEntities`) liczone w `packages/core` z danych istniejących tabel; wizualizacja (`BarChart`/`RevenueTrend`) po stronie web.
 
 ---
 

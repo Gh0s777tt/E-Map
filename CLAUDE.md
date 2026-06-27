@@ -8,14 +8,15 @@ było zawsze spójne, zsynchronizowane i w jednej stylistyce z resztą (np. `E-B
 - Motyw wizualny: **czerwień `#E50914` na czerni `#0a0a0a`** (styl Netflix). Bez wyjątków w UI/badge'ach.
 - Konwencja nazw repo w ekosystemie: `E-<Nazwa>`.
 
-## Stack (docelowy — patrz docs/ARCHITECTURE.md)
-- Node 26 · TypeScript 6 (strict) · **pnpm** · **Turborepo** · **Biome** (lint+format, NIE ESLint/Prettier).
-- Web: Next.js 16 · React 19 · Tailwind 4 · shadcn/ui.
-- Mobile: Expo (najnowszy SDK) · React Native New Architecture · Expo Router.
-- Backend: Supabase (Postgres 17 + PostGIS · Auth · Realtime · Storage · Edge Functions/Deno).
-- Offline: PowerSync (lokalny SQLite ↔ Supabase).
-- Mapy: MapLibre GL (render) + abstrakcja `RoutingProvider` (adaptery HERE/GraphHopper).
-- Walidacja: Zod (współdzielona web↔mobile w `packages/core`).
+## Stack (✅ = w kodzie · 🔜 = docelowe; szczegóły w docs/ARCHITECTURE.md)
+- ✅ Node 26 · TypeScript 6 (strict) · **pnpm** · **Turborepo** · **Biome** (lint+format, NIE ESLint/Prettier).
+- ✅ Web: Next.js 16 · React 19 · Tailwind 4 · własne prymitywy UI. 🔜 shadcn/ui.
+- ✅ Mobile: Expo SDK 56 · React Native New Architecture · Expo Router.
+- ✅ Backend: Supabase (Postgres 17 + PostGIS · Auth · Realtime · Storage). 🔜 Edge Functions/Deno (dziś rolę pełnią trasy `/api` Next.js/Vercel).
+- ✅ Offline: **outbox** (localStorage web / AsyncStorage mobile). 🔜 PowerSync (lokalny SQLite ↔ Supabase).
+- ✅ Mapy: MapLibre GL (render) + abstrakcja `RoutingProvider` (adaptery HERE/GraphHopper).
+- ✅ Walidacja: Zod (współdzielona web↔mobile w `packages/core`).
+- 🔜 Stan: TanStack Query / Zustand (dziś React hooks). 🔜 Obserwowalność: Sentry.
 
 ## Wersjonowanie i changelog (KRYTYCZNE — „na bieżąco")
 - **SemVer** + numeracja updatów `[#NNN]` (kolejne, bez luk, chronologicznie).
