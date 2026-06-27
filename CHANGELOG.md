@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-199-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.55.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-200-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.56.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.56.0] — 🧪 Testy: reszta warstwy danych api + outbox mobile
+
+- `[#200]` 🧪 **Pokrycie api i mobile** — domknięcie luki testów warstwy danych:
+  - **api**: +`vehicleCosts`, `perDiemTrips`, `workTimeEntries`, `contractors` → **35 testów** (11 modułów `data/*`).
+  - **mobile** ([apps/mobile](apps/mobile)): vitest + test [lib/outbox.ts](apps/mobile/lib/outbox.ts) — kolejka offline-first (enqueue/sync/error, fuel/adblue/trip, flushQueued, filtr/usuwanie) z mockiem AsyncStorage/Supabase = **6 testów** (było 0).
+  - **Łącznie 289 testów** (core 198 · maps 33 · api 35 · web 15 · mobile 6 · i18n 2) — **wszystkie 6 pakietów pokryte**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 289 testów · build ✓ · docs:check ✓.
 
 ## [1.55.0] — 🧪 Rozszerzenie testów warstwy danych api
 

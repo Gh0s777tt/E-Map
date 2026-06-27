@@ -1,6 +1,6 @@
 # 🗺️ Roadmapa — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.55.0 (#199) · 2026-06-27
+> Status: **w realizacji** · stan na v1.56.0 (#200) · 2026-06-27
 > Zasada: każda faza = działający przyrost. Część zarobkowa (Faza 1) **nie wymaga drogich API map**.
 >
 > **Stan dostarczenia** (autorytatywnie: [CHANGELOG](../CHANGELOG.md)):
