@@ -187,7 +187,7 @@ export function AttentionPanel() {
             detail: `${DAMAGE_STATUS_LABELS[c.status]}${c.cost != null ? ` · ${c.cost} ${c.currency}` : ""}`,
             level: c.status === "reported" ? "expired" : "soon",
             urgency: -daysSince,
-            href: "/szkody",
+            href: "/damages",
           });
         }
 

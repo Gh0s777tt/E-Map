@@ -29,6 +29,15 @@ const config: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
+  // Stare polskie ścieżki → nowe angielskie (zero martwych linków/zakładek).
+  async redirects() {
+    return [
+      { source: "/szkody", destination: "/damages", permanent: true },
+      { source: "/diety", destination: "/per-diem", permanent: true },
+      { source: "/wyplaty", destination: "/payouts", permanent: true },
+      { source: "/czas-pracy", destination: "/work-time", permanent: true },
+    ];
+  },
 };
 
 export default config;

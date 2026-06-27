@@ -117,8 +117,8 @@ export function KpiStrip() {
         accent={kpi.net >= 0 ? palette.success : palette.red}
         sub={`przychód ${kpi.revenue} €`}
       />
-      <Card href="/diety" label="Diety (mies.)" value={kpi.perDiem} small />
-      <Card href="/wyplaty" label="Saldo do wypłaty" value={kpi.payout} small />
+      <Card href="/per-diem" label="Diety (mies.)" value={kpi.perDiem} small />
+      <Card href="/payouts" label="Saldo do wypłaty" value={kpi.payout} small />
     </div>
   );
 }
