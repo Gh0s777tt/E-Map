@@ -10,6 +10,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { type Column, DataTable } from "@/components/DataTable";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
@@ -126,6 +127,32 @@ export default function ContractorsPage() {
     downloadCsv(`kontrahenci_${csvDateStamp()}.csv`, headers, rows);
   }
 
+  const cols: Column<Contractor>[] = [
+    { key: "name", header: "Nazwa", sort: (c) => c.name, cell: (c) => <strong>{c.name}</strong> },
+    { key: "tax_id", header: "NIP / VAT", sort: (c) => c.tax_id, cell: (c) => c.tax_id ?? "—" },
+    { key: "address", header: "Adres", cell: (c) => c.address ?? "—" },
+    { key: "country", header: "Kraj", sort: (c) => c.country, cell: (c) => c.country ?? "—" },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "",
+            align: "right" as const,
+            cell: (c: Contractor) => (
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <Button variant="ghost" onClick={() => startEdit(c)}>
+                  ✏️
+                </Button>
+                <Button variant="danger" onClick={() => remove(c)}>
+                  🗑️
+                </Button>
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div style={{ maxWidth: 820 }}>
       <PageHeader
@@ -209,29 +236,13 @@ export default function ContractorsPage() {
         onRetry={load}
       />
       {!loading && !loadErr && contractors.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {contractors.map((c) => (
-            <div key={c.id} style={styles.card}>
-              <div style={styles.row}>
-                <strong style={{ minWidth: 180 }}>{c.name}</strong>
-                <span style={styles.cell}>{c.tax_id ?? "—"}</span>
-                <span style={styles.cell}>{c.address ?? "—"}</span>
-                <span style={styles.meta}>{c.country ?? ""}</span>
-                <span style={{ flex: 1 }} />
-                {canManage && (
-                  <>
-                    <Button variant="ghost" onClick={() => startEdit(c)}>
-                      ✏️
-                    </Button>
-                    <Button variant="danger" onClick={() => remove(c)}>
-                      🗑️
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <DataTable
+          rows={contractors}
+          rowKey={(c) => c.id}
+          searchText={(c) => [c.name, c.tax_id, c.address, c.country].filter(Boolean).join(" ")}
+          initialSort={{ key: "name", dir: "asc" }}
+          columns={cols}
+        />
       )}
     </div>
   );
@@ -244,8 +255,4 @@ const styles: Record<string, React.CSSProperties> = {
   field: f.field,
   label: f.label,
   input: f.input,
-  card: f.card,
-  row: f.listRow,
-  cell: f.cell,
-  meta: f.meta,
 };

@@ -41,6 +41,8 @@ export const en: Record<MessageKey, string> = {
   "cmd.action": "Action",
   "cmd.theme": "Toggle theme (light/dark)",
   "cmd.print": "Print / export PDF",
+  "table.filter": "Filter…",
+  "table.empty": "No results",
   "nav.group.orders": "Orders",
   "nav.group.forms": "Forms",
   "nav.group.fleet": "Fleet",

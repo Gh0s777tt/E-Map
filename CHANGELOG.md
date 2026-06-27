@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-206-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.62.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-207-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.63.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.63.0] — 📊 Tabela danych (DataTable): sort + filtr
+
+- `[#207]` 📊 **DataTable — generyczny komponent tabeli** (sortowanie + filtr):
+  - **Komponent** [DataTable.tsx](apps/web/components/DataTable.tsx): sort kliknięciem nagłówka (▲/▼, `aria-sort`), filtr tekstowy z licznikiem wyników, motyw red/black (tokeny `--el-*` — działa w trybie jasnym), poziomy scroll, dostępność.
+  - **Logika** [lib/dataTable.ts](apps/web/lib/dataTable.ts): czyste `sortRows`/`filterRows` (`null` na końcu, sort wg locale PL z `numeric`) — **+6 testów** (335 łącznie).
+  - **Adopcja**: lista kontrahentów ([contractors](<apps/web/app/(app)/contractors/page.tsx>)) jako tabela — sort po nazwie/NIP/kraju, filtr, akcje w kolumnie. Wzorzec gotowy do reużycia na kolejnych listach (zlecenia/faktury/pojazdy).
+  - i18n PL/EN (`table.*`). QA wizualne (podgląd): render, sort asc↔desc, filtr (licznik 2/4), akcje, tryb jasny — zweryfikowane.
+  - **Bramki:** biome czysto · `tsc` ×7 · **335 testów** (parytet i18n ✓) · build ✓ · docs:check ✓.
 
 ## [1.62.0] — ⌘ Paleta poleceń 2.0 (akcje + nawigacja)
 
