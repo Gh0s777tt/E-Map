@@ -3,6 +3,7 @@ import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "../components/AuthProvider";
+import { guardRedirect, notificationTarget } from "../lib/navigation";
 
 /** Tap w powiadomienie push → przejście do ekranu wskazanego w `data.url`. */
 function useNotificationTap() {
@@ -10,24 +11,21 @@ function useNotificationTap() {
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const url = response.notification.request.content.data?.url;
-      if (typeof url === "string" && url.startsWith("/")) router.push(url as never);
-      else router.push("/my-orders");
+      router.push(notificationTarget(url) as never);
     });
     return () => sub.remove();
   }, [router]);
 }
 
-/** Bramka: bez sesji → /login; z sesją na /login → pulpit. */
+/** Bramka: bez sesji → /login; z sesją na /login → pulpit. Decyzja w `guardRedirect`. */
 function useProtectedRoute() {
   const { session, loading, configured } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (loading || !configured) return;
-    const onLogin = segments[0] === "login";
-    if (!session && !onLogin) router.replace("/login");
-    else if (session && onLogin) router.replace("/");
+    const target = guardRedirect({ session, loading, configured, segments });
+    if (target) router.replace(target);
   }, [session, loading, configured, segments, router]);
 }
 
