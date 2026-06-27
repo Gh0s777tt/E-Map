@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.63.0 · #207 · 2026-06-27 -->
+<!-- SYNC: po v1.64.0 · #208 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.63.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.64.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -38,15 +38,16 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #206 (UI/UX faza 3):** **paleta poleceń 2.0** — Ctrl/⌘+K jako launcher: akcje (motyw, druk) + nawigacja do stron (z `navGroups`, wg uprawnień) + encje; logika motywu → `lib/theme.ts` (reuse z `ThemeToggle`); fix `suppressHydrationWarning` (FOUC↔hydratacja). i18n `cmd.*`.
 >
 > **Od #207 (UI/UX faza 4):** **DataTable** — generyczny komponent tabeli (sort klik-nagłówek ▲/▼ z `aria-sort`, filtr + licznik, motyw `--el-*`); logika `lib/dataTable.ts` (`sortRows`/`filterRows`, null na końcu, locale PL) + **6 testów**; pilotowa adopcja na liście kontrahentów. i18n `table.*`.
+>
+> **Od #208 (UI/UX faza 5):** **toasty w formularzach** zamiast inline „status" — migracja kontrahentów + pojazdów (`useToast` success/error, auto-znika 3.5 s, `aria-live`, slide-up). Wzorzec do reużycia na pozostałych formularzach.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
 - [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
 - [x] **Data table** — `DataTable` generyczny (sort/filtr), pilot: kontrahenci (#207). 🔜 reużycie: zlecenia/faktury/pojazdy.
 - [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
+- [x] **Toasty w formularzach** — `useToast` (success/error), pilot: kontrahenci + pojazdy (#208). 🔜 reszta formularzy (service/cards/damages/settings).
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
-- [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
-- [ ] Użycie toastów/`useToast` w formularzach zamiast inline „status".
 
 ---
 
