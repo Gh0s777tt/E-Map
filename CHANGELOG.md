@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-198-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.54.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-199-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.55.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.55.0] — 🧪 Rozszerzenie testów warstwy danych api
+
+- `[#199]` 🧪 **Więcej testów `packages/api`** (mock Supabase) — kolejne moduły `data/*`:
+  - **orders** (`listOrders`: company_id/from/to/limit; `listMyOrders`: RLS po `assigned_to`) · **tripEvents** (`tripEventToRow` czysta + `listTripEvents`) · **vehicles** (`vehicleToRow` czysta + `listVehicles`) · **driverPayouts** (filtr `driver_name` + limit) · **damageClaims** (limit/sort/błąd).
+  - Testy api 11 → **27**; łącznie **275 testów**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 275 testów · build ✓ · docs:check ✓.
 
 ## [1.54.0] — 🧪 Testy handlerów tras API (auth-guard + izolacja firm)
 

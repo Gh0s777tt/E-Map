@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.54.0 · #198 · 2026-06-27 -->
+<!-- SYNC: po v1.55.0 · #199 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.54.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.55.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -20,11 +20,13 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #197:** testy `api` (mock Supabase, 11) + walidacja push (`pushUrl`, 6) = **250 testów** · trasy **PL→EN** z redirectami 308 · weryfikacja przygotowania mobile (runbook + lokalny `.env.local`).
 >
 > **Od #198:** pełne testy handlerów tras (`/api/push/send`, `/api/orders/notify-assignment`) — auth-guard 401/403, walidacja 400, izolacja firm 404 = **259 testów**.
+>
+> **Od #199:** rozszerzone testy `api` (orders, tripEvents, vehicles, driverPayouts, damageClaims) — api 11→27, **275 testów**.
 
 ---
 
 ## 🔴 P1 — Testy (rozszerzanie pokrycia)
-- [x] **Testy `packages/api`** — mock Supabase: `fuelLogToRow` + kształt zapytań `listFuelLogs`/`listInvoices`/`listInvoiceItems` (#197, 11 testów). Do rozszerzenia: pozostałe `data/*`.
+- [x] **Testy `packages/api`** — mock Supabase, 7 modułów `data/*` (fuelLogs, invoices, orders, tripEvents, vehicles, driverPayouts, damageClaims) = 27 testów (#197/#199). Do rozszerzenia: drivers, contractors, vehicleCosts, perDiemTrips, workTimeEntries, service.
 - [x] **Testy tras API** — walidacja URL push (#197) + handlery `push/send` i `notify-assignment` (#198: 401/403/400/404, izolacja firm). Do rozszerzenia: pozostałe trasy (route/traffic/fakturownia/passkey).
 - [ ] **Testy mobile** — `lib/outbox.ts` (enqueue/sync/error), guard sesji. Dziś 0.
 
