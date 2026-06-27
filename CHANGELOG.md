@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-197-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.53.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-198-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.54.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.54.0] — 🧪 Testy handlerów tras API (auth-guard + izolacja firm)
+
+- `[#198]` 🧪 **Pełne testy handlerów tras** — domknięcie luki testów API z audytu 360°:
+  - **Setup web** ([vitest.config.ts](apps/web/vitest.config.ts)): katalog `tests/` + alias `@`; mock `server-only`/`next/server`/`getServerSupabase`/`@e-logistic/api`/`@/lib/push` (handlery testowane bez runtime Next/Supabase).
+  - **`/api/push/send`** ([test](apps/web/tests/api/push-send.test.ts)): 503 (brak VAPID) · 401 (brak sesji) · 403 (rola kierowcy) · 400 (open-redirect `url`) · 200 (owner/dispatcher → `sendPushTo`) — 5 testów.
+  - **`/api/orders/notify-assignment`** ([test](apps/web/tests/api/notify-assignment.test.ts)): 401 · 403 · 400 (orderId nie-UUID) · **404 dla zlecenia z innej firmy** (izolacja multi-tenant) — 4 testy.
+  - Testy web 6 → 15; **łącznie 259 testów** (core 198 · maps 33 · api 11 · web 15 · i18n 2).
+  - **Bramki:** biome czysto · `tsc` ×7 · **259 testów** · build ✓ · docs:check ✓.
 
 ## [1.53.0] — 🧪 Testy (api/walidacja) + ujednolicenie tras (EN) + przygotowanie mobile
 

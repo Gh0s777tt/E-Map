@@ -1,14 +1,14 @@
-<!-- SYNC: po v1.53.0 · #197 · 2026-06-27 -->
+<!-- SYNC: po v1.54.0 · #198 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.53.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.54.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
 > Czekają na dane/umowy/klucze (decyzja właściciela). Specyfikacja wpięcia w [INTEGRATIONS.md](INTEGRATIONS.md).
 
-> **✅ Domknięte od poprzedniej listy (#080 → #197):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
+> **✅ Domknięte od poprzedniej listy (#080 → #198):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
 > `useMemo` w stats · `ListStatus` na listach · settlements jako moduł · test push + `icon-192.png` · ceny diesla EU na mapie/`fuel-prices` ·
 > ujednolicenie Node ≥26 · `apps/mobile/tsconfig` (strict) · **sync dokumentacji do v1.51 (#195)** · cała seria modułów v1.0–1.50
 > (zlecenia, faktury, CMR/POD, rentowność, diety, czas pracy, wypłaty, szkody, serwis, dokumenty, kontrahenci, mapa 3D, aplikacja mobilna).
@@ -18,12 +18,14 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > *Zweryfikowane jako nieaktualne (audyt mylił się): indeks `invoice_items` istnieje od 0034; lazy-CSS mapy bez sensu (route-scoped w App Router); `React.memo` na liście kierowców — znikomy zysk przy małych listach.*
 >
 > **Od #197:** testy `api` (mock Supabase, 11) + walidacja push (`pushUrl`, 6) = **250 testów** · trasy **PL→EN** z redirectami 308 · weryfikacja przygotowania mobile (runbook + lokalny `.env.local`).
+>
+> **Od #198:** pełne testy handlerów tras (`/api/push/send`, `/api/orders/notify-assignment`) — auth-guard 401/403, walidacja 400, izolacja firm 404 = **259 testów**.
 
 ---
 
 ## 🔴 P1 — Testy (rozszerzanie pokrycia)
 - [x] **Testy `packages/api`** — mock Supabase: `fuelLogToRow` + kształt zapytań `listFuelLogs`/`listInvoices`/`listInvoiceItems` (#197, 11 testów). Do rozszerzenia: pozostałe `data/*`.
-- [~] **Testy tras API** — walidacja URL push wyodrębniona i przetestowana (#197, 6 testów); pełne handlery (auth‑guard 401/403, role, rate‑limit) — do zrobienia (mock `getServerSupabase`/membership).
+- [x] **Testy tras API** — walidacja URL push (#197) + handlery `push/send` i `notify-assignment` (#198: 401/403/400/404, izolacja firm). Do rozszerzenia: pozostałe trasy (route/traffic/fakturownia/passkey).
 - [ ] **Testy mobile** — `lib/outbox.ts` (enqueue/sync/error), guard sesji. Dziś 0.
 
 ## 🟠 P2 — Wydajność (punktowo; DB ogólnie wzorowe)
