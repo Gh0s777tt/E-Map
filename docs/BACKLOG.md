@@ -1,14 +1,14 @@
-<!-- SYNC: po v1.59.0 · #203 · 2026-06-27 -->
+<!-- SYNC: po v1.60.0 · #204 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.59.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.60.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
 > Czekają na dane/umowy/klucze (decyzja właściciela). Specyfikacja wpięcia w [INTEGRATIONS.md](INTEGRATIONS.md).
 
-> **✅ Domknięte od poprzedniej listy (#080 → #203):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
+> **✅ Domknięte od poprzedniej listy (#080 → #204):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
 > `useMemo` w stats · `ListStatus` na listach · settlements jako moduł · test push + `icon-192.png` · ceny diesla EU na mapie/`fuel-prices` ·
 > ujednolicenie Node ≥26 · `apps/mobile/tsconfig` (strict) · **sync dokumentacji do v1.51 (#195)** · cała seria modułów v1.0–1.50
 > (zlecenia, faktury, CMR/POD, rentowność, diety, czas pracy, wypłaty, szkody, serwis, dokumenty, kontrahenci, mapa 3D, aplikacja mobilna).
@@ -30,6 +30,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #202:** reszta `data/*` (service/savedPlaces/documents/fuelCards/drivers) + handlery tras (route/traffic/fakturownia) + guard mobile (`guardRedirect`/`notificationTarget`) = **327 testów**.
 >
 > **Od #203 (UI/UX faza 1):** warstwa motion (tokeny CSS, animacje/przejścia, View Transitions, focus-visible, reduced-motion) · prymitywy (Button hover, Skeleton, Spinner, animowany BarChart) · toasty · skeleton w ListStatus.
+>
+> **Od #204:** **audit-log viewer** (`/audit`, owner) · **eksport PDF** (`PrintButton` + `@media print`) · hover-lift kart pulpitu.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [ ] **Tryb jasny** (light mode) + przełącznik (po tokenach #203).

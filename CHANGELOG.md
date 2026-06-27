@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-203-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.59.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-204-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.60.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.60.0] — 🔒 Audyt (viewer) + 🖨️ eksport PDF + mikrointerakcje
+
+- `[#204]` 🔒 **Dziennik audytu + eksport PDF + dopracowanie UI**:
+  - **Audit-log viewer** ([/audit](<apps/web/app/(app)/audit/page.tsx>), owner): odczyt `audit_log` (dostępy do PIN/PII, akcje krytyczne) + filtr akcji; warstwa [audit.ts](packages/api/src/data/audit.ts) (RLS owner/developer) + test; nawigacja + i18n PL/EN.
+  - **Eksport PDF** (`PrintButton` w [ui.tsx](apps/web/components/ui.tsx) + `@media print`): druk/PDF bez „chrome" (sidebar/przyciski/toasty), motyw zachowany; przycisk na pulpicie.
+  - **Mikrointerakcje**: karty pulpitu hover-lift (`.el-card`). Drill-down KPI już przez `href` w `KpiStrip`.
+  - **Bramki:** biome czysto · `tsc` ×7 · **329 testów** (api 52) · build ✓ (47 tras) · docs:check ✓.
 
 ## [1.59.0] — ✨ Warstwa UI: animacje, przejścia, toasty, skeleton, dostępność
 

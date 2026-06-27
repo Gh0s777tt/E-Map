@@ -31,6 +31,7 @@ export const pl = {
   "nav.payouts": "Rozliczenia kier.",
   "nav.fuelPrices": "Ceny diesla",
   "nav.team": "Zespół",
+  "nav.audit": "Audyt",
   "nav.group.orders": "Zlecenia",
   "nav.group.forms": "Formularze",
   "nav.group.fleet": "Flota",

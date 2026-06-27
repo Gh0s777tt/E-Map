@@ -53,6 +53,15 @@ export function Skeleton({
   return <div className="el-skeleton" style={{ width, height, borderRadius: radius, ...style }} />;
 }
 
+/** Przycisk druku / eksportu do PDF (ukrywa „chrome" przez `@media print`). */
+export function PrintButton({ label = "🖨️ Drukuj / PDF" }: { label?: string }) {
+  return (
+    <Button variant="ghost" className="no-print" onClick={() => window.print()}>
+      {label}
+    </Button>
+  );
+}
+
 /** Wskaźnik ładowania (obracające się kółko). */
 export function Spinner({ size = 18 }: { size?: number }) {
   return (

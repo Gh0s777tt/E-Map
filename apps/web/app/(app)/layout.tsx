@@ -112,6 +112,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       items: [
         { href: "/settings", label: t("nav.settings") },
         ...(isOwner ? [{ href: "/team", label: t("nav.team") }] : []),
+        ...(isOwner ? [{ href: "/audit", label: t("nav.audit") }] : []),
       ],
     },
   ].filter((g) => g.items.length > 0);

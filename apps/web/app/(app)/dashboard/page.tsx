@@ -7,6 +7,7 @@ import { DriverActiveOrder } from "@/components/DriverActiveOrder";
 import { KpiStrip } from "@/components/KpiStrip";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { RevenueTrend } from "@/components/RevenueTrend";
+import { PrintButton } from "@/components/ui";
 import { getLocale } from "@/lib/locale";
 
 const CARDS: { href: string; tagKey: MessageKey; titleKey: MessageKey; descKey: MessageKey }[] = [
@@ -46,7 +47,12 @@ export default async function DashboardPage() {
   const t = createTranslator(await getLocale());
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("dashboard.title")}</h1>
+      <div
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
+      >
+        <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("dashboard.title")}</h1>
+        <PrintButton />
+      </div>
       <p style={{ color: palette.smoke }}>{t("dashboard.subtitle")}</p>
 
       <CompanyBanner />
@@ -61,6 +67,7 @@ export default async function DashboardPage() {
           <Link
             key={c.href}
             href={c.href}
+            className="el-card"
             style={{
               display: "block",
               minWidth: 220,

@@ -33,6 +33,7 @@ export const en: Record<MessageKey, string> = {
   "nav.payouts": "Driver settlements",
   "nav.fuelPrices": "Diesel prices",
   "nav.team": "Team",
+  "nav.audit": "Audit log",
   "nav.group.orders": "Orders",
   "nav.group.forms": "Forms",
   "nav.group.fleet": "Fleet",
