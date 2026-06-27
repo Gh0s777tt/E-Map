@@ -23,6 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -44,6 +45,7 @@ const providerLabel = (p: string) =>
 
 export default function VehiclesPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,7 +72,6 @@ export default function VehiclesPage() {
   const [insurerOther, setInsurerOther] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<string | null>(null);
 
   const loadVehicles = useCallback(async () => {
     setLoading(true);
@@ -158,7 +159,6 @@ export default function VehiclesPage() {
     pickListValue(v.insurer, INSURERS as unknown as string[], setInsurer, setInsurerOther);
     setLicenseNumber(v.license_number ?? "");
     setErrors({});
-    setStatus(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -180,7 +180,6 @@ export default function VehiclesPage() {
 
   async function save() {
     setErrors({});
-    setStatus(null);
     const resolvedMake = make === OTHER ? makeOther.trim() : make;
     const resolvedInsurer = insurer === OTHER ? insurerOther.trim() : insurer;
 
@@ -213,20 +212,20 @@ export default function VehiclesPage() {
       const supabase = getBrowserSupabase();
       const membership = await getCachedMembership(supabase);
       if (!membership) {
-        setStatus("📥 Brak firmy — utwórz firmę w panelu, by zapisać w bazie.");
+        toast("Brak firmy — utwórz firmę w panelu, by zapisać w bazie.", "error");
         return;
       }
       if (editingId) {
         await updateVehicle(supabase, editingId, parsed.data, membership.companyId);
-        setStatus("✅ Zmiany zapisane.");
+        toast("Zmiany zapisane.", "success");
       } else {
         await insertVehicle(supabase, parsed.data, membership.companyId);
-        setStatus("✅ Dodano pojazd.");
+        toast("Dodano pojazd.", "success");
       }
       resetForm();
       await loadVehicles();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd zapisu pojazdu.");
+      toast(e instanceof Error ? e.message : "Błąd zapisu pojazdu.", "error");
     }
   }
 
@@ -240,10 +239,10 @@ export default function VehiclesPage() {
     try {
       await deleteVehicle(getBrowserSupabase(), v.id);
       if (editingId === v.id) resetForm();
-      setStatus("🗑️ Pojazd usunięty.");
+      toast("Pojazd usunięty.", "success");
       await loadVehicles();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd usuwania pojazdu.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania pojazdu.", "error");
     }
   }
 
@@ -496,7 +495,6 @@ export default function VehiclesPage() {
               </Button>
             )}
           </div>
-          {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
         </div>
       )}
 

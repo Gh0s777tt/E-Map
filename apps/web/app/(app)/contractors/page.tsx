@@ -14,6 +14,7 @@ import { type Column, DataTable } from "@/components/DataTable";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -22,6 +23,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 export default function ContractorsPage() {
   const t = useT();
   const confirm = useConfirm();
+  const toast = useToast();
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,6 @@ export default function ContractorsPage() {
   const [taxId, setTaxId] = useState("");
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,7 +64,6 @@ export default function ContractorsPage() {
     setTaxId("");
     setAddress("");
     setCountry("");
-    setMsg(null);
   }
 
   function startEdit(c: Contractor) {
@@ -72,22 +72,20 @@ export default function ContractorsPage() {
     setTaxId(c.tax_id ?? "");
     setAddress(c.address ?? "");
     setCountry(c.country ?? "");
-    setMsg(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function save() {
-    setMsg(null);
     const trimmed = name.trim();
     if (!trimmed) {
-      setMsg("Podaj nazwę kontrahenta.");
+      toast("Podaj nazwę kontrahenta.", "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        setMsg("Brak firmy.");
+        toast("Brak firmy — utwórz ją na Pulpicie.", "error");
         return;
       }
       const input = {
@@ -98,15 +96,15 @@ export default function ContractorsPage() {
       };
       if (editingId) {
         await updateContractor(sb, editingId, input);
-        setMsg("✅ Kontrahent zaktualizowany.");
+        toast("Kontrahent zaktualizowany.", "success");
       } else {
         await upsertContractor(sb, m.companyId, input);
-        setMsg("✅ Kontrahent dodany.");
+        toast("Kontrahent dodany.", "success");
       }
       resetForm();
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd zapisu.");
+      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
     }
   }
 
@@ -115,9 +113,10 @@ export default function ContractorsPage() {
     try {
       await deleteContractor(getBrowserSupabase(), c.id);
       if (editingId === c.id) resetForm();
+      toast("Kontrahent usunięty.", "success");
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd usuwania.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
     }
   }
 
@@ -214,7 +213,6 @@ export default function ContractorsPage() {
               </Button>
             )}
           </div>
-          {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
         </div>
       )}
 

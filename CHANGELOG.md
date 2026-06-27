@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-207-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.63.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-208-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.64.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.64.0] — 🔔 Toasty w formularzach (feedback po zapisie)
+
+- `[#208]` 🔔 **Toasty zamiast inline „status" w formularzach** (pilot CRUD):
+  - **Migracja** kontrahentów ([contractors](<apps/web/app/(app)/contractors/page.tsx>)) i pojazdów ([vehicles](<apps/web/app/(app)/vehicles/page.tsx>)): zapis / usuń / walidacja → `useToast` (success/error) zamiast `setStatus`/`setMsg` + inline `<p>`. Ulotny feedback (auto-znika 3.5 s, `aria-live`, slide-up) bez przesuwania layoutu.
+  - Wzorzec gotowy do reużycia na pozostałych formularzach (service/cards/damages/settings/…).
+  - QA wizualne (podgląd): walidacja pustej nazwy → toast `el-toast-error` — zweryfikowane.
+  - **Bramki:** biome czysto · `tsc` ×7 · **335 testów** · build ✓ · docs:check ✓.
 
 ## [1.63.0] — 📊 Tabela danych (DataTable): sort + filtr
 
