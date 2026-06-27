@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-200-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.56.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-201-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.57.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.57.0] — ♻️ Dedup walidacji Zod → core (web + mobile)
+
+- `[#201]` ♻️ **Wspólne helpery błędów Zod w core** — koniec kopiowanej obsługi walidacji formularzy:
+  - **Rdzeń** [core/zodErrors.ts](packages/core/src/zodErrors.ts): `zodFieldErrors(error)` → `Record<pole, komunikat>` (formularze web) oraz `firstZodError(error)` → pierwszy komunikat (proste UI mobile). Czyste, **4 testy**.
+  - **Podmiana 8 miejsc**: web (DriverRoster, LiquidForm, vehicles, cards, reports, forms/trip) używa `zodFieldErrors`; mobile (LiquidForm, trip) używa `firstZodError`. Identyczna logika, jedno źródło prawdy.
+  - Testy core 198 → 202; **łącznie 293**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 293 testów · build ✓ · docs:check ✓.
 
 ## [1.56.0] — 🧪 Testy: reszta warstwy danych api + outbox mobile
 

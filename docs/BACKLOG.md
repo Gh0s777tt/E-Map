@@ -1,14 +1,14 @@
-<!-- SYNC: po v1.56.0 · #200 · 2026-06-27 -->
+<!-- SYNC: po v1.57.0 · #201 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.56.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.57.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
 > Czekają na dane/umowy/klucze (decyzja właściciela). Specyfikacja wpięcia w [INTEGRATIONS.md](INTEGRATIONS.md).
 
-> **✅ Domknięte od poprzedniej listy (#080 → #200):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
+> **✅ Domknięte od poprzedniej listy (#080 → #201):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
 > `useMemo` w stats · `ListStatus` na listach · settlements jako moduł · test push + `icon-192.png` · ceny diesla EU na mapie/`fuel-prices` ·
 > ujednolicenie Node ≥26 · `apps/mobile/tsconfig` (strict) · **sync dokumentacji do v1.51 (#195)** · cała seria modułów v1.0–1.50
 > (zlecenia, faktury, CMR/POD, rentowność, diety, czas pracy, wypłaty, szkody, serwis, dokumenty, kontrahenci, mapa 3D, aplikacja mobilna).
@@ -24,6 +24,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #199:** rozszerzone testy `api` (orders, tripEvents, vehicles, driverPayouts, damageClaims) — api 11→27, **275 testów**.
 >
 > **Od #200:** reszta testów `api` (vehicleCosts, perDiemTrips, workTimeEntries, contractors → 35) + **testy mobile `outbox`** (6) = **289 testów** — wszystkie 6 pakietów pokryte.
+>
+> **Od #201:** dedup walidacji Zod → core (`zodFieldErrors`/`firstZodError`, 8 miejsc web+mobile) = **293 testów**.
 
 ---
 
@@ -42,7 +44,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] Finalna grafika (ikony/splash), **QA na urządzeniu**, `eas build`/`submit`.
 
 ## 🟡 P3 — Jakość / spójność
-- [ ] **Duplikacja:** wspólna walidacja `LiquidForm` web↔mobile → do `core` (`setupMessage` ✅ #196).
+- [x] **Duplikacja:** `setupMessage` (#196) + `zodFieldErrors`/`firstZodError` (#201) wyekstrahowane do `core` — koniec kopiowanej walidacji/obsługi błędów web↔mobile.
 - [ ] **`as unknown` ×8** (Supabase RPC) — komentarze lub dogenerowane typy RPC.
 - [ ] **Locale hardcoded** `createTranslator("pl")` w kilku miejscach — czytać z kontekstu.
 

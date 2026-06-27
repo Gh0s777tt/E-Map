@@ -14,6 +14,7 @@ import {
   VEHICLE_MAKE_GROUPS,
   VEHICLE_TYPES,
   vehicleSchema,
+  zodFieldErrors,
 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -203,8 +204,7 @@ export default function VehiclesPage() {
 
     const parsed = vehicleSchema.safeParse(candidate);
     if (!parsed.success) {
-      const map: Record<string, string> = {};
-      for (const issue of parsed.error.issues) map[issue.path.join(".")] = issue.message;
+      const map = zodFieldErrors(parsed.error);
       setErrors(map);
       return;
     }

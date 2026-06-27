@@ -1,4 +1,9 @@
-import { TRIP_ACTIONS, type TripEventInput, tripEventSchema } from "@e-logistic/core";
+import {
+  firstZodError,
+  TRIP_ACTIONS,
+  type TripEventInput,
+  tripEventSchema,
+} from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { Stack } from "expo-router";
@@ -61,7 +66,7 @@ export default function TripScreen() {
 
     const parsed = tripEventSchema.safeParse(candidate);
     if (!parsed.success) {
-      setMsg(parsed.error.issues[0]?.message ?? "Błąd walidacji");
+      setMsg(firstZodError(parsed.error));
       return;
     }
     const item = await enqueue("trip", parsed.data, new Date().toISOString());

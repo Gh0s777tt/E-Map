@@ -1,4 +1,4 @@
-import { type FuelLogInput, fuelLogSchema } from "@e-logistic/core";
+import { type FuelLogInput, firstZodError, fuelLogSchema } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -49,7 +49,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
       paymentMethod: payment,
     });
     if (!parsed.success) {
-      setMsg(parsed.error.issues[0]?.message ?? "Błąd walidacji");
+      setMsg(firstZodError(parsed.error));
       return;
     }
     const item = await enqueue(kind, parsed.data, new Date().toISOString());

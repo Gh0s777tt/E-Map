@@ -34,3 +34,4 @@ export * from "./setup";
 export * from "./vehicleCosts";
 export * from "./vehiclePnl";
 export * from "./workTime";
+export * from "./zodErrors";

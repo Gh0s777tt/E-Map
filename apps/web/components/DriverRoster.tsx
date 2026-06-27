@@ -14,6 +14,7 @@ import {
   driverSchema,
   expiryStatus,
   LICENSE_CATEGORIES,
+  zodFieldErrors,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -167,8 +168,7 @@ export function DriverRoster() {
       adrExpiry: adrExpiry || undefined,
     });
     if (!parsed.success) {
-      const map: Record<string, string> = {};
-      for (const issue of parsed.error.issues) map[issue.path.join(".")] = issue.message;
+      const map = zodFieldErrors(parsed.error);
       setErrors(map);
       return;
     }

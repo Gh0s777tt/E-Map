@@ -7,6 +7,7 @@ import {
   PAYMENT_METHODS,
   round2,
   setupMessage,
+  zodFieldErrors,
 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
@@ -172,8 +173,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
     const parsed = fuelLogSchema.safeParse(input);
     if (!parsed.success) {
-      const map: Record<string, string> = {};
-      for (const issue of parsed.error.issues) map[issue.path.join(".")] = issue.message;
+      const map = zodFieldErrors(parsed.error);
       setErrors(map);
       setStatus("Popraw błędy w formularzu.");
       return;

@@ -1,7 +1,7 @@
 "use client";
 
 import { getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
-import { setupMessage, TRIP_ACTIONS, tripEventSchema } from "@e-logistic/core";
+import { setupMessage, TRIP_ACTIONS, tripEventSchema, zodFieldErrors } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -118,8 +118,7 @@ export default function TripFormPage() {
 
     const parsed = tripEventSchema.safeParse(candidate);
     if (!parsed.success) {
-      const map: Record<string, string> = {};
-      for (const issue of parsed.error.issues) map[issue.path.join(".")] = issue.message;
+      const map = zodFieldErrors(parsed.error);
       setErrors(map);
       setStatus("Popraw błędy w formularzu.");
       return;

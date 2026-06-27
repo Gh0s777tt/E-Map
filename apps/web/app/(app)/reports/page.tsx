@@ -10,6 +10,7 @@ import {
   guessDefectPart,
   setupMessage,
   toCsv,
+  zodFieldErrors,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -169,8 +170,7 @@ export default function ReportsPage() {
       description,
     });
     if (!parsed.success) {
-      const map: Record<string, string> = {};
-      for (const i of parsed.error.issues) map[i.path.join(".")] = i.message;
+      const map = zodFieldErrors(parsed.error);
       setErrors(map);
       return;
     }
