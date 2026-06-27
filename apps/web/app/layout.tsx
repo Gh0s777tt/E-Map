@@ -16,7 +16,7 @@ const NO_FLASH = `(function(){try{var t=localStorage.getItem("el-theme");if(t!==
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" data-theme="dark">
+    <html lang="pl" data-theme="dark" suppressHydrationWarning>
       <head>
         {/* Tokeny motywu red/black (oba tryby) — jedno źródło z @e-logistic/ui. */}
         <style>{`:root[data-theme="dark"]{${themeToCssVars(darkTheme)}}:root[data-theme="light"]{${themeToCssVars(lightTheme)}}`}</style>

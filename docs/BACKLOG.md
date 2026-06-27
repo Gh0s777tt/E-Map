@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.61.0 · #205 · 2026-06-27 -->
+<!-- SYNC: po v1.62.0 · #206 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.61.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.62.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -34,11 +34,14 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #204:** **audit-log viewer** (`/audit`, owner) · **eksport PDF** (`PrintButton` + `@media print`) · hover-lift kart pulpitu.
 >
 > **Od #205 (UI/UX faza 2):** **tryb jasny** (light mode) w całej aplikacji + przełącznik w sidebarze (localStorage, anty-FOUC, i18n PL/EN) · jedno źródło motywu (`Theme`→CSS vars, dark+light) · `cssPalette` (migracja **59 plików** hex→tokeny `var(--el-*)`) · powłoka `.app-*` na tokenach. Mapa świadomie ciemna w obu trybach.
+>
+> **Od #206 (UI/UX faza 3):** **paleta poleceń 2.0** — Ctrl/⌘+K jako launcher: akcje (motyw, druk) + nawigacja do stron (z `navGroups`, wg uprawnień) + encje; logika motywu → `lib/theme.ts` (reuse z `ThemeToggle`); fix `suppressHydrationWarning` (FOUC↔hydratacja). i18n `cmd.*`.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
+- [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
 - [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
-- [ ] **Command palette 2.0** (akcje, nie tylko search) · **data table** (sort/filtr/zaznaczanie).
+- [ ] **Data table** (sort/filtr/zaznaczanie) — listy zleceń/faktur/pojazdów.
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
 - [ ] Użycie toastów/`useToast` w formularzach zamiast inline „status".
 

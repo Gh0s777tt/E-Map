@@ -2,39 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
-
-type Mode = "dark" | "light";
+import { getTheme, type ThemeMode, toggleTheme } from "@/lib/theme";
 
 /**
- * Przełącznik trybu jasny/ciemny. Zapisuje wybór w localStorage ("el-theme")
- * i ustawia `data-theme` na <html> — tokeny `--el-*` (z layout.tsx) reagują
- * natychmiast, bez reloadu. Stan początkowy czytany z DOM (ustawionego skryptem
- * anty-FOUC w layout) dopiero po montażu — bez niezgodności hydratacji.
+ * Przełącznik trybu jasny/ciemny. Logika w `lib/theme` (współdzielona z paletą
+ * poleceń). Stan początkowy czytany z DOM (ustawionego skryptem anty-FOUC w
+ * layout) dopiero po montażu — bez niezgodności hydratacji.
  */
 export function ThemeToggle() {
   const t = useT();
-  const [mode, setMode] = useState<Mode>("dark");
+  const [mode, setMode] = useState<ThemeMode>("dark");
 
   useEffect(() => {
-    setMode(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+    setMode(getTheme());
   }, []);
-
-  function toggle() {
-    const next: Mode = mode === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem("el-theme", next);
-    } catch {
-      // brak localStorage (tryb prywatny) — zmiana zadziała do przeładowania
-    }
-    setMode(next);
-  }
 
   // Etykieta = akcja: w trybie ciemnym przycisk oferuje „Tryb jasny" (i odwrotnie).
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={() => setMode(toggleTheme())}
       className="el-btn el-btn-ghost"
       aria-label={t("theme.toggle")}
       title={t("theme.toggle")}
