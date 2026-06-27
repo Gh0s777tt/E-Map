@@ -6,6 +6,7 @@ import {
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { pushConfigured, sendPushTo } from "@/lib/push";
+import { pushUrlSchema } from "@/lib/pushUrl";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -17,15 +18,7 @@ export const dynamic = "force-dynamic";
 const sendSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
   body: z.string().trim().max(500).optional(),
-  url: z
-    .string()
-    .max(512)
-    .regex(/^\/(?!\/)/, "url musi być ścieżką względną")
-    .refine(
-      (u) => !u.includes("..") && !u.includes("\\") && ![...u].some((c) => c.charCodeAt(0) < 32),
-      "url zawiera niedozwolone znaki",
-    )
-    .optional(),
+  url: pushUrlSchema.optional(),
 });
 
 /**

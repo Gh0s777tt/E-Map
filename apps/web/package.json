@@ -7,7 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@e-logistic/api": "workspace:*",
@@ -36,6 +38,7 @@
     "@types/react-dom": "19.2.3",
     "@types/web-push": "3.6.4",
     "tailwindcss": "4.3.1",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
   }
 }
