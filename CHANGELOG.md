@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-205-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.61.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-206-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.62.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.62.0] — ⌘ Paleta poleceń 2.0 (akcje + nawigacja)
+
+- `[#206]` ⌘ **Command palette 2.0** — Ctrl/⌘+K to teraz launcher, nie tylko wyszukiwarka:
+  - **Akcje** (od razu, bez Supabase): przełącz motyw (jasny/ciemny), drukuj / eksport PDF.
+  - **Nawigacja**: skok do dowolnej strony z menu — lista z `navGroups` (respektuje uprawnienia roli).
+  - **Encje** (leniwie): pojazd/kierowca/zlecenie/faktura jak dotąd; filtr łączy akcje + nawigację + encje.
+  - **Refaktor**: logika motywu → [lib/theme.ts](apps/web/lib/theme.ts) (`getTheme`/`setTheme`/`toggleTheme`), współdzielona przez [ThemeToggle](apps/web/components/ThemeToggle.tsx) i paletę ([GlobalSearch](apps/web/components/GlobalSearch.tsx)).
+  - **Fix**: `suppressHydrationWarning` na `<html>` — koniec ostrzeżenia hydratacji przy zapisanym trybie jasnym (skrypt anty-FOUC zmienia `data-theme` przed Reactem).
+  - i18n PL/EN (`cmd.*`). QA wizualne (podgląd): 28 pozycji, akcja motywu przełącza + zapisuje, render natychmiastowy.
+  - **Bramki:** biome czysto · `tsc` ×7 · **329 testów** (parytet i18n ✓) · build ✓ · docs:check ✓.
 
 ## [1.61.0] — 🌗 Tryb jasny (light mode) + przełącznik motywu
 

@@ -4,22 +4,24 @@ import { listDrivers, listInvoices, listOrders, listVehicles } from "@e-logistic
 import { type OrderStatus, type SearchItem, searchEntities } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { toggleTheme } from "@/lib/theme";
 
-/** Pozycja indeksu = wynik wyszukiwania (`SearchItem`) + ikona do UI. */
-type Hit = SearchItem & { icon: string };
+/** Pozycja palety = wynik (`SearchItem`) + ikona; `run` = akcja zamiast nawigacji. */
+type Hit = SearchItem & { icon: string; run?: () => void };
 
 const MAX = 20;
 
 /**
- * Globalna wyszukiwarka (Ctrl/⌘+K) — skok do pojazdu, kierowcy, zlecenia, faktury.
- * Indeks pobierany leniwie przy pierwszym otwarciu; filtr po stronie klienta.
+ * Paleta poleceń (Ctrl/⌘+K) — akcje (motyw, druk), nawigacja do stron oraz skok
+ * do pojazdu/kierowcy/zlecenia/faktury. Akcje i nawigacja dostępne od razu; indeks
+ * encji pobierany leniwie przy pierwszym otwarciu. Filtr po stronie klienta.
  */
-export function GlobalSearch() {
+export function GlobalSearch({ navItems }: { navItems: { href: string; label: string }[] }) {
   const router = useRouter();
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -27,6 +29,36 @@ export function GlobalSearch() {
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Akcje + nawigacja — bez Supabase, zawsze widoczne na starcie palety.
+  const staticItems = useMemo<Hit[]>(() => {
+    const actions: Hit[] = [
+      {
+        icon: "🎨",
+        type: t("cmd.action"),
+        id: "theme",
+        title: t("cmd.theme"),
+        href: "",
+        run: toggleTheme,
+      },
+      {
+        icon: "🖨️",
+        type: t("cmd.action"),
+        id: "print",
+        title: t("cmd.print"),
+        href: "",
+        run: () => window.print(),
+      },
+    ];
+    const nav: Hit[] = navItems.map((n) => ({
+      icon: "→",
+      type: t("cmd.nav"),
+      id: n.href,
+      title: n.label,
+      href: n.href,
+    }));
+    return [...actions, ...nav];
+  }, [navItems, t]);
 
   // Skrót klawiszowy Ctrl/⌘+K (przełącza), Esc zamyka.
   useEffect(() => {
@@ -138,12 +170,16 @@ export function GlobalSearch() {
   }, [open, index, buildIndex]);
 
   const ql = q.trim().toLowerCase();
-  const results = !ql ? (index ?? []).slice(0, MAX) : searchEntities(q, index ?? [], MAX);
+  const results = !ql ? staticItems : searchEntities(q, [...staticItems, ...(index ?? [])], MAX);
 
   function go(h: Hit) {
     setOpen(false);
     setQ("");
-    router.push(h.href);
+    if (h.run) {
+      h.run();
+    } else {
+      router.push(h.href);
+    }
   }
 
   function onInputKey(e: React.KeyboardEvent) {
@@ -193,11 +229,7 @@ export function GlobalSearch() {
               onKeyDown={onInputKey}
             />
             <div style={styles.results}>
-              {index === null ? (
-                <div style={styles.empty}>{t("search.loading")}</div>
-              ) : results.length === 0 ? (
-                <div style={styles.empty}>{ql ? t("search.empty") : t("search.start")}</div>
-              ) : (
+              {results.length > 0 ? (
                 results.map((h, i) => (
                   <button
                     type="button"
@@ -215,6 +247,10 @@ export function GlobalSearch() {
                     <span style={{ color: palette.smoke, fontSize: 12 }}>{h.subtitle}</span>
                   </button>
                 ))
+              ) : index === null ? (
+                <div style={styles.empty}>{t("search.loading")}</div>
+              ) : (
+                <div style={styles.empty}>{t("search.empty")}</div>
               )}
             </div>
           </div>

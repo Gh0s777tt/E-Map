@@ -42,7 +42,7 @@ export function AppSidebar({
         </button>
       </div>
       <div className="app-sidebar-body">
-        {supabaseConfigured && <GlobalSearch />}
+        {supabaseConfigured && <GlobalSearch navItems={navGroups.flatMap((g) => g.items)} />}
         <SidebarNav groups={navGroups} onNavigate={() => setOpen(false)} />
         {supabaseConfigured && (
           <div style={{ marginBottom: 8 }}>
