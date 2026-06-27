@@ -1,5 +1,6 @@
 "use client";
 
+import { setupMessage } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 
 /**
@@ -143,7 +144,7 @@ export function SetupNotice({
   noCompany?: string;
   noVehicles?: string;
 }) {
-  const msg = source === "no-company" ? noCompany : source === "no-vehicles" ? noVehicles : null;
+  const msg = setupMessage(source, { noCompany, noVehicles });
   if (!msg) return null;
   return <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {msg}</p>;
 }

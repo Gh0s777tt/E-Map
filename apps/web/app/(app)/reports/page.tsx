@@ -8,6 +8,7 @@ import {
   type DefectStatus,
   defectSchema,
   guessDefectPart,
+  setupMessage,
   toCsv,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
@@ -76,12 +77,9 @@ export default function ReportsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | DefectStatus>("all");
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
 
-  const setupMsg =
-    source === "no-company"
-      ? "Najpierw utwórz firmę na Pulpicie."
-      : source === "no-vehicles"
-        ? "Dodaj pojazd w zakładce Pojazdy, aby zgłosić usterkę."
-        : null;
+  const setupMsg = setupMessage(source, {
+    noVehicles: "Dodaj pojazd w zakładce Pojazdy, aby zgłosić usterkę.",
+  });
 
   const load = useCallback(async () => {
     setLoading(true);

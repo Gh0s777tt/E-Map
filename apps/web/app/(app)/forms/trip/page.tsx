@@ -1,7 +1,7 @@
 "use client";
 
 import { getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
-import { TRIP_ACTIONS, tripEventSchema } from "@e-logistic/core";
+import { setupMessage, TRIP_ACTIONS, tripEventSchema } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -28,12 +28,10 @@ function splitPlace(label: string): { city: string; country: string } {
 
 export default function TripFormPage() {
   const { vehicles, source } = useFleet();
-  const setupMsg =
-    source === "no-company"
-      ? "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze."
-      : source === "no-vehicles"
-        ? "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz."
-        : null;
+  const setupMsg = setupMessage(source, {
+    noCompany: "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze.",
+    noVehicles: "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz.",
+  });
   const [vehicleId, setVehicleId] = useState("");
   const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
   const [country, setCountry] = useState("");

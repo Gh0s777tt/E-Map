@@ -1,7 +1,13 @@
 "use client";
 
 import { getFuelLog, listFuelLogs, updateFuelLog } from "@e-logistic/api";
-import { fuelLogSchema, latestUnitPrice, PAYMENT_METHODS, round2 } from "@e-logistic/core";
+import {
+  fuelLogSchema,
+  latestUnitPrice,
+  PAYMENT_METHODS,
+  round2,
+  setupMessage,
+} from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -31,12 +37,10 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const title = kind === "fuel" ? t("form.fuel.title") : t("form.adblue.title");
 
   const { vehicles, cards, source } = useFleet();
-  const setupMsg =
-    source === "no-company"
-      ? "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze."
-      : source === "no-vehicles"
-        ? "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz."
-        : null;
+  const setupMsg = setupMessage(source, {
+    noCompany: "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze.",
+    noVehicles: "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz.",
+  });
   const [vehicleId, setVehicleId] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
