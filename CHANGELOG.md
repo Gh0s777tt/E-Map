@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-196-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.52.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-197-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.53.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.53.0] — 🧪 Testy (api/walidacja) + ujednolicenie tras (EN) + przygotowanie mobile
+
+- `[#197]` 🧪 **Pokrycie testowe + porządki** — dalsze domknięcie planu z audytu 360°:
+  - **Testy `api`** ([packages/api](packages/api)): vitest + mock chainable Supabase ([test-utils.ts](packages/api/src/test-utils.ts)); `fuelLogToRow` (czysta) + kształt zapytań `listFuelLogs`/`listInvoices`/`listInvoiceItems` — **11 testów** (było 0).
+  - **Testy `web`** ([apps/web](apps/web)): vitest + ekstrakcja walidacji URL push do [lib/pushUrl.ts](apps/web/lib/pushUrl.ts) (czysta, testowalna); open-redirect / traversal / znaki kontrolne odrzucane — **6 testów** (było 0). Łącznie **250 testów**.
+  - **Trasy PL→EN** ([next.config.ts](apps/web/next.config.ts)): `/szkody→/damages`, `/diety→/per-diem`, `/wyplaty→/payouts`, `/czas-pracy→/work-time` (`git mv`, historia zachowana) + **redirecty 308** ze starych ścieżek (zero martwych linków/zakładek); linki w `layout`/`AttentionPanel`/`KpiStrip` zaktualizowane.
+  - **Mobile**: zweryfikowane przygotowanie do publikacji — `eas.json`/`app.json` gotowe poza `eas.projectId` (`eas init`), runbook [apps/mobile/README.md](apps/mobile/README.md) aktualny. Kroki eas init/build/QA/grafika wg runbooka (wymaga urządzenia + kont sklepów).
+  - **Bramki:** biome czysto · `tsc` ×7 · **250 testów** · build ✓ (46 tras + 4 redirecty) · docs:check ✓.
 
 ## [1.52.0] — 🔧 Naprawy z audytu 360°: hardening, wersje, dedup
 
