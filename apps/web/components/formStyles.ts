@@ -4,7 +4,7 @@
  * samych obiektów `styles` na każdej stronie (input/pole/etykieta/karta/wiersz).
  * Mobile używa tych samych tokenów liczbowych, ale własnych stylów RN.
  */
-import { fontSize, palette, radius, space } from "@e-logistic/ui";
+import { fontSize, cssPalette as palette, radius, space } from "@e-logistic/ui";
 import type { CSSProperties } from "react";
 
 /** Kolumna formularza (label + kontrolka). */

@@ -1,6 +1,6 @@
 "use client";
 
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 type ConfirmFn = (

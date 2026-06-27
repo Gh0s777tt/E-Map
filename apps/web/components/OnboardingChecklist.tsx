@@ -1,7 +1,7 @@
 "use client";
 
 import { listDrivers, listFuelCardsSafe, listOrders, listVehicles } from "@e-logistic/api";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getCachedMembership } from "@/lib/membership";

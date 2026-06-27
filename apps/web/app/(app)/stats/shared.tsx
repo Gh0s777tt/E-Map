@@ -1,6 +1,6 @@
 /** Wspólne typy, helpery i style ekranu statystyk (współdzielone przez page + podkomponenty). */
 import { type FuelStatsEntry, round2 } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 
 export type FuelRaw = {
   id: string;

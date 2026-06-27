@@ -2,7 +2,7 @@
 
 import { listOrders } from "@e-logistic/api";
 import { monthlyFleetTrend, monthsEndingAt } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { BarChart } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";

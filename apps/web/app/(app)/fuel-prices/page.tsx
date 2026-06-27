@@ -1,6 +1,6 @@
 "use client";
 
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { Badge, BarChart, PageHeader } from "@/components/ui";

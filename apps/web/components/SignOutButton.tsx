@@ -1,6 +1,6 @@
 "use client";
 
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/LocaleProvider";
 import { getBrowserSupabase } from "@/lib/supabase/client";

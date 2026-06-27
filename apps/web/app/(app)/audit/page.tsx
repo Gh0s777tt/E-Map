@@ -1,7 +1,7 @@
 "use client";
 
 import { type AuditEntry, listAuditLog } from "@e-logistic/api";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { PageHeader } from "@/components/ui";

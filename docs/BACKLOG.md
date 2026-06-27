@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.60.0 · #204 · 2026-06-27 -->
+<!-- SYNC: po v1.61.0 · #205 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.60.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.61.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -32,10 +32,12 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #203 (UI/UX faza 1):** warstwa motion (tokeny CSS, animacje/przejścia, View Transitions, focus-visible, reduced-motion) · prymitywy (Button hover, Skeleton, Spinner, animowany BarChart) · toasty · skeleton w ListStatus.
 >
 > **Od #204:** **audit-log viewer** (`/audit`, owner) · **eksport PDF** (`PrintButton` + `@media print`) · hover-lift kart pulpitu.
+>
+> **Od #205 (UI/UX faza 2):** **tryb jasny** (light mode) w całej aplikacji + przełącznik w sidebarze (localStorage, anty-FOUC, i18n PL/EN) · jedno źródło motywu (`Theme`→CSS vars, dark+light) · `cssPalette` (migracja **59 plików** hex→tokeny `var(--el-*)`) · powłoka `.app-*` na tokenach. Mapa świadomie ciemna w obu trybach.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
-- [ ] **Tryb jasny** (light mode) + przełącznik (po tokenach #203).
-- [ ] **shadcn/ui** + migracja inline-styles → klasy/tokeny (87% inline dziś).
+- [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
+- [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
 - [ ] **Command palette 2.0** (akcje, nie tylko search) · **data table** (sort/filtr/zaznaczanie).
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
 - [ ] Użycie toastów/`useToast` w formularzach zamiast inline „status".

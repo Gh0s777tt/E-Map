@@ -7,7 +7,7 @@ import {
   markNotificationsRead,
   type Notification,
 } from "@e-logistic/api";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";

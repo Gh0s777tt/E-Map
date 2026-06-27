@@ -3,7 +3,7 @@
 import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
 import { type FuelLogInput, type TripEventInput, toCsv } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useT } from "@/components/LocaleProvider";

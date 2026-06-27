@@ -1,12 +1,13 @@
 "use client";
 
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useState } from "react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { type NavGroup, SidebarNav } from "@/components/SidebarNav";
 import { SignOutButton } from "@/components/SignOutButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 /**
  * Powłoka sidebara z mobilnym drawerem. Desktop (>820px): pełny boczny panel.
@@ -48,6 +49,9 @@ export function AppSidebar({
             <NotificationBell />
           </div>
         )}
+        <div style={{ marginBottom: 8 }}>
+          <ThemeToggle />
+        </div>
         <div style={{ marginBottom: 8 }}>
           <LocaleSwitcher />
         </div>

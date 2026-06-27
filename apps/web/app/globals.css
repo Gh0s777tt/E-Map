@@ -3,21 +3,17 @@
 :root {
   color-scheme: dark;
 
-  /* Tokeny motywu (red/black) — jedno źródło, fundament pod tryb jasny i animacje. */
-  --el-red: #e50914;
-  --el-red-strong: #ff0f1a;
-  --el-background: #0a0a0a;
-  --el-surface: #141414;
-  --el-surface-hover: #1f1f1f;
-  --el-border: #2a2a2a;
-  --el-border-strong: #3a3a3a;
-  --el-text: #f5f5f5;
-  --el-muted: #8a8a8a;
-
-  /* Ruch */
+  /* Ruch i kształty — stałe, niezależne od trybu. Kolory motywu (--el-*) są
+     wstrzykiwane per tryb w layout.tsx (:root[data-theme="dark|light"]),
+     a `cssPalette` w @e-logistic/ui ma fallbacki hex dla SSR/druku. */
   --el-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --el-dur: 160ms;
   --el-radius: 8px;
+}
+
+/* Tryb jasny — natywne kontrolki (scrollbary, formularze) w jasnym schemacie. */
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 html,
@@ -40,8 +36,8 @@ body {
 }
 .app-sidebar {
   width: 240px;
-  background: #141414;
-  border-right: 1px solid #2a2a2a;
+  background: var(--el-surface);
+  border-right: 1px solid var(--el-border);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -61,8 +57,8 @@ body {
 .app-burger {
   display: none;
   background: transparent;
-  border: 1px solid #2a2a2a;
-  color: #f5f5f5;
+  border: 1px solid var(--el-border);
+  color: var(--el-text);
   font-size: 18px;
   line-height: 1;
   border-radius: 8px;
@@ -76,30 +72,30 @@ body {
   flex: 1;
 }
 .app-navlink {
-  color: #f5f5f5;
+  color: var(--el-text);
   text-decoration: none;
   padding: 9px 12px;
   border-radius: 8px;
 }
 .app-navlink:hover {
-  background: #1f1f1f;
+  background: var(--el-surface-hover);
 }
 .app-navlink-active {
-  background: #e50914;
+  background: var(--el-red);
   color: #fff;
   font-weight: 700;
 }
 .app-navlink-active:hover {
-  background: #e50914;
+  background: var(--el-red);
 }
 .app-search-trigger {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  background: #0a0a0a;
-  border: 1px solid #2a2a2a;
-  color: #8a8a8a;
+  background: var(--el-background);
+  border: 1px solid var(--el-border);
+  color: var(--el-muted);
   border-radius: 8px;
   padding: 9px 12px;
   font-size: 13px;
@@ -107,14 +103,14 @@ body {
   margin-bottom: 6px;
 }
 .app-search-trigger:hover {
-  color: #f5f5f5;
-  border-color: #3a3a3a;
+  color: var(--el-text);
+  border-color: var(--el-border-strong);
 }
 .app-search-kbd {
   margin-left: auto;
   font-size: 11px;
-  color: #8a8a8a;
-  border: 1px solid #2a2a2a;
+  color: var(--el-muted);
+  border: 1px solid var(--el-border);
   border-radius: 5px;
   padding: 1px 6px;
 }
@@ -129,7 +125,7 @@ body {
   width: 100%;
   background: transparent;
   border: none;
-  color: #8a8a8a;
+  color: var(--el-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -138,10 +134,10 @@ body {
   cursor: pointer;
 }
 .app-navgroup-head:hover {
-  color: #f5f5f5;
+  color: var(--el-text);
 }
 .app-navgroup-head-active {
-  color: #e50914;
+  color: var(--el-red);
 }
 .app-navgroup-caret {
   font-size: 10px;
@@ -485,7 +481,7 @@ body {
   .app-sidebar {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid #2a2a2a;
+    border-bottom: 1px solid var(--el-border);
     padding: 12px 16px;
   }
   .app-sidebar-head {

@@ -1,5 +1,5 @@
 import { createTranslator, type MessageKey } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { AttentionPanel } from "@/components/AttentionPanel";
 import { CompanyBanner } from "@/components/CompanyBanner";

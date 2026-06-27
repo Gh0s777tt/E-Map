@@ -1,7 +1,7 @@
 "use client";
 
 import { acceptInvite } from "@e-logistic/api";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { clearMembershipCache } from "@/lib/membership";

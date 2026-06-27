@@ -1,7 +1,7 @@
 "use client";
 
 import type { FleetAlert } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useT } from "@/components/LocaleProvider";
 import { styles } from "./shared";
 

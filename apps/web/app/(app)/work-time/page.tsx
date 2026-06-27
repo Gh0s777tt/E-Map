@@ -7,7 +7,7 @@ import {
   type WorkTimeRecord,
 } from "@e-logistic/api";
 import { summarizeWorkTime, type WorkTimeEntry } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";

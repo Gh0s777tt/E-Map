@@ -3,7 +3,7 @@
 import { getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
 import { setupMessage, TRIP_ACTIONS, tripEventSchema, zodFieldErrors } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field, fieldInputStyle as input } from "@/components/Field";

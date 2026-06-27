@@ -2,7 +2,7 @@
 
 import { listDrivers, listInvoices, listOrders, listVehicles } from "@e-logistic/api";
 import { type OrderStatus, type SearchItem, searchEntities } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";

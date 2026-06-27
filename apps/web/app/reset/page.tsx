@@ -1,7 +1,7 @@
 "use client";
 
 import { createTranslator } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 

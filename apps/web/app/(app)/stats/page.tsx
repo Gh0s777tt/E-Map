@@ -26,7 +26,7 @@ import {
   sumCostsByCategory,
   summarizeFuel,
 } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { Badge, PageHeader } from "@/components/ui";

@@ -7,7 +7,7 @@ import {
   settleDriverPayouts,
   sumPerDiem,
 } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getCachedMembership } from "@/lib/membership";

@@ -2,7 +2,7 @@
 
 import { listMyOrders, type Order } from "@e-logistic/api";
 import type { OrderStatus } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
