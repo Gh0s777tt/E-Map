@@ -7,7 +7,7 @@ import {
   type PerDiemTrip,
 } from "@e-logistic/api";
 import { computePerDiem, type DietMode, type DietTrip, sumPerDiem } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";

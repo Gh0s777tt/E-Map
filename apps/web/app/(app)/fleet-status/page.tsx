@@ -8,7 +8,7 @@ import {
   listVehicles,
 } from "@e-logistic/api";
 import { buildFleetStatus, type FleetVehicleState } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";

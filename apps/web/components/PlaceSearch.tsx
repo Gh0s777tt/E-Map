@@ -1,7 +1,7 @@
 "use client";
 
 import { type GeoHit, geocode } from "@e-logistic/maps";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useRef, useState } from "react";
 
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";

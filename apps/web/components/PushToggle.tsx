@@ -1,7 +1,7 @@
 "use client";
 
 import { deletePushSubscription, savePushSubscription } from "@e-logistic/api";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";

@@ -1,6 +1,6 @@
 "use client";
 
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { Skeleton } from "@/components/ui";
 
 /**

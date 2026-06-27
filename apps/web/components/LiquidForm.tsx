@@ -10,7 +10,7 @@ import {
   zodFieldErrors,
 } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field } from "@/components/Field";

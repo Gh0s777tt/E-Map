@@ -10,7 +10,7 @@ import {
   type Order,
 } from "@e-logistic/api";
 import { type ExpiryLevel, expiryStatus, round2 } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";

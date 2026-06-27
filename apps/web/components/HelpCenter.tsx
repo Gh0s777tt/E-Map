@@ -1,6 +1,6 @@
 "use client";
 
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 

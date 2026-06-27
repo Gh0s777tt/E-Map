@@ -1,7 +1,7 @@
 "use client";
 
 import { setupMessage } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 
 /**
  * Wspólne prymitywy UI (web/DOM). Centralizują powtarzane inline-style z ~21 stron

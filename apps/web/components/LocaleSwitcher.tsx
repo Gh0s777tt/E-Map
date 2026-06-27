@@ -1,7 +1,7 @@
 "use client";
 
 import { LOCALES, type Locale } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 

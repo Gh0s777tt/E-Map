@@ -7,7 +7,7 @@ import {
   round2,
   summarizeFuel,
 } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useMemo } from "react";
 import { useT } from "@/components/LocaleProvider";

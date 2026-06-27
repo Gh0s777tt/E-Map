@@ -1,7 +1,7 @@
 "use client";
 
 import { type ClientProfit, type clientProfitability, clientProfitTrend } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useMemo, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { Button } from "@/components/ui";

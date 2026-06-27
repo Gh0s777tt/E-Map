@@ -2,7 +2,7 @@
 
 import { listFuelLogs, listTripEvents } from "@e-logistic/api";
 import { buildSettlement, effectiveModules, round2, type Settlement } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
 import { Button, PageHeader, SetupNotice } from "@/components/ui";

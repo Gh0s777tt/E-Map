@@ -1,6 +1,6 @@
 import { ROLES } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 
 const t = createTranslator("pl");
@@ -46,7 +46,7 @@ export default function Home() {
           fontWeight: 700,
           fontSize: 16,
           textDecoration: "none",
-          boxShadow: `0 0 24px ${palette.red}55`,
+          boxShadow: "0 0 24px rgba(229, 9, 20, 0.33)",
         }}
       >
         Wejdź do aplikacji →

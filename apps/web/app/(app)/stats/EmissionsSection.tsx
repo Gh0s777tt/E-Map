@@ -1,7 +1,7 @@
 "use client";
 
 import { type ClientCo2, formatCo2, round2, type VehicleCo2Row } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { Button } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { FleetStat, styles } from "./shared";

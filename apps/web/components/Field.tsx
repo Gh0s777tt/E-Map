@@ -1,4 +1,4 @@
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 
 /** Pole formularza: etykieta + kontrolka (children) + komunikat błędu. */
 export function Field({

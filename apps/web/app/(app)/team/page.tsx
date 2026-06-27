@@ -2,7 +2,7 @@
 
 import { type CompanyMember, listCompanyMembers, updateMember } from "@e-logistic/api";
 import { APP_MODULE_LABELS, APP_MODULES, type AppModule, effectiveModules } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";

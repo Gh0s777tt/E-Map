@@ -8,7 +8,7 @@ import {
   setOrderStatus,
 } from "@e-logistic/api";
 import type { OrderStatus } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";

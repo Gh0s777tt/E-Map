@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-204-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.60.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-205-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.61.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.61.0] — 🌗 Tryb jasny (light mode) + przełącznik motywu
+
+- `[#205]` 🌗 **Tryb jasny w całej aplikacji + przełącznik**:
+  - **Jedno źródło motywu** ([theme.ts](packages/ui/src/theme.ts)): kontrakt `Theme` mapowany 1:1 na CSS vars `--el-*`; `darkTheme` (kanon red/black) + `lightTheme` (czerwień na bieli, kontrast WCAG AA). Oba wstrzykiwane w [layout.tsx](apps/web/app/layout.tsx) jako `:root[data-theme="dark|light"]`.
+  - **`cssPalette`** (web): te same klucze co `palette`, lecz wartości `var(--el-*)` z fallbackiem hex — migracja **59 plików** z surowych hex na tokeny reagujące na motyw (jedna zmiana importu na plik). `palette` (hex) bez zmian dla mobile (RN), canvas, MapLibre i dokumentów drukowanych.
+  - **Przełącznik** ([ThemeToggle.tsx](apps/web/components/ThemeToggle.tsx)) w sidebarze: zapis w `localStorage`, `data-theme` na `<html>`, etykiety i18n PL/EN; **skrypt anty-FOUC** (zero migotania przy wejściu) + respekt `prefers-color-scheme`.
+  - **Powłoka** ([globals.css](apps/web/app/globals.css)): `.app-*` (sidebar/nawigacja/wyszukiwarka) na `var(--el-*)`; `color-scheme` per tryb. Mapa pozostaje ciemna w obu trybach (świadomie — MapLibre nie czyta `var()`, motyw 3D red/black).
+  - **QA wizualne** (podgląd przeglądarki): pulpit, pojazdy, formularze, faktury — czytelne w obu trybach; przełącznik i persystencja zweryfikowane.
+  - **Bramki:** biome czysto · `tsc` ×7 · **329 testów** (parytet i18n ✓) · build ✓ · docs:check ✓.
 
 ## [1.60.0] — 🔒 Audyt (viewer) + 🖨️ eksport PDF + mikrointerakcje
 

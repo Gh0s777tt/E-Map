@@ -24,7 +24,7 @@ import {
   VEHICLE_COST_CATEGORY_LABELS,
   type VehicleCostCategory,
 } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";

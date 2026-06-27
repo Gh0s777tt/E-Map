@@ -26,7 +26,7 @@ import {
   orderSchema,
   round2,
 } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";

@@ -1,7 +1,7 @@
 "use client";
 
 import { createTranslator, type Locale } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useEffect, useState } from "react";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";

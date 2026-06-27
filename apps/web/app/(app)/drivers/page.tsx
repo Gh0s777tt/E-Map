@@ -2,7 +2,7 @@
 
 import { createInvite } from "@e-logistic/api";
 import { createTranslator } from "@e-logistic/i18n";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { DriverRoster } from "@/components/DriverRoster";
 import * as f from "@/components/formStyles";

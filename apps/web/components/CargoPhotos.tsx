@@ -8,7 +8,7 @@ import {
   uploadOrderPhoto,
 } from "@e-logistic/api";
 import { buildPodCaption, isPodCaption, parsePodCaption } from "@e-logistic/core";
-import { palette } from "@e-logistic/ui";
+import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { SignaturePad } from "@/components/SignaturePad";
