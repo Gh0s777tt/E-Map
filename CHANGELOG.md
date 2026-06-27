@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-202-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.58.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-203-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.59.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.59.0] — ✨ Warstwa UI: animacje, przejścia, toasty, skeleton, dostępność
+
+- `[#203]` ✨ **Ożywienie interfejsu (motion + a11y)** — pierwsza faza UI/UX z wizji:
+  - **Tokeny CSS** ([globals.css](apps/web/app/globals.css)): zmienne motywu red/black — fundament pod tryb jasny i spójność.
+  - **Ruch**: płynne hover/active na nawigacji i przyciskach · **focus-visible** (nawigacja klawiaturą) · **View Transitions API** (płynne przejścia stron, Next 16) · keyframes (fade/slide/scale/shimmer/spin/pulse) · `prefers-reduced-motion` (WCAG).
+  - **Prymitywy** ([ui.tsx](apps/web/components/ui.tsx)): `Button` z hover/active/focus (klasy CSS zamiast inline), nowe `Skeleton` i `Spinner`, animowany `BarChart` (wzrost słupków).
+  - **Toasty** ([Toast.tsx](apps/web/components/Toast.tsx)): `ToastProvider` + `useToast` (wpięte w layout, `aria-live`) — fundament feedbacku formularzy.
+  - **Skeleton** zamiast „⏳ Ładowanie…" w [ListStatus](apps/web/components/ListStatus.tsx).
+  - **Bramki:** biome czysto · `tsc` ×7 · 327 testów · build ✓ · docs:check ✓.
 
 ## [1.58.0] — 🧪 Dopełnienie pokrycia: reszta data/api, handlery tras, guard mobile
 

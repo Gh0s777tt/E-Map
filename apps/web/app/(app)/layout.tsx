@@ -9,6 +9,7 @@ import { ConfirmProvider } from "@/components/ConfirmProvider";
 import { HelpCenter } from "@/components/HelpCenter";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import type { NavGroup } from "@/components/SidebarNav";
+import { ToastProvider } from "@/components/Toast";
 import { getLocale } from "@/lib/locale";
 import { getServerSupabase } from "@/lib/supabase/server";
 
@@ -120,7 +121,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="app-shell">
         <AppSidebar navGroups={navGroups} email={email} supabaseConfigured={supabaseConfigured} />
         <main className="app-main">
-          <ConfirmProvider>{children}</ConfirmProvider>
+          <ToastProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </ToastProvider>
         </main>
         <HelpCenter />
       </div>

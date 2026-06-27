@@ -2,6 +2,22 @@
 
 :root {
   color-scheme: dark;
+
+  /* Tokeny motywu (red/black) — jedno źródło, fundament pod tryb jasny i animacje. */
+  --el-red: #e50914;
+  --el-red-strong: #ff0f1a;
+  --el-background: #0a0a0a;
+  --el-surface: #141414;
+  --el-surface-hover: #1f1f1f;
+  --el-border: #2a2a2a;
+  --el-border-strong: #3a3a3a;
+  --el-text: #f5f5f5;
+  --el-muted: #8a8a8a;
+
+  /* Ruch */
+  --el-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --el-dur: 160ms;
+  --el-radius: 8px;
 }
 
 html,
@@ -207,6 +223,224 @@ body {
 }
 .maplibregl-popup-anchor-right .maplibregl-popup-tip {
   border-left-color: #141414;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Ruch i dostępność (warstwa motion) — płynne stany, focus klawiatury,
+   wejścia treści, skeletony. Respektuje prefers-reduced-motion (WCAG).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* `:where()` = zerowa specyficzność — nie konkuruje z regułami MapLibre wyżej. */
+:where(a, button, input, textarea, select, .app-navlink, .app-navgroup-head, .app-search-trigger) {
+  transition:
+    background-color var(--el-dur) var(--el-ease),
+    border-color var(--el-dur) var(--el-ease),
+    color var(--el-dur) var(--el-ease),
+    box-shadow var(--el-dur) var(--el-ease),
+    transform var(--el-dur) var(--el-ease),
+    opacity var(--el-dur) var(--el-ease);
+}
+
+/* Widoczny focus tylko dla klawiatury (a11y; nie aktywuje się przy myszy). */
+:focus-visible {
+  outline: 2px solid var(--el-red);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.app-navlink:active,
+.app-search-trigger:active {
+  transform: translateY(1px);
+}
+
+@keyframes el-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes el-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes el-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes el-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes el-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes el-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.14);
+  }
+}
+
+.el-fade-in {
+  animation: el-fade-in var(--el-dur) var(--el-ease) both;
+}
+.el-slide-up {
+  animation: el-slide-up 220ms var(--el-ease) both;
+}
+.el-scale-in {
+  animation: el-scale-in 180ms var(--el-ease) both;
+}
+.el-spin {
+  animation: el-spin 700ms linear infinite;
+}
+.el-pulse {
+  animation: el-pulse 1.4s var(--el-ease) infinite;
+}
+
+/* Skeleton — placeholder ładowania (shimmer). */
+.el-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--el-surface) 25%,
+    var(--el-surface-hover) 37%,
+    var(--el-surface) 63%
+  );
+  background-size: 200% 100%;
+  animation: el-shimmer 1.3s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* View Transitions API (Next 16) — płynne przejścia między stronami. */
+@view-transition {
+  navigation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: a11y — reset musi nadpisać każdą animację/transition */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: jw. (WCAG reduced-motion) */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: jw. (WCAG reduced-motion) */
+    transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: jw. (WCAG reduced-motion) */
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Przyciski (prymityw Button) — bazowy wygląd 1:1 z poprzednim + hover/active ── */
+.el-btn {
+  border-radius: var(--el-radius);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.el-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.el-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.el-btn-primary {
+  background: var(--el-red);
+  color: #fff;
+  border: none;
+  padding: 11px 16px;
+}
+.el-btn-primary:hover:not(:disabled) {
+  background: var(--el-red-strong);
+  box-shadow: 0 4px 16px rgba(229, 9, 20, 0.35);
+}
+.el-btn-ghost {
+  background: transparent;
+  color: var(--el-text);
+  border: 1px solid var(--el-border);
+  padding: 9px 12px;
+}
+.el-btn-ghost:hover:not(:disabled) {
+  border-color: var(--el-border-strong);
+  background: var(--el-surface-hover);
+}
+.el-btn-danger {
+  background: transparent;
+  color: var(--el-red);
+  border: 1px solid var(--el-red);
+  padding: 8px 11px;
+}
+.el-btn-danger:hover:not(:disabled) {
+  background: rgba(229, 9, 20, 0.12);
+}
+
+/* ── Animowany słupek wykresu (wzrost przy wejściu) ── */
+.el-bar {
+  transform-origin: bottom;
+  animation: el-bar-grow 480ms var(--el-ease) both;
+}
+@keyframes el-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* ── Toasty (powiadomienia ulotne) ── */
+.el-toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 360px;
+}
+.el-toast {
+  background: var(--el-surface);
+  border: 1px solid var(--el-border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--el-text);
+  font-size: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+.el-toast-success {
+  border-left-color: #22c55e;
+}
+.el-toast-error {
+  border-left-color: var(--el-red);
+}
+.el-toast-info {
+  border-left-color: var(--el-border-strong);
 }
 
 /* Telefon/tablet: sidebar → górny pasek, nawigacja pozioma (zawijana) */

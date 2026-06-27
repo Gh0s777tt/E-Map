@@ -1,6 +1,7 @@
 "use client";
 
 import { palette } from "@e-logistic/ui";
+import { Skeleton } from "@/components/ui";
 
 /**
  * Jednolity stan listy: ładowanie / błąd (z „Ponów") / pusto.
@@ -20,7 +21,15 @@ export function ListStatus({
   emptyText?: string;
   onRetry?: () => void;
 }) {
-  if (loading) return <p style={{ color: palette.smoke, marginTop: 12 }}>⏳ Ładowanie…</p>;
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+        <Skeleton height={44} />
+        <Skeleton height={44} style={{ opacity: 0.7 }} />
+        <Skeleton height={44} style={{ opacity: 0.4 }} />
+      </div>
+    );
+  }
   if (error) {
     return (
       <p style={{ color: palette.smoke, marginTop: 12 }}>

@@ -20,40 +20,56 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
 
 type ButtonVariant = "primary" | "ghost" | "danger";
 
-const buttonStyles: Record<ButtonVariant, React.CSSProperties> = {
-  primary: {
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "11px 16px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "9px 12px",
-    cursor: "pointer",
-  },
-  danger: {
-    background: "transparent",
-    color: palette.red,
-    border: `1px solid ${palette.red}`,
-    borderRadius: 8,
-    padding: "8px 11px",
-    cursor: "pointer",
-  },
-};
-
+/**
+ * Przycisk — wygląd i stany (hover/active/focus/disabled) w klasach CSS (`globals.css`),
+ * dzięki czemu mamy płynne przejścia i dostępny focus. `style` nadal nadpisuje punktowo.
+ */
 export function Button({
   variant = "primary",
-  style,
+  className,
   ...props
 }: { variant?: ButtonVariant } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button type="button" style={{ ...buttonStyles[variant], ...style }} {...props} />;
+  return (
+    <button
+      type="button"
+      className={`el-btn el-btn-${variant}${className ? ` ${className}` : ""}`}
+      {...props}
+    />
+  );
+}
+
+/** Placeholder ładowania (shimmer) — postrzegana szybkość zamiast spinnera. */
+export function Skeleton({
+  width = "100%",
+  height = 16,
+  radius = 6,
+  style,
+}: {
+  width?: number | string;
+  height?: number | string;
+  radius?: number;
+  style?: React.CSSProperties;
+}) {
+  return <div className="el-skeleton" style={{ width, height, borderRadius: radius, ...style }} />;
+}
+
+/** Wskaźnik ładowania (obracające się kółko). */
+export function Spinner({ size = 18 }: { size?: number }) {
+  return (
+    <span
+      className="el-spin"
+      role="status"
+      aria-label="Ładowanie"
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        border: `2px solid ${palette.graphite}`,
+        borderTopColor: palette.red,
+        borderRadius: "50%",
+      }}
+    />
+  );
 }
 
 /**
@@ -105,6 +121,7 @@ export function BarChart({
             {unit}
           </span>
           <div
+            className="el-bar"
             style={{
               width: "70%",
               background: color,
