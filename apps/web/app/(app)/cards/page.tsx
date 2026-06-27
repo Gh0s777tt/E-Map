@@ -26,6 +26,7 @@ import { CardArt } from "@/components/CardArt";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { ListStatus } from "@/components/ListStatus";
+import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -64,7 +65,7 @@ export default function CardsPage() {
   const [discount, setDiscount] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,7 +117,6 @@ export default function CardsPage() {
     setDiscount(String(c.discount_percent ?? ""));
     setVehicleId(c.vehicle_id ?? "");
     setErrors({});
-    setStatus(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -131,7 +131,6 @@ export default function CardsPage() {
 
   async function save() {
     setErrors({});
-    setStatus(null);
     const parsed = fuelCardSchema.safeParse({
       provider,
       cardNumberMasked: masked,
@@ -149,22 +148,22 @@ export default function CardsPage() {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        setStatus("Brak firmy — nie można zapisać.");
+        toast("Brak firmy — nie można zapisać.", "error");
         return;
       }
       if (editingId) {
         await updateFuelCard(sb, editingId, parsed.data);
         if (parsed.data.pin) await setFuelCardPin(sb, editingId, parsed.data.pin);
-        setStatus("✅ Zmiany zapisane.");
+        toast("Zmiany zapisane.", "success");
       } else {
         const cardId = await insertFuelCard(sb, parsed.data, m.companyId);
         if (parsed.data.pin) await setFuelCardPin(sb, cardId, parsed.data.pin);
-        setStatus("✅ Karta dodana.");
+        toast("Karta dodana.", "success");
       }
       resetForm();
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd zapisu karty.");
+      toast(e instanceof Error ? e.message : "Błąd zapisu karty.", "error");
     }
   }
 
@@ -178,10 +177,10 @@ export default function CardsPage() {
         return next;
       });
       if (editingId === cardId) resetForm();
-      setStatus("🗑️ Karta usunięta.");
+      toast("Karta usunięta.", "success");
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd usuwania karty.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania karty.", "error");
     }
   }
 
@@ -275,7 +274,6 @@ export default function CardsPage() {
               </Button>
             )}
           </div>
-          {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
         </div>
       )}
 
