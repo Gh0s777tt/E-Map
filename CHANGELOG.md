@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-208-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.64.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-209-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.65.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.65.0] — 🔔 Toasty: serwis + karty paliwowe (spójność)
+
+- `[#209]` 🔔 **Toasty w kolejnych formularzach CRUD** (spójność z #208):
+  - **Serwis** ([service](<apps/web/app/(app)/service/page.tsx>)) i **karty paliwowe** ([cards](<apps/web/app/(app)/cards/page.tsx>)): zapis / usuń / wykonanie / walidacja → `useToast` (success/error) zamiast inline `setStatus` + `<p>`.
+  - Toasty obejmują teraz 4 formularze CRUD floty: kontrahenci, pojazdy, serwis, karty.
+  - **Bramki:** biome czysto · `tsc` ×7 · **335 testów** · build ✓ · docs:check ✓.
 
 ## [1.64.0] — 🔔 Toasty w formularzach (feedback po zapisie)
 

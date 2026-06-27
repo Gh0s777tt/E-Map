@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -43,7 +44,7 @@ export default function ServicePage() {
   const [intervalMonths, setIntervalMonths] = useState("");
   const [lastDoneKm, setLastDoneKm] = useState("");
   const [lastDoneDate, setLastDoneDate] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,7 +86,6 @@ export default function ServicePage() {
     setIntervalMonths("");
     setLastDoneKm("");
     setLastDoneDate("");
-    setStatus(null);
   }
 
   function startEdit(tk: ServiceTask) {
@@ -100,16 +100,15 @@ export default function ServicePage() {
   }
 
   async function save() {
-    setStatus(null);
     if (!vehicleId || !name.trim()) {
-      setStatus("Podaj pojazd i nazwę zadania.");
+      toast("Podaj pojazd i nazwę zadania.", "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        setStatus("Brak firmy.");
+        toast("Brak firmy.", "error");
         return;
       }
       await saveServiceTask(
@@ -125,11 +124,11 @@ export default function ServicePage() {
         },
         editingId ?? undefined,
       );
-      setStatus(editingId ? "✅ Zaktualizowano." : "✅ Dodano zadanie.");
+      toast(editingId ? "Zaktualizowano." : "Dodano zadanie.", "success");
       resetForm();
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd zapisu.");
+      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
     }
   }
 
@@ -138,9 +137,10 @@ export default function ServicePage() {
     if (!(await confirm(`Oznaczyć „${tk.name}" jako wykonane przy ${km ?? "—"} km?`))) return;
     try {
       await markServiceDone(getBrowserSupabase(), tk.id, km, new Date().toISOString().slice(0, 10));
+      toast("Oznaczono jako wykonane.", "success");
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd.");
+      toast(e instanceof Error ? e.message : "Błąd.", "error");
     }
   }
 
@@ -149,9 +149,10 @@ export default function ServicePage() {
     try {
       await deleteServiceTask(getBrowserSupabase(), id);
       if (editingId === id) resetForm();
+      toast("Zadanie usunięte.", "success");
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd usuwania.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
     }
   }
 
@@ -248,7 +249,6 @@ export default function ServicePage() {
               </Button>
             )}
           </div>
-          {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
         </div>
       )}
 
