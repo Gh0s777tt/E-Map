@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-195-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.51.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-196-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.52.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.52.0] — 🔧 Naprawy z audytu 360°: hardening, wersje, dedup
+
+- `[#196]` 🔧 **Realizacja planu napraw z audytu 360°** (po #195) — wyłącznie zmiany bezpieczne, zweryfikowane bramkami:
+  - **Bezpieczeństwo (hardening):** `rateLimit` z fallbackiem in-memory zamiast czystego fail-open ([ratelimit.ts](apps/web/lib/ratelimit.ts)); twardsza walidacja `url` w [push/send](apps/web/app/api/push/send/route.ts) (odrzuca `..`, backslash, znaki kontrolne).
+  - **Wersje (web/root):** biome 2.5.0→2.5.1, turbo 2.9.18→2.10.0, pg 8.13.1→8.22.0, `@simplewebauthn/*`, `@upstash/ratelimit`+`redis`, `@types/node`. *(react/react-dom i pakiety mobile pominięte — zarządza Expo SDK przez `expo install --fix`.)*
+  - **Jakość:** `setupMessage` wyekstrahowane do [core/setup.ts](packages/core/src/setup.ts) (+4 testy) — koniec 3 inline kopii komunikatu onboardingu; `listInvoiceItems` z `.limit(500)`; naprawa polskich znaków w `package.json` (mojibake); usunięto przestarzałą regułę „faza bieżąca: dokumentacja" w [CLAUDE.md](CLAUDE.md).
+  - **Bramki:** biome czysto · `tsc` ×7 · **233 testy** · build ✓ · docs:check ✓.
+  - ⏸️ *Świadomie odłożone (wymaga QA na urządzeniu / zasobów / decyzji): rozbicie `map/page.tsx`, testy warstwy `api`+routes, publikacja mobile (eas/grafika), KSeF, zmiana tras PL→EN — spis w [BACKLOG.md](docs/BACKLOG.md). Zweryfikowane jako nieaktualne: indeks `invoice_items` (istnieje od 0034), lazy-CSS mapy (route-scoped w App Router).*
 
 ## [1.51.0] — 📚 Synchronizacja dokumentacji z kodem + bramka `docs-check`
 

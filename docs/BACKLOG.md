@@ -1,17 +1,21 @@
-<!-- SYNC: po v1.51.0 · #195 · 2026-06-27 -->
+<!-- SYNC: po v1.52.0 · #196 · 2026-06-27 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.51.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.52.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
 > Czekają na dane/umowy/klucze (decyzja właściciela). Specyfikacja wpięcia w [INTEGRATIONS.md](INTEGRATIONS.md).
 
-> **✅ Domknięte od poprzedniej listy (#080 → #195):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
+> **✅ Domknięte od poprzedniej listy (#080 → #196):** limit + zakres dat w zapytaniach · paginacja/limity w stats/history ·
 > `useMemo` w stats · `ListStatus` na listach · settlements jako moduł · test push + `icon-192.png` · ceny diesla EU na mapie/`fuel-prices` ·
 > ujednolicenie Node ≥26 · `apps/mobile/tsconfig` (strict) · **sync dokumentacji do v1.51 (#195)** · cała seria modułów v1.0–1.50
 > (zlecenia, faktury, CMR/POD, rentowność, diety, czas pracy, wypłaty, szkody, serwis, dokumenty, kontrahenci, mapa 3D, aplikacja mobilna).
+>
+> **Od #196 (naprawy z audytu):** `rateLimit` fallback in-memory · hardening walidacji URL w push · `setupMessage` w core (dedup + testy) ·
+> aktualizacja wersji (biome/turbo/pg/upstash/simplewebauthn/@types/node) · `listInvoiceItems` z `.limit()`.
+> *Zweryfikowane jako nieaktualne (audyt mylił się): indeks `invoice_items` istnieje od 0034; lazy-CSS mapy bez sensu (route-scoped w App Router); `React.memo` na liście kierowców — znikomy zysk przy małych listach.*
 
 ---
 
@@ -21,10 +25,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] **Testy mobile** — `lib/outbox.ts` (enqueue/sync/error), guard sesji. Dziś 0.
 
 ## 🟠 P2 — Wydajność (punktowo; DB ogólnie wzorowe)
-- [ ] **`invoice_items`**: brak indeksu `(invoice_id)` + brak `.limit()` w `listInvoiceItems`. → migracja 0052 + limit.
-- [ ] **`map/page.tsx` (~1700 l.)** — dekompozycja na 6–8 komponentów; CSS MapLibre ładować dynamicznie (JS już lazy).
+- [ ] **`map/page.tsx` (~1700 l.)** — dekompozycja na 6–8 komponentów (wymaga QA wizualnego mapy).
 - [ ] **POI O(n·m)** — filtr stacji wg marek + near‑route Haversine: cache marek / grid spatial index / próbka co ~2 km.
-- [ ] **`React.memo`** na wierszach długich list (np. `DriverRoster`).
 
 ## 🟠 P2 — Mobile do publikacji
 - [ ] **Mapa (faza M3)** — `@maplibre/maplibre-react-native` + reużycie `@e-logistic/maps`.
@@ -32,15 +34,13 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] Finalna grafika (ikony/splash), **QA na urządzeniu**, `eas build`/`submit`.
 
 ## 🟡 P3 — Jakość / spójność
-- [ ] **Duplikacja:** `setupMsg` (~5 kopii) → wspólny hook; walidacja `LiquidForm` web/mobile → do `core`.
+- [ ] **Duplikacja:** wspólna walidacja `LiquidForm` web↔mobile → do `core` (`setupMessage` ✅ #196).
 - [ ] **Trasy PL/EN** wymieszane (`/szkody /diety /wyplaty /czas-pracy` vs reszta EN) — ujednolicić.
 - [ ] **`as unknown` ×8** (Supabase RPC) — komentarze lub dogenerowane typy RPC.
 - [ ] **Locale hardcoded** `createTranslator("pl")` w kilku miejscach — czytać z kontekstu.
 
 ## 🟡 P3 — Bezpieczeństwo (hardening; brak P0/P1)
 - [ ] **Mobile**: sesja w `AsyncStorage` → rozważyć `expo-secure-store` (szyfrowany keychain).
-- [ ] **Push URL**: wzmocnić walidację do allowlisty ścieżek (defense‑in‑depth).
-- [ ] **Rate‑limit**: opcjonalny in‑memory fallback / circuit breaker (dziś świadomy fail‑open).
 - [ ] Potwierdzić **rotację sekretów**, które trafiły kiedyś do historii czatu (Upstash, `sbp_` Supabase).
 
 ## 🟢 P4 — Infra / docelowy stack

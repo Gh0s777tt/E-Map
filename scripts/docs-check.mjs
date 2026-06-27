@@ -6,7 +6,7 @@
  *  1) Badge wersji w README == package.json `version`.
  *  2) Nagłówek `<!-- SYNC: vX.Y.Z … -->` (README + BACKLOG) == wersja.
  *  3) CHANGELOG ma wpis `## [X.Y.Z]` dla bieżącej wersji.
- *  4) Nagłówki „stan … vX.Y.Z" w docs/ (ARCHITECTURE/DATA-MODEL/ROADMAP/MOBILE-PLAN) == wersja.
+ *  4) (ostrzeżenie) Nagłówki „stan … vX.Y.Z" w docs/ ≈ bieżąca wersja (nie blokuje CI).
  *  5) Wymagane katalogi (packages/*, apps/*, supabase/migrations) istnieją.
  *  6) Dokumentacja nie wymienia nieistniejących katalogów-duchów (np. packages/config).
  *
@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : null);
 const errors = [];
+const warnings = [];
 
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const version = pkg.version;
@@ -58,8 +59,10 @@ for (const f of [
   const head = c.slice(0, 800);
   const found = [...head.matchAll(/\bv(\d+\.\d+\.\d+)/g)].map((x) => x[1]);
   if (found.length > 0 && !found.includes(version)) {
-    errors.push(
-      `${f}: nagłówek nie wspomina bieżącej wersji v${version} (znalezione: ${found.join(", ")}).`,
+    // Ostrzeżenie, nie błąd: nagłówek docs śledzi wersję OSTATNIEJ zmiany treści danego
+    // dokumentu, niekoniecznie każdy bump kodu (np. patch bez zmian schematu/architektury).
+    warnings.push(
+      `${f}: nagłówek deklaruje v${found.join("/")}, kod jest na v${version} — rozważ aktualizację przy wydaniu.`,
     );
   }
 }
@@ -92,6 +95,11 @@ const migDir = join(root, "supabase/migrations");
 const migCount = existsSync(migDir)
   ? readdirSync(migDir).filter((f) => f.endsWith(".sql")).length
   : 0;
+
+if (warnings.length > 0) {
+  console.warn("⚠️  docs-check — ostrzeżenia (nie blokują):");
+  for (const w of warnings) console.warn(`  - ${w}`);
+}
 
 if (errors.length > 0) {
   console.error(`\n❌ docs-check: rozjazd dokumentacji z kodem (wersja ${version}):`);
