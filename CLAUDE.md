@@ -41,4 +41,4 @@ było zawsze spójne, zsynchronizowane i w jednej stylistyce z resztą (np. `E-B
 ## Git
 - Praca na branchach (`feat/…`, `fix/…`, `docs/…`), PR do `main`.
 - Commity opisowe, powiązane z `[#NNN]`.
-- Nie pushuj kodu przed akceptacją architektury (faza bieżąca: dokumentacja).
+- Bramki jakości (sekcja wyżej) muszą być zielone przed PR — nie merguj z czerwonymi bramkami.

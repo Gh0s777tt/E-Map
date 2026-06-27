@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 // Walidacja body (P2 #8). `url` MUSI być ścieżką względną (zaczyna się od „/", ale nie „//")
 // — inaczej kliknięcie powiadomienia mogłoby otworzyć dowolną domenę (open-redirect).
+// Dodatkowo (defense-in-depth) odrzucamy „..", backslash i znaki kontrolne.
 const sendSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
   body: z.string().trim().max(500).optional(),
@@ -20,6 +21,10 @@ const sendSchema = z.object({
     .string()
     .max(512)
     .regex(/^\/(?!\/)/, "url musi być ścieżką względną")
+    .refine(
+      (u) => !u.includes("..") && !u.includes("\\") && ![...u].some((c) => c.charCodeAt(0) < 32),
+      "url zawiera niedozwolone znaki",
+    )
     .optional(),
 });
 

@@ -146,7 +146,8 @@ export async function listInvoiceItems(
     .from("invoice_items")
     .select(ITEM_COLS)
     .eq("invoice_id", invoiceId)
-    .order("position");
+    .order("position")
+    .limit(500);
   if (error) throw error;
   return (data ?? []) as InvoiceItem[];
 }
