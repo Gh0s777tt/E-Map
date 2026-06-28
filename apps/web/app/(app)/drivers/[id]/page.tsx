@@ -16,6 +16,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { useToast } from "@/components/Toast";
 import { Badge, PageHeader } from "@/components/ui";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
@@ -36,6 +37,7 @@ const EXPIRY_COLOR: Record<ExpiryLevel, string> = {
 
 export default function DriverCardPage() {
   const t = useT();
+  const toast = useToast();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [driver, setDriver] = useState<DriverRow | null>(null);
@@ -45,7 +47,6 @@ export default function DriverCardPage() {
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,13 +97,12 @@ export default function DriverCardPage() {
   }, [myOrders]);
 
   async function changeLink(userId: string) {
-    setMsg(null);
     try {
       await linkDriverUser(getBrowserSupabase(), id, companyId, userId || null);
-      setMsg("✅ Zapisano powiązanie konta.");
+      toast("Zapisano powiązanie konta.", "success");
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd powiązania.");
+      toast(e instanceof Error ? e.message : "Błąd powiązania.", "error");
     }
   }
 
@@ -202,7 +202,6 @@ export default function DriverCardPage() {
               Powiązanie łączy kartotekę z kontem (do historii zleceń).
             </span>
           </div>
-          {msg && <p style={{ color: palette.smoke, fontSize: 13 }}>{msg}</p>}
 
           {/* Historia zleceń */}
           <h2 style={styles.h2}>Historia zleceń</h2>

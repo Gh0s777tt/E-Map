@@ -36,6 +36,7 @@ import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { PodDoc } from "@/components/PodDoc";
+import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { orderStatusLabel } from "@/lib/labels";
@@ -56,6 +57,7 @@ export default function OrdersPage() {
   const t = useT();
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
+  const toast = useToast();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
@@ -85,7 +87,6 @@ export default function OrdersPage() {
   const [loadDate, setLoadDate] = useState("");
   const [unloadDate, setUnloadDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,7 +173,6 @@ export default function OrdersPage() {
     setLoadDate("");
     setUnloadDate("");
     setNotes("");
-    setMsg(null);
   }
 
   function startEdit(o: Order) {
@@ -195,7 +195,6 @@ export default function OrdersPage() {
   }
 
   async function save() {
-    setMsg(null);
     const parsed = orderSchema.safeParse({
       referenceNo: referenceNo.trim() || undefined,
       shipper: shipper.trim() || undefined,
@@ -213,14 +212,14 @@ export default function OrdersPage() {
       notes: notes.trim() || undefined,
     });
     if (!parsed.success) {
-      setMsg("Sprawdź dane zlecenia.");
+      toast("Sprawdź dane zlecenia.", "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        setMsg("Brak firmy.");
+        toast("Brak firmy.", "error");
         return;
       }
       // Czy przypisanie kierowcy faktycznie się zmieniło (do natychmiastowego push).
@@ -242,20 +241,21 @@ export default function OrdersPage() {
           body: JSON.stringify({ orderId: id }),
         }).catch(() => {});
       }
-      setMsg(editingId ? "✅ Zlecenie zaktualizowane." : "✅ Zlecenie dodane.");
+      toast(editingId ? "Zlecenie zaktualizowane." : "Zlecenie dodane.", "success");
       resetForm();
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd zapisu.");
+      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
     }
   }
 
   async function changeStatus(id: string, s: OrderStatus) {
     try {
       await setOrderStatus(getBrowserSupabase(), id, s);
+      toast("Status zaktualizowany.", "success");
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd zmiany statusu.");
+      toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
     }
   }
 
@@ -268,10 +268,13 @@ export default function OrdersPage() {
       return;
     try {
       const r = await createInvoiceFromOrder(getBrowserSupabase(), o.id);
-      setMsg(`✅ Faktura ${r.number} (brutto ${r.gross} ${o.currency}) — patrz zakładka Faktury.`);
+      toast(
+        `Faktura ${r.number} (brutto ${r.gross} ${o.currency}) — patrz zakładka Faktury.`,
+        "success",
+      );
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd wystawiania faktury.");
+      toast(e instanceof Error ? e.message : "Błąd wystawiania faktury.", "error");
     }
   }
 
@@ -280,9 +283,10 @@ export default function OrdersPage() {
     try {
       await deleteOrder(getBrowserSupabase(), id);
       if (editingId === id) resetForm();
+      toast("Zlecenie usunięte.", "success");
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd usuwania.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
     }
   }
 
@@ -492,7 +496,6 @@ export default function OrdersPage() {
               </Button>
             )}
           </div>
-          {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
         </div>
       )}
 

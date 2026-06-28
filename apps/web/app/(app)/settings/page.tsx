@@ -8,6 +8,7 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { useT } from "@/components/LocaleProvider";
 import { PushToggle } from "@/components/PushToggle";
+import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -18,12 +19,12 @@ type Passkey = { id: string; name: string | null; created_at: string };
 export default function SettingsPage() {
   const t = useT();
   const confirm = useConfirm();
+  const toast = useToast();
   const [state, setState] = useState<State>("loading");
   const [factorId, setFactorId] = useState<string | null>(null);
   const [qr, setQr] = useState<string>("");
   const [secret, setSecret] = useState<string>("");
   const [code, setCode] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [passkeys, setPasskeys] = useState<Passkey[]>([]);
@@ -179,7 +180,6 @@ export default function SettingsPage() {
 
   async function startEnroll() {
     setBusy(true);
-    setMsg(null);
     try {
       const sb = getBrowserSupabase();
       // Usuń ewentualny niezweryfikowany factor (np. po przerwanej próbie).
@@ -189,7 +189,7 @@ export default function SettingsPage() {
       }
       const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp" });
       if (error || !data) {
-        setMsg(error?.message ?? t("settings.twofa.startError"));
+        toast(error?.message ?? t("settings.twofa.startError"), "error");
         return;
       }
       setFactorId(data.id);
@@ -204,12 +204,11 @@ export default function SettingsPage() {
   async function confirmEnroll() {
     if (!factorId) return;
     setBusy(true);
-    setMsg(null);
     try {
       const sb = getBrowserSupabase();
       const { data: ch, error: chErr } = await sb.auth.mfa.challenge({ factorId });
       if (chErr || !ch) {
-        setMsg(chErr?.message ?? t("common.error"));
+        toast(chErr?.message ?? t("common.error"), "error");
         return;
       }
       const { error } = await sb.auth.mfa.verify({
@@ -218,13 +217,13 @@ export default function SettingsPage() {
         code: code.trim(),
       });
       if (error) {
-        setMsg(error.message);
+        toast(error.message, "error");
         return;
       }
       setCode("");
       setQr("");
       setSecret("");
-      setMsg(t("settings.twofa.enabled"));
+      toast(t("settings.twofa.enabled"), "success");
       setState("on");
     } finally {
       setBusy(false);
@@ -235,15 +234,14 @@ export default function SettingsPage() {
     if (!factorId) return;
     if (!(await confirm("Wyłączyć weryfikację dwuetapową?"))) return;
     setBusy(true);
-    setMsg(null);
     try {
       const { error } = await getBrowserSupabase().auth.mfa.unenroll({ factorId });
       if (error) {
-        setMsg(error.message);
+        toast(error.message, "error");
         return;
       }
       setFactorId(null);
-      setMsg(t("settings.twofa.disabledMsg"));
+      toast(t("settings.twofa.disabledMsg"), "success");
       setState("off");
     } finally {
       setBusy(false);
@@ -417,8 +415,6 @@ export default function SettingsPage() {
             {t("settings.twofa.disable")}
           </Button>
         )}
-
-        {msg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{msg}</p>}
       </div>
 
       <div style={styles.card}>

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
+import { useToast } from "@/components/Toast";
 import { getCachedMembership } from "@/lib/membership";
 import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -27,6 +28,7 @@ function splitPlace(label: string): { city: string; country: string } {
 export default function TripFormPage() {
   const { vehicles, source } = useFleet();
   const t = useT();
+  const toast = useToast();
   const setupMsg = setupMessage(source, {
     noCompany: "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze.",
     noVehicles: "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz.",
@@ -41,7 +43,6 @@ export default function TripFormPage() {
   const [amount, setAmount] = useState("");
   const [comment, setComment] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
 
   // Tryb edycji: ?edit=<id> → wczytaj istniejące zdarzenie.
@@ -70,10 +71,13 @@ export default function TripFormPage() {
         setAmount(row.amount != null ? String(row.amount) : "");
         setComment(row.comment ?? "");
       } catch (e) {
-        setStatus(e instanceof Error ? e.message : "Nie udało się wczytać zdarzenia do edycji.");
+        toast(
+          e instanceof Error ? e.message : "Nie udało się wczytać zdarzenia do edycji.",
+          "error",
+        );
       }
     })();
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (!editId && !vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
@@ -85,22 +89,21 @@ export default function TripFormPage() {
 
   function fillGps() {
     if (!navigator.geolocation) {
-      setStatus("GPS niedostępny w tej przeglądarce.");
+      toast("GPS niedostępny w tej przeglądarce.", "error");
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setStatus("Nie udało się pobrać GPS — wpisz lokalizację ręcznie."),
+      () => toast("Nie udało się pobrać GPS — wpisz lokalizację ręcznie.", "error"),
     );
   }
 
   async function submit() {
     if (setupMsg) {
-      setStatus(`⚠️ ${setupMsg}`);
+      toast(setupMsg, "error");
       return;
     }
     setErrors({});
-    setStatus(null);
 
     const base = {
       action,
@@ -119,19 +122,19 @@ export default function TripFormPage() {
     if (!parsed.success) {
       const map = zodFieldErrors(parsed.error);
       setErrors(map);
-      setStatus("Popraw błędy w formularzu.");
+      toast("Popraw błędy w formularzu.", "error");
       return;
     }
 
     if (editId) {
       try {
         await updateTripEvent(getBrowserSupabase(), editId, parsed.data);
-        setStatus("✅ Zmiany zapisane. Przekierowuję do historii…");
+        toast("Zmiany zapisane. Przekierowuję do historii…", "success");
         setTimeout(() => {
           window.location.href = "/forms/history";
         }, 900);
       } catch (e) {
-        setStatus(e instanceof Error ? e.message : "Błąd zapisu zmian.");
+        toast(e instanceof Error ? e.message : "Błąd zapisu zmian.", "error");
       }
       return;
     }
@@ -163,10 +166,11 @@ export default function TripFormPage() {
       }
     }
 
-    setStatus(
+    toast(
       (item.status === "synced"
-        ? "✅ Zapisano i zsynchronizowano."
-        : "📥 Zapisano lokalnie — synchronizacja po połączeniu.") + overloadMsg,
+        ? "Zapisano i zsynchronizowano."
+        : "Zapisano lokalnie — synchronizacja po połączeniu.") + overloadMsg,
+      item.status === "synced" ? "success" : "info",
     );
     setOdometerKm("");
     setWeightKg("");
@@ -342,8 +346,6 @@ export default function TripFormPage() {
         >
           {t("common.save")}
         </button>
-
-        {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
       </div>
     </div>
   );
