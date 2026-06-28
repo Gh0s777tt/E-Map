@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -50,7 +51,7 @@ export default function DocumentsPage() {
   const [vehicleId, setVehicleId] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -105,13 +106,12 @@ export default function DocumentsPage() {
   }
 
   async function upload() {
-    setMsg(null);
     if (!file) {
-      setMsg("Wybierz plik.");
+      toast("Wybierz plik.", "error");
       return;
     }
     if (file.size > MAX_MB * 1024 * 1024) {
-      setMsg(`Plik za duży (max ${MAX_MB} MB).`);
+      toast(`Plik za duży (max ${MAX_MB} MB).`, "error");
       return;
     }
     setBusy(true);
@@ -119,7 +119,7 @@ export default function DocumentsPage() {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        setMsg("Brak firmy.");
+        toast("Brak firmy.", "error");
         return;
       }
       await uploadDocument(sb, m.companyId, file, {
@@ -128,11 +128,11 @@ export default function DocumentsPage() {
         category: category || undefined,
         expiryDate: expiryDate || undefined,
       });
-      setMsg("✅ Dokument wgrany.");
+      toast("Dokument wgrany.", "success");
       resetForm();
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd wgrywania.");
+      toast(e instanceof Error ? e.message : "Błąd wgrywania.", "error");
     } finally {
       setBusy(false);
     }
@@ -156,7 +156,7 @@ export default function DocumentsPage() {
       const url = await getDocumentUrl(getBrowserSupabase(), d.path, 120);
       window.open(url, "_blank", "noopener");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Nie udało się otworzyć dokumentu.");
+      toast(e instanceof Error ? e.message : "Nie udało się otworzyć dokumentu.", "error");
     }
   }
 
@@ -164,9 +164,10 @@ export default function DocumentsPage() {
     if (!(await confirm(`Usunąć dokument „${d.name}"?`))) return;
     try {
       await deleteDocument(getBrowserSupabase(), d);
+      toast("Dokument usunięty.", "success");
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd usuwania.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
     }
   }
 
@@ -252,7 +253,6 @@ export default function DocumentsPage() {
               </span>
             )}
           </div>
-          {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
         </div>
       )}
 

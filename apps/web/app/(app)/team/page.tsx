@@ -6,6 +6,7 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -80,7 +81,7 @@ function MemberRow({
   const [role, setRole] = useState<string>(member.role);
   const [mods, setMods] = useState<AppModule[]>(effectiveModules(member.role, member.modules));
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const toast = useToast();
 
   function toggle(mod: AppModule) {
     setMods((a) => (a.includes(mod) ? a.filter((x) => x !== mod) : [...a, mod]));
@@ -88,16 +89,15 @@ function MemberRow({
 
   async function save() {
     setBusy(true);
-    setMsg(null);
     try {
       await updateMember(getBrowserSupabase(), companyId, member.user_id, {
         role: role as CompanyMember["role"],
         modules: mods,
       });
-      setMsg("✅ Zapisano.");
+      toast("Zapisano.", "success");
       onSaved();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd zapisu.");
+      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
     } finally {
       setBusy(false);
     }
@@ -135,7 +135,6 @@ function MemberRow({
             <Button onClick={save} disabled={busy}>
               Zapisz
             </Button>
-            {msg && <span style={{ color: palette.smoke, fontSize: 13 }}>{msg}</span>}
           </div>
         </>
       )}
