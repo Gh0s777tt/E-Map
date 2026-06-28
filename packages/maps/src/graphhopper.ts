@@ -37,7 +37,7 @@ export function buildGraphHopperBody(
 interface GhPath {
   distance: number; // metry
   time: number; // ms
-  points: { coordinates: [number, number][] };
+  points?: { coordinates?: [number, number][] };
 }
 
 /**
@@ -68,7 +68,10 @@ export class GraphHopperRoutingProvider implements RoutingProvider {
     if (!path) throw new Error("GraphHopper: brak trasy w odpowiedzi.");
 
     const distanceKm = round2(path.distance / 1000);
-    const geometry: LatLng[] = path.points.coordinates.map(([lng, lat]) => ({ lat, lng }));
+    // Odporność: trasa może wrócić bez geometrii (brak `points`) — dystans/czas
+    // pozostają poprawne, geometria pusta (zamiast TypeError na `.coordinates`).
+    const coords = path.points?.coordinates ?? [];
+    const geometry: LatLng[] = coords.map(([lng, lat]) => ({ lat, lng }));
 
     return {
       distanceKm,
