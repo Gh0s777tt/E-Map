@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Trasa importuje `@/lib/ratelimit` (→ `server-only`) — mock pozwala zaimportować ją w teście.
+vi.mock("server-only", () => ({}));
+
 vi.mock("next/server", () => ({
   NextResponse: {
     json: (body: unknown, init?: { status?: number }) =>

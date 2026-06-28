@@ -2,6 +2,7 @@ import { getActiveMembership } from "@e-logistic/api";
 import { toFakturowniaInvoice } from "@e-logistic/core";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { rateLimit } from "@/lib/ratelimit";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -33,6 +34,10 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Brak sesji." }, { status: 401 });
+
+  if (!(await rateLimit(request, "fakturownia-export")).ok) {
+    return NextResponse.json({ error: "Zbyt wiele żądań." }, { status: 429 });
+  }
 
   const m = await getActiveMembership(supabase).catch(() => null);
   if (!m || (m.role !== "owner" && m.role !== "dispatcher")) {

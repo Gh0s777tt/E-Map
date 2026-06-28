@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.75.0 · #219 · 2026-06-28 -->
+<!-- SYNC: po v1.76.0 · #220 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -62,6 +62,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #218 (audyt):** **panele mapy reagują na tryb jasny** — `mapUi.tsx` + panele DOM `page.tsx` (23 użycia) `palette`→`cssPalette`. Render mapy świadomie ciemny (WebGL/markery/POI na hex).
 >
 > **Od #219 (audyt — domknięcie):** link `/dev` w nav (rola `developer`, i18n `nav.dev`) · `.claude/`→`.gitignore` + odśledzenie `launch.json` · udokumentowane: niezależne wersjonowanie `apps/mobile` (EAS/sklepy) i wzorzec `DataTable` vs karty. **Wszystkie ustalenia audytu zaadresowane** (poza `uuid`<11 — świadomie, #216).
+>
+> **Od #220 (audyt — Top usprawnień #9):** **rate-limit na pozostałych mutacjach** — `notify-assignment` + `fakturownia/export` (`rateLimit` po auth, 429, 30/60 s/IP). Z „Top usprawnień" pozostaje już tylko **dekompozycja `map/page.tsx`** (P2 niżej — refaktor maintainability, wymaga QA wizualnego mapy).
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
