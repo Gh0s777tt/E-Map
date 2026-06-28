@@ -1,7 +1,7 @@
 import type { FuelLogInput } from "@e-logistic/core";
 import { describe, expect, it } from "vitest";
 import { mockSupabase } from "../test-utils";
-import { fuelLogToRow, listFuelLogs } from "./fuelLogs";
+import { fuelLogToRow, insertFuelLog, listFuelLogs } from "./fuelLogs";
 
 const baseInput: FuelLogInput = {
   vehicleId: "veh-1",
@@ -82,5 +82,32 @@ describe("listFuelLogs (kształt zapytania)", () => {
   it("rzuca, gdy Supabase zwróci błąd", async () => {
     const { client } = mockSupabase({ data: null, error: new Error("RLS") });
     await expect(listFuelLogs(client)).rejects.toThrow("RLS");
+  });
+});
+
+describe("insertFuelLog (idempotentny upsert — offline-first)", () => {
+  it("upsert z onConflict id + ignoreDuplicates, id z ctx (PK klienta)", async () => {
+    const { client, called, argsOf } = mockSupabase({ data: { id: "uuid-1" }, error: null });
+    await insertFuelLog(client, baseInput, ctx);
+    expect(called("from", "fuel_logs")).toBe(true);
+    const [row, opts] = argsOf("upsert") as [Record<string, unknown>, unknown];
+    expect(row.id).toBe("uuid-1");
+    expect(opts).toEqual({ onConflict: "id", ignoreDuplicates: true });
+  });
+
+  it("kieruje do adblue_logs gdy wskazano tabelę", async () => {
+    const { client, called } = mockSupabase({ data: null, error: null });
+    await insertFuelLog(client, baseInput, ctx, "adblue_logs");
+    expect(called("from", "adblue_logs")).toBe(true);
+  });
+
+  it("re-sync (konflikt → DO NOTHING → maybeSingle null) zwraca null bez błędu", async () => {
+    const { client } = mockSupabase({ data: null, error: null });
+    expect(await insertFuelLog(client, baseInput, ctx)).toBeNull();
+  });
+
+  it("rzuca przy realnym błędzie zapisu (nie-konflikt)", async () => {
+    const { client } = mockSupabase({ data: null, error: new Error("RLS") });
+    await expect(insertFuelLog(client, baseInput, ctx)).rejects.toThrow("RLS");
   });
 });

@@ -33,7 +33,12 @@ export function fuelLogToRow(input: FuelLogInput, ctx: FuelLogContext) {
   };
 }
 
-/** Zapis formularza paliwowego do tabeli `fuel_logs`. */
+/**
+ * Zapis formularza paliwowego do `fuel_logs`/`adblue_logs` — **idempotentny**.
+ * `id` to UUID wygenerowany na kliencie (PK). Ponowna synchronizacja tego samego
+ * wpisu (outbox offline-first) → `ON CONFLICT (id) DO NOTHING`: brak duplikatu i brak
+ * błędu PK. `maybeSingle`, bo przy konflikcie (DO NOTHING) baza nie zwraca wiersza → `null`.
+ */
 export async function insertFuelLog(
   client: SupabaseClient,
   input: FuelLogInput,
@@ -41,7 +46,11 @@ export async function insertFuelLog(
   table: "fuel_logs" | "adblue_logs" = "fuel_logs",
 ) {
   const row = fuelLogToRow(input, ctx);
-  const { data, error } = await client.from(table).insert(row).select().single();
+  const { data, error } = await client
+    .from(table)
+    .upsert(row, { onConflict: "id", ignoreDuplicates: true })
+    .select()
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
