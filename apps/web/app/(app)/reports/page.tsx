@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
 import { getCachedMembership } from "@/lib/membership";
@@ -61,6 +62,7 @@ function download(filename: string, text: string) {
 export default function ReportsPage() {
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
+  const toast = useToast();
   const [canManage, setCanManage] = useState(false);
   const [defects, setDefects] = useState<Defect[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,6 @@ export default function ReportsPage() {
   const [dashboardLight, setDashboardLight] = useState(false);
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | DefectStatus>("all");
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
 
@@ -156,9 +157,8 @@ export default function ReportsPage() {
 
   async function submit() {
     setErrors({});
-    setStatus(null);
     if (setupMsg) {
-      setStatus(`⚠️ ${setupMsg}`);
+      toast(setupMsg, "error");
       return;
     }
     const parsed = defectSchema.safeParse({
@@ -181,17 +181,17 @@ export default function ReportsPage() {
         data: { user },
       } = await sb.auth.getUser();
       if (!m || !user) {
-        setStatus("Brak sesji/firmy.");
+        toast("Brak sesji/firmy.", "error");
         return;
       }
       await insertDefect(sb, parsed.data, { companyId: m.companyId, reportedBy: user.id });
-      setStatus("✅ Usterka zgłoszona.");
+      toast("Usterka zgłoszona.", "success");
       setDescription("");
       setDashboardLight(false);
       setPartTouched(false);
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd zgłoszenia.");
+      toast(e instanceof Error ? e.message : "Błąd zgłoszenia.", "error");
     }
   }
 
@@ -202,9 +202,10 @@ export default function ReportsPage() {
         data: { user },
       } = await sb.auth.getUser();
       await updateDefectStatus(sb, id, s, user?.id);
+      toast("Status zaktualizowany.", "success");
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd zmiany statusu.");
+      toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
     }
   }
 
@@ -212,9 +213,10 @@ export default function ReportsPage() {
     if (!(await confirm("Usunąć zgłoszenie?"))) return;
     try {
       await deleteDefect(getBrowserSupabase(), id);
+      toast("Zgłoszenie usunięte.", "success");
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd usuwania.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
     }
   }
 
@@ -327,7 +329,6 @@ export default function ReportsPage() {
           <Button onClick={submit} style={{ alignSelf: "flex-start", minWidth: 160 }}>
             Zgłoś usterkę
           </Button>
-          {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
         </div>
       </div>
 

@@ -15,6 +15,7 @@ import { CargoPhotos } from "@/components/CargoPhotos";
 import { CmrDoc } from "@/components/CmrDoc";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
@@ -32,6 +33,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
 
 export default function MyOrdersPage() {
   const t = useT();
+  const toast = useToast();
   const { vehicles } = useFleet();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -39,7 +41,6 @@ export default function MyOrdersPage() {
   const [cmrOrder, setCmrOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,13 +77,12 @@ export default function MyOrdersPage() {
   }
 
   async function advance(o: Order, status: OrderStatus) {
-    setMsg(null);
     try {
       await setOrderStatus(getBrowserSupabase(), o.id, status);
-      setMsg(`✅ Status: ${orderStatusLabel(t, status)}`);
+      toast(`Status: ${orderStatusLabel(t, status)}`, "success");
       await load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd zmiany statusu.");
+      toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
     }
   }
 
@@ -111,8 +111,6 @@ export default function MyOrdersPage() {
         emptyText="Brak przypisanych zleceń."
         onRetry={load}
       />
-
-      {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
 
       {!loading && !loadErr && orders.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>

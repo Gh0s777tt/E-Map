@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -36,12 +37,12 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 export default function InvoicesPage() {
   const t = useT();
   const confirm = useConfirm();
+  const toast = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<Invoice | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [buyerName, setBuyerName] = useState("");
   const [buyerTaxId, setBuyerTaxId] = useState("");
@@ -102,7 +103,7 @@ export default function InvoicesPage() {
     if (!(await confirm("Utworzyć duplikat faktury (nowy numer, te same pozycje)?"))) return;
     try {
       const r = await duplicateInvoice(getBrowserSupabase(), id);
-      setMsg(`✅ Utworzono duplikat: ${r.number}`);
+      toast(`Utworzono duplikat: ${r.number}`, "success");
       await load();
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Błąd duplikowania.");
@@ -180,16 +181,15 @@ export default function InvoicesPage() {
   }
 
   async function createNew() {
-    setMsg(null);
     if (!buyerName.trim()) {
-      setMsg("Podaj nabywcę.");
+      toast("Podaj nabywcę.", "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        setMsg("Brak firmy.");
+        toast("Brak firmy.", "error");
         return;
       }
       const r = await createBlankInvoice(sb, m.companyId, {
@@ -214,7 +214,7 @@ export default function InvoicesPage() {
       const created = list.find((i) => i.id === r.id);
       if (created) setSelected(created); // otwórz dokument, by dodać pozycje
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd tworzenia faktury.");
+      toast(e instanceof Error ? e.message : "Błąd tworzenia faktury.", "error");
     }
   }
 
@@ -331,7 +331,6 @@ export default function InvoicesPage() {
           <Button onClick={createNew}>Utwórz i dodaj pozycje</Button>
         </div>
       )}
-      {msg && <p style={{ color: palette.smoke, fontSize: 14 }}>{msg}</p>}
 
       {invoices.length > 0 && (
         <div style={styles.bandRow}>
@@ -451,8 +450,8 @@ function InvoiceDoc({
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState("");
   const [vat, setVat] = useState(String(inv.vat_rate ?? 23));
-  const [msg, setMsg] = useState<string | null>(null);
   const [fakBusy, setFakBusy] = useState(false);
+  const toast = useToast();
   const [fakMsg, setFakMsg] = useState<string | null>(null);
 
   async function exportToFakturownia() {
@@ -516,11 +515,10 @@ function InvoiceDoc({
   );
 
   async function addLine() {
-    setMsg(null);
     const q = Number(qty);
     const u = Number(unit);
     if (!desc.trim() || !Number.isFinite(q) || !Number.isFinite(u)) {
-      setMsg("Uzupełnij opis, ilość i cenę.");
+      toast("Uzupełnij opis, ilość i cenę.", "error");
       return;
     }
     try {
@@ -537,7 +535,7 @@ function InvoiceDoc({
       await reload();
       onChanged();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd dodawania pozycji.");
+      toast(e instanceof Error ? e.message : "Błąd dodawania pozycji.", "error");
     }
   }
 
@@ -547,7 +545,7 @@ function InvoiceDoc({
       await reload();
       onChanged();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd usuwania pozycji.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania pozycji.", "error");
     }
   }
 
@@ -733,11 +731,6 @@ function InvoiceDoc({
             />
             <Button onClick={addLine}>＋ Pozycja</Button>
           </div>
-        )}
-        {msg && (
-          <p className="no-print" style={{ color: "#b00", fontSize: 13 }}>
-            {msg}
-          </p>
         )}
 
         <p style={styles.muted}>

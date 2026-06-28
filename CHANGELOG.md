@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-211-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.67.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-212-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.68.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.68.0] — 🔔 Toasty: pozostałe formularze (100% pokrycia)
+
+- `[#212]` 🔔 **Dopięcie toastów — wszystkie formularze**:
+  - Migracja 7 ostatnich widoków: zlecenia, moje zlecenia, faktury (główne + pozycje), karta kierowcy, usterki, formularz Trip, ustawienia (2FA). Inline `setMsg`/`setStatus` + `<p>` → `useToast` (success/error/info).
+  - **Wszystkie formularze CRUD/akcji na toastach** (13 widoków, #208–#212) — spójny, ulotny feedback w całej aplikacji.
+  - **Bramki:** biome czysto · `tsc` ×7 · **335 testów** · build ✓ · docs:check ✓.
 
 ## [1.67.0] — 🌍 Naprawa i18n: strony respektują wybór języka
 
