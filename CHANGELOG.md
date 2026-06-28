@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-217-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.73.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-218-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.74.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.74.0] — 🗺️ Tryb jasny dla paneli mapy (audyt)
+
+- `[#218]` 🗺️ **Panele/kontrolki mapy reagują na tryb jasny** (audyt: „mapa ciemna w trybie jasnym"):
+  - [mapUi.tsx](apps/web/app/(app)/map/mapUi.tsx) — wszystkie style paneli (panel, input, segment, primary, ghost, result, disruptions, priceRow) z `palette` (hex) → `cssPalette` (`var(--el-*)`). [page.tsx](apps/web/app/(app)/map/page.tsx) — 23 użycia w panelach DOM (≥ l. 900) na `cssPalette`.
+  - **Render mapy świadomie ciemny w obu trybach** — `palette` (hex) zostaje w warstwach MapLibre/WebGL, markerach i kolorach POI (5 użyć ≤ l. 543; `var()` nie działa w WebGL). Jasne panele nad ciemną mapą (wzorzec Google/Apple Maps).
+  - Weryfikacja: tokeny `--el-*` w light → `surface #fff` / `text #18181b` / `border #e3e3e8`; w dark bez zmian.
+  - **Bramki:** biome czysto · `tsc` ×7 · 343 testy · build ✓ · docs:check ✓.
 
 ## [1.73.0] — 🧪 Testy komponentów UI (React Testing Library)
 
