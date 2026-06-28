@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-219-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.75.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-220-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.76.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.76.0] — 🔐 Rate-limit na pozostałych mutacjach (audyt)
+
+- `[#220]` 🔐 **Rate-limiting na mutacjach bez limitu** (audyt — „Top usprawnień" #9, dot. usług Upstash):
+  - [notify-assignment](apps/web/app/api/orders/notify-assignment/route.ts) (push do kierowcy) i [fakturownia/export](apps/web/app/api/fakturownia/export/route.ts) (eksport faktury VAT) — `rateLimit(request, …)` po kontroli sesji (jak `/api/push/send` w #214). 429 przy przekroczeniu (30 / 60 s na IP; Upstash sliding window + fallback in-memory).
+  - Test fakturowni: dodany mock `server-only` (trasa wciąga teraz `@/lib/ratelimit`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 343 testy · build ✓ · docs:check ✓.
 
 ## [1.75.0] — 🧹 Domknięcie ustaleń audytu (higiena)
 
