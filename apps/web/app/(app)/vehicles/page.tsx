@@ -16,13 +16,13 @@ import {
   vehicleSchema,
   zodFieldErrors,
 } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -37,7 +37,6 @@ type CardRow = {
   discount_percent: number;
 };
 
-const t = createTranslator("pl");
 const OTHER = "__other__";
 const ALL_MAKES = VEHICLE_MAKE_GROUPS.flatMap((g) => g.makes);
 const providerLabel = (p: string) =>
@@ -46,6 +45,7 @@ const providerLabel = (p: string) =>
 export default function VehiclesPage() {
   const confirm = useConfirm();
   const toast = useToast();
+  const t = useT();
   const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);

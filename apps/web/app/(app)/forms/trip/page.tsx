@@ -2,18 +2,16 @@
 
 import { getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
 import { setupMessage, TRIP_ACTIONS, tripEventSchema, zodFieldErrors } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field, fieldInputStyle as input } from "@/components/Field";
+import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { getCachedMembership } from "@/lib/membership";
 import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
-
-const t = createTranslator("pl");
 
 function splitPlace(label: string): { city: string; country: string } {
   const parts = label
@@ -28,6 +26,7 @@ function splitPlace(label: string): { city: string; country: string } {
 
 export default function TripFormPage() {
   const { vehicles, source } = useFleet();
+  const t = useT();
   const setupMsg = setupMessage(source, {
     noCompany: "Najpierw utwórz firmę na Pulpicie, aby zapisywać i synchronizować formularze.",
     noVehicles: "Dodaj pojazd w zakładce Pojazdy, aby móc zapisać formularz.",

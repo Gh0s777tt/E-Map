@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.66.0 · #210 · 2026-06-28 -->
+<!-- SYNC: po v1.67.0 · #211 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.66.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.67.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -44,6 +44,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #209:** toasty w kolejnych formularzach CRUD — **serwis** + **karty paliwowe** (spójność z #208). 4 formularze floty na toastach.
 >
 > **Od #210:** toasty w **zespole** + **dokumentach** (wgrywanie/otwieranie/usuwanie/walidacja). 6 formularzy na toastach.
+>
+> **Od #211:** **bugfix i18n** — 4 strony (pojazdy/karty/kierowcy/Trip) + `LiquidForm` ignorowały przełącznik języka (hardcoded `createTranslator("pl")`); zamiana na `useT()`. EN faktycznie działa.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
@@ -72,7 +74,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 ## 🟡 P3 — Jakość / spójność
 - [x] **Duplikacja:** `setupMessage` (#196) + `zodFieldErrors`/`firstZodError` (#201) wyekstrahowane do `core` — koniec kopiowanej walidacji/obsługi błędów web↔mobile.
 - [ ] **`as unknown` ×8** (Supabase RPC) — komentarze lub dogenerowane typy RPC.
-- [ ] **Locale hardcoded** `createTranslator("pl")` w kilku miejscach — czytać z kontekstu.
+- [x] **Locale hardcoded** naprawione — `createTranslator("pl")` → `useT()` na 4 stronach + `LiquidForm` (#211). Publiczne (landing/reset) pozostają PL (poza `LocaleProvider`).
 
 ## 🟡 P3 — Bezpieczeństwo (hardening; brak P0/P1)
 - [ ] **Mobile**: sesja w `AsyncStorage` → rozważyć `expo-secure-store` (szyfrowany keychain).

@@ -9,11 +9,11 @@ import {
   setupMessage,
   zodFieldErrors,
 } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field } from "@/components/Field";
+import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -31,10 +31,9 @@ function splitPlace(label: string): { city: string; country: string } {
   };
 }
 
-const t = createTranslator("pl");
-
 /** Formularz „płynów" — paliwo lub AdBlue (ta sama struktura, `fuelLogSchema`). */
 export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
+  const t = useT();
   const title = kind === "fuel" ? t("form.fuel.title") : t("form.adblue.title");
 
   const { vehicles, cards, source } = useFleet();
