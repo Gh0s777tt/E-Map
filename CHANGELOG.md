@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-216-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.72.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-217-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.73.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.73.0] — 🧪 Testy komponentów UI (React Testing Library)
+
+- `[#217]` 🧪 **Pierwsze testy React/UI** (audyt: największa luka jakościowa — dotąd 0 testów komponentów):
+  - Setup: React Testing Library + jsdom + `@vitejs/plugin-react` w vitest. Testy `components/**/*.test.ts` używają `createElement` (tsconfig `jsx:"preserve"` dla Next blokuje JSX w transformie vite).
+  - [DataTable.test.ts](apps/web/components/DataTable.test.ts) — render, sort (asc↔desc), filtr, `initialSort`, stan pustki (5 testów). [Toast.test.ts](apps/web/components/Toast.test.ts) — render wg rodzaju, auto-dismiss (fake timers), `aria-live` (3 testy).
+  - **343 testy** (web 33 → 41).
+  - **Bramki:** biome czysto · `tsc` ×7 · 343 testy · build ✓ · docs:check ✓.
 
 ## [1.72.0] — 🔐 Audyt: redukcja podatności zależności (7 → 1)
 
