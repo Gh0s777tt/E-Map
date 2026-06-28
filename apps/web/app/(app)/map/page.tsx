@@ -36,7 +36,7 @@ import {
   type Poi,
   type TrafficFlow,
 } from "@e-logistic/maps";
-import { palette } from "@e-logistic/ui";
+import { cssPalette, palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
@@ -948,7 +948,7 @@ export default function MapPage() {
   return (
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Mapa</h1>
-      <p style={{ color: palette.smoke, marginTop: 4 }}>
+      <p style={{ color: cssPalette.smoke, marginTop: 4 }}>
         Wyszukaj dowolne miasto/miejsce, wytycz trasę przez przystanki. Podkład wektorowy/satelita,
         teren i budynki 3D{MAPTILER_KEY ? "" : " (dodaj klucz MapTiler, by włączyć 3D)"}.
       </p>
@@ -1023,14 +1023,14 @@ export default function MapPage() {
           <button type="button" style={{ ...styles.ghost, width: "100%" }} onClick={shareRoute}>
             🔗 Udostępnij trasę
           </button>
-          {shareMsg && <div style={{ fontSize: 12, color: palette.smoke }}>{shareMsg}</div>}
+          {shareMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{shareMsg}</div>}
           {deltaMsg && (
             <div
               style={{
                 fontSize: 12,
-                color: palette.offWhite,
-                background: palette.black,
-                border: `1px solid ${palette.graphite}`,
+                color: cssPalette.offWhite,
+                background: cssPalette.black,
+                border: `1px solid ${cssPalette.graphite}`,
                 borderRadius: 8,
                 padding: "8px 10px",
               }}
@@ -1069,7 +1069,7 @@ export default function MapPage() {
             </div>
           )}
 
-          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
           <span style={styles.label}>Podkład</span>
           <div style={{ display: "flex", gap: 6 }}>
@@ -1108,7 +1108,7 @@ export default function MapPage() {
             </>
           )}
 
-          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
           <label style={styles.check}>
             <input
@@ -1203,7 +1203,7 @@ export default function MapPage() {
             Omijaj Szwajcarię
           </label>
 
-          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
           <span style={styles.label}>Koszt paliwa (szac.)</span>
           <div style={{ display: "flex", gap: 6 }}>
             <input
@@ -1256,9 +1256,9 @@ export default function MapPage() {
             </button>
           </div>
           {poiCount != null && (
-            <div style={{ fontSize: 12, color: palette.smoke }}>
+            <div style={{ fontSize: 12, color: cssPalette.smoke }}>
               Znaleziono: <strong>{poiCount}</strong> ·{" "}
-              <span style={{ color: palette.red }}>● stacje</span>{" "}
+              <span style={{ color: cssPalette.red }}>● stacje</span>{" "}
               <span style={{ color: "#22c55e" }}>● parkingi</span>{" "}
               <span style={{ color: "#3b82f6" }}>● firmy</span>
             </div>
@@ -1272,7 +1272,9 @@ export default function MapPage() {
           >
             {fuelPriceBusy ? "Pobieram ceny…" : "⛽ Ceny paliwa (DE)"}
           </button>
-          {fuelPriceMsg && <div style={{ fontSize: 12, color: palette.smoke }}>{fuelPriceMsg}</div>}
+          {fuelPriceMsg && (
+            <div style={{ fontSize: 12, color: cssPalette.smoke }}>{fuelPriceMsg}</div>
+          )}
           {fuelPrices.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {fuelPrices.map((s) => (
@@ -1287,7 +1289,7 @@ export default function MapPage() {
                     {s.brand || s.name}
                     {s.isOpen ? "" : " (zamkn.)"}
                   </span>
-                  <strong style={{ color: palette.red }}>{s.diesel?.toFixed(3)} €</strong>
+                  <strong style={{ color: cssPalette.red }}>{s.diesel?.toFixed(3)} €</strong>
                 </button>
               ))}
             </div>
@@ -1309,7 +1311,7 @@ export default function MapPage() {
           </label>
           {cardFilterOn &&
             (cardOptions.length === 0 ? (
-              <div style={{ fontSize: 12, color: palette.smoke }}>
+              <div style={{ fontSize: 12, color: cssPalette.smoke }}>
                 Brak kart we flocie — dodaj kartę w „Karty paliwowe”.
               </div>
             ) : (
@@ -1341,7 +1343,7 @@ export default function MapPage() {
               </div>
             ))}
 
-          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
           <label style={styles.check}>
             <input
               type="checkbox"
@@ -1363,9 +1365,9 @@ export default function MapPage() {
               ))}
             </select>
           )}
-          {reportMsg && <div style={{ fontSize: 12, color: palette.red }}>{reportMsg}</div>}
+          {reportMsg && <div style={{ fontSize: 12, color: cssPalette.red }}>{reportMsg}</div>}
 
-          <div style={{ height: 1, background: palette.graphite, margin: "4px 0" }} />
+          <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
           <label style={styles.check}>
             <input
               type="checkbox"
@@ -1382,7 +1384,7 @@ export default function MapPage() {
               <span style={{ color: TRAFFIC_COLOR.blocked }}>● zator</span>
             </div>
           )}
-          {trafficMsg && <div style={{ fontSize: 12, color: palette.smoke }}>{trafficMsg}</div>}
+          {trafficMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{trafficMsg}</div>}
 
           {result && (
             <div style={styles.result}>
@@ -1396,7 +1398,7 @@ export default function MapPage() {
                 v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
               />
               <Row k="Paliwo (szac.)" v={`${fuelTotal} ${result.currency}`} />
-              <div style={{ height: 1, background: palette.graphite, margin: "2px 0" }} />
+              <div style={{ height: 1, background: cssPalette.graphite, margin: "2px 0" }} />
               <Row k="Razem (myto+paliwo)" v={`${grandTotal} ${result.currency}`} />
               <Row k="Dostawca" v={result.provider} />
             </div>
@@ -1406,12 +1408,12 @@ export default function MapPage() {
             <div style={styles.disruptions}>
               <span style={styles.label}>
                 🚧 Utrudnienia na trasie{" "}
-                <span style={{ color: palette.smoke }}>
+                <span style={{ color: cssPalette.smoke }}>
                   (≤ {DISRUPTION_RADIUS_KM} km · zgłoszenia kierowców)
                 </span>
               </span>
               {disruptions.length === 0 ? (
-                <div style={{ fontSize: 12, color: palette.smoke, marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: cssPalette.smoke, marginTop: 4 }}>
                   Brak zgłoszeń przy trasie. 👍
                 </div>
               ) : (
@@ -1421,9 +1423,11 @@ export default function MapPage() {
                       <span style={{ color: REPORT_COLOR[d.type], fontWeight: 700 }}>
                         ● {REPORT_LABEL[d.type]}
                       </span>
-                      <span style={{ color: palette.smoke, fontSize: 12 }}>{d.distanceKm} km</span>
+                      <span style={{ color: cssPalette.smoke, fontSize: 12 }}>
+                        {d.distanceKm} km
+                      </span>
                       {d.comment && (
-                        <span style={{ color: palette.smoke, fontSize: 12 }}>· {d.comment}</span>
+                        <span style={{ color: cssPalette.smoke, fontSize: 12 }}>· {d.comment}</span>
                       )}
                     </div>
                   ))}
@@ -1441,7 +1445,7 @@ export default function MapPage() {
             height: "70vh",
             borderRadius: 12,
             overflow: "hidden",
-            border: `1px solid ${palette.graphite}`,
+            border: `1px solid ${cssPalette.graphite}`,
           }}
         />
       </div>

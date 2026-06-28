@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.73.0 · #217 · 2026-06-28 -->
+<!-- SYNC: po v1.74.0 · #218 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -56,6 +56,10 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #215 (audyt):** klient **service-role twardo `server-only`** — wydzielony do `@e-logistic/api/admin` (`import "server-only"`); 7 konsumentów + 2 testy przełączone. Build blokuje wciągnięcie do bundla klienta.
 >
 > **Od #216 (audyt):** **redukcja podatności 7→1** — overrides w `pnpm-workspace.yaml` (postcss ≥8.5.10, @xmldom/xmldom ^0.8.10). Pozostaje `uuid`<11 (transitive Expo, build-only — major bump zepsułby SDK).
+>
+> **Od #217 (audyt):** **pierwsze testy komponentów UI** (RTL + jsdom + `@vitejs/plugin-react`) — `DataTable` (5) + `Toast` (3) = **343 testy**. Zamyka lukę „zero testów React".
+>
+> **Od #218 (audyt):** **panele mapy reagują na tryb jasny** — `mapUi.tsx` + panele DOM `page.tsx` (23 użycia) `palette`→`cssPalette`. Render mapy świadomie ciemny (WebGL/markery/POI na hex).
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
