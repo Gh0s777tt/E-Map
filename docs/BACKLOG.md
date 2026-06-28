@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.70.0 · #214 · 2026-06-28 -->
+<!-- SYNC: po v1.71.0 · #215 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -52,6 +52,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #213:** domknięcie toastów — komponenty `DriverRoster`, `LiquidForm`, `PushToggle`. **Pełne 100%** (16 widoków/komponentów); inline tylko w publicznych login/reset.
 >
 > **Od #214 (naprawy z audytu — [AUDIT_REPORT.md](../AUDIT_REPORT.md)):** rate-limit na `/api/push/send` · CSP `Report-Only` (allowlista mapy/Supabase/routing) · wersja `apps/web`=root + bramka `docs:check` (web==root) · bramka unikalności numerów migracji.
+>
+> **Od #215 (audyt):** klient **service-role twardo `server-only`** — wydzielony do `@e-logistic/api/admin` (`import "server-only"`); 7 konsumentów + 2 testy przełączone. Build blokuje wciągnięcie do bundla klienta.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).

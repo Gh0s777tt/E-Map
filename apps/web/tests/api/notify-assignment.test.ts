@@ -21,10 +21,10 @@ const adminClient = {
 };
 vi.mock("@e-logistic/api", () => ({
   getActiveMembership,
-  createSupabaseAdminClient: () => adminClient,
   listExpoPushTokensForUsers: async () => [],
   listPushSubscriptionsForDelivery: async () => [],
 }));
+vi.mock("@e-logistic/api/admin", () => ({ createSupabaseAdminClient: () => adminClient }));
 vi.mock("@/lib/push", () => ({
   pushConfigured: () => false,
   sendPushTo: async () => ({ sent: 0 }),

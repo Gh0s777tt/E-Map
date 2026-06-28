@@ -64,21 +64,8 @@ export function createSupabaseMobileClient(
   });
 }
 
-/**
- * Klient service-role (TYLKO serwer — pełne uprawnienia, omija RLS).
- * Używany np. przy logowaniu passkey (weryfikacja + mintowanie sesji).
- * Nigdy nie używać w kodzie klienckim.
- */
-export function createSupabaseAdminClient(): TypedSupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    throw new Error("Brak konfiguracji service-role (SUPABASE_SERVICE_ROLE_KEY).");
-  }
-  return createClient<Database>(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+// Klient service-role (omija RLS) wydzielony do `./admin` z `import "server-only"`
+// (audyt #215). Import: `@e-logistic/api/admin` — nigdy z głównego eksportu.
 
 /** Typ adaptera ciasteczek wymagany przez @supabase/ssr (dostarcza go framework). */
 type ServerOptions = NonNullable<Parameters<typeof ssrServer>[2]>;

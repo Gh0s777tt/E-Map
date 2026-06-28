@@ -1,4 +1,4 @@
-import { createSupabaseAdminClient } from "@e-logistic/api";
+import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import { NextResponse } from "next/server";

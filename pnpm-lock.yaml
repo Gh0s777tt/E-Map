@@ -196,6 +196,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.108.2
         version: 2.108.2
+      server-only:
+        specifier: 0.0.1
+        version: 0.0.1
     devDependencies:
       '@types/node':
         specifier: 26.0.1

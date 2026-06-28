@@ -1,8 +1,5 @@
-import {
-  createSupabaseAdminClient,
-  getActiveMembership,
-  listPushSubscriptionsForDelivery,
-} from "@e-logistic/api";
+import { getActiveMembership, listPushSubscriptionsForDelivery } from "@e-logistic/api";
+import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { pushConfigured, sendPushTo } from "@/lib/push";

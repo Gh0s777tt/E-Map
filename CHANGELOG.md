@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-214-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.70.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-215-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.71.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.71.0] — 🔒 service-role twardo server-only
+
+- `[#215]` 🔒 **Klient service-role wydzielony z barierą `server-only`** (naprawa z audytu):
+  - Nowy moduł [admin.ts](packages/api/src/admin.ts) z `import "server-only"` → subpath `@e-logistic/api/admin` (osobno od głównego `@e-logistic/api`, którego używa też kod kliencki). Każda próba wciągnięcia do bundla klienta = błąd builda.
+  - `createSupabaseAdminClient` usunięty z `client.ts` / głównego eksportu; **7 konsumentów** (push/send, cron, notify-assignment, passkey ×3, lib/push) + 2 testy przełączone na `@e-logistic/api/admin`.
+  - **Bramki:** biome czysto · `tsc` ×7 · 335 testów · build ✓ · docs:check ✓.
 
 ## [1.70.0] — 🛡️ Audyt: naprawy bezpieczeństwa + higiena
 

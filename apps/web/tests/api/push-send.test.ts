@@ -21,9 +21,9 @@ vi.mock("@/lib/supabase/server", () => ({
 const getActiveMembership = vi.fn();
 vi.mock("@e-logistic/api", () => ({
   getActiveMembership,
-  createSupabaseAdminClient: () => ({}),
   listPushSubscriptionsForDelivery: async () => [],
 }));
+vi.mock("@e-logistic/api/admin", () => ({ createSupabaseAdminClient: () => ({}) }));
 
 let pushOn = true;
 const sendPushTo = vi.fn(async () => ({ sent: 0 }));

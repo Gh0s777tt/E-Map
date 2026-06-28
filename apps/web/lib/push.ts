@@ -1,7 +1,8 @@
 import "server-only";
 
 import type { StoredPushSubscription } from "@e-logistic/api";
-import { createSupabaseAdminClient, deletePushSubscription } from "@e-logistic/api";
+import { deletePushSubscription } from "@e-logistic/api";
+import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 
 export interface PushPayload {
   title: string;
