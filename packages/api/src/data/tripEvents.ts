@@ -30,7 +30,11 @@ export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
   };
 }
 
-/** Zapis zdarzenia Trip do tabeli `trip_events`. */
+/**
+ * Zapis zdarzenia Trip do `trip_events` — **idempotentny** (jak `insertFuelLog`).
+ * `id` to UUID klienta (PK); ponowny sync → `ON CONFLICT (id) DO NOTHING` (bez duplikatu
+ * i bez błędu PK). `maybeSingle`: przy konflikcie baza nie zwraca wiersza → `null`.
+ */
 export async function insertTripEvent(
   client: SupabaseClient,
   input: TripEventInput,
@@ -38,9 +42,9 @@ export async function insertTripEvent(
 ) {
   const { data, error } = await client
     .from("trip_events")
-    .insert(tripEventToRow(input, ctx))
+    .upsert(tripEventToRow(input, ctx), { onConflict: "id", ignoreDuplicates: true })
     .select()
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data;
 }

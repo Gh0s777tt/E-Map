@@ -1,9 +1,15 @@
 import type { TripEventInput } from "@e-logistic/core";
 import { describe, expect, it } from "vitest";
 import { mockSupabase } from "../test-utils";
-import { listTripEvents, tripEventToRow } from "./tripEvents";
+import { insertTripEvent, listTripEvents, tripEventToRow } from "./tripEvents";
 
 const ctx = { id: "i", companyId: "c", driverId: "d", deviceId: "dev" };
+const startInput = {
+  vehicleId: "v",
+  action: "start",
+  place: { country: "PL" },
+  odometerKm: 1,
+} as TripEventInput;
 
 describe("tripEventToRow (czysta funkcja)", () => {
   it("mapuje akcję load z wagą i współrzędnymi (WKT)", () => {
@@ -49,5 +55,26 @@ describe("listTripEvents (kształt zapytania)", () => {
   it("rzuca przy błędzie Supabase", async () => {
     const { client } = mockSupabase({ data: null, error: new Error("RLS") });
     await expect(listTripEvents(client)).rejects.toThrow("RLS");
+  });
+});
+
+describe("insertTripEvent (idempotentny upsert — offline-first)", () => {
+  it("upsert z onConflict id + ignoreDuplicates, id z ctx (PK klienta)", async () => {
+    const { client, called, argsOf } = mockSupabase({ data: { id: "i" }, error: null });
+    await insertTripEvent(client, startInput, ctx);
+    expect(called("from", "trip_events")).toBe(true);
+    const [row, opts] = argsOf("upsert") as [Record<string, unknown>, unknown];
+    expect(row.id).toBe("i");
+    expect(opts).toEqual({ onConflict: "id", ignoreDuplicates: true });
+  });
+
+  it("re-sync (konflikt → maybeSingle null) zwraca null bez błędu", async () => {
+    const { client } = mockSupabase({ data: null, error: null });
+    expect(await insertTripEvent(client, startInput, ctx)).toBeNull();
+  });
+
+  it("rzuca przy realnym błędzie zapisu", async () => {
+    const { client } = mockSupabase({ data: null, error: new Error("RLS") });
+    await expect(insertTripEvent(client, startInput, ctx)).rejects.toThrow("RLS");
   });
 });

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-221-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.77.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-222-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.78.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.78.0] — 🛡️ Idempotentny zapis offline (eliminacja ryzyka duplikatów)
+
+- `[#222]` 🛡️ **Idempotentna synchronizacja outboxu** (pokłosie QA #221) — [insertFuelLog](packages/api/src/data/fuelLogs.ts)/[insertTripEvent](packages/api/src/data/tripEvents.ts): `insert` → `upsert(onConflict: "id", ignoreDuplicates: true)`. `id` to UUID klienta (PK), więc ponowny sync tego samego wpisu = `ON CONFLICT (id) DO NOTHING` — **brak duplikatu i brak błędu PK** (wcześniej re-sync rzucał 23505 → status „error" mimo poprawnie zapisanych danych).
+  - Twarda gwarancja na poziomie bazy (defense‑in‑depth obok guardów statusu w outboxie) — chroni też przed wyścigiem *read‑modify‑write* w kolejce: utrata lokalnego statusu „synced" nie spowoduje już duplikatu. **Bez migracji** — PK `id` już istnieje. `maybeSingle`, bo `DO NOTHING` nie zwraca wiersza.
+  - Testy kontraktu: `upsert` z `onConflict`/`ignoreDuplicates`, re-sync (konflikt) → `null` bez błędu, routing `adblue_logs`, realny błąd zapisu → rzut (fuelLogs +4, tripEvents +3) — **405 testów**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 405 testów (+1 skip) · build ✓ · docs:check ✓.
 
 ## [1.77.0] — 🧪 QA: testy brzegowe, scoping i integralność offline
 
