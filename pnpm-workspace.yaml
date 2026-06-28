@@ -5,3 +5,9 @@ packages:
 # Skrypty buildów natywnych zależności dozwolone jawnie (pnpm 11).
 allowBuilds:
   sharp: true
+
+# Overrides bezpieczeństwa (audyt #216): postcss (XSS via next), xmldom (XML injection/DoS via expo
+# toolchain). uuid<11 pominięty — major bump (7→11) zepsułby Expo SDK (transitive, build-only).
+overrides:
+  "postcss@<8.5.10": ">=8.5.10"
+  "@xmldom/xmldom@<0.8.0": "^0.8.10"

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-215-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.71.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-216-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.72.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.72.0] — 🔐 Audyt: redukcja podatności zależności (7 → 1)
+
+- `[#216]` 🔐 **Overrides bezpieczeństwa** ([pnpm-workspace.yaml](pnpm-workspace.yaml)):
+  - `postcss` ≥8.5.10 (XSS, via `next`) + `@xmldom/xmldom` ^0.8.10 (**5× high** XML injection/DoS, via `expo`) — `pnpm audit` **7 → 1**.
+  - Pozostaje 1 moderate: `uuid` <11.1.1 (transitive Expo, build-only) — świadomie nieadresowane (major 7→11 zepsułby SDK; czeka na bump Expo), udokumentowane w `pnpm-workspace.yaml`.
+  - Overrides przeniesione do `pnpm-workspace.yaml` (pnpm 11 nie czyta już `pnpm.overrides` z `package.json`).
+  - Weryfikacja: `tsc` ×7 + build (web i mobile) bez regresji po bumpie xmldom.
+  - **Bramki:** biome czysto · `tsc` ×7 · 335 testów · build ✓ · docs:check ✓.
 
 ## [1.71.0] — 🔒 service-role twardo server-only
 
