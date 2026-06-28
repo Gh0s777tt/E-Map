@@ -45,6 +45,13 @@ if (!changelog.includes(`## [${version}]`)) {
   errors.push(`CHANGELOG.md: brak wpisu „## [${version}]".`);
 }
 
+// 3b) Wersja głównej aplikacji web == root (audyt #214: koniec rozjazdu wersji).
+const webPkg = read("apps/web/package.json");
+if (webPkg) {
+  const webVer = JSON.parse(webPkg).version;
+  if (webVer !== version) errors.push(`apps/web/package.json: wersja ${webVer} ≠ root ${version}.`);
+}
+
 // 4) Nagłówki wersji w docs (pierwsze ~800 znaków = nagłówek statusu)
 for (const f of [
   "docs/ARCHITECTURE.md",
@@ -90,11 +97,21 @@ for (const g of ghosts) {
   }
 }
 
-// Info: liczba migracji
+// Info: liczba migracji + kontrola unikalności numerów (audyt #214).
 const migDir = join(root, "supabase/migrations");
-const migCount = existsSync(migDir)
-  ? readdirSync(migDir).filter((f) => f.endsWith(".sql")).length
-  : 0;
+const migFiles = existsSync(migDir) ? readdirSync(migDir).filter((f) => f.endsWith(".sql")) : [];
+const migCount = migFiles.length;
+
+// Numery migracji muszą być unikalne (duplikat = niejednoznaczna kolejność stosowania).
+// Historyczne 0017/0018 są już zastosowane na prod — dozwolone (nie wolno renumerować).
+const KNOWN_DUP_MIGRATIONS = new Set(["0017", "0018"]);
+const migNums = migFiles.map((f) => f.slice(0, 4));
+const dupNums = [...new Set(migNums.filter((n, i) => migNums.indexOf(n) !== i))].filter(
+  (n) => !KNOWN_DUP_MIGRATIONS.has(n),
+);
+if (dupNums.length > 0) {
+  errors.push(`supabase/migrations: zdublowane numery migracji: ${dupNums.join(", ")}.`);
+}
 
 if (warnings.length > 0) {
   console.warn("⚠️  docs-check — ostrzeżenia (nie blokują):");
