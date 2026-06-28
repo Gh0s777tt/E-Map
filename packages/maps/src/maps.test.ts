@@ -24,6 +24,18 @@ describe("haversineKm", () => {
   it("dystans do samego siebie = 0", () => {
     expect(haversineKm(BERLIN, BERLIN)).toBe(0);
   });
+
+  it("antymerydian: 179.9°E ↔ 179.9°W to ~22 km (nie ~40000)", () => {
+    const d = haversineKm({ lat: 0, lng: 179.9 }, { lat: 0, lng: -179.9 });
+    expect(d).toBeGreaterThan(20);
+    expect(d).toBeLessThan(25);
+  });
+
+  it("1° szerokości przy biegunie to ~111 km", () => {
+    const d = haversineKm({ lat: 90, lng: 0 }, { lat: 89, lng: 0 });
+    expect(d).toBeGreaterThan(110);
+    expect(d).toBeLessThan(112);
+  });
 });
 
 describe("MockRoutingProvider", () => {

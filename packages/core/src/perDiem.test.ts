@@ -158,3 +158,51 @@ describe("sumPerDiem", () => {
     expect(sumPerDiem([])).toEqual([]);
   });
 });
+
+// Granice dób — dokładne progi 8h/12h. Flip `<`/`<=` po cichu psuje wypłaty,
+// a istniejące testy (6/10/18/20h) nie trafiają w same granice.
+describe("computePerDiem — granice progów (regresja off-by-one)", () => {
+  const d = (mode: "domestic" | "foreign", hours: number, dailyRate: number) =>
+    computePerDiem({ destination: "X", mode, hours, dailyRate, currency: "EUR" });
+
+  it("krajowa dokładnie 8h → 1/2 (8h NIE jest <8)", () => {
+    expect(d("domestic", 8, 45)).toMatchObject({ fraction: 0.5, days: 0.5, amount: 22.5 });
+  });
+  it("krajowa tuż poniżej 8h (7.99h) → 0", () => {
+    expect(d("domestic", 7.99, 45)).toMatchObject({ fraction: 0, days: 0, amount: 0 });
+  });
+  it("krajowa dokładnie 12h → 1/2 (12h NIE jest >12)", () => {
+    expect(d("domestic", 12, 45)).toMatchObject({ fraction: 0.5, amount: 22.5 });
+  });
+  it("krajowa tuż powyżej 12h (12.01h) → 1/1", () => {
+    expect(d("domestic", 12.01, 45)).toMatchObject({ fraction: 1, days: 1, amount: 45 });
+  });
+
+  it("zagraniczna dokładnie 8h → 1/3 (8h jest ≤8)", () => {
+    const r = d("foreign", 8, 49);
+    expect(r.fraction).toBeCloseTo(1 / 3, 5);
+    expect(r.amount).toBe(16.33);
+  });
+  it("zagraniczna tuż powyżej 8h (8.01h) → 1/2", () => {
+    expect(d("foreign", 8.01, 49)).toMatchObject({ fraction: 0.5, amount: 24.5 });
+  });
+  it("zagraniczna dokładnie 12h → 1/2 (12h NIE jest >12)", () => {
+    expect(d("foreign", 12, 49)).toMatchObject({ fraction: 0.5, amount: 24.5 });
+  });
+  it("zagraniczna tuż powyżej 12h (12.01h) → 1/1", () => {
+    expect(d("foreign", 12.01, 49)).toMatchObject({ fraction: 1, days: 1, amount: 49 });
+  });
+
+  it("krajowa wielodobowa: reszta dokładnie 8h (32h) → pełna + 1/2", () => {
+    expect(d("domestic", 32, 45)).toMatchObject({
+      fullDays: 1,
+      remainderHours: 8,
+      fraction: 0.5,
+      days: 1.5,
+      amount: 67.5,
+    });
+  });
+  it("krajowa wielodobowa: reszta tuż powyżej 8h (32.5h) → pełna + 1/1", () => {
+    expect(d("domestic", 32.5, 45)).toMatchObject({ fullDays: 1, fraction: 1, days: 2, amount: 90 });
+  });
+});
