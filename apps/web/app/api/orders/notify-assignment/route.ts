@@ -1,9 +1,9 @@
 import {
-  createSupabaseAdminClient,
   getActiveMembership,
   listExpoPushTokensForUsers,
   listPushSubscriptionsForDelivery,
 } from "@e-logistic/api";
+import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendExpoPush } from "@/lib/expoPush";
