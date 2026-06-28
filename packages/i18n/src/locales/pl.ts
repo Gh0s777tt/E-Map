@@ -32,6 +32,7 @@ export const pl = {
   "nav.fuelPrices": "Ceny diesla",
   "nav.team": "Zespół",
   "nav.audit": "Audyt",
+  "nav.dev": "Panel developera",
   "theme.toggle": "Przełącz motyw",
   "theme.light": "Tryb jasny",
   "theme.dark": "Tryb ciemny",

@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.74.0 · #218 · 2026-06-28 -->
+<!-- SYNC: po v1.75.0 · #219 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -60,11 +60,13 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #217 (audyt):** **pierwsze testy komponentów UI** (RTL + jsdom + `@vitejs/plugin-react`) — `DataTable` (5) + `Toast` (3) = **343 testy**. Zamyka lukę „zero testów React".
 >
 > **Od #218 (audyt):** **panele mapy reagują na tryb jasny** — `mapUi.tsx` + panele DOM `page.tsx` (23 użycia) `palette`→`cssPalette`. Render mapy świadomie ciemny (WebGL/markery/POI na hex).
+>
+> **Od #219 (audyt — domknięcie):** link `/dev` w nav (rola `developer`, i18n `nav.dev`) · `.claude/`→`.gitignore` + odśledzenie `launch.json` · udokumentowane: niezależne wersjonowanie `apps/mobile` (EAS/sklepy) i wzorzec `DataTable` vs karty. **Wszystkie ustalenia audytu zaadresowane** (poza `uuid`<11 — świadomie, #216).
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
 - [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
-- [x] **Data table** — `DataTable` generyczny (sort/filtr), pilot: kontrahenci (#207). 🔜 reużycie: zlecenia/faktury/pojazdy.
+- [x] **Data table** — `DataTable` generyczny (sort/filtr), adopcja: kontrahenci (#207). **Decyzja (audyt #219):** `DataTable` dla list **płaskich/tabelarycznych** (kontrahenci); **karty** świadomie dla list z **rozwijaniem/bogatą treścią** (pojazdy, zlecenia, faktury) — dwa celowe wzorce, nie niespójność. Migracja kolejnych list tylko gdy realnie płaskie.
 - [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
 - [x] **Toasty w formularzach** — `useToast` we **wszystkich** formularzach/komponentach CRUD/akcji (16 widoków, #208–#213; inline tylko w publicznych login/reset). Spójny feedback success/error/info.
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.

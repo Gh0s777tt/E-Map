@@ -34,6 +34,7 @@ export const en: Record<MessageKey, string> = {
   "nav.fuelPrices": "Diesel prices",
   "nav.team": "Team",
   "nav.audit": "Audit log",
+  "nav.dev": "Developer panel",
   "theme.toggle": "Toggle theme",
   "theme.light": "Light mode",
   "theme.dark": "Dark mode",
