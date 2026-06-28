@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-220-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.76.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-221-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.77.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.77.0] — 🧪 QA: testy brzegowe, scoping i integralność offline
+
+- `[#221]` 🧪 **Sesja QA (audyt read-only + testy)** — [TEST_REPORT.md](TEST_REPORT.md). 0 defektów Krytycznych/Wysokich/Średnich; 1 Niski/latentny (guard scopingu push). **+55 testów (343 → 398)** + 1 pominięty (regresja hardening). **Bez zmian w kodzie aplikacji** — czerwony test = znalezisko.
+  - **core:** granice diet (dokładnie 8h/12h oba tryby), wygasania (dzień terminu / `warnDays` / `warnKm`), limitu jazdy (`>` strict).
+  - **api:** scoping multi-tenant `listPushSubscriptionsForDelivery` (firma/użytkownik) — funkcja była bez testów.
+  - **maps:** geokoder (mock `fetch`, fallback MapTiler→Nominatim), haversine antymerydian/biegun, ścieżka sieciowa `route()` HERE/GraphHopper (konwersja FX myta, błędy).
+  - **web:** open-redirect/CRLF (TAB/CR/NUL).
+  - **mobile:** integralność outboxu — ochrona przed podwójnym zapisem przy ponownej synchronizacji.
+  - Kluczowe testy zweryfikowane **mutacją** (psucie kodu → czerwony → przywrócenie).
+  - **Bramki:** biome czysto · `tsc` ×7 · 398 testów (+1 skip) · build ✓ · docs:check ✓.
 
 ## [1.76.0] — 🔐 Rate-limit na pozostałych mutacjach (audyt)
 

@@ -47,4 +47,30 @@ describe("summarizeWorkTime", () => {
       overDrivingDays: 0,
     });
   });
+
+  // Granica limitu: dokładnie na limicie NIE jest przekroczeniem (`>` strict).
+  // Flip na `>=` po cichu fałszywie flagowałby zgodne z prawem dni.
+  it("jazda dokładnie na limicie (10h) → brak przekroczenia", () => {
+    const { rows, summary } = summarizeWorkTime([
+      { date: "2026-06-01", driving: 10, otherWork: 0, rest: 0 },
+    ]);
+    expect(rows[0]?.overDriving).toBe(false);
+    expect(summary.overDrivingDays).toBe(0);
+  });
+  it("jazda tuż powyżej limitu (10.01h) → przekroczenie", () => {
+    const { rows } = summarizeWorkTime([
+      { date: "2026-06-01", driving: 10.01, otherWork: 0, rest: 0 },
+    ]);
+    expect(rows[0]?.overDriving).toBe(true);
+  });
+  it("granica przy własnym limicie: 8h przy limicie 8 → brak; 8.01 → przekroczenie", () => {
+    const r = summarizeWorkTime(
+      [
+        { date: "2026-06-01", driving: 8, otherWork: 0, rest: 0 },
+        { date: "2026-06-02", driving: 8.01, otherWork: 0, rest: 0 },
+      ],
+      { dailyDrivingLimit: 8 },
+    );
+    expect(r.summary.overDrivingDays).toBe(1);
+  });
 });

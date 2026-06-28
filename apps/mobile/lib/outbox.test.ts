@@ -116,3 +116,56 @@ describe("outbox (kolejka offline-first)", () => {
     expect((await listOutbox()).length).toBe(1);
   });
 });
+
+// Integralność danych offline-first i odporność — najważniejsze przy synchronizacji.
+describe("outbox — integralność i odporność", () => {
+  it("KRYTYCZNE: zsynchronizowany wpis NIE jest wstawiany ponownie przy flushQueued (brak duplikatów)", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    getActiveMembership.mockResolvedValue({ companyId: "c1" });
+    insertFuelLog.mockResolvedValue({});
+    await enqueue("fuel", fuelInput, "t"); // → synced, insert 1×
+    await flushQueued(); // synced pomijany
+    await flushQueued(); // i ponownie
+    expect(insertFuelLog).toHaveBeenCalledTimes(1); // brak podwójnego zapisu
+    expect((await listOutbox())[0]?.status).toBe("synced");
+  });
+
+  it("brak firmy (membership null) → status error z komunikatem o firmie", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    getActiveMembership.mockResolvedValue(null);
+    const item = await enqueue("fuel", fuelInput, "t");
+    expect(item.status).toBe("error");
+    expect(item.error ?? "").toMatch(/firmy/i);
+    expect(insertFuelLog).not.toHaveBeenCalled();
+  });
+
+  it("błąd insertu z warstwy → status error z komunikatem", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    getActiveMembership.mockResolvedValue({ companyId: "c1" });
+    insertFuelLog.mockRejectedValue(new Error("DB padło"));
+    const item = await enqueue("fuel", fuelInput, "t");
+    expect(item).toMatchObject({ status: "error", error: "DB padło" });
+  });
+
+  it("błąd jako obiekt bez .message → ekstrakcja z details/code (errorMessage)", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    getActiveMembership.mockResolvedValue({ companyId: "c1" });
+    insertFuelLog.mockRejectedValue({ code: "23505", details: "duplicate key" });
+    const item = await enqueue("fuel", fuelInput, "t");
+    expect(item.error).toBe("duplicate key"); // details ma priorytet nad code
+  });
+
+  it("uszkodzony JSON w storage → listOutbox zwraca [] (bez crasha)", async () => {
+    store["el-outbox"] = "{to nie jest json";
+    expect(await listOutbox()).toEqual([]);
+  });
+
+  it("najnowszy wpis na początku kolejki (unshift)", async () => {
+    getUser.mockResolvedValue({ data: { user: null } });
+    await enqueue("fuel", fuelInput, "2026-06-01T00:00:00Z");
+    await enqueue("trip", tripInput, "2026-06-02T00:00:00Z");
+    const all = await listOutbox();
+    expect(all[0]?.kind).toBe("trip"); // dodany później → pierwszy
+    expect(all[1]?.kind).toBe("fuel");
+  });
+});
