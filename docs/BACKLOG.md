@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.65.0 · #209 · 2026-06-27 -->
+<!-- SYNC: po v1.66.0 · #210 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.65.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.66.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -42,13 +42,15 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #208 (UI/UX faza 5):** **toasty w formularzach** zamiast inline „status" — migracja kontrahentów + pojazdów (`useToast` success/error, auto-znika 3.5 s, `aria-live`, slide-up). Wzorzec do reużycia na pozostałych formularzach.
 >
 > **Od #209:** toasty w kolejnych formularzach CRUD — **serwis** + **karty paliwowe** (spójność z #208). 4 formularze floty na toastach.
+>
+> **Od #210:** toasty w **zespole** + **dokumentach** (wgrywanie/otwieranie/usuwanie/walidacja). 6 formularzy na toastach.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
 - [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
 - [x] **Data table** — `DataTable` generyczny (sort/filtr), pilot: kontrahenci (#207). 🔜 reużycie: zlecenia/faktury/pojazdy.
 - [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
-- [x] **Toasty w formularzach** — `useToast` (success/error): kontrahenci, pojazdy (#208) + serwis, karty (#209). 🔜 reszta (damages/settings/team/documents/LiquidForm).
+- [x] **Toasty w formularzach** — `useToast`: kontrahenci, pojazdy (#208), serwis, karty (#209), zespół, dokumenty (#210) — 6 formularzy. 🔜 reszta (settings/orders/invoices/my-orders/drivers/reports/trip).
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
 
 ---

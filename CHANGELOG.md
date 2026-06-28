@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-209-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.65.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-210-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.66.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.66.0] — 🔔 Toasty: zespół + dokumenty (spójność)
+
+- `[#210]` 🔔 **Toasty w kolejnych formularzach** (zespół, dokumenty):
+  - **Zespół** ([team](<apps/web/app/(app)/team/page.tsx>)): zapis roli/modułów członka → toast. **Dokumenty** ([documents](<apps/web/app/(app)/documents/page.tsx>)): wgrywanie / otwieranie / usuwanie / walidacja (plik, rozmiar) → toast (success/error).
+  - **6 formularzy** na toastach: kontrahenci, pojazdy, serwis, karty, zespół, dokumenty.
+  - **Bramki:** biome czysto · `tsc` ×7 · **335 testów** · build ✓ · docs:check ✓.
 
 ## [1.65.0] — 🔔 Toasty: serwis + karty paliwowe (spójność)
 
