@@ -29,9 +29,10 @@ describe("listPushSubscriptionsForDelivery — scoping multi-tenant", () => {
     expect(called("in")).toBe(true);
   });
 
-  it("pusta tablica userIds nie zakłada filtra IN", async () => {
-    const { client, called } = mockSupabase({ data: [], error: null });
-    await listPushSubscriptionsForDelivery(client, { userIds: [] });
+  it("companyId + pusta tablica userIds: scope po firmie, bez filtra IN", async () => {
+    const { client, called, argsOf } = mockSupabase({ data: [], error: null });
+    await listPushSubscriptionsForDelivery(client, { companyId: "c", userIds: [] });
+    expect(argsOf("eq")).toEqual(["company_id", "c"]);
     expect(called("in")).toBe(false);
   });
 
@@ -49,13 +50,12 @@ describe("listPushSubscriptionsForDelivery — scoping multi-tenant", () => {
     });
   });
 
-  // HARDENING (patrz TEST_REPORT.md, ustalenie #1): wywołanie BEZ żadnego filtra
-  // nie zakłada ani eq, ani in → zwróciłoby subskrypcje WSZYSTKICH firm. Obecnie
-  // wszyscy wołający przekazują filtr (nieaktywne), ale brak guardu to latentne
-  // ryzyko cross-tenant. Test odsłania pożądane zachowanie (odmowa bez scope) —
-  // pominięty do czasu dodania guardu w kodzie aplikacji.
-  it.skip("bez filtra POWINNO odmówić (guard anty-wyciek) — patrz TEST_REPORT #1", async () => {
+  // GUARD anty-wyciek (TEST_REPORT #1 — domknięte w #223): wywołanie BEZ filtra
+  // (ani companyId, ani userIds) rzuca, zamiast zwrócić subskrypcje wszystkich firm.
+  it("bez filtra ODMAWIA — guard anty-wyciek cross-tenant", async () => {
     const { client } = mockSupabase({ data: [], error: null });
-    await expect(listPushSubscriptionsForDelivery(client)).rejects.toThrow();
+    await expect(listPushSubscriptionsForDelivery(client)).rejects.toThrow(/filtr/i);
+    await expect(listPushSubscriptionsForDelivery(client, {})).rejects.toThrow(/filtr/i);
+    await expect(listPushSubscriptionsForDelivery(client, { userIds: [] })).rejects.toThrow(/filtr/i);
   });
 });

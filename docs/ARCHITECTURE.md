@@ -1,6 +1,6 @@
 # 🧠 Architektura — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.78.0 (#222) · 2026-06-28
+> Status: **w realizacji** · stan na v1.79.0 (#223) · 2026-06-28
 > Decyzje wstępne: dokumentacja przed kodem · mapa = hybryda MapLibre+HERE/GraphHopper · web+mobile równolegle.
 >
 > **Stan implementacji** (ten dokument opisuje architekturę **docelową**):

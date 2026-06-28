@@ -41,12 +41,24 @@ export async function deletePushSubscription(client: SupabaseClient, endpoint: s
 
 /**
  * Subskrypcje do wysyłki (TYLKO serwer / service-role — omija RLS).
- * Filtruje po firmie i/lub konkretnych użytkownikach, jeśli podano.
+ * Filtruje po firmie i/lub konkretnych użytkownikach.
+ *
+ * GUARD anty-wyciek (audyt/QA): wymaga ≥1 efektywnego filtra (`companyId` lub
+ * niepusty `userIds`). Bez filtra zapytanie service-role zwróciłoby subskrypcje
+ * WSZYSTKICH firm (cross-tenant) — dlatego twardo rzucamy, zamiast polegać na
+ * konwencji wołających. Świadomy broadcast należy zaimplementować osobno/jawnie.
  */
 export async function listPushSubscriptionsForDelivery(
   admin: SupabaseClient,
   opts?: { companyId?: string; userIds?: string[] },
 ) {
+  const hasCompany = Boolean(opts?.companyId);
+  const hasUsers = Boolean(opts?.userIds?.length);
+  if (!hasCompany && !hasUsers) {
+    throw new Error(
+      "listPushSubscriptionsForDelivery: wymagany filtr (companyId lub userIds) — ochrona przed wysyłką cross-tenant.",
+    );
+  }
   let q = admin.from("push_subscriptions").select("endpoint, p256dh, auth, user_id");
   if (opts?.companyId) q = q.eq("company_id", opts.companyId);
   if (opts?.userIds?.length) q = q.in("user_id", opts.userIds);

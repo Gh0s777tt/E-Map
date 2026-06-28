@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.78.0 · #222 · 2026-06-28 -->
+<!-- SYNC: po v1.79.0 · #223 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -66,6 +66,10 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 > **Od #220 (audyt — Top usprawnień #9):** **rate-limit na pozostałych mutacjach** — `notify-assignment` + `fakturownia/export` (`rateLimit` po auth, 429, 30/60 s/IP). Z „Top usprawnień" pozostaje już tylko **dekompozycja `map/page.tsx`** (P2 niżej — refaktor maintainability, wymaga QA wizualnego mapy).
 >
 > **Od #221 (sesja QA — [TEST_REPORT.md](../TEST_REPORT.md)):** **+55 testów (343 → 398)** bez zmian w kodzie: granice diet/wygasania/czasu pracy (core), scoping multi-tenant `listPushSubscriptionsForDelivery` (api), geokoder + `route()` HERE/GraphHopper z mockiem `fetch` (maps), open-redirect/CRLF (web), **integralność outboxu — brak duplikatów** (mobile). 1 ustalenie Niskie/latentne: brak guardu scopingu w `listPushSubscriptionsForDelivery` (pominięty `it.skip` jako regresja hardening). Białe plamy wymagające zasobów: RPC/RLS (Postgres), e2e `(app)` (sesja).
+>
+> **Od #222 (po QA):** **idempotentny zapis offline** — `insertFuelLog`/`insertTripEvent` `insert`→`upsert(onConflict:"id", ignoreDuplicates:true)`. Ponowny sync = `ON CONFLICT DO NOTHING` → brak duplikatu/błędu PK; chroni przed wyścigiem read-modify-write w outboxie. Bez migracji.
+>
+> **Od #223 (domknięcie QA):** **guard anty-wyciek** w `listPushSubscriptionsForDelivery` (wymóg ≥1 filtra — `it.skip`→aktywny test) · **odporność adapterów** (`graphhopper.ts` brak `points`→pusta geometria; `geocode.ts` odsiew NaN). **Wszystkie ustalenia z TEST_REPORT zaadresowane** poza dekompozycją `map/page.tsx` (wymaga wizualnego QA = sesja). **408 testów**.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).

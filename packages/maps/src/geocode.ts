@@ -46,7 +46,10 @@ async function geocodeNominatim(query: string, limit: number): Promise<GeoHit[]>
   const out: GeoHit[] = [];
   for (const it of data) {
     if (!it.lat || !it.lon) continue;
-    out.push({ label: it.display_name ?? query, lat: Number(it.lat), lng: Number(it.lon) });
+    const lat = Number(it.lat);
+    const lng = Number(it.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue; // odsiej śmieci (NaN)
+    out.push({ label: it.display_name ?? query, lat, lng });
   }
   return out;
 }

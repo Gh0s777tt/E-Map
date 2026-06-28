@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-222-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.78.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-223-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.79.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.79.0] — 🔒 Domknięcie ustaleń QA: guard scopingu + odporność adapterów
+
+- `[#223]` 🔒 **Hardening z raportu QA** ([TEST_REPORT.md](TEST_REPORT.md)) — ostatnie ustalenia domknięte:
+  - **Guard anty-wyciek cross-tenant** (defekt #1, Niski/latentny): [listPushSubscriptionsForDelivery](packages/api/src/data/push.ts) wymaga teraz ≥1 efektywnego filtra (`companyId`/`userIds`) — bez filtra **rzuca**, zamiast zwrócić subskrypcje WSZYSTKICH firm (klient service-role omija RLS). Regresja `it.skip` → aktywny test.
+  - **Odporność adapterów map** (uwagi §6): [graphhopper.ts](packages/maps/src/graphhopper.ts) — brak `points` w odpowiedzi → pusta geometria zamiast `TypeError` (dystans/czas dalej liczone); [geocode.ts](packages/maps/src/geocode.ts) — pomijanie pozycji z nieliczbowym `lat`/`lon` (NaN).
+  - Testy: guard (3 przypadki bez/pustego filtra), GraphHopper bez geometrii, geocode NaN. **408 testów** (0 pominiętych). Guard zweryfikowany mutacją.
+  - **Świadomie poza zakresem:** dekompozycja `map/page.tsx` (~1452 l.) — refaktor maintainability wymagający wizualnego QA mapy (sesja); pozostaje w BACKLOG.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.78.0] — 🛡️ Idempotentny zapis offline (eliminacja ryzyka duplikatów)
 

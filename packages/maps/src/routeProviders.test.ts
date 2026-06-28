@@ -153,4 +153,12 @@ describe("GraphHopperRoutingProvider.route", () => {
     const r = await provider.route({ waypoints: [BERLIN, WARSAW], currency: "PLN" });
     expect(r.currency).toBe("PLN");
   });
+
+  it("brak geometrii (points) → geometria pusta, dystans/czas wciąż liczone", async () => {
+    stubFetch({ json: { paths: [{ distance: 1000, time: 60000 }] } }); // bez points
+    const r = await provider.route({ waypoints: [BERLIN, WARSAW] });
+    expect(r.geometry).toEqual([]);
+    expect(r.distanceKm).toBe(1);
+    expect(r.durationMin).toBe(1);
+  });
 });

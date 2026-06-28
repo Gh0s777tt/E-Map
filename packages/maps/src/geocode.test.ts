@@ -41,6 +41,16 @@ describe("geocode — Nominatim (bez klucza)", () => {
     const hits = await geocode("null island");
     expect(hits).toEqual([{ label: "Null Island", lat: 0, lng: 0 }]);
   });
+
+  it("pomija pozycje z nieliczbowym lat/lon (śmieci → NaN)", async () => {
+    stubFetch({
+      json: [
+        { display_name: "Zła", lat: "abc", lon: "13" },
+        { display_name: "Dobra", lat: "52", lon: "13" },
+      ],
+    });
+    expect(await geocode("Berlin")).toEqual([{ label: "Dobra", lat: 52, lng: 13 }]);
+  });
 });
 
 describe("geocode — MapTiler (z kluczem)", () => {
