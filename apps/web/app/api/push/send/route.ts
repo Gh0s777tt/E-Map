@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { pushConfigured, sendPushTo } from "@/lib/push";
 import { pushUrlSchema } from "@/lib/pushUrl";
+import { rateLimit } from "@/lib/ratelimit";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -28,6 +29,10 @@ const sendSchema = z.object({
 export async function POST(request: Request) {
   if (!pushConfigured()) {
     return NextResponse.json({ error: "Push nie skonfigurowany (VAPID)." }, { status: 503 });
+  }
+  // Rate-limit (audyt #214): blokuje spam push do całej firmy (sliding window per IP+akcja).
+  if (!(await rateLimit(request, "push-send")).ok) {
+    return NextResponse.json({ error: "Za dużo żądań — spróbuj za chwilę." }, { status: 429 });
   }
   const supabase = await getServerSupabase();
   const {

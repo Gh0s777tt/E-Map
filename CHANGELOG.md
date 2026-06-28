@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-213-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.69.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-214-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.70.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.70.0] — 🛡️ Audyt: naprawy bezpieczeństwa + higiena
+
+- `[#214]` 🛡️ **Naprawy z [AUDIT_REPORT.md](AUDIT_REPORT.md)** (grupa bezpieczeństwo/higiena):
+  - **Rate-limit na `/api/push/send`** ([route.ts](apps/web/app/api/push/send/route.ts)) — sliding window per IP+akcja (Upstash + fallback in-memory). Zamyka wektor spamu push do całej firmy.
+  - **CSP `Report-Only`** ([next.config.ts](apps/web/next.config.ts)) — allowlista mapy (MapTiler/OSM/Overpass) + Supabase + routing; obserwacja naruszeń przed włączeniem enforce.
+  - **Wersja `apps/web` ujednolicona z root** (mylące `1.7.1` → `1.70.0`) + nowa bramka `docs:check` pilnująca `apps/web` == root.
+  - **Bramka unikalności numerów migracji** w `docs:check` (duplikat numeru = niejednoznaczna kolejność; historyczne `0017`/`0018` świadomie dozwolone).
+  - **Bramki:** biome czysto · `tsc` ×7 · 335 testów · build ✓ · docs:check ✓.
 
 ## [1.69.0] — 🔔 Toasty: ostatnie komponenty (pełne 100%)
 
