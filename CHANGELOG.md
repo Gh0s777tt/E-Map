@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-210-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.66.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-211-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.67.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.67.0] — 🌍 Naprawa i18n: strony respektują wybór języka
+
+- `[#211]` 🌍 **Bugfix i18n — hardcoded `createTranslator("pl")` → `useT()`**:
+  - 4 strony panelu (pojazdy, karty, kierowcy, formularz Trip) + `LiquidForm` renderowały zawsze PL mimo wyboru EN — ignorowały przełącznik języka. Zamiana na hook `useT()` z `LocaleProvider`.
+  - QA wizualne (podgląd): cookie `locale=en` → „Vehicles" / „Drivers" / „Fuel form" zamiast „Pojazdy" / „Kierowcy" / „Paliwo" — zweryfikowane.
+  - Publiczne strony (landing, reset) pozostają PL (poza `LocaleProvider`).
+  - **Bramki:** biome czysto · `tsc` ×7 · **335 testów** · build ✓ · docs:check ✓.
 
 ## [1.66.0] — 🔔 Toasty: zespół + dokumenty (spójność)
 

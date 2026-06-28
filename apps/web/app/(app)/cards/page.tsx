@@ -19,19 +19,17 @@ import {
   monthInputToDate,
   zodFieldErrors,
 } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { CardArt } from "@/components/CardArt";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-
-const t = createTranslator("pl");
 
 type Card = {
   id: string;
@@ -66,6 +64,7 @@ export default function CardsPage() {
   const [vehicleId, setVehicleId] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const toast = useToast();
+  const t = useT();
 
   const load = useCallback(async () => {
     setLoading(true);

@@ -1,20 +1,19 @@
 "use client";
 
 import { createInvite } from "@e-logistic/api";
-import { createTranslator } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { DriverRoster } from "@/components/DriverRoster";
 import * as f from "@/components/formStyles";
+import { useT } from "@/components/LocaleProvider";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-const t = createTranslator("pl");
-
 export default function DriversPage() {
   const { vehicles } = useFleet();
+  const t = useT();
   const [canInvite, setCanInvite] = useState(false);
   const [vehicleId, setVehicleId] = useState("");
   const [link, setLink] = useState<string | null>(null);
