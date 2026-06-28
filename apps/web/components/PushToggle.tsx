@@ -3,6 +3,7 @@
 import { deletePushSubscription, savePushSubscription } from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -25,8 +26,8 @@ type State = "loading" | "unsupported" | "unconfigured" | "off" | "on";
 export function PushToggle() {
   const [state, setState] = useState<State>("loading");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [canSend, setCanSend] = useState(false);
+  const toast = useToast();
 
   const refresh = useCallback(async () => {
     if (
@@ -63,7 +64,6 @@ export function PushToggle() {
 
   async function sendTest() {
     setBusy(true);
-    setMsg(null);
     try {
       const res = await fetch("/api/push/send", {
         method: "POST",
@@ -76,12 +76,12 @@ export function PushToggle() {
       });
       const data = (await res.json().catch(() => ({}))) as { sent?: number; error?: string };
       if (!res.ok) {
-        setMsg(data.error ?? "Nie udało się wysłać.");
+        toast(data.error ?? "Nie udało się wysłać.", "error");
         return;
       }
-      setMsg(`✅ Wysłano testowe powiadomienie do ${data.sent ?? 0} urządzeń firmy.`);
+      toast(`Wysłano testowe powiadomienie do ${data.sent ?? 0} urządzeń firmy.`, "success");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd wysyłki.");
+      toast(e instanceof Error ? e.message : "Błąd wysyłki.", "error");
     } finally {
       setBusy(false);
     }
@@ -89,11 +89,10 @@ export function PushToggle() {
 
   async function enable() {
     setBusy(true);
-    setMsg(null);
     try {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
-        setMsg("Brak zgody na powiadomienia w przeglądarce.");
+        toast("Brak zgody na powiadomienia w przeglądarce.", "error");
         return;
       }
       const reg = await navigator.serviceWorker.register("/sw.js");
@@ -107,13 +106,13 @@ export function PushToggle() {
         data: { user },
       } = await sb.auth.getUser();
       if (!user) {
-        setMsg("Zaloguj się, aby włączyć powiadomienia.");
+        toast("Zaloguj się, aby włączyć powiadomienia.", "error");
         return;
       }
       const m = await getCachedMembership(sb).catch(() => null);
       const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-        setMsg("Nie udało się utworzyć subskrypcji.");
+        toast("Nie udało się utworzyć subskrypcji.", "error");
         return;
       }
       await savePushSubscription(
@@ -122,9 +121,9 @@ export function PushToggle() {
         { userId: user.id, companyId: m?.companyId ?? null, userAgent: navigator.userAgent },
       );
       setState("on");
-      setMsg("✅ Powiadomienia push włączone na tym urządzeniu.");
+      toast("Powiadomienia push włączone na tym urządzeniu.", "success");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd włączania powiadomień.");
+      toast(e instanceof Error ? e.message : "Błąd włączania powiadomień.", "error");
     } finally {
       setBusy(false);
     }
@@ -132,7 +131,6 @@ export function PushToggle() {
 
   async function disable() {
     setBusy(true);
-    setMsg(null);
     try {
       const reg = await navigator.serviceWorker.getRegistration();
       const sub = await reg?.pushManager.getSubscription();
@@ -141,9 +139,9 @@ export function PushToggle() {
         await sub.unsubscribe();
       }
       setState("off");
-      setMsg("Powiadomienia push wyłączone na tym urządzeniu.");
+      toast("Powiadomienia push wyłączone na tym urządzeniu.", "success");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Błąd wyłączania.");
+      toast(e instanceof Error ? e.message : "Błąd wyłączania.", "error");
     } finally {
       setBusy(false);
     }
@@ -200,7 +198,6 @@ export function PushToggle() {
           </Button>
         </div>
       )}
-      {msg && <p style={{ color: palette.smoke, fontSize: 14, marginTop: 4 }}>{msg}</p>}
     </div>
   );
 }

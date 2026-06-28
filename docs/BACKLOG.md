@@ -1,8 +1,8 @@
-<!-- SYNC: po v1.68.0 · #212 · 2026-06-28 -->
+<!-- SYNC: po v1.69.0 · #213 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
-Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.68.0) + bieżący stan kodu.
+Otwarte zadania, priorytetyzowane. Źródło: **audyt 360°** (2026‑06‑27, v1.69.0) + bieżący stan kodu.
 Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 > **Świadomie pominięte (parking):** integracje **kart/płatności partnerskich** — DKV, Eurowag, SNAP, Travis.
@@ -47,14 +47,16 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 >
 > **Od #211:** **bugfix i18n** — 4 strony (pojazdy/karty/kierowcy/Trip) + `LiquidForm` ignorowały przełącznik języka (hardcoded `createTranslator("pl")`); zamiana na `useT()`. EN faktycznie działa.
 >
-> **Od #212:** **dopięcie toastów** — pozostałe widoki (zlecenia, moje zlecenia, faktury+pozycje, karta kierowcy, usterki, Trip, ustawienia/2FA). Wszystkie **13 widoków** CRUD/akcji na `useToast`.
+> **Od #212:** **dopięcie toastów** — widoki-strony (zlecenia, moje zlecenia, faktury+pozycje, karta kierowcy, usterki, Trip, ustawienia/2FA) — 13 widoków na `useToast`.
+>
+> **Od #213:** domknięcie toastów — komponenty `DriverRoster`, `LiquidForm`, `PushToggle`. **Pełne 100%** (16 widoków/komponentów); inline tylko w publicznych login/reset.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
 - [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
 - [x] **Data table** — `DataTable` generyczny (sort/filtr), pilot: kontrahenci (#207). 🔜 reużycie: zlecenia/faktury/pojazdy.
 - [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
-- [x] **Toasty w formularzach** — `useToast` we **wszystkich** formularzach CRUD/akcji (13 widoków, #208–#212). Spójny feedback success/error/info.
+- [x] **Toasty w formularzach** — `useToast` we **wszystkich** formularzach/komponentach CRUD/akcji (16 widoków, #208–#213; inline tylko w publicznych login/reset). Spójny feedback success/error/info.
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
 
 ---

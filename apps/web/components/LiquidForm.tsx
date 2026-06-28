@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { Field } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
+import { useToast } from "@/components/Toast";
 import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
@@ -34,6 +35,7 @@ function splitPlace(label: string): { city: string; country: string } {
 /** Formularz „płynów" — paliwo lub AdBlue (ta sama struktura, `fuelLogSchema`). */
 export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const t = useT();
+  const toast = useToast();
   const title = kind === "fuel" ? t("form.fuel.title") : t("form.adblue.title");
 
   const { vehicles, cards, source } = useFleet();
@@ -54,7 +56,6 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const [comment, setComment] = useState("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [lastPriceInfo, setLastPriceInfo] = useState("");
@@ -91,10 +92,10 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         setPriceTotal(row.price_total != null ? String(row.price_total) : "");
         setComment(row.comment ?? "");
       } catch (e) {
-        setStatus(e instanceof Error ? e.message : "Nie udało się wczytać wpisu do edycji.");
+        toast(e instanceof Error ? e.message : "Nie udało się wczytać wpisu do edycji.", "error");
       }
     })();
-  }, [table]);
+  }, [table, toast]);
 
   useEffect(() => {
     if (!editId && !vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
@@ -138,25 +139,24 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
   function fillGps() {
     if (!navigator.geolocation) {
-      setStatus("GPS niedostępny w tej przeglądarce.");
+      toast("GPS niedostępny w tej przeglądarce.", "error");
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setStatus("Pobrano współrzędne GPS.");
+        toast("Pobrano współrzędne GPS.", "success");
       },
-      () => setStatus("Nie udało się pobrać GPS — wpisz lokalizację ręcznie."),
+      () => toast("Nie udało się pobrać GPS — wpisz lokalizację ręcznie.", "error"),
     );
   }
 
   async function submit() {
     if (setupMsg) {
-      setStatus(`⚠️ ${setupMsg}`);
+      toast(setupMsg, "error");
       return;
     }
     setErrors({});
-    setStatus(null);
 
     const input = {
       vehicleId,
@@ -174,30 +174,31 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
     if (!parsed.success) {
       const map = zodFieldErrors(parsed.error);
       setErrors(map);
-      setStatus("Popraw błędy w formularzu.");
+      toast("Popraw błędy w formularzu.", "error");
       return;
     }
 
     if (editId) {
       try {
         await updateFuelLog(getBrowserSupabase(), editId, parsed.data, table);
-        setStatus("✅ Zmiany zapisane. Przekierowuję do historii…");
+        toast("Zmiany zapisane. Przekierowuję do historii…", "success");
         setTimeout(() => {
           window.location.href = "/forms/history";
         }, 900);
       } catch (e) {
-        setStatus(e instanceof Error ? e.message : "Błąd zapisu zmian.");
+        toast(e instanceof Error ? e.message : "Błąd zapisu zmian.", "error");
       }
       return;
     }
 
     const item = await enqueue(kind, parsed.data, new Date().toISOString());
-    setStatus(
+    toast(
       item.status === "synced"
-        ? "✅ Zapisano i zsynchronizowano."
+        ? "Zapisano i zsynchronizowano."
         : item.status === "error"
-          ? `📥 Zapisano lokalnie (w kolejce). ${item.error ?? ""}`
-          : "📥 Zapisano lokalnie — synchronizacja po połączeniu.",
+          ? `Zapisano lokalnie (w kolejce). ${item.error ?? ""}`
+          : "Zapisano lokalnie — synchronizacja po połączeniu.",
+      item.status === "synced" ? "success" : "info",
     );
     setOdometerKm("");
     setLiters("");
@@ -378,7 +379,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
                 onClick={() => {
                   const l = Number(liters);
                   if (l > 0 && lastPrice != null) setPriceTotal(String(round2(l * lastPrice)));
-                  else setStatus("Podaj najpierw litry, aby przeliczyć kwotę.");
+                  else toast("Podaj najpierw litry, aby przeliczyć kwotę.", "error");
                 }}
               >
                 Przelicz kwotę
@@ -403,8 +404,6 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         >
           {t("common.save")}
         </button>
-
-        {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { useToast } from "@/components/Toast";
 import { Badge, Button } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -40,6 +41,7 @@ const EXPIRY_DOCS = [
 
 export function DriverRoster() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [allowed, setAllowed] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,7 +62,6 @@ export function DriverRoster() {
   const [psychotechExpiry, setPsychotechExpiry] = useState("");
   const [adrExpiry, setAdrExpiry] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, Docs>>({});
 
   const load = useCallback(async () => {
@@ -143,14 +144,12 @@ export function DriverRoster() {
     setMedicalExpiry(d.medical_expiry ?? "");
     setPsychotechExpiry(d.psychotech_expiry ?? "");
     setAdrExpiry(d.adr_expiry ?? "");
-    setStatus(null);
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function save() {
     setErrors({});
-    setStatus(null);
     const parsed = driverSchema.safeParse({
       firstName,
       lastName,
@@ -176,7 +175,7 @@ export function DriverRoster() {
       const sb = getBrowserSupabase();
       const m = await getActiveMembership(sb);
       if (!m) {
-        setStatus("Brak firmy.");
+        toast("Brak firmy.", "error");
         return;
       }
       let driverId = editingId;
@@ -195,11 +194,11 @@ export function DriverRoster() {
           license: license || undefined,
         });
       }
-      setStatus(editingId ? "✅ Zmiany zapisane." : "✅ Kierowca dodany.");
+      toast(editingId ? "Zmiany zapisane." : "Kierowca dodany.", "success");
       resetForm();
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd zapisu.");
+      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
     }
   }
 
@@ -208,9 +207,10 @@ export function DriverRoster() {
     try {
       await deleteDriver(getBrowserSupabase(), id);
       if (editingId === id) resetForm();
+      toast("Kierowca usunięty.", "success");
       await load();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd usuwania.");
+      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
     }
   }
 
@@ -219,7 +219,7 @@ export function DriverRoster() {
       const d = await getDriverDocuments(getBrowserSupabase(), id);
       setRevealed((m) => ({ ...m, [id]: d }));
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Błąd odczytu dokumentów.");
+      toast(e instanceof Error ? e.message : "Błąd odczytu dokumentów.", "error");
     }
   }
 
@@ -432,7 +432,6 @@ export function DriverRoster() {
             </Button>
           )}
         </div>
-        {status && <p style={{ color: palette.smoke, fontSize: 14 }}>{status}</p>}
       </div>
 
       {drivers.length === 0 ? (
