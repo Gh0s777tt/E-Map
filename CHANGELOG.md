@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-218-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.74.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-219-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.75.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.75.0] — 🧹 Domknięcie ustaleń audytu (higiena)
+
+- `[#219]` 🧹 **Pozostałe ustalenia audytu (Niskie/Średni)** — domknięte:
+  - **Nawigacja `/dev`** — warunkowy link „Panel developera" w sidebarze (tylko rola `developer`); dotąd dostęp wyłącznie przez URL. i18n `nav.dev` (PL/EN). [layout.tsx](apps/web/app/(app)/layout.tsx)
+  - **`.claude/`** → `.gitignore` + odśledzenie `launch.json` (lokalna konfiguracja preview, auto-generowana).
+  - **Wersjonowanie** udokumentowane: `apps/web` = root (bramka `docs:check`), **`apps/mobile` niezależnie** (rytm EAS/sklepy), `packages/*` wewnętrzne — [MOBILE-PLAN.md](docs/MOBILE-PLAN.md).
+  - **`DataTable` vs karty** — dwa celowe wzorce udokumentowane (listy płaskie vs rozwijane) — [BACKLOG.md](docs/BACKLOG.md).
+  - **Bramki:** biome czysto · `tsc` ×7 · 343 testy · build ✓ · docs:check ✓ · parytet i18n ✓.
 
 ## [1.74.0] — 🗺️ Tryb jasny dla paneli mapy (audyt)
 

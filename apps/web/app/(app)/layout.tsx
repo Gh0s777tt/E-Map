@@ -23,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let email = "tryb offline";
   let allowed: AppModule[] = ["vehicles", "drivers", "cards", "forms", "reports", "map", "stats"];
   let isOwner = true;
+  let isDeveloper = false; // rola developer — diagnostyka platformy (panel /dev)
   let manage = true; // owner/dispatcher — narzędzia zarządcze (zlecenia, faktury, serwis…)
 
   if (supabaseConfigured) {
@@ -49,6 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       if (m) {
         allowed = effectiveModules(m.role, m.modules);
         isOwner = m.role === "owner";
+        isDeveloper = m.role === "developer";
         manage = m.role === "owner" || m.role === "dispatcher";
       }
     } catch {
@@ -113,6 +115,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/settings", label: t("nav.settings") },
         ...(isOwner ? [{ href: "/team", label: t("nav.team") }] : []),
         ...(isOwner ? [{ href: "/audit", label: t("nav.audit") }] : []),
+        ...(isDeveloper ? [{ href: "/dev", label: t("nav.dev") }] : []),
       ],
     },
   ].filter((g) => g.items.length > 0);

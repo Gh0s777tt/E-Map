@@ -38,6 +38,9 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
+# Claude Code (lokalne: launch.json preview auto-generowany, sesje, ustawienia lokalne)
+.claude/
+
 # Testy / coverage
 coverage/
 

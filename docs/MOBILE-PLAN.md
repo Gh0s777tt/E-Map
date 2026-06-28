@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.26.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.74.0 (#218) · 2026-06-28
+> Stan: **v1.26.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.75.0 (#219) · 2026-06-28
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.
@@ -57,6 +57,9 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
   unified-versioning Expo). Używaj `npx expo install --fix`, który dopasowuje wersje natywne do SDK.
 - Bump dużych wersji = bump **SDK Expo** (np. 56 → następny) razem, nie pojedynczo.
 
+## Wersjonowanie (decyzja — audyt #219)
+- **`apps/mobile` wersjonowany niezależnie** (`app.json`/`package.json` = 1.26.0) — własny rytm wydań związany z buildami **EAS** i publikacją w sklepach; unified-versioning Expo czyni lockstep z numerem roota niepraktycznym. **Świadoma decyzja**, nie rozjazd.
+- `apps/web` = wersja roota (pilnowane bramką `docs:check` od #214). `packages/*` (0.x) — wewnętrzne, niepublikowane na npm; numer wersji bez znaczenia funkcjonalnego.
+
 ## Porządki przy okazji
-- Ujednolicić wersję `apps/mobile` (`app.json` / `package.json` = 1.26.0) z resztą lub udokumentować niezależne.
 - `apps/mobile/tsconfig.json` ma już zaostrzone reguły (strict + `noUncheckedIndexedAccess`) — utrzymać przy nowych ekranach.
