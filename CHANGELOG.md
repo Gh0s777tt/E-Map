@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-223-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.79.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-224-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.80.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.80.0] — 🗺️ Dekompozycja map/page.tsx (etap 1: 4 komponenty)
+
+- `[#224]` 🗺️ **Dekompozycja `map/page.tsx`** (ostatnia pozycja „Top usprawnień" z audytu) — etap 1: prezentacyjne fragmenty panelu wydzielone do [mapPanels.tsx](apps/web/app/(app)/map/mapPanels.tsx): `RouteSummary` (podsumowanie trasy + utrudnienia), `StopsEditor` (przystanki + geokoder), `SavedPlacesChips` (zapisane miejsca), `FuelPricesPanel` (ceny diesla). Czyste, bezstanowe — stan i logika zostają w stronie → **page.tsx 1452 → 1343 l. (−109)**.
+  - **QA wizualne** (preview w trybie offline): panel renderuje identycznie, wytyczenie trasy → `RouteSummary` OK, brak regresji, zero błędów konsoli z refaktoru. JSX przeniesiony verbatim (zachowanie bez zmian).
+  - Sekcje mocno sprzężone ze stanem (TIR/wymiary, POI, filtr kart, ruch) — do dalszych etapów wg potrzeby.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.79.0] — 🔒 Domknięcie ustaleń QA: guard scopingu + odporność adapterów
 
