@@ -954,7 +954,7 @@ export default function MapPage() {
       </p>
 
       <div style={{ display: "flex", gap: 16, marginTop: 16, flexWrap: "wrap" }}>
-        <div style={styles.panel}>
+        <div className={styles.panel}>
           <StopsEditor
             stops={stops}
             queries={queries}
@@ -965,10 +965,15 @@ export default function MapPage() {
           />
 
           <div style={{ display: "flex", gap: 6 }}>
-            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={addStop}>
+            <button type="button" className={styles.ghost} style={{ flex: 1 }} onClick={addStop}>
               ➕ Przystanek
             </button>
-            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={useMyLocation}>
+            <button
+              type="button"
+              className={styles.ghost}
+              style={{ flex: 1 }}
+              onClick={useMyLocation}
+            >
               📍 Moja lokalizacja
             </button>
           </div>
@@ -976,7 +981,8 @@ export default function MapPage() {
             <select
               value={savedCat}
               onChange={(e) => setSavedCat(e.target.value as SavedPlaceCategory)}
-              style={{ ...styles.ghost, flex: 1 }}
+              className={styles.ghost}
+              style={{ flex: 1 }}
               title="Kategoria zapisanego miejsca"
             >
               {SAVED_PLACE_CATEGORIES.map((c) => (
@@ -985,11 +991,16 @@ export default function MapPage() {
                 </option>
               ))}
             </select>
-            <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={saveStart}>
+            <button type="button" className={styles.ghost} style={{ flex: 1 }} onClick={saveStart}>
               ⭐ Zapisz start
             </button>
           </div>
-          <button type="button" style={{ ...styles.ghost, width: "100%" }} onClick={shareRoute}>
+          <button
+            type="button"
+            className={styles.ghost}
+            style={{ width: "100%" }}
+            onClick={shareRoute}
+          >
             🔗 Udostępnij trasę
           </button>
           {shareMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{shareMsg}</div>}
@@ -1012,17 +1023,14 @@ export default function MapPage() {
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
-          <span style={styles.label}>Podkład</span>
+          <span className={styles.label}>Podkład</span>
           <div style={{ display: "flex", gap: 6 }}>
             {BASEMAPS.map((b) => (
               <button
                 key={b.key}
                 type="button"
                 onClick={() => switchBasemap(b.key)}
-                style={{
-                  ...styles.segment,
-                  ...(basemap === b.key ? styles.segmentActive : {}),
-                }}
+                className={`${styles.segment} ${basemap === b.key ? styles.segmentActive : ""}`}
               >
                 {b.label}
               </button>
@@ -1030,7 +1038,7 @@ export default function MapPage() {
           </div>
           {MAPTILER_KEY && (
             <>
-              <label style={styles.check}>
+              <label className={styles.check}>
                 <input
                   type="checkbox"
                   checked={terrain3d}
@@ -1038,7 +1046,7 @@ export default function MapPage() {
                 />{" "}
                 Teren 3D
               </label>
-              <label style={styles.check}>
+              <label className={styles.check}>
                 <input
                   type="checkbox"
                   checked={globe}
@@ -1051,7 +1059,7 @@ export default function MapPage() {
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
-          <label style={styles.check}>
+          <label className={styles.check}>
             <input
               type="checkbox"
               checked={kindHeavy}
@@ -1063,53 +1071,54 @@ export default function MapPage() {
             <>
               <button
                 type="button"
-                style={{ ...styles.ghost, textAlign: "left", padding: "8px 10px" }}
+                className={styles.ghost}
+                style={{ textAlign: "left", padding: "8px 10px" }}
                 onClick={() => setDimsOpen((o) => !o)}
               >
                 {dimsOpen ? "▾" : "▸"} Wymiary i tonaż ({weightT} t · {axles} osie)
               </button>
               {dimsOpen && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  <label style={styles.field}>
-                    <span style={styles.label}>Masa całk. (t)</span>
+                  <label className={styles.field}>
+                    <span className={styles.label}>Masa całk. (t)</span>
                     <input
-                      style={styles.input}
+                      className={styles.input}
                       type="number"
                       value={weightT}
                       onChange={(e) => setWeightT(e.target.value)}
                     />
                   </label>
-                  <label style={styles.field}>
-                    <span style={styles.label}>Osie</span>
+                  <label className={styles.field}>
+                    <span className={styles.label}>Osie</span>
                     <input
-                      style={styles.input}
+                      className={styles.input}
                       type="number"
                       value={axles}
                       onChange={(e) => setAxles(e.target.value)}
                     />
                   </label>
-                  <label style={styles.field}>
-                    <span style={styles.label}>Wysokość (cm)</span>
+                  <label className={styles.field}>
+                    <span className={styles.label}>Wysokość (cm)</span>
                     <input
-                      style={styles.input}
+                      className={styles.input}
                       type="number"
                       value={heightCm}
                       onChange={(e) => setHeightCm(e.target.value)}
                     />
                   </label>
-                  <label style={styles.field}>
-                    <span style={styles.label}>Szerokość (cm)</span>
+                  <label className={styles.field}>
+                    <span className={styles.label}>Szerokość (cm)</span>
                     <input
-                      style={styles.input}
+                      className={styles.input}
                       type="number"
                       value={widthCm}
                       onChange={(e) => setWidthCm(e.target.value)}
                     />
                   </label>
-                  <label style={{ ...styles.field, gridColumn: "1 / -1" }}>
-                    <span style={styles.label}>Długość (cm)</span>
+                  <label className={styles.field} style={{ gridColumn: "1 / -1" }}>
+                    <span className={styles.label}>Długość (cm)</span>
                     <input
-                      style={styles.input}
+                      className={styles.input}
                       type="number"
                       value={lengthCm}
                       onChange={(e) => setLengthCm(e.target.value)}
@@ -1119,7 +1128,7 @@ export default function MapPage() {
               )}
             </>
           )}
-          <label style={styles.check}>
+          <label className={styles.check}>
             <input
               type="checkbox"
               checked={avoidTolls}
@@ -1127,7 +1136,7 @@ export default function MapPage() {
             />{" "}
             Omijaj płatne drogi
           </label>
-          <label style={styles.check}>
+          <label className={styles.check}>
             <input
               type="checkbox"
               checked={avoidFerries}
@@ -1135,7 +1144,7 @@ export default function MapPage() {
             />{" "}
             Omijaj promy
           </label>
-          <label style={styles.check}>
+          <label className={styles.check}>
             <input
               type="checkbox"
               checked={avoidCH}
@@ -1145,10 +1154,10 @@ export default function MapPage() {
           </label>
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
-          <span style={styles.label}>Koszt paliwa (szac.)</span>
+          <span className={styles.label}>Koszt paliwa (szac.)</span>
           <div style={{ display: "flex", gap: 6 }}>
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               value={consumption}
               onChange={(e) => setConsumption(e.target.value)}
@@ -1156,7 +1165,7 @@ export default function MapPage() {
               title="Spalanie l/100km"
             />
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               step="0.01"
               value={fuelPrice}
@@ -1165,7 +1174,7 @@ export default function MapPage() {
               title="Cena za litr"
             />
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               value={fuelDiscount}
               onChange={(e) => setFuelDiscount(e.target.value)}
@@ -1181,7 +1190,8 @@ export default function MapPage() {
           <div style={{ display: "flex", gap: 6 }}>
             <button
               type="button"
-              style={{ ...styles.ghost, flex: 1 }}
+              className={styles.ghost}
+              style={{ flex: 1 }}
               onClick={loadPois}
               disabled={poiBusy}
             >
@@ -1189,7 +1199,8 @@ export default function MapPage() {
             </button>
             <button
               type="button"
-              style={{ ...styles.ghost, flex: 1 }}
+              className={styles.ghost}
+              style={{ flex: 1 }}
               onClick={loadPoisAlongRoute}
               disabled={poiBusy}
             >
@@ -1207,7 +1218,7 @@ export default function MapPage() {
 
           <button
             type="button"
-            style={{ ...styles.ghost }}
+            className={styles.ghost}
             onClick={loadFuelPrices}
             disabled={fuelPriceBusy}
           >
@@ -1223,7 +1234,7 @@ export default function MapPage() {
             />
           )}
 
-          <label style={styles.check}>
+          <label className={styles.check}>
             <input
               type="checkbox"
               checked={cardFilterOn}
@@ -1250,11 +1261,8 @@ export default function MapPage() {
                     <button
                       key={p}
                       type="button"
-                      style={{
-                        ...styles.segment,
-                        flex: "0 0 auto",
-                        ...(on ? styles.segmentActive : {}),
-                      }}
+                      className={`${styles.segment} ${on ? styles.segmentActive : ""}`}
+                      style={{ flex: "0 0 auto" }}
                       onClick={() =>
                         setCardProviders((s) => {
                           const n = new Set(s);
@@ -1272,7 +1280,7 @@ export default function MapPage() {
             ))}
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
-          <label style={styles.check}>
+          <label className={styles.check}>
             <input
               type="checkbox"
               checked={reportMode}
@@ -1282,7 +1290,7 @@ export default function MapPage() {
           </label>
           {reportMode && (
             <select
-              style={styles.input}
+              className={styles.input}
               value={reportType}
               onChange={(e) => setReportType(e.target.value as ReportType)}
             >
@@ -1296,7 +1304,7 @@ export default function MapPage() {
           {reportMsg && <div style={{ fontSize: 12, color: cssPalette.red }}>{reportMsg}</div>}
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
-          <label style={styles.check}>
+          <label className={styles.check}>
             <input
               type="checkbox"
               checked={trafficOn}

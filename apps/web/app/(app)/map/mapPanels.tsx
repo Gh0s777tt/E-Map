@@ -9,6 +9,7 @@ import { Row, styles } from "./mapUi";
 /**
  * Prezentacyjne fragmenty panelu mapy wydzielone z `page.tsx` (dekompozycja) —
  * czyste, bezstanowe, przyjmują tylko dane + callbacki. Stan i logika zostają w stronie.
+ * Style panelu przez CSS Module (`styles.*` = nazwy klas), dynamiczne/one-off inline.
  */
 
 /** Podsumowanie wytyczonej trasy (dystans/czas/myto/paliwo) + utrudnienia na trasie. */
@@ -25,7 +26,7 @@ export function RouteSummary({
 }) {
   return (
     <>
-      <div style={styles.result}>
+      <div className={styles.result}>
         <Row k="Dystans" v={`${result.distanceKm} km`} />
         <Row
           k="Czas jazdy"
@@ -41,8 +42,8 @@ export function RouteSummary({
         <Row k="Dostawca" v={result.provider} />
       </div>
 
-      <div style={styles.disruptions}>
-        <span style={styles.label}>
+      <div className={styles.disruptions}>
+        <span className={styles.label}>
           🚧 Utrudnienia na trasie{" "}
           <span style={{ color: cssPalette.smoke }}>
             (≤ {DISRUPTION_RADIUS_KM} km · zgłoszenia kierowców)
@@ -55,7 +56,7 @@ export function RouteSummary({
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
             {disruptions.slice(0, 12).map((d) => (
-              <div key={d.id} style={styles.disruptionRow}>
+              <div key={d.id} className={styles.disruptionRow}>
                 <span style={{ color: REPORT_COLOR[d.type], fontWeight: 700 }}>
                   ● {REPORT_LABEL[d.type]}
                 </span>
@@ -85,13 +86,13 @@ export function SavedPlacesChips({
   if (saved.length === 0) return null;
   return (
     <div>
-      <span style={styles.label}>Zapisane miejsca ({saved.length})</span>
+      <span className={styles.label}>Zapisane miejsca ({saved.length})</span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
         {saved.map((p) => (
-          <span key={p.id} style={styles.savedChip}>
+          <span key={p.id} className={styles.savedChip}>
             <button
               type="button"
-              style={styles.savedAdd}
+              className={styles.savedAdd}
               onClick={() => onAdd(p)}
               title={`Dodaj „${p.name}" do trasy`}
             >
@@ -104,7 +105,7 @@ export function SavedPlacesChips({
               }{" "}
               {p.name}
             </button>
-            <button type="button" style={styles.savedDel} onClick={() => onRemove(p.id)}>
+            <button type="button" className={styles.savedDel} onClick={() => onRemove(p.id)}>
               ✕
             </button>
           </span>
@@ -139,28 +140,28 @@ export function StopsEditor({
         return (
           <div key={st.key} style={{ position: "relative" }}>
             <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
-              <div style={{ ...styles.field, flex: 1 }}>
-                <span style={styles.label}>{role}</span>
+              <div className={styles.field} style={{ flex: 1 }}>
+                <span className={styles.label}>{role}</span>
                 <input
-                  style={styles.input}
+                  className={styles.input}
                   value={queries[st.key] ?? ""}
                   onChange={(e) => onQueryChange(st.key, e.target.value)}
                   placeholder="Miasto, adres lub miejsce…"
                 />
               </div>
               {removable && (
-                <button type="button" style={styles.remove} onClick={() => removeStop(st.key)}>
+                <button type="button" className={styles.remove} onClick={() => removeStop(st.key)}>
                   ✕
                 </button>
               )}
             </div>
             {list.length > 0 && (
-              <div style={styles.suggest}>
+              <div className={styles.suggest}>
                 {list.map((h) => (
                   <button
                     key={`${h.lat},${h.lng}`}
                     type="button"
-                    style={styles.suggestItem}
+                    className={styles.suggestItem}
                     onClick={() => pickHit(st.key, h)}
                   >
                     {h.label}
@@ -189,7 +190,7 @@ export function FuelPricesPanel({
         <button
           key={s.id}
           type="button"
-          style={styles.priceRow}
+          className={styles.priceRow}
           onClick={() => onFly(s)}
           title={s.name}
         >
