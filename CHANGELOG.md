@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-225-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.81.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-226-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.82.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.82.0] — 🌊 Modernizacja frontu — Tier 2: streaming loading + ocena PPR
+
+- `[#226]` 🌊 **Streaming UI (App Router)** — [(app)/loading.tsx](apps/web/app/(app)/loading.tsx): natychmiastowy szkielet (`.el-skeleton`) podczas nawigacji do stron panelu (Suspense boundary Next), zanim serwerowy layout (auth) i strona się zamontują → lepsza odczuwalna wydajność. Additive, zero ryzyka.
+  - **Ocena PPR / Cache Components (evidence-based → ODŁOŻONE):** `cacheComponents: true` przetestowane buildem → **17 błędów** („Route segment config `dynamic` niekompatybilny z cacheComponents") — apka ma `export const dynamic = "force-dynamic"` w 17 trasach (API + layout auth). Pełne PPR wymaga usunięcia tych configów + owinięcia dynamicznego dostępu w Suspense/`use cache` + QA zmiany nawigacji na `<Activity>` (stan zachowywany między trasami — ryzyko dla modali/dropdownów). Duży, ryzykowny refaktor per-route — świadomie odłożony.
+  - **Pełna migracja RSC** (client→server data, 34 strony) — również ODŁOŻONA: przepisanie warstwy danych (Supabase browser→server) wymaga e2e QA na zalogowanej sesji. Obecny model (client Supabase + RLS) jest poprawny; layout `(app)` i landing już są RSC.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.81.0] — ⚛️ Modernizacja frontu — Tier 1: React Compiler + tree-shaking
 
