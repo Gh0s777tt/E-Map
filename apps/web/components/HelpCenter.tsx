@@ -3,6 +3,7 @@
 import { cssPalette as palette } from "@e-logistic/ui";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import styles from "./HelpCenter.module.css";
 
 type Help = { title: string; intro: string; items: { name: string; desc: string }[] };
 
@@ -180,7 +181,7 @@ export function HelpCenter() {
     <>
       <button
         type="button"
-        style={styles.fab}
+        className={styles.fab}
         onClick={() => setDrawer((v) => !v)}
         aria-label="Pomoc"
       >
@@ -188,17 +189,17 @@ export function HelpCenter() {
       </button>
 
       {drawer && (
-        <div style={styles.drawer}>
+        <div className={styles.drawer}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <strong style={{ fontSize: 16 }}>Pomoc — {help.title}</strong>
-            <button type="button" style={styles.close} onClick={() => setDrawer(false)}>
+            <button type="button" className={styles.close} onClick={() => setDrawer(false)}>
               ✕
             </button>
           </div>
           <p style={{ color: palette.smoke, fontSize: 13, marginTop: 6 }}>{help.intro}</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
             {help.items.map((it) => (
-              <div key={it.name} style={styles.helpItem}>
+              <div key={it.name} className={styles.helpItem}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{it.name}</div>
                 <div style={{ color: palette.smoke, fontSize: 12 }}>{it.desc}</div>
               </div>
@@ -206,7 +207,7 @@ export function HelpCenter() {
           </div>
           <button
             type="button"
-            style={styles.tourBtn}
+            className={styles.tourBtn}
             onClick={() => {
               setDrawer(false);
               setStep(0);
@@ -218,8 +219,8 @@ export function HelpCenter() {
       )}
 
       {step !== null && TOUR[step] && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
+        <div className={styles.overlay}>
+          <div className={styles.modal}>
             <div style={{ fontSize: 12, color: palette.smoke }}>
               Krok {step + 1} z {TOUR.length}
             </div>
@@ -228,12 +229,12 @@ export function HelpCenter() {
             </h2>
             <p style={{ color: palette.offWhite, fontSize: 14, margin: 0 }}>{TOUR[step].body}</p>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 18 }}>
-              <button type="button" style={styles.skip} onClick={endTour}>
+              <button type="button" className={styles.skip} onClick={endTour}>
                 Pomiń
               </button>
               <button
                 type="button"
-                style={styles.next}
+                className={styles.next}
                 onClick={() => (step + 1 >= TOUR.length ? endTour() : setStep(step + 1))}
               >
                 {step + 1 >= TOUR.length ? "Zakończ" : "Dalej"}
@@ -245,91 +246,3 @@ export function HelpCenter() {
     </>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  fab: {
-    position: "fixed",
-    right: 22,
-    bottom: 22,
-    width: 46,
-    height: 46,
-    borderRadius: "50%",
-    background: palette.red,
-    color: "#fff",
-    border: "none",
-    fontSize: 22,
-    fontWeight: 800,
-    cursor: "pointer",
-    boxShadow: "0 4px 14px rgba(0,0,0,0.5)",
-    zIndex: 50,
-  },
-  drawer: {
-    position: "fixed",
-    right: 22,
-    bottom: 80,
-    width: 320,
-    maxWidth: "90vw",
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 12,
-    padding: 16,
-    zIndex: 50,
-    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-  },
-  close: {
-    background: "transparent",
-    color: palette.smoke,
-    border: "none",
-    cursor: "pointer",
-    fontSize: 16,
-  },
-  helpItem: {
-    padding: "8px 10px",
-    borderRadius: 8,
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-  },
-  tourBtn: {
-    marginTop: 12,
-    width: "100%",
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.red}`,
-    borderRadius: 8,
-    padding: "9px",
-    cursor: "pointer",
-  },
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.6)",
-    display: "grid",
-    placeItems: "center",
-    zIndex: 60,
-    padding: 20,
-  },
-  modal: {
-    width: 420,
-    maxWidth: "100%",
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 16,
-    padding: 24,
-  },
-  skip: {
-    background: "transparent",
-    color: palette.smoke,
-    border: "none",
-    cursor: "pointer",
-    fontSize: 14,
-  },
-  next: {
-    background: palette.red,
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    padding: "10px 24px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-};

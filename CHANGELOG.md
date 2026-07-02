@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-229-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.85.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-230-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.86.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.86.0] — 🎨 Modernizacja frontu — Tier 3 etap 4: inline-styles → CSS Module (centrum pomocy)
+
+- `[#230]` 🎨 **`HelpCenter` (FAB „?" + drawer + modal oprowadzenia): inline-styles → CSS Module** — [HelpCenter.module.css](apps/web/components/HelpCenter.module.css) (9 klas: fab/drawer/close/helpItem/tourBtn/overlay/modal/skip/next na tokenach `var(--el-*)`). Komponent widoczny na **każdej** stronie panelu. `className` zamiast `style={{…}}`; teksty pomocy (one-off kolory) inline.
+  - **QA wizualne 1:1** (offline preview, `/dashboard`, computed styles): fab `#E50914`/46px/50%/fixed, modal `#141414`/16px/420px, overlay `rgba(0,0,0,.6)` — identyczne przed/po; klasy CSS Module zastosowane. Zero regresji, zero błędów konsoli.
+  - Etap 4 planu Tier 3. Wyczerpane powierzchnie o dużym obiekcie `styles` i pełnej QA offline (mapa/formularze/logowanie/pomoc). Pozostałe strony list/detali mają małe `styles` + rozproszone one-offy (mały zysk) — dalej wg potrzeby.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.85.0] — 🎨 Modernizacja frontu — Tier 3 etap 3: inline-styles → CSS Module (logowanie)
 

@@ -1,0 +1,99 @@
+/*
+ * Style centrum pomocy (FAB „?" + drawer + modal oprowadzenia) — migracja inline (JS)
+ * → CSS Module (Tier 3 etap 4). Wartości 1:1 z `cssPalette.*` (tokeny `var(--el-*)`).
+ * Widoczny na każdej stronie panelu.
+ */
+
+.fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--el-red, #e50914);
+  color: #fff;
+  border: none;
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+}
+
+.drawer {
+  position: fixed;
+  right: 22px;
+  bottom: 80px;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--el-surface, #141414);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.close {
+  background: transparent;
+  color: var(--el-muted, #a3a3a3);
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.helpItem {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--el-background, #0a0a0a);
+  border: 1px solid var(--el-border, #2a2a2a);
+}
+
+.tourBtn {
+  margin-top: 12px;
+  width: 100%;
+  background: transparent;
+  color: var(--el-text, #f5f5f5);
+  border: 1px solid var(--el-red, #e50914);
+  border-radius: 8px;
+  padding: 9px;
+  cursor: pointer;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: grid;
+  place-items: center;
+  z-index: 60;
+  padding: 20px;
+}
+
+.modal {
+  width: 420px;
+  max-width: 100%;
+  background: var(--el-surface, #141414);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.skip {
+  background: transparent;
+  color: var(--el-muted, #a3a3a3);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.next {
+  background: var(--el-red, #e50914);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-weight: 700;
+  cursor: pointer;
+}
