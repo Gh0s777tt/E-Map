@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-228-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.84.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-229-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.85.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.85.0] — 🎨 Modernizacja frontu — Tier 3 etap 3: inline-styles → CSS Module (logowanie)
+
+- `[#229]` 🎨 **Ekran logowania (`LoginForm`): inline-styles → CSS Module** — [LoginForm.module.css](apps/web/components/LoginForm.module.css) (13 klas: wrap/card/title/sub/field/label/input/primary/ghost/link/divider/oauth/passkey/msg na tokenach `var(--el-*)`). `className` zamiast `style={{…}}`; one-off (litera „E", układ flex nagłówka) inline.
+  - **QA wizualne 1:1** (preview, `/login`, computed styles): karta `#141414`/16px/360px, input `#0a0a0a`/`10px 12px`, przycisk `#E50914`/`11px 12px` — identyczne przed/po; klasa CSS Module zastosowana. Zero regresji, zero błędów konsoli.
+  - Etap 3 planu Tier 3 (mapa #227 · formularze #228 · logowanie #229). Pozostają: strony list/detali (najwięcej, słabsze QA offline) + CSP-enforce.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.84.0] — 🎨 Modernizacja frontu — Tier 3 etap 2: inline-styles → CSS Module (formularze)
 
