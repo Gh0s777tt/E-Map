@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-227-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.83.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-228-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.84.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.84.0] — 🎨 Modernizacja frontu — Tier 3 etap 2: inline-styles → CSS Module (formularze)
+
+- `[#228]` 🎨 **Formularz `LiquidForm` (paliwo/AdBlue): inline-styles → CSS Module** — [LiquidForm.module.css](apps/web/components/LiquidForm.module.css) (form/input/primary/ghost/linkBtn na tokenach `var(--el-*)`), `className` zamiast `style={{…}}`. Style współdzielonego formularza jadą jako cache'owalny CSS; one-off (nagłówki, setup-box, etykiety płatności) pozostają inline.
+  - **QA wizualne 1:1** (offline preview, `/forms/fuel`, computed styles): input `#0a0a0a`/`10px 12px`/radius 8px, przycisk zapisu `#E50914`/12px — identyczne przed/po; klasa CSS Module zastosowana. Zero regresji, zero błędów konsoli.
+  - Etap 2 z planu Tier 3 (po mapie #227). Pozostają: strony list/detali + CSP-enforce — inkrementalnie.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.83.0] — 🎨 Modernizacja frontu — Tier 3 etap 1: inline-styles → CSS Module (mapa)
 

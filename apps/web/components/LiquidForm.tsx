@@ -19,6 +19,7 @@ import { useToast } from "@/components/Toast";
 import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
+import styles from "./LiquidForm.module.css";
 
 /** Z etykiety geokodera „Miasto, …, Kraj" wyciąga miasto (pierwszy człon) i kraj (ostatni). */
 function splitPlace(label: string): { city: string; country: string } {
@@ -243,10 +244,10 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         </div>
       )}
 
-      <div style={styles.form}>
+      <div className={styles.form}>
         <Field label={t("form.field.vehicle")} error={errors.vehicleId}>
           <select
-            style={styles.input}
+            className={styles.input}
             value={vehicleId}
             onChange={(e) => setVehicleId(e.target.value)}
           >
@@ -273,7 +274,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")} error={errors["station.country"]}>
             <input
-              style={styles.input}
+              className={styles.input}
               value={country}
               onChange={(e) => setCountry(e.target.value)}
               placeholder="DE"
@@ -281,7 +282,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           </Field>
           <Field label={t("form.field.location")} error={errors["station.city"]}>
             <input
-              style={styles.input}
+              className={styles.input}
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Berlin"
@@ -289,14 +290,14 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           </Field>
         </div>
 
-        <button type="button" style={styles.ghost} onClick={fillGps}>
+        <button type="button" className={styles.ghost} onClick={fillGps}>
           📍 Pobierz GPS {coords ? `(${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)})` : ""}
         </button>
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.odometer")} error={errors.odometerKm}>
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               value={odometerKm}
               onChange={(e) => setOdometerKm(e.target.value)}
@@ -304,7 +305,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           </Field>
           <Field label={t("form.field.liters")} error={errors.liters}>
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               value={liters}
               onChange={(e) => setLiters(e.target.value)}
@@ -349,7 +350,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         {paymentMethod === "card" && (
           <Field label={t("nav.cards")} error={errors.fuelCardId}>
             <select
-              style={styles.input}
+              className={styles.input}
               value={fuelCardId}
               onChange={(e) => setFuelCardId(e.target.value)}
             >
@@ -364,7 +365,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
         <Field label={`${t("form.field.amount")} (opcjonalnie)`} error={errors.priceTotal}>
           <input
-            style={styles.input}
+            className={styles.input}
             type="number"
             value={priceTotal}
             onChange={(e) => setPriceTotal(e.target.value)}
@@ -375,7 +376,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
               {lastPriceInfo ? ` · ${lastPriceInfo}` : ""}{" "}
               <button
                 type="button"
-                style={styles.linkBtn}
+                className={styles.linkBtn}
                 onClick={() => {
                   const l = Number(liters);
                   if (l > 0 && lastPrice != null) setPriceTotal(String(round2(l * lastPrice)));
@@ -390,7 +391,8 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
         <Field label={t("form.field.comment")} error={errors.comment}>
           <textarea
-            style={{ ...styles.input, minHeight: 70 }}
+            className={styles.input}
+            style={{ minHeight: 70 }}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
           />
@@ -398,7 +400,8 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
         <button
           type="button"
-          style={{ ...styles.primary, opacity: setupMsg ? 0.5 : 1 }}
+          className={styles.primary}
+          style={{ opacity: setupMsg ? 0.5 : 1 }}
           onClick={submit}
           disabled={!!setupMsg}
         >
@@ -408,43 +411,3 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  form: { display: "flex", flexDirection: "column", gap: 14, marginTop: 20 },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-    width: "100%",
-  },
-  primary: {
-    marginTop: 8,
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "12px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "9px 12px",
-    cursor: "pointer",
-    alignSelf: "flex-start",
-  },
-  linkBtn: {
-    background: "transparent",
-    color: palette.red,
-    border: "none",
-    padding: 0,
-    cursor: "pointer",
-    fontSize: 12,
-    textDecoration: "underline",
-  },
-};
