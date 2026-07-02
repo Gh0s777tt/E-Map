@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-224-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.80.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-225-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.81.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.81.0] — ⚛️ Modernizacja frontu — Tier 1: React Compiler + tree-shaking
+
+- `[#225]` ⚛️ **React Compiler (React 19)** włączony — [next.config.ts](apps/web/next.config.ts) `reactCompiler: true` + devDep `babel-plugin-react-compiler`. Automatyczna memoizacja komponentów (mniej re-renderów, mniej ręcznego `useMemo`/`useCallback`); Next stosuje go tylko do plików React (optymalizacja SWC) — build szybki, kompatybilny z Turbopack.
+  - `experimental.optimizePackageImports` dla pakietów `@e-logistic/*` — tree-shaking barrel-importów.
+  - Audyt lazy-loadingu: **MapLibre już `await import()`** (chunk ~1 MB tylko na `/map`, nie w bundlu współdzielonym) — bez zmian.
+  - **QA wizualne** (offline preview): `/map` w pełni działa pod compilerem (stan, efekty, wytyczenie trasy → `RouteSummary`), zero błędów konsoli.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ (React Compiler aktywny) · docs:check ✓.
+  - Tier 2 (RSC/PPR) i Tier 3 (inline-styles→Tailwind, CSP enforce) — kolejne wydania.
 
 ## [1.80.0] — 🗺️ Dekompozycja map/page.tsx (etap 1: 4 komponenty)
 

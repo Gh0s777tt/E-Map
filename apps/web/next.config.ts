@@ -37,6 +37,10 @@ const securityHeaders = [
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // React Compiler (React 19) — automatyczna memoizacja (mniej re-renderów, mniej ręcznego
+  // useMemo/useCallback). Next stosuje go tylko do plików React (optymalizacja SWC), więc build
+  // pozostaje szybki i kompatybilny z Turbopack. Wymaga devDep `babel-plugin-react-compiler`.
+  reactCompiler: true,
   transpilePackages: [
     "@e-logistic/api",
     "@e-logistic/core",
@@ -44,6 +48,16 @@ const config: NextConfig = {
     "@e-logistic/i18n",
     "@e-logistic/maps",
   ],
+  // Tree-shaking barrel-importów pakietów współdzielonych (import tylko użytych symboli).
+  experimental: {
+    optimizePackageImports: [
+      "@e-logistic/core",
+      "@e-logistic/ui",
+      "@e-logistic/api",
+      "@e-logistic/maps",
+      "@e-logistic/i18n",
+    ],
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
