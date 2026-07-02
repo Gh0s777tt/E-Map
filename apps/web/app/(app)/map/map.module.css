@@ -1,0 +1,169 @@
+/*
+ * Style panelu mapy — migracja z inline (JS) na CSS Module (Tier 3, modernizacja).
+ * Wartości 1:1 z poprzednim `cssPalette.*` (te same tokeny `var(--el-*)` z fallbackiem),
+ * dzięki czemu style jadą jako cache'owalny CSS, nie w bundlu JS. Reaguje na tryb jasny.
+ */
+
+.panel {
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--el-surface, #141414);
+  border: 1px solid var(--el-border, #2a2a2a);
+  height: fit-content;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--el-muted, #a3a3a3);
+}
+
+.input {
+  background: var(--el-background, #0a0a0a);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--el-text, #f5f5f5);
+  width: 100%;
+}
+
+.suggest {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--el-surface-hover, #1f1f1f);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  margin-top: 2px;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.suggestItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--el-text, #f5f5f5);
+  border: none;
+  border-bottom: 1px solid var(--el-border, #2a2a2a);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.segment {
+  flex: 1;
+  background: var(--el-background, #0a0a0a);
+  color: var(--el-text, #f5f5f5);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 8px 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.segmentActive {
+  background: var(--el-red, #e50914);
+  color: #ffffff;
+  border-color: var(--el-red, #e50914);
+}
+
+.remove {
+  background: transparent;
+  color: var(--el-muted, #a3a3a3);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+
+.check {
+  color: var(--el-text, #f5f5f5);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.primary {
+  margin-top: 6px;
+  background: var(--el-red, #e50914);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ghost {
+  background: transparent;
+  color: var(--el-text, #f5f5f5);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.result {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--el-border, #2a2a2a);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.disruptions {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--el-background, #0a0a0a);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+}
+
+.disruptionRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.priceRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--el-background, #0a0a0a);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  color: var(--el-text, #f5f5f5);
+  font-size: 13px;
+  text-align: left;
+}
+
+/* Wiersz podsumowania trasy (Row). */
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rowKey {
+  color: var(--el-muted, #a3a3a3);
+}

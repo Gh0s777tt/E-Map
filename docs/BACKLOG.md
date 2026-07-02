@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.82.0 · #226 · 2026-06-28 -->
+<!-- SYNC: po v1.83.0 · #227 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -80,7 +80,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] **Modernizacja frontu — Tier 3 (inline-styles → klasy + CSP enforce).** Sprzężony projekt, świadomie NIE big-bang (patrz niżej):
   - **Stan po modernizacji #225–#226:** ✅ React Compiler (auto-memoizacja), ✅ tree-shaking (`optimizePackageImports`), ✅ streaming `loading.tsx`. Fonty = systemowe (zero payloadu). Kolory = tokeny `var(--el-*)`. **Pozostaje: strukturalne style inline** (wymiary/padding/layout) w ~dziesiątkach plików (mapa, formularze, strony).
   - **Dlaczego nie od ręki:** migracja to ~50+ miejsc wywołań `style={{…}}`→`className`, wysokie ryzyko regresji wizualnej; pełną wierność potwierdzi tylko **e2e QA na zalogowanej sesji** (offline preview nie pokrywa stron z danymi). CSP-**enforce** jest **sprzężony**: wymaga usunięcia `'unsafe-inline'` (style-src), co jest możliwe dopiero PO usunięciu styli inline.
-  - **Plan (inkrementalny, per-powierzchnia, z QA):** (1) mapa (`mapUi`/`mapPanels`/`map/page`) — jedyna w pełni QA-owalna offline; (2) formularze (`LiquidForm`, forms/*); (3) strony list/detali; (4) po usunięciu inline → CSP `style-src` bez `'unsafe-inline'`, potem **enforce** (z `report-uri`). shadcn/ui opcjonalnie na tym etapie.
+  - **Plan (inkrementalny, per-powierzchnia, z QA):** (1) ✅ **mapa — ZROBIONE #227** (`map.module.css`, QA 1:1 computed styles); (2) formularze (`LiquidForm`, forms/*); (3) strony list/detali; (4) po usunięciu inline → CSP `style-src` bez `'unsafe-inline'`, potem **enforce** (z `report-uri`). shadcn/ui opcjonalnie na tym etapie.
   - Rekomendacja: robić etapami z podglądem authed, nie jednym wielkim commitem.
 - [x] **Toasty w formularzach** — `useToast` we **wszystkich** formularzach/komponentach CRUD/akcji (16 widoków, #208–#213; inline tylko w publicznych login/reset). Spójny feedback success/error/info.
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.

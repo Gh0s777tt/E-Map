@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-226-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.82.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-227-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.83.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.83.0] — 🎨 Modernizacja frontu — Tier 3 etap 1: inline-styles → CSS Module (mapa)
+
+- `[#227]` 🎨 **Panel mapy: inline-styles (JS) → CSS Module** — [map.module.css](apps/web/app/(app)/map/map.module.css) (19 klas na tokenach `var(--el-*)`). `mapUi.tsx` eksportuje `styles` jako mapę klas; [page.tsx](apps/web/app/(app)/map/page.tsx) + [mapPanels.tsx](apps/web/app/(app)/map/mapPanels.tsx) używają `className` zamiast `style={{…}}`. Style jadą jako **cache'owalny CSS**, nie w bundlu JS; dynamiczne/one-off (dividery, kolory zgłoszeń) pozostają inline.
+  - **QA wizualne 1:1 (offline preview, computed styles):** panel `#141414`/`12px`/`290px`, input `#0a0a0a`/`9px 10px`, aktywny segment `#E50914` — **identyczne przed/po**. Tryb jasny działa (panel `#141414`→`#ffffff` — tokeny reagują). Zero regresji, zero nowych błędów konsoli.
+  - **Etap 1 z planu Tier 3** (mapa = jedyna powierzchnia w pełni QA-owalna offline). Kolejne etapy (formularze, strony list) + CSP-enforce — inkrementalnie z authed QA (plan w BACKLOG).
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.82.0] — 🌊 Modernizacja frontu — Tier 2: streaming loading + ocena PPR
 
