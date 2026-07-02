@@ -1,0 +1,114 @@
+/*
+ * Style ekranu logowania — migracja inline (JS) → CSS Module (Tier 3 etap 3).
+ * Wartości 1:1 z poprzednim `cssPalette.*` (tokeny `var(--el-*)`). Reaguje na tryb jasny.
+ */
+
+.wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: 360px;
+  max-width: 100%;
+  background: var(--el-surface, #141414);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.sub {
+  color: var(--el-muted, #a3a3a3);
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--el-muted, #a3a3a3);
+}
+
+.input {
+  background: var(--el-background, #0a0a0a);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--el-text, #f5f5f5);
+}
+
+.primary {
+  margin-top: 12px;
+  background: var(--el-red, #e50914);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ghost {
+  background: transparent;
+  color: var(--el-text, #f5f5f5);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.link {
+  background: transparent;
+  color: var(--el-muted, #a3a3a3);
+  border: none;
+  padding: 6px 0 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.divider {
+  height: 1px;
+  background: var(--el-border, #2a2a2a);
+  margin: 12px 0;
+}
+
+.oauth {
+  background: var(--el-surface-hover, #1f1f1f);
+  color: var(--el-text, #f5f5f5);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.passkey {
+  background: transparent;
+  color: var(--el-text, #f5f5f5);
+  border: 1px solid var(--el-red, #e50914);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.msg {
+  color: var(--el-muted, #a3a3a3);
+  font-size: 13px;
+  margin-top: 10px;
+}

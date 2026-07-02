@@ -6,6 +6,7 @@ import { startAuthentication } from "@simplewebauthn/browser";
 import { useEffect, useState } from "react";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import styles from "./LoginForm.module.css";
 
 type Mode = "signin" | "signup";
 
@@ -191,16 +192,16 @@ export function LoginForm({ locale }: { locale: Locale }) {
   // ── Krok 2FA ──
   if (mfaFactorId) {
     return (
-      <main style={styles.wrap}>
-        <div style={styles.card}>
-          <h1 style={styles.title}>
+      <main className={styles.wrap}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>
             <span style={{ color: palette.red }}>E</span>-Logistic
           </h1>
-          <p style={styles.sub}>{t("auth.twoFactor")}</p>
-          <label style={styles.field}>
-            <span style={styles.label}>{t("auth.twoFactorCode")}</span>
+          <p className={styles.sub}>{t("auth.twoFactor")}</p>
+          <label className={styles.field}>
+            <span className={styles.label}>{t("auth.twoFactorCode")}</span>
             <input
-              style={styles.input}
+              className={styles.input}
               value={mfaCode}
               onChange={(e) => setMfaCode(e.target.value)}
               inputMode="numeric"
@@ -208,20 +209,20 @@ export function LoginForm({ locale }: { locale: Locale }) {
               autoComplete="one-time-code"
             />
           </label>
-          <button type="button" style={styles.primary} onClick={verifyMfa} disabled={busy}>
+          <button type="button" className={styles.primary} onClick={verifyMfa} disabled={busy}>
             {t("auth.twoFactorVerify")}
           </button>
-          {msg && <p style={styles.msg}>{msg}</p>}
+          {msg && <p className={styles.msg}>{msg}</p>}
         </div>
       </main>
     );
   }
 
   return (
-    <main style={styles.wrap}>
-      <div style={styles.card}>
+    <main className={styles.wrap}>
+      <div className={styles.card}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <h1 style={styles.title}>
+          <h1 className={styles.title}>
             <span style={{ color: palette.red }}>E</span>-Logistic
           </h1>
           <span style={{ flex: 1 }} />
@@ -229,12 +230,12 @@ export function LoginForm({ locale }: { locale: Locale }) {
             <LocaleSwitcher />
           </div>
         </div>
-        <p style={styles.sub}>{isSignup ? t("auth.signUpSub") : t("auth.signInSub")}</p>
+        <p className={styles.sub}>{isSignup ? t("auth.signUpSub") : t("auth.signInSub")}</p>
 
-        <label style={styles.field}>
-          <span style={styles.label}>{t("auth.email")}</span>
+        <label className={styles.field}>
+          <span className={styles.label}>{t("auth.email")}</span>
           <input
-            style={styles.input}
+            className={styles.input}
             type="email"
             autoComplete="email"
             value={email}
@@ -243,10 +244,10 @@ export function LoginForm({ locale }: { locale: Locale }) {
           />
         </label>
 
-        <label style={styles.field}>
-          <span style={styles.label}>{t("auth.password")}</span>
+        <label className={styles.field}>
+          <span className={styles.label}>{t("auth.password")}</span>
           <input
-            style={styles.input}
+            className={styles.input}
             type="password"
             autoComplete={isSignup ? "new-password" : "current-password"}
             value={password}
@@ -256,7 +257,7 @@ export function LoginForm({ locale }: { locale: Locale }) {
 
         <button
           type="button"
-          style={styles.primary}
+          className={styles.primary}
           onClick={isSignup ? signUpPassword : signInPassword}
           disabled={busy}
         >
@@ -264,103 +265,43 @@ export function LoginForm({ locale }: { locale: Locale }) {
         </button>
 
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-          <button type="button" style={styles.link} onClick={toggleMode} disabled={busy}>
+          <button type="button" className={styles.link} onClick={toggleMode} disabled={busy}>
             {isSignup ? t("auth.toSignIn") : t("auth.toSignUp")}
           </button>
           {!isSignup && (
-            <button type="button" style={styles.link} onClick={forgotPassword} disabled={busy}>
+            <button type="button" className={styles.link} onClick={forgotPassword} disabled={busy}>
               {t("auth.forgotPassword")}
             </button>
           )}
         </div>
 
-        <div style={styles.divider} />
+        <div className={styles.divider} />
 
-        <button type="button" style={styles.ghost} onClick={magicLink} disabled={busy}>
+        <button type="button" className={styles.ghost} onClick={magicLink} disabled={busy}>
           {t("auth.magicLink")}
         </button>
-        <button type="button" style={styles.oauth} onClick={() => oauth("google")} disabled={busy}>
+        <button
+          type="button"
+          className={styles.oauth}
+          onClick={() => oauth("google")}
+          disabled={busy}
+        >
           {t("auth.continueGoogle")}
         </button>
-        <button type="button" style={styles.oauth} onClick={() => oauth("apple")} disabled={busy}>
+        <button
+          type="button"
+          className={styles.oauth}
+          onClick={() => oauth("apple")}
+          disabled={busy}
+        >
           {t("auth.continueApple")}
         </button>
-        <button type="button" style={styles.passkey} onClick={loginPasskey} disabled={busy}>
+        <button type="button" className={styles.passkey} onClick={loginPasskey} disabled={busy}>
           🔑 {t("auth.passkeyLogin")}
         </button>
 
-        {msg && <p style={styles.msg}>{msg}</p>}
+        {msg && <p className={styles.msg}>{msg}</p>}
       </div>
     </main>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  wrap: { minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 },
-  card: {
-    width: 360,
-    maxWidth: "100%",
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 16,
-    padding: 28,
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  title: { fontSize: 32, fontWeight: 800, margin: 0 },
-  sub: { color: palette.smoke, marginTop: 0, marginBottom: 12 },
-  field: { display: "flex", flexDirection: "column", gap: 4, marginTop: 8 },
-  label: { fontSize: 12, color: palette.smoke },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    color: palette.offWhite,
-  },
-  primary: {
-    marginTop: 12,
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "11px 12px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    cursor: "pointer",
-  },
-  link: {
-    background: "transparent",
-    color: palette.smoke,
-    border: "none",
-    padding: "6px 0 0",
-    fontSize: 13,
-    cursor: "pointer",
-  },
-  divider: { height: 1, background: palette.graphite, margin: "12px 0" },
-  oauth: {
-    background: palette.coal,
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    cursor: "pointer",
-  },
-  passkey: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.red}`,
-    borderRadius: 8,
-    padding: "10px 12px",
-    cursor: "pointer",
-  },
-  msg: { color: palette.smoke, fontSize: 13, marginTop: 10 },
-};
