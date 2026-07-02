@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.79.0 · #223 · 2026-06-28 -->
+<!-- SYNC: po v1.80.0 · #224 · 2026-06-28 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -69,7 +69,9 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 >
 > **Od #222 (po QA):** **idempotentny zapis offline** — `insertFuelLog`/`insertTripEvent` `insert`→`upsert(onConflict:"id", ignoreDuplicates:true)`. Ponowny sync = `ON CONFLICT DO NOTHING` → brak duplikatu/błędu PK; chroni przed wyścigiem read-modify-write w outboxie. Bez migracji.
 >
-> **Od #223 (domknięcie QA):** **guard anty-wyciek** w `listPushSubscriptionsForDelivery` (wymóg ≥1 filtra — `it.skip`→aktywny test) · **odporność adapterów** (`graphhopper.ts` brak `points`→pusta geometria; `geocode.ts` odsiew NaN). **Wszystkie ustalenia z TEST_REPORT zaadresowane** poza dekompozycją `map/page.tsx` (wymaga wizualnego QA = sesja). **408 testów**.
+> **Od #223 (domknięcie QA):** **guard anty-wyciek** w `listPushSubscriptionsForDelivery` (wymóg ≥1 filtra — `it.skip`→aktywny test) · **odporność adapterów** (`graphhopper.ts` brak `points`→pusta geometria; `geocode.ts` odsiew NaN). **408 testów**.
+>
+> **Od #224:** **dekompozycja `map/page.tsx` — etap 1** (QA wizualne w trybie offline preview): 4 prezentacyjne komponenty → `mapPanels.tsx` (`RouteSummary`/`StopsEditor`/`SavedPlacesChips`/`FuelPricesPanel`), page.tsx 1452→1343 l. (−109), zachowanie bez zmian. **Wszystkie ustalenia audytu/QA domknięte** (dekompozycja rozpoczęta, dalsze etapy opcjonalne).
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
@@ -87,7 +89,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [x] **Testy mobile** — `lib/outbox.ts` (#200) + `lib/navigation.ts` (`guardRedirect`/`notificationTarget`, #202) = 13 testów. AuthProvider (wiring sesji) — bez testu (wymaga renderera RN, niski zwrot).
 
 ## 🟠 P2 — Wydajność (punktowo; DB ogólnie wzorowe)
-- [ ] **`map/page.tsx` (~1700 l.)** — dekompozycja na 6–8 komponentów (wymaga QA wizualnego mapy).
+- [~] **`map/page.tsx`** — dekompozycja: **etap 1 zrobiony (#224)** — 4 prezentacyjne komponenty do `mapPanels.tsx` (1452→1343 l.). Pozostają sekcje sprzężone ze stanem (TIR/wymiary, POI, filtr kart, ruch) — dalsze etapy wg potrzeby.
 - [ ] **POI O(n·m)** — filtr stacji wg marek + near‑route Haversine: cache marek / grid spatial index / próbka co ~2 km.
 
 ## 🟠 P2 — Mobile do publikacji

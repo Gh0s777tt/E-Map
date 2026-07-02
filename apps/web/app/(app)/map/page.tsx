@@ -45,19 +45,19 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 import { poiFeatures, reportFeatures, routeFeature } from "./mapFeatures";
+import { FuelPricesPanel, RouteSummary, SavedPlacesChips, StopsEditor } from "./mapPanels";
 import {
   BASEMAPS,
   basemapStyle,
   DISRUPTION_RADIUS_KM,
   MAPTILER_KEY,
   POI_LABEL,
-  REPORT_COLOR,
   REPORT_LABEL,
   SAVED_CAT_ICON,
   TRAFFIC_COLOR,
 } from "./mapTheme";
 import type { BasemapKey, MaplibreModule, Report, RouteResponse, Stop } from "./mapTypes";
-import { Row, styles } from "./mapUi";
+import { styles } from "./mapUi";
 
 export default function MapPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -955,45 +955,14 @@ export default function MapPage() {
 
       <div style={{ display: "flex", gap: 16, marginTop: 16, flexWrap: "wrap" }}>
         <div style={styles.panel}>
-          {stops.map((st, i) => {
-            const role = i === 0 ? "Start" : i === stops.length - 1 ? "Cel" : `Przystanek ${i}`;
-            const removable = i > 0 && i < stops.length - 1;
-            const list = hits[st.key] ?? [];
-            return (
-              <div key={st.key} style={{ position: "relative" }}>
-                <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
-                  <div style={{ ...styles.field, flex: 1 }}>
-                    <span style={styles.label}>{role}</span>
-                    <input
-                      style={styles.input}
-                      value={queries[st.key] ?? ""}
-                      onChange={(e) => onQueryChange(st.key, e.target.value)}
-                      placeholder="Miasto, adres lub miejsce…"
-                    />
-                  </div>
-                  {removable && (
-                    <button type="button" style={styles.remove} onClick={() => removeStop(st.key)}>
-                      ✕
-                    </button>
-                  )}
-                </div>
-                {list.length > 0 && (
-                  <div style={styles.suggest}>
-                    {list.map((h) => (
-                      <button
-                        key={`${h.lat},${h.lng}`}
-                        type="button"
-                        style={styles.suggestItem}
-                        onClick={() => pickHit(st.key, h)}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          <StopsEditor
+            stops={stops}
+            queries={queries}
+            hits={hits}
+            onQueryChange={onQueryChange}
+            removeStop={removeStop}
+            pickHit={pickHit}
+          />
 
           <div style={{ display: "flex", gap: 6 }}>
             <button type="button" style={{ ...styles.ghost, flex: 1 }} onClick={addStop}>
@@ -1039,35 +1008,7 @@ export default function MapPage() {
             </div>
           )}
 
-          {saved.length > 0 && (
-            <div>
-              <span style={styles.label}>Zapisane miejsca ({saved.length})</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                {saved.map((p) => (
-                  <span key={p.id} style={styles.savedChip}>
-                    <button
-                      type="button"
-                      style={styles.savedAdd}
-                      onClick={() => addSavedAsStop(p)}
-                      title={`Dodaj „${p.name}" do trasy`}
-                    >
-                      {
-                        SAVED_CAT_ICON[
-                          (SAVED_PLACE_CATEGORIES as readonly string[]).includes(p.category)
-                            ? (p.category as SavedPlaceCategory)
-                            : "other"
-                        ]
-                      }{" "}
-                      {p.name}
-                    </button>
-                    <button type="button" style={styles.savedDel} onClick={() => removeSaved(p.id)}>
-                      ✕
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          <SavedPlacesChips saved={saved} onAdd={addSavedAsStop} onRemove={removeSaved} />
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
@@ -1276,23 +1217,10 @@ export default function MapPage() {
             <div style={{ fontSize: 12, color: cssPalette.smoke }}>{fuelPriceMsg}</div>
           )}
           {fuelPrices.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {fuelPrices.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  style={styles.priceRow}
-                  onClick={() => mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 13 })}
-                  title={s.name}
-                >
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {s.brand || s.name}
-                    {s.isOpen ? "" : " (zamkn.)"}
-                  </span>
-                  <strong style={{ color: cssPalette.red }}>{s.diesel?.toFixed(3)} €</strong>
-                </button>
-              ))}
-            </div>
+            <FuelPricesPanel
+              prices={fuelPrices}
+              onFly={(s) => mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 13 })}
+            />
           )}
 
           <label style={styles.check}>
@@ -1387,53 +1315,12 @@ export default function MapPage() {
           {trafficMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{trafficMsg}</div>}
 
           {result && (
-            <div style={styles.result}>
-              <Row k="Dystans" v={`${result.distanceKm} km`} />
-              <Row
-                k="Czas jazdy"
-                v={`${formatDuration(result.durationMin)}${result.durationEstimated ? " (szac.)" : ""}`}
-              />
-              <Row
-                k="Myto"
-                v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
-              />
-              <Row k="Paliwo (szac.)" v={`${fuelTotal} ${result.currency}`} />
-              <div style={{ height: 1, background: cssPalette.graphite, margin: "2px 0" }} />
-              <Row k="Razem (myto+paliwo)" v={`${grandTotal} ${result.currency}`} />
-              <Row k="Dostawca" v={result.provider} />
-            </div>
-          )}
-
-          {result && (
-            <div style={styles.disruptions}>
-              <span style={styles.label}>
-                🚧 Utrudnienia na trasie{" "}
-                <span style={{ color: cssPalette.smoke }}>
-                  (≤ {DISRUPTION_RADIUS_KM} km · zgłoszenia kierowców)
-                </span>
-              </span>
-              {disruptions.length === 0 ? (
-                <div style={{ fontSize: 12, color: cssPalette.smoke, marginTop: 4 }}>
-                  Brak zgłoszeń przy trasie. 👍
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-                  {disruptions.slice(0, 12).map((d) => (
-                    <div key={d.id} style={styles.disruptionRow}>
-                      <span style={{ color: REPORT_COLOR[d.type], fontWeight: 700 }}>
-                        ● {REPORT_LABEL[d.type]}
-                      </span>
-                      <span style={{ color: cssPalette.smoke, fontSize: 12 }}>
-                        {d.distanceKm} km
-                      </span>
-                      {d.comment && (
-                        <span style={{ color: cssPalette.smoke, fontSize: 12 }}>· {d.comment}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <RouteSummary
+              result={result}
+              fuelTotal={fuelTotal}
+              grandTotal={grandTotal}
+              disruptions={disruptions}
+            />
           )}
         </div>
 
