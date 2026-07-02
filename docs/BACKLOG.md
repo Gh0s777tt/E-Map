@@ -77,7 +77,11 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
 - [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
 - [x] **Data table** — `DataTable` generyczny (sort/filtr), adopcja: kontrahenci (#207). **Decyzja (audyt #219):** `DataTable` dla list **płaskich/tabelarycznych** (kontrahenci); **karty** świadomie dla list z **rozwijaniem/bogatą treścią** (pojazdy, zlecenia, faktury) — dwa celowe wzorce, nie niespójność. Migracja kolejnych list tylko gdy realnie płaskie.
-- [ ] **shadcn/ui** + migracja **inline-styles → klasy** (kolory już na tokenach `var(--el-*)` od #205; pozostają wymiary/layout inline).
+- [ ] **Modernizacja frontu — Tier 3 (inline-styles → klasy + CSP enforce).** Sprzężony projekt, świadomie NIE big-bang (patrz niżej):
+  - **Stan po modernizacji #225–#226:** ✅ React Compiler (auto-memoizacja), ✅ tree-shaking (`optimizePackageImports`), ✅ streaming `loading.tsx`. Fonty = systemowe (zero payloadu). Kolory = tokeny `var(--el-*)`. **Pozostaje: strukturalne style inline** (wymiary/padding/layout) w ~dziesiątkach plików (mapa, formularze, strony).
+  - **Dlaczego nie od ręki:** migracja to ~50+ miejsc wywołań `style={{…}}`→`className`, wysokie ryzyko regresji wizualnej; pełną wierność potwierdzi tylko **e2e QA na zalogowanej sesji** (offline preview nie pokrywa stron z danymi). CSP-**enforce** jest **sprzężony**: wymaga usunięcia `'unsafe-inline'` (style-src), co jest możliwe dopiero PO usunięciu styli inline.
+  - **Plan (inkrementalny, per-powierzchnia, z QA):** (1) mapa (`mapUi`/`mapPanels`/`map/page`) — jedyna w pełni QA-owalna offline; (2) formularze (`LiquidForm`, forms/*); (3) strony list/detali; (4) po usunięciu inline → CSP `style-src` bez `'unsafe-inline'`, potem **enforce** (z `report-uri`). shadcn/ui opcjonalnie na tym etapie.
+  - Rekomendacja: robić etapami z podglądem authed, nie jednym wielkim commitem.
 - [x] **Toasty w formularzach** — `useToast` we **wszystkich** formularzach/komponentach CRUD/akcji (16 widoków, #208–#213; inline tylko w publicznych login/reset). Spójny feedback success/error/info.
 - [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
 
