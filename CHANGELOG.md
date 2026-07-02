@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-230-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.86.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-231-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.87.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.87.0] — 🎨 Modernizacja frontu — Tier 3 etap 5: inline-styles → CSS Module (rozliczenia)
+
+- `[#231]` 🎨 **Strona rozliczeń (`settlements`): lokalne inline-styles → CSS Module** — [settlements.module.css](apps/web/app/(app)/settlements/settlements.module.css) (10 klas: controls/field/input/primary/ghost/cards/card/table/th/td na tokenach `var(--el-*)`). `className` zamiast `style={{…}}`; scalony podwójny atrybut (`controls` + `no-print`) w template-literal; `f.*` (współdzielony `formStyles`) i one-off inline bez zmian.
+  - **QA:** biome · `tsc` ×7 · build ✓ (reduced — strona **crashuje w trybie offline** przez `getBrowserSupabase()` w renderze, więc bez wizualnego QA na danych). Wartości CSS zweryfikowane **1:1 z oryginałem** (ten sam mechanizm tokenów potwierdzony wizualnie 4× w #227–230).
+  - **Odkrycie:** wspólne style są już odduplikowane w `@/components/formStyles` (#201) — najwyższa dźwignia dalszej migracji to `formStyles`→CSS (skoordynowana zmiana wielu plików) **z authed QA**. Strony z danymi nie renderują się offline → dalej realnie wymagają konta testowego.
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.86.0] — 🎨 Modernizacja frontu — Tier 3 etap 4: inline-styles → CSS Module (centrum pomocy)
 

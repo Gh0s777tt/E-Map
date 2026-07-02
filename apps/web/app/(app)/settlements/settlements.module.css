@@ -1,0 +1,80 @@
+/*
+ * Style strony rozliczeń — migracja inline (JS) → CSS Module (Tier 3 etap 5).
+ * Wartości 1:1 z `cssPalette.*` (tokeny `var(--el-*)`). Reaguje na tryb jasny.
+ */
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-top: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input {
+  background: var(--el-background, #0a0a0a);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--el-text, #f5f5f5);
+}
+
+.primary {
+  background: var(--el-red, #e50914);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ghost {
+  background: transparent;
+  color: var(--el-text, #f5f5f5);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.card {
+  background: var(--el-surface, #141414);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 130px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.th {
+  text-align: left;
+  color: var(--el-muted, #a3a3a3);
+  font-size: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--el-border, #2a2a2a);
+}
+
+.td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--el-border, #2a2a2a);
+}

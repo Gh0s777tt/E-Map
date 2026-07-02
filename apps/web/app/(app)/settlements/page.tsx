@@ -10,6 +10,7 @@ import { downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
+import styles from "./settlements.module.css";
 
 type FuelRow = {
   odometer_km: number;
@@ -189,11 +190,11 @@ export default function SettlementsPage() {
       )}
 
       {!denied && (
-        <div style={styles.controls} className="no-print">
-          <label style={styles.field}>
+        <div className={`${styles.controls} no-print`}>
+          <label className={styles.field}>
             <span style={f.label}>Pojazd</span>
             <select
-              style={styles.input}
+              className={styles.input}
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
             >
@@ -204,28 +205,28 @@ export default function SettlementsPage() {
               ))}
             </select>
           </label>
-          <label style={styles.field}>
+          <label className={styles.field}>
             <span style={f.label}>Od</span>
             <input
-              style={styles.input}
+              className={styles.input}
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
             />
           </label>
-          <label style={styles.field}>
+          <label className={styles.field}>
             <span style={f.label}>Do</span>
             <input
-              style={styles.input}
+              className={styles.input}
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
             />
           </label>
-          <label style={styles.field}>
+          <label className={styles.field}>
             <span style={f.label}>Stawka €/km</span>
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               step="0.01"
               value={ratePerKm}
@@ -233,10 +234,10 @@ export default function SettlementsPage() {
               placeholder="np. 1.20"
             />
           </label>
-          <label style={styles.field}>
+          <label className={styles.field}>
             <span style={f.label}>Myto (€)</span>
             <input
-              style={styles.input}
+              className={styles.input}
               type="number"
               step="0.01"
               value={tollCost}
@@ -254,7 +255,7 @@ export default function SettlementsPage() {
 
       {settlement && (
         <>
-          <div style={styles.cards}>
+          <div className={styles.cards}>
             <Card label="Dystans" value={`${settlement.distanceKm} km`} />
             <Card
               label="Spalanie"
@@ -276,7 +277,7 @@ export default function SettlementsPage() {
             />
           </div>
 
-          <table style={styles.table}>
+          <table className={styles.table}>
             <tbody>
               <Tr k="Paliwo" v={`${settlement.fuelLiters} L · ${settlement.fuelCost} €`} />
               <Tr k="AdBlue" v={`${settlement.adblueLiters} L · ${settlement.adblueCost} €`} />
@@ -299,46 +300,46 @@ export default function SettlementsPage() {
           <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 28 }}>
             Pozycje ({fuel.length + adblue.length + trips.length})
           </h2>
-          <table style={styles.table}>
+          <table className={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>Typ</th>
-                <th style={styles.th}>Data</th>
-                <th style={styles.th}>Licznik</th>
-                <th style={styles.th}>Litry</th>
-                <th style={styles.th}>Kwota</th>
+                <th className={styles.th}>Typ</th>
+                <th className={styles.th}>Data</th>
+                <th className={styles.th}>Licznik</th>
+                <th className={styles.th}>Litry</th>
+                <th className={styles.th}>Kwota</th>
               </tr>
             </thead>
             <tbody>
               {fuel.map((r) => (
                 <tr key={`f-${r.created_at}-${r.odometer_km}-${r.liters}`}>
-                  <td style={styles.td}>{r.is_full === false ? "Paliwo (cz.)" : "Paliwo"}</td>
-                  <td style={styles.td}>{r.created_at.slice(0, 10)}</td>
-                  <td style={styles.td}>{r.odometer_km}</td>
-                  <td style={styles.td}>{r.liters}</td>
-                  <td style={styles.td}>
+                  <td className={styles.td}>{r.is_full === false ? "Paliwo (cz.)" : "Paliwo"}</td>
+                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.odometer_km}</td>
+                  <td className={styles.td}>{r.liters}</td>
+                  <td className={styles.td}>
                     {r.price_total != null ? `${round2(r.price_total)} €` : "—"}
                   </td>
                 </tr>
               ))}
               {adblue.map((r) => (
                 <tr key={`a-${r.created_at}-${r.odometer_km}-${r.liters}`}>
-                  <td style={styles.td}>AdBlue</td>
-                  <td style={styles.td}>{r.created_at.slice(0, 10)}</td>
-                  <td style={styles.td}>{r.odometer_km}</td>
-                  <td style={styles.td}>{r.liters}</td>
-                  <td style={styles.td}>
+                  <td className={styles.td}>AdBlue</td>
+                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.odometer_km}</td>
+                  <td className={styles.td}>{r.liters}</td>
+                  <td className={styles.td}>
                     {r.price_total != null ? `${round2(r.price_total)} €` : "—"}
                   </td>
                 </tr>
               ))}
               {trips.map((r) => (
                 <tr key={`t-${r.created_at}-${r.action}-${r.odometer_km}`}>
-                  <td style={styles.td}>{TRIP_LABEL[r.action] ?? r.action}</td>
-                  <td style={styles.td}>{r.created_at.slice(0, 10)}</td>
-                  <td style={styles.td}>{r.odometer_km ?? "—"}</td>
-                  <td style={styles.td}>—</td>
-                  <td style={styles.td}>{r.amount != null ? `${round2(r.amount)} €` : "—"}</td>
+                  <td className={styles.td}>{TRIP_LABEL[r.action] ?? r.action}</td>
+                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.odometer_km ?? "—"}</td>
+                  <td className={styles.td}>—</td>
+                  <td className={styles.td}>{r.amount != null ? `${round2(r.amount)} €` : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -353,7 +354,7 @@ export default function SettlementsPage() {
 
 function Card({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div style={styles.card}>
+    <div className={styles.card}>
       <div style={{ fontSize: 12, color: palette.smoke }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 800, color: accent ?? palette.offWhite }}>
         {value}
@@ -364,54 +365,12 @@ function Card({ label, value, accent }: { label: string; value: string; accent?:
 function Tr({ k, v }: { k: string; v: string }) {
   return (
     <tr>
-      <td style={{ ...styles.td, color: palette.smoke }}>{k}</td>
-      <td style={{ ...styles.td, fontWeight: 700 }}>{v}</td>
+      <td className={styles.td} style={{ color: palette.smoke }}>
+        {k}
+      </td>
+      <td className={styles.td} style={{ fontWeight: 700 }}>
+        {v}
+      </td>
     </tr>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  controls: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginTop: 16 },
-  field: { display: "flex", flexDirection: "column", gap: 4 },
-  input: {
-    background: palette.black,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "9px 10px",
-    color: palette.offWhite,
-  },
-  primary: {
-    background: palette.red,
-    color: palette.white,
-    border: "none",
-    borderRadius: 8,
-    padding: "10px 18px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  ghost: {
-    background: "transparent",
-    color: palette.offWhite,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 8,
-    padding: "10px 16px",
-    cursor: "pointer",
-  },
-  cards: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 },
-  card: {
-    background: palette.nearBlack,
-    border: `1px solid ${palette.graphite}`,
-    borderRadius: 12,
-    padding: "14px 18px",
-    minWidth: 130,
-  },
-  table: { width: "100%", borderCollapse: "collapse", marginTop: 16, fontSize: 14 },
-  th: {
-    textAlign: "left",
-    color: palette.smoke,
-    fontSize: 12,
-    padding: "8px 10px",
-    borderBottom: `1px solid ${palette.graphite}`,
-  },
-  td: { padding: "8px 10px", borderBottom: `1px solid ${palette.graphite}` },
-};
