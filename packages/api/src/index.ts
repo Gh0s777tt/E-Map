@@ -24,6 +24,7 @@ export * from "./data/orderPhotos";
 export * from "./data/orders";
 export * from "./data/perDiemTrips";
 export * from "./data/push";
+export * from "./data/rates";
 export * from "./data/savedPlaces";
 export * from "./data/service";
 export * from "./data/tripEvents";
