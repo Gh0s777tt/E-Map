@@ -55,9 +55,9 @@ export async function exportCompanyWorkbook(
       listFuelLogs(sb, { table: "adblue_logs" }),
       listTripEvents(sb, {}),
     ]);
-  const fuel = fuelRaw as unknown as FuelRow[];
-  const adblue = adblueRaw as unknown as FuelRow[];
-  const trips = tripsRaw as unknown as TripRow[];
+  const fuel: FuelRow[] = fuelRaw;
+  const adblue: FuelRow[] = adblueRaw;
+  const trips: TripRow[] = tripsRaw;
 
   const regOf = (id: string | null) =>
     id ? (vehicles.find((v) => v.id === id)?.registration ?? "—") : "—";

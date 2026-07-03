@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.106.0 · #251 · 2026-07-04 -->
+<!-- SYNC: po v1.107.0 · #252 · 2026-07-04 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -103,7 +103,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 ## 🟡 P3 — Jakość / spójność
 - [x] **Duplikacja:** `setupMessage` (#196) + `zodFieldErrors`/`firstZodError` (#201) wyekstrahowane do `core` — koniec kopiowanej walidacji/obsługi błędów web↔mobile.
-- [ ] **`as unknown` ×8** (Supabase RPC) — komentarze lub dogenerowane typy RPC.
+- [x] **`as unknown`** uporządkowane (#252) — 8 martwych rzutowań usuniętych (wyjazdy, exportAll), 5 realnych na RPC scentralizowane w udokumentowanym `packages/api/src/data/rpcJson.ts`; zostało 6 poza zakresem (MapLibre `setProjection`, exceljs).
 - [x] **Locale hardcoded** naprawione — `createTranslator("pl")` → `useT()` na 4 stronach + `LiquidForm` (#211). Publiczne (landing/reset) pozostają PL (poza `LocaleProvider`).
 
 ## 🟡 P3 — Bezpieczeństwo (hardening; brak P0/P1)

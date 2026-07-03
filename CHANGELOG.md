@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-251-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.106.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-252-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.107.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.107.0] — 🧹 Koniec `as unknown` na RPC — typy zamiast ślepych rzutowań
+
+- `[#252]` 🧹 **Dług P3 z [BACKLOG](docs/BACKLOG.md) spłacony** — 13 z 19 rzutowań `as unknown` znikło:
+  - **8 martwych** usunięte bez śladu: [`wyjazdy/page.tsx`](apps/web/app/(app)/wyjazdy/page.tsx) (×5) i [`exportAll.ts`](apps/web/lib/exportAll.ts) (×3) — relikt sprzed otypowania warstwy danych (`TypedSupabaseClient`); zwykłe przypisania przechodzą `tsc --strict`.
+  - **5 realnych na RPC** (zwrot `Json` z wygenerowanych `Functions`) scentralizowane w [`rpcJson.ts`](packages/api/src/data/rpcJson.ts) z komentarzem *dlaczego* i *kiedy zniknie* (gdy `gen:types` nauczy się sygnatur funkcji SQL): [`memberships.ts`](packages/api/src/data/memberships.ts), [`drivers.ts`](packages/api/src/data/drivers.ts), [`invoices.ts`](packages/api/src/data/invoices.ts) ×3.
+  - Pozostaje 6 świadomych (poza zakresem RPC): MapLibre `setProjection` ×2, `INSUREKS` pick-list, exceljs `row.values`, eksporty — każde z istniejącym komentarzem kontekstu.
+  - **Bramki:** biome czysto · `tsc` ×7 · 458 testów · docs:check ✓.
 
 ## [1.106.0] — 🔐 Mobile: sesja w szyfrowanym keychainie (expo-secure-store)
 

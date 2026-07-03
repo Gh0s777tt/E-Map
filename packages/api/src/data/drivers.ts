@@ -1,6 +1,7 @@
 /** Warstwa danych: kartoteka kierowców (PII — RLS: owner/dispatcher). */
 import type { DriverInput } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { rpcJson } from "./rpcJson";
 
 /** Wiersz kartoteki (tożsamość deszyfrowana po stronie bazy). */
 export interface DriverRow {
@@ -26,7 +27,7 @@ export interface DriverRow {
 export async function listDrivers(client: SupabaseClient, companyId: string): Promise<DriverRow[]> {
   const { data, error } = await client.rpc("list_drivers", { p_company: companyId });
   if (error) throw error;
-  return (data ?? []) as unknown as DriverRow[];
+  return rpcJson<DriverRow[]>(data ?? []);
 }
 
 /** Zapis tożsamości (szyfrowanie) przez RPC — owner/dispatcher, audytowane. */

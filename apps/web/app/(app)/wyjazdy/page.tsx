@@ -71,11 +71,11 @@ export default function JourneysPage() {
         listDrivers(sb, m.companyId).catch(() => []),
         listRates(sb, m.companyId).catch(() => []),
       ]);
-      setTrips(t as unknown as TripRow[]);
-      setFuel(f as unknown as FuelRow[]);
-      setAdblue(a as unknown as FuelRow[]);
-      setDrivers(d as unknown as DriverRow[]);
-      setRates(r as unknown as RateRow[]);
+      setTrips(t);
+      setFuel(f);
+      setAdblue(a);
+      setDrivers(d);
+      setRates(r);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać wyjazdów.");
     } finally {

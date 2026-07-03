@@ -1,5 +1,6 @@
 /** Warstwa danych: faktury (generowane ze zleceń). */
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { rpcJson } from "./rpcJson";
 
 export interface Invoice {
   id: string;
@@ -65,7 +66,7 @@ export async function createInvoiceFromOrder(
     p_vat_rate: vatRate ?? null,
   });
   if (error) throw error;
-  return data as unknown as { id: string; number: string; gross: number };
+  return rpcJson<{ id: string; number: string; gross: number }>(data);
 }
 
 export async function deleteInvoice(client: SupabaseClient, id: string): Promise<void> {
@@ -117,7 +118,7 @@ export async function createBlankInvoice(
     p_currency: input.currency ?? "EUR",
   });
   if (error) throw error;
-  return data as unknown as { id: string; number: string };
+  return rpcJson<{ id: string; number: string }>(data);
 }
 
 // ── Pozycje faktury (wieloliniowe) ──────────────────────────────────
@@ -189,5 +190,5 @@ export async function duplicateInvoice(
 ): Promise<{ id: string; number: string }> {
   const { data, error } = await client.rpc("duplicate_invoice", { p_invoice: invoiceId });
   if (error) throw error;
-  return data as unknown as { id: string; number: string };
+  return rpcJson<{ id: string; number: string }>(data);
 }
