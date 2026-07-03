@@ -12,8 +12,12 @@ import {
   DEFAULT_PHOTO_CATEGORY,
   isPodCaption,
   PHOTO_CATEGORIES,
+  PHOTO_KIND_LABEL,
+  PHOTO_KINDS,
+  type PhotoKind,
   parsePodCaption,
   photoCategoryCaption,
+  resolvePhotoKind,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -41,6 +45,8 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
   const [recipient, setRecipient] = useState("");
   // #248: kategoria kolejnego zdjęcia (Towar/CMR/Dokument/Inne) → zapisywana w caption.
   const [category, setCategory] = useState<string>(DEFAULT_PHOTO_CATEGORY);
+  // #249: filtr wyświetlanych załączników po typie.
+  const [filterKind, setFilterKind] = useState<PhotoKind | "all">("all");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -118,6 +124,9 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
     }
   }
 
+  const shown = photos.filter((p) => filterKind === "all" || resolvePhotoKind(p) === filterKind);
+  const presentKinds = PHOTO_KINDS.filter((k) => photos.some((p) => resolvePhotoKind(p) === k));
+
   return (
     <div style={styles.wrap}>
       <div style={styles.head}>
@@ -176,10 +185,33 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
 
       {err && <p style={{ color: palette.red, fontSize: 12, margin: "4px 0 0" }}>{err}</p>}
 
-      {photos.length > 0 && (
+      {presentKinds.length > 1 && (
+        <div style={styles.filterRow}>
+          <button
+            type="button"
+            style={filterKind === "all" ? styles.filterChipOn : styles.filterChip}
+            onClick={() => setFilterKind("all")}
+          >
+            Wszystkie ({photos.length})
+          </button>
+          {presentKinds.map((k) => (
+            <button
+              key={k}
+              type="button"
+              style={filterKind === k ? styles.filterChipOn : styles.filterChip}
+              onClick={() => setFilterKind(k)}
+            >
+              {PHOTO_KIND_LABEL[k]} ({photos.filter((p) => resolvePhotoKind(p) === k).length})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {shown.length > 0 && (
         <div style={styles.grid}>
-          {photos.map((p) => {
-            const pod = isPodCaption(p.caption);
+          {shown.map((p) => {
+            const kind = resolvePhotoKind(p);
+            const pod = kind === "pod";
             const podInfo = pod ? parsePodCaption(p.caption) : null;
             return (
               <div key={p.id} style={styles.thumb}>
@@ -188,7 +220,7 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
                     {/* biome-ignore lint/performance/noImgElement: podgląd z podpisanego URL Storage (bucket prywatny, nie next/image) */}
                     <img
                       src={urls[p.id]}
-                      alt={pod ? "Podpis odbiorcy" : "Towar"}
+                      alt={pod ? "Podpis odbiorcy" : PHOTO_KIND_LABEL[kind]}
                       style={{ ...styles.img, ...(pod ? styles.imgPod : null) }}
                     />
                   </a>
@@ -196,7 +228,9 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
                   <div style={{ ...styles.img, background: palette.black }} />
                 )}
                 {pod && <span style={styles.podBadge}>✍️ POD</span>}
-                {!pod && p.caption && <span style={styles.catBadge}>{p.caption}</span>}
+                {!pod && kind !== "cargo" && (
+                  <span style={styles.catBadge}>{PHOTO_KIND_LABEL[kind]}</span>
+                )}
                 {canManage && (
                   <button
                     type="button"
@@ -286,6 +320,26 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     background: palette.graphite,
     color: palette.white,
+  },
+  filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 },
+  filterChip: {
+    background: "transparent",
+    color: palette.smoke,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "3px 10px",
+    fontSize: 12,
+    cursor: "pointer",
+  },
+  filterChipOn: {
+    background: palette.red,
+    color: palette.white,
+    border: `1px solid ${palette.red}`,
+    borderRadius: 999,
+    padding: "3px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
   },
   cap: {
     position: "absolute",

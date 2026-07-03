@@ -8,10 +8,13 @@ import {
 import {
   buildPodCaption,
   DEFAULT_PHOTO_CATEGORY,
-  isPodCaption,
   PHOTO_CATEGORIES,
+  PHOTO_KIND_LABEL,
+  PHOTO_KINDS,
+  type PhotoKind,
   parsePodCaption,
   photoCategoryCaption,
+  resolvePhotoKind,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { decode } from "base64-arraybuffer";
@@ -47,6 +50,8 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
   const [recipient, setRecipient] = useState("");
   // #248: kategoria kolejnego zdjęcia (Towar/CMR/Dokument/Inne) → zapisywana w caption.
   const [category, setCategory] = useState<string>(DEFAULT_PHOTO_CATEGORY);
+  // #249: filtr wyświetlanych załączników po typie.
+  const [filterKind, setFilterKind] = useState<PhotoKind | "all">("all");
 
   const load = useCallback(async () => {
     if (!supabaseConfigured) return;
@@ -138,6 +143,9 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
     }
   }
 
+  const shown = photos.filter((p) => filterKind === "all" || resolvePhotoKind(p) === filterKind);
+  const presentKinds = PHOTO_KINDS.filter((k) => photos.some((p) => resolvePhotoKind(p) === k));
+
   return (
     <View style={styles.wrap}>
       <View style={styles.head}>
@@ -206,10 +214,35 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
 
       {err && <Text style={styles.err}>{err}</Text>}
 
-      {photos.length > 0 && (
+      {presentKinds.length > 1 && (
+        <View style={styles.catChips}>
+          <Pressable
+            style={[styles.catChip, filterKind === "all" && styles.catChipActive]}
+            onPress={() => setFilterKind("all")}
+          >
+            <Text style={filterKind === "all" ? styles.catChipTextActive : styles.catChipText}>
+              Wszystkie ({photos.length})
+            </Text>
+          </Pressable>
+          {presentKinds.map((k) => (
+            <Pressable
+              key={k}
+              style={[styles.catChip, filterKind === k && styles.catChipActive]}
+              onPress={() => setFilterKind(k)}
+            >
+              <Text style={filterKind === k ? styles.catChipTextActive : styles.catChipText}>
+                {PHOTO_KIND_LABEL[k]} ({photos.filter((p) => resolvePhotoKind(p) === k).length})
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {shown.length > 0 && (
         <View style={styles.grid}>
-          {photos.map((p) => {
-            if (isPodCaption(p.caption)) {
+          {shown.map((p) => {
+            const kind = resolvePhotoKind(p);
+            if (kind === "pod") {
               const info = parsePodCaption(p.caption);
               return (
                 <View key={p.id} style={styles.podChip}>
@@ -232,10 +265,10 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
                 ) : (
                   <View style={[styles.thumb, styles.thumbEmpty]} />
                 )}
-                {p.caption ? (
+                {kind !== "cargo" ? (
                   <View style={styles.catBadge}>
                     <Text style={styles.catBadgeText} numberOfLines={1}>
-                      {p.caption}
+                      {PHOTO_KIND_LABEL[kind]}
                     </Text>
                   </View>
                 ) : null}

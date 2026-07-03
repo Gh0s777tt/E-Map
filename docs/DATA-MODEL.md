@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.103.0** (#248) · 2026-07-03
+> Status: **wdrożone** · stan kodu **v1.104.0** (#249) · 2026-07-03
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -54,7 +54,7 @@ szyfruje platforma Supabase.
 
 - **`contractors`** (0042) — rejestr nabywców/nadawców per firma: `name`, `tax_id`, `address`, `country`; unikalność `(company_id, name)` pod upsert. Autouzupełnianie na fakturach i zleceniach; budowany organicznie. RLS: członek czyta, owner/dispatcher zarządza.
 - **`vehicle_costs`** (0043) — koszty pojazdu **inne niż paliwo**: `vehicle_id`, `category` (repair/leasing/insurance/tax/fine/parking/tires/other), `amount`, `currency`, `cost_date`, `description`. Razem z kosztem paliwa zasilają **P&L floty** i atrybucję rentowności (`fleetPnl`, `sumCostsByCategory` w core). RLS: członek czyta, owner/dispatcher zarządza.
-- **`order_photos`** (0044) — zdjęcia towaru przy zleceniu (dobrowolny dowód zabezpieczenia ładunku): `order_id`, `path`, `mime`, `size_bytes`, `caption`, `uploaded_by` (`default auth.uid()`). Prywatny bucket Storage `cargo-photos` (ścieżka `{company_id}/{order_id}/{uuid}`). RLS: członek czyta; **upload — każdy aktywny członek** (kierowca dokumentuje ładunek); kasowanie — owner/dispatcher (integralność dowodu). Storage.objects: folder[1] = company_id. **#248:** `caption` niesie kategorię załącznika (Towar/CMR/Dokument/Inne) albo podpis POD (osobny format); zdjęcia można robić także z formularza Trasa (przy wybranym zleceniu).
+- **`order_photos`** (0044) — zdjęcia towaru przy zleceniu (dobrowolny dowód zabezpieczenia ładunku): `order_id`, `path`, `mime`, `size_bytes`, `caption`, `uploaded_by` (`default auth.uid()`). Prywatny bucket Storage `cargo-photos` (ścieżka `{company_id}/{order_id}/{uuid}`). RLS: członek czyta; **upload — każdy aktywny członek** (kierowca dokumentuje ładunek); kasowanie — owner/dispatcher (integralność dowodu). Storage.objects: folder[1] = company_id. **#248:** `caption` niesie kategorię załącznika (Towar/CMR/Dokument/Inne) albo podpis POD (osobny format); zdjęcia można robić także z formularza Trasa (przy wybranym zleceniu). **#249:** kolumna **generowana** `kind` (0054) wyprowadza typ z `caption` (`cargo/cmr/document/other/pod`) + indeks → twarde filtrowanie po typie (bez zmian w zapisie aplikacji).
 - **`saved_places`** (0045) — zapisane miejsca (ulubione POI floty: stacje paliw, porty, odprawy celne, firmy, parkingi): `name`, `category`, `lat`, `lng`, `created_by` (`default auth.uid()`). Współdzielone w firmie (zastępują lokalny `localStorage`); klik na mapie dodaje punkt do trasy + delta (`routeDelta` w core). RLS: członek czyta i dodaje; kasowanie — autor lub owner/dispatcher.
 - **`expo_push_tokens`** (0046) — tokeny push Expo aplikacji mobilnej: `user_id`, `company_id`, `token` (unikalny), `platform`. Osobno od `push_subscriptions` (Web Push/VAPID). Każdy użytkownik zarządza własnymi (RLS `user_id = auth.uid()`); wysyłka serwerowa service-role przez Expo Push API (`/api/orders/notify-assignment`).
 
