@@ -1,11 +1,24 @@
 "use client";
 
-import { listFuelLogs, listTripEvents } from "@e-logistic/api";
-import { buildSettlement, effectiveModules, round2, type Settlement } from "@e-logistic/core";
+import {
+  listFuelLogs,
+  listRates,
+  listTripEvents,
+  type Rate,
+  saveDefaultRate,
+} from "@e-logistic/api";
+import {
+  buildSettlement,
+  effectiveModules,
+  pickRate,
+  round2,
+  type Settlement,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
+import { useToast } from "@/components/Toast";
 import { Button, PageHeader, SetupNotice } from "@/components/ui";
 import { downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -52,6 +65,7 @@ function today(): string {
 
 export default function SettlementsPage() {
   const { vehicles, source } = useFleet();
+  const toast = useToast();
   const [vehicleId, setVehicleId] = useState("");
   const [from, setFrom] = useState(firstOfMonth);
   const [to, setTo] = useState(today);
@@ -64,12 +78,22 @@ export default function SettlementsPage() {
   const [busy, setBusy] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
+  const [rates, setRates] = useState<Rate[]>([]);
+  const [isOwner, setIsOwner] = useState(false);
 
-  // Strażnik modułu: jeśli członek istnieje, ale nie ma modułu `settlements` → brak dostępu.
+  // Strażnik modułu + wczytanie stawek (domyślne €/km per pojazd) + rola.
   useEffect(() => {
-    getCachedMembership(getBrowserSupabase())
-      .then((m) => {
-        if (m) setDenied(!effectiveModules(m.role, m.modules).includes("settlements"));
+    const sb = getBrowserSupabase();
+    getCachedMembership(sb)
+      .then(async (m) => {
+        if (!m) return;
+        setDenied(!effectiveModules(m.role, m.modules).includes("settlements"));
+        setIsOwner(m.role === "owner");
+        try {
+          setRates(await listRates(sb, m.companyId));
+        } catch {
+          // brak firmy/sesji — pomijamy podpowiedź stawki
+        }
       })
       .catch(() => {});
   }, []);
@@ -77,6 +101,33 @@ export default function SettlementsPage() {
   useEffect(() => {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId]);
+
+  // Auto-podpowiedź stawki €/km z zapisanej domyślnej stawki pojazdu.
+  // Nie czyści pola, gdy brak domyślnej (nie nadpisuje ręcznego wpisu na ślepo).
+  useEffect(() => {
+    if (!vehicleId) return;
+    const r = pickRate(rates, vehicleId);
+    if (r != null) setRatePerKm(String(r));
+  }, [vehicleId, rates]);
+
+  async function saveRate() {
+    if (!vehicleId) return;
+    const val = Number(ratePerKm);
+    if (!Number.isFinite(val) || val < 0) {
+      toast("Podaj poprawną stawkę €/km (≥ 0).", "error");
+      return;
+    }
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) return;
+      await saveDefaultRate(sb, { companyId: m.companyId, vehicleId, ratePerKm: val });
+      setRates(await listRates(sb, m.companyId));
+      toast(`Zapisano domyślną stawkę ${val} €/km dla ${regOf(vehicleId)}.`, "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Nie udało się zapisać stawki.", "error");
+    }
+  }
 
   const regOf = useCallback(
     (id: string) => vehicles.find((v) => v.id === id)?.registration ?? id.slice(0, 8),
@@ -235,6 +286,11 @@ export default function SettlementsPage() {
               placeholder="np. 1.20"
             />
           </label>
+          {isOwner && (
+            <button type="button" className={styles.ghost} onClick={saveRate}>
+              💾 Zapisz domyślną
+            </button>
+          )}
           <label className={styles.field}>
             <span style={f.label}>Myto (€)</span>
             <input

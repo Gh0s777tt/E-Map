@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-233-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.89.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-234-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.90.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.90.0] — 💶 Domyślne stawki €/km per pojazd — ożywienie tabeli `rates` (discovery A1)
+
+- `[#234]` 💶 **Rozliczenia: auto-podpowiedź stawki €/km z zapisanej stawki pojazdu** + zapis domyślnej (owner). Nowy pure-helper [`pickRate`](packages/core/src/rates.ts) (stawka pojazdu → domyślna firmowa → `null`, **6 testów** [rates.test.ts](packages/core/src/rates.test.ts)) + warstwa danych [`listRates`/`saveDefaultRate`](packages/api/src/data/rates.ts) + wiring [settlements](apps/web/app/(app)/settlements/page.tsx) (auto-fill przy zmianie pojazdu, przycisk „💾 Zapisz domyślną" dla ownera).
+  - **Dlaczego (discovery, problem P2):** stawka €/km wpisywana ręcznie **przy każdym** rozliczeniu, mimo że tabela `rates` (rate_per_km per pojazd) istnieje. Źródło błędów i niespójności.
+  - **Odkrycie przy wdrożeniu:** tabela `rates` **i jej RLS już istniały** ([0001_init_schema.sql:257](supabase/migrations/0001_init_schema.sql), [0002_rls.sql:225](supabase/migrations/0002_rls.sql) — member czyta, **owner** zapisuje). „Martwa tabela" = gotowa baza **bez podpiętego UI**. Wdrożenie = **czysto kod aplikacji, ZERO migracji, zero zmian w bazie** — korekta klasyfikacji „DB-blocked" z DISCOVERY_REPORT.md.
+  - **QA:** biome · `tsc` ×7 · **414 testów** (core 222→228, `pickRate` pokryty jednostkowo) · build ✓. Logika stawki zweryfikowana testami (mocniej niż #232/#233); wizualne QA settlements niedostępne offline (strona crashuje) — auto-fill/zapis przez aktywną sesję.
+  - **Bramki:** biome czysto · `tsc` ×7 · 414 testów · build ✓ · docs:check ✓.
 
 ## [1.89.0] — 🔗 Linki kontekstowe: raporty finansowe → karta pojazdu (discovery A4)
 
