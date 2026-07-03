@@ -16,6 +16,7 @@ export const en: Record<MessageKey, string> = {
   "nav.cards": "Fuel cards",
   "nav.map": "Map",
   "nav.stats": "Statistics",
+  "nav.journeys": "Journeys",
   "nav.settlements": "Settlements",
   "nav.reports": "Defects",
   "nav.settings": "Settings",
