@@ -1417,6 +1417,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
           synced_at: string | null;
+          order_id: string | null;
         };
         Insert: {
           id: string;
@@ -1436,6 +1437,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           synced_at?: string | null;
+          order_id?: string | null;
         };
         Update: {
           id?: string;
@@ -1455,6 +1457,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           synced_at?: string | null;
+          order_id?: string | null;
         };
         Relationships: [];
       };
