@@ -77,11 +77,14 @@ export default function MyOrdersPage() {
   }
 
   async function advance(o: Order, status: OrderStatus) {
+    // Optymistycznie: zmień status lokalnie od razu; przy błędzie cofnij (bez pełnego reloadu).
+    const prev = o.status;
+    setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status } : x)));
     try {
       await setOrderStatus(getBrowserSupabase(), o.id, status);
       toast(`Status: ${orderStatusLabel(t, status)}`, "success");
-      await load();
     } catch (e) {
+      setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status: prev } : x)));
       toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
     }
   }

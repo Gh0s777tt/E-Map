@@ -57,11 +57,14 @@ export default function MyOrdersScreen() {
 
   async function advance(o: Order, status: OrderStatus) {
     setMsg(null);
+    // Optymistycznie: zmień status lokalnie od razu; przy błędzie cofnij (bez pełnego reloadu).
+    const prev = o.status;
+    setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status } : x)));
     try {
       await setOrderStatus(getSupabase(), o.id, status);
       setMsg(`✅ Status: ${STATUS_LABEL[status]}`);
-      await load();
     } catch (e) {
+      setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status: prev } : x)));
       setMsg(e instanceof Error ? e.message : "Błąd zmiany statusu.");
     }
   }

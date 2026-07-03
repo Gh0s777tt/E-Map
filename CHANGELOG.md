@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-242-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.98.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-243-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.99.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.99.0] — ⚡ Optymistyczna zmiana statusu zleceń (discovery A3) — top‑5 discovery KOMPLET
+
+- `[#243]` ⚡ **Optymistyczna zmiana statusu zlecenia** (bez pełnego przeładowania listy) — [web orders](apps/web/app/(app)/orders/page.tsx), [web my-orders](apps/web/app/(app)/my-orders/page.tsx), [mobile my-orders](apps/mobile/app/my-orders.tsx). Status zmienia się **lokalnie od razu** (`setOrders(map…)`), a przy błędzie RPC **cofa się** do poprzedniego (rollback) + komunikat. Zamiast `await setOrderStatus → await load()` (pełny refetch).
+  - **Dlaczego (discovery, problem P3):** każda zmiana statusu robiła pełny `load()` → odczuwalny lag; dyspozytor/kierowca zmieniający wiele statusów czekał na refetch. Teraz reakcja natychmiastowa, spójna (liczniki „w toku/do zafakturowania" i przycisk „Faktura" przy `delivered` przeliczają się z zaktualizowanej listy).
+  - **Zakres:** ostatni z top‑5 discovery. **KOMPLET top‑5:** A2 (#232) · A1 (#234) · A5 (#235/#242) · A4 (#233) · A3 (#243). Plus rozszerzenia: import/eksport CSV+xlsx (#236–241) i eksport zbiorczy (#240).
+  - **QA:** biome (pełne `check .`) · `tsc` ×7 · 428 testów · build ✓. Zmiana flow mutacji na stronach z sesją → **weryfikacja na koncie testowym** (zmień status → natychmiast; wymuś błędny przejście → rollback).
+  - **Bramki:** biome czysto · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.98.0] — ↺ „Powtórz ostatni wpis" — trip (web) + mobile (A5 komplet) + fix guardu mobile-trip
 
