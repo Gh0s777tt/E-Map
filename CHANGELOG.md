@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-237-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.93.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-238-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.94.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.94.0] — 🧑‍✈️ Import/Export Excel — kierowcy (faza 3/4)
+
+- `[#238]` 🧑‍✈️ **Import i eksport kartoteki kierowców (CSV/xlsx)** — [DriverRoster](apps/web/components/DriverRoster.tsx) na silniku `DataImport`. Import CSV/xlsx + nowy eksport ⬇️ XLSX + szablon.
+  - **Walidacja przez `driverSchema`** (reużyty Zod). Wymagane: Nazwisko, Imię. **Kategorie** dzielone spacją/przecinkiem (np. „C C+E"), **uprawnienia** przecinkiem/średnikiem. Zapis przez RPC `driver_save` (tożsamość szyfrowana at-rest, audytowana).
+  - **Prywatność:** **numerów dokumentów (dowód/paszport/prawo jazdy) NIE importujemy masowo** — to szyfrowane PII, dodawane ręcznie z audytem. Import obejmuje tożsamość + kategorie + uprawnienia + terminy (compliance).
+  - **Dedup po imię|nazwisko|data ur.** (RPC z `p_id=null` zawsze wstawia nowy wiersz) → ponowny import pomija istniejących.
+  - **Zakres:** faza 3 z 4 (dalej: zlecenia/koszty). QA: biome · `tsc` ×7 · 428 testów · build ✓. Ścieżka z danymi → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.93.0] — 🚛 Import/Export Excel — pojazdy (faza 2/4)
 
