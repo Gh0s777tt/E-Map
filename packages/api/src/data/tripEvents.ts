@@ -13,7 +13,8 @@ export interface TripEventContext {
 /** Mapuje zwalidowany input Trip na wiersz tabeli (snake_case + WKT dla PostGIS). */
 export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
   const hasGeo = input.place.lat != null && input.place.lng != null;
-  return {
+  const orderId = "orderId" in input ? input.orderId : undefined;
+  const base = {
     id: ctx.id,
     company_id: ctx.companyId,
     driver_id: ctx.driverId,
@@ -28,6 +29,9 @@ export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
     comment: input.comment ?? null,
     device_id: ctx.deviceId ?? null,
   };
+  // order_id dołączany TYLKO gdy wskazany — bez migracji 0052 istniejące trasy (bez zlecenia)
+  // działają bez zmian; kolumna wymagana dopiero przy powiązaniu load/unload ze zleceniem.
+  return orderId ? { ...base, order_id: orderId } : base;
 }
 
 /**

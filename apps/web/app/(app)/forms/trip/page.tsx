@@ -1,6 +1,13 @@
 "use client";
 
-import { getTripEvent, listTripEvents, notifyCompany, updateTripEvent } from "@e-logistic/api";
+import {
+  getTripEvent,
+  listOrders,
+  listTripEvents,
+  notifyCompany,
+  type Order,
+  updateTripEvent,
+} from "@e-logistic/api";
 import { setupMessage, TRIP_ACTIONS, tripEventSchema, zodFieldErrors } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -25,6 +32,15 @@ function splitPlace(label: string): { city: string; country: string } {
   };
 }
 
+/** Czytelna etykieta zlecenia w pickerze: numer · trasa/ładunek. */
+function orderLabel(o: Order): string {
+  const ref = o.reference_no ? `#${o.reference_no}` : "";
+  const route = [o.origin, o.destination].filter(Boolean).join(" → ");
+  return [ref, route || o.cargo || o.id.slice(0, 8)].filter(Boolean).join(" · ");
+}
+
+const ORDER_OPEN_STATUSES = ["new", "assigned", "in_progress"];
+
 export default function TripFormPage() {
   const { vehicles, source } = useFleet();
   const t = useT();
@@ -45,6 +61,9 @@ export default function TripFormPage() {
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [editId, setEditId] = useState<string | null>(null);
+  // #245: powiązanie load/unload ze zleceniem → auto-zamknięcie po komplecie load+unload.
+  const [orderId, setOrderId] = useState("");
+  const [orders, setOrders] = useState<Order[]>([]);
 
   // Tryb edycji: ?edit=<id> → wczytaj istniejące zdarzenie.
   useEffect(() => {
@@ -62,6 +81,8 @@ export default function TripFormPage() {
           weight_kg: number | null;
           amount: number | null;
           comment: string | null;
+          // opcjonalne: kolumna dochodzi migracją 0052 (typy DB dogonią po gen:types).
+          order_id?: string | null;
         };
         setVehicleId(row.vehicle_id);
         setAction(row.action);
@@ -71,6 +92,7 @@ export default function TripFormPage() {
         setWeightKg(row.weight_kg != null ? String(row.weight_kg) : "");
         setAmount(row.amount != null ? String(row.amount) : "");
         setComment(row.comment ?? "");
+        setOrderId(row.order_id ?? "");
       } catch (e) {
         toast(
           e instanceof Error ? e.message : "Nie udało się wczytać zdarzenia do edycji.",
@@ -83,6 +105,21 @@ export default function TripFormPage() {
   useEffect(() => {
     if (!editId && !vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId, editId]);
+
+  // #245: aktywne zlecenia firmy do powiązania przy załadunku/rozładunku.
+  useEffect(() => {
+    (async () => {
+      try {
+        const sb = getBrowserSupabase();
+        const m = await getCachedMembership(sb);
+        if (!m) return;
+        const rows = await listOrders(sb, m.companyId, { limit: 200 });
+        setOrders(rows.filter((o) => ORDER_OPEN_STATUSES.includes(o.status)));
+      } catch {
+        // brak sesji/firmy — picker pozostaje pusty (powiązanie opcjonalne)
+      }
+    })();
+  }, []);
 
   const needsWeight = action === "load" || action === "unload";
   const needsAmount = action === "service" || action === "other";
@@ -143,7 +180,11 @@ export default function TripFormPage() {
       comment: comment || undefined,
     };
     const candidate = needsWeight
-      ? { ...base, weightKg: weightKg ? Number(weightKg) : undefined }
+      ? {
+          ...base,
+          weightKg: weightKg ? Number(weightKg) : undefined,
+          orderId: orderId || undefined,
+        }
       : needsAmount
         ? { ...base, amount: amount ? Number(amount) : undefined }
         : base;
@@ -208,6 +249,7 @@ export default function TripFormPage() {
       setWeightKg("");
       setAmount("");
       setComment("");
+      setOrderId("");
     } finally {
       setBusy(false);
     }
@@ -369,6 +411,19 @@ export default function TripFormPage() {
             </Field>
           )}
         </div>
+
+        {needsWeight && orders.length > 0 && (
+          <Field label="Zlecenie — auto-zamknięcie po komplecie load+unload" error={errors.orderId}>
+            <select style={input} value={orderId} onChange={(e) => setOrderId(e.target.value)}>
+              <option value="">— bez powiązania —</option>
+              {orders.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {orderLabel(o)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
 
         <Field
           label={`${t("form.field.comment")}${commentRequired ? " (wymagane)" : ""}`}

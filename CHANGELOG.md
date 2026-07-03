@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-244-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.100.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-245-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.101.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.101.0] — 🔗 Auto‑zamykanie zlecenia: powiązanie load/unload ze zleceniem → status „dostarczone" (prośba #2, wariant A)
+
+- `[#245]` 🔗 **Zdarzenie trasy (załadunek/rozładunek) można powiązać ze zleceniem** — kierowca przy `load`/`unload` wybiera zlecenie z listy (web: [forms/trip](apps/web/app/(app)/forms/trip/page.tsx), mobile: [trip](apps/mobile/app/trip.tsx)). Gdy zlecenie ma **komplet: i załadunek, i rozładunek** → system **automatycznie ustawia status „dostarczone"** (`delivered`), bez ręcznej zmiany.
+  - **Migracja [`0052_trip_order_link.sql`](supabase/migrations/0052_trip_order_link.sql):** kolumna `trip_events.order_id` (FK → `orders`, `on delete set null`) + indeks + trigger `auto_close_order_on_delivery` (SECURITY DEFINER, AFTER INSERT): po wpisie z `order_id` sprawdza komplet load+unload i przesuwa status **tylko z** `new/assigned/in_progress` (nie nadpisuje `delivered/invoiced/cancelled`). **⚠️ Wymaga zastosowania przez ownera:** `supabase db push` (autor przygotował plik; stosuje właściciel bazy). Do czasu migracji aplikacja działa bez zmian — `order_id` wysyłany tylko gdy wskazany.
+  - **Schemat bezpieczny wstecznie:** `orderId` opcjonalny w [`tripEventSchema`](packages/core/src/schemas.ts) (warianty load/unload); [`tripEventToRow`](packages/api/src/data/tripEvents.ts) dołącza `order_id` **wyłącznie gdy ustawiony** → istniejące trasy (bez zlecenia) zapisują się jak dotąd, także przed migracją.
+  - **UI:** picker aktywnych zleceń (`new/assigned/in_progress`) — web: firmowe ([`listOrders`](packages/api/src/data/orders.ts), dyspozytor/owner), mobile: przypisane kierowcy ([`listMyOrders`](packages/api/src/data/orders.ts)); etykieta „#numer · trasa/ładunek"; opcja „bez powiązania"; tryb edycji odczytuje zapisany `order_id`.
+  - Realizacja prośby #2: „kierowca załaduje towar w Berlinie, rozładuje w Paryżu → system sam zakończy zlecenie". Wybrany wariant **A (jawny wybór zlecenia)** — jednoznaczny, bez ryzyka błędnego dopasowania po miejscu/wadze.
+  - ⏳ **Następny krok (#246):** koszt transportu per zlecenie (okno load→unload, dystans z liczników, atrybucja paliwa) — bez migracji.
+  - **QA:** biome (pełne `check .`, 333 pliki) · `tsc` ×7 · 435 testów · build ✓. Ścieżki z sesją/danymi + trigger DB → **weryfikacja na koncie testowym po `supabase db push`**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 435 testów · build ✓ · docs:check ✓.
 
 ## [1.100.0] — 🧭 Wyjazdy (trasy) — statystyki per wyjazd (rozpoczęcie → zakończenie), per kierowca
 
