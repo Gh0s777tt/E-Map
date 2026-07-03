@@ -91,6 +91,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(has("cards") ? [{ href: "/cards", label: t("nav.cards") }] : []),
         ...(manage ? [{ href: "/service", label: t("nav.service") }] : []),
         ...(manage ? [{ href: "/damages", label: t("nav.damages") }] : []),
+        ...(manage ? [{ href: "/koszty", label: t("nav.costs") }] : []),
         { href: "/documents", label: t("nav.documents") },
         ...(has("reports") ? [{ href: "/reports", label: t("nav.reports") }] : []),
       ],
