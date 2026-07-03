@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-246-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.102.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-247-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.102.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.102.1] — 🛡️ Hardening triggera auto‑zamykania (multi‑tenant) — #245/0052
+
+- `[#247]` 🛡️ **Migracja [`0053_harden_auto_close.sql`](supabase/migrations/0053_harden_auto_close.sql)** — trigger `auto_close_order_on_delivery` (#245) zamyka zlecenie tylko **w tej samej firmie** co zdarzenie trasy (dodany warunek `company_id = new.company_id`). Bez tego spreparowany insert do `trip_events` z cudzym `order_id` mógł (przez `SECURITY DEFINER`) zmienić status zlecenia innej firmy — niska eksploatowalność (wymaga wycieku UUID zlecenia), ale realna luka integralności multi‑tenant. `create or replace` (idempotentne); stosuje owner razem z 0052 (`supabase db push`).
+  - **Bramki:** biome czysto · `tsc` ×7 · 443 testy · build ✓ · docs:check ✓ (bez zmian w kodzie aplikacji — migracja + docs).
 
 ## [1.102.0] — 💰 Koszt transportu per zlecenie (dystans load→unload × koszt/km) — domyka prośbę #2
 

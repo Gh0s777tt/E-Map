@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.102.0** (#246) · 2026-07-03
+> Status: **wdrożone** · stan kodu **v1.102.1** (#247) · 2026-07-03
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -191,7 +191,7 @@ Identyczna struktura jak `fuel_logs`, pole `liters` = AdBlue. Osobne statystyki 
 | `service` (Serwis) | ✅ | ✅ | — | ✅ (opc.) | ✅ (co naprawiono) |
 | `other` (Inne) | ✅ | ✅ | — | opc. | ✅ (opis akcji) |
 
-**Auto‑zamknięcie zlecenia (0052):** gdy zdarzenie ma `order_id`, trigger `auto_close_order_on_delivery` (AFTER INSERT, SECURITY DEFINER) sprawdza, czy zlecenie ma komplet `load`+`unload` → ustawia `orders.status='delivered'` (tylko z `new/assigned/in_progress`, nie nadpisuje `delivered/invoiced/cancelled`). Koszt transportu per zlecenie (okno load→unload) liczony w `packages/core` — #246.
+**Auto‑zamknięcie zlecenia (0052):** gdy zdarzenie ma `order_id`, trigger `auto_close_order_on_delivery` (AFTER INSERT, SECURITY DEFINER) sprawdza, czy zlecenie ma komplet `load`+`unload` → ustawia `orders.status='delivered'` **w tej samej firmie** (tylko z `new/assigned/in_progress`, nie nadpisuje `delivered/invoiced/cancelled`; scoping `company_id` = hardening multi‑tenant 0053/#247). Koszt transportu per zlecenie (okno load→unload) liczony w `packages/core` — #246.
 
 ### `fuel_log_revisions`, `trip_event_revisions`
 Pełna historia każdej edycji (kto, kiedy, poprzednie wartości) — wymóg historii + audyt.
