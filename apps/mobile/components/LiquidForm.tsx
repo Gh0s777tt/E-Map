@@ -36,6 +36,21 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId]);
 
+  // A5: powtórz ostatni wpis — prefill kraju/płatności z ostatniego wpisu (outbox).
+  function repeatLast() {
+    const last = items[0];
+    if (!last) {
+      setMsg("Brak wcześniejszych wpisów.");
+      return;
+    }
+    const input = last.input as FuelLogInput;
+    setCountry(input.station.country ?? "");
+    if (input.paymentMethod === "card" || input.paymentMethod === "cash") {
+      setPayment(input.paymentMethod);
+    }
+    setMsg("Wczytano dane z ostatniego wpisu — uzupełnij licznik i litry.");
+  }
+
   async function submit() {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
@@ -79,6 +94,11 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         selectedId={vehicleId}
         onSelect={setVehicleId}
       />
+      {items.length > 0 && (
+        <Pressable style={styles.repeatBtn} onPress={repeatLast}>
+          <Text style={styles.repeatText}>↺ Powtórz ostatni</Text>
+        </Pressable>
+      )}
 
       <Text style={styles.label}>Kraj</Text>
       <TextInput
@@ -176,6 +196,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnBusy: { opacity: 0.5 },
+  repeatBtn: {
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  repeatText: { color: palette.offWhite, fontWeight: "600" },
   btnText: { color: palette.white, fontWeight: "700", fontSize: 16 },
   msg: { color: palette.smoke, marginTop: 10 },
   queue: {
