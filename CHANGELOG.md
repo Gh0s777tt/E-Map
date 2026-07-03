@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-238-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.94.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-239-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.95.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.95.0] — 📦 Import/Export Excel — zlecenia (faza 4/4, komplet)
+
+- `[#239]` 📦 **Import i eksport zleceń (CSV/xlsx)** — [orders](apps/web/app/(app)/orders/page.tsx) na silniku `DataImport`. Import CSV/xlsx + nowy eksport ⬇️ XLSX + szablon. **Domyka feature import/export dla wszystkich 4 encji** (kontrahenci #236 · pojazdy #237 · kierowcy #238 · zlecenia #239).
+  - **Walidacja przez `orderSchema`** (reużyty Zod) + guard „pusty wiersz" (wymaga numeru/trasy/ładunku). **Kolumna „Pojazd" = rejestracja** → mapowana na `vehicle_id` (nierozpoznana → zapis bez przypisania + info). Kierowcę/status ustawia się po imporcie (RPC `order_set_status`).
+  - **Dedup po numerze zlecenia** (`reference_no`) → ponowny import pomija istniejące.
+  - **Zakres:** faza 4 z 4. QA: biome · `tsc` ×7 · 428 testów · build ✓. Ścieżka z danymi → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.94.0] — 🧑‍✈️ Import/Export Excel — kierowcy (faza 3/4)
 

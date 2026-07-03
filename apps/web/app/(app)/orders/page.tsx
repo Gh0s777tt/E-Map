@@ -18,9 +18,11 @@ import {
 import {
   FREIGHT_EXPORT_HEADERS,
   filterSortOrders,
+  firstZodError,
   freightExportRows,
   freightRowCells,
   ORDER_STATUSES,
+  type OrderInput,
   type OrderSort,
   type OrderStatus,
   orderSchema,
@@ -32,6 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";
 import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { DataImport, type ImportColumn } from "@/components/DataImport";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
@@ -43,6 +46,7 @@ import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
+import { downloadXlsx } from "@/lib/xlsx";
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   new: palette.smoke,
@@ -52,6 +56,63 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   invoiced: "#a855f7",
   cancelled: palette.red,
 };
+
+type OrderImportRow = { input: OrderInput; registration: string };
+
+/** Kolumny importu zleceń (kolumna „Pojazd" = rejestracja, mapowana na pojazd w handlerze). */
+const IMPORT_COLUMNS: ImportColumn[] = [
+  { key: "referenceNo", label: "Numer", aliases: ["nr", "reference", "ref", "numer zlecenia"] },
+  { key: "shipper", label: "Nadawca", aliases: ["shipper", "zaladowca"] },
+  { key: "consignee", label: "Odbiorca", aliases: ["consignee"] },
+  { key: "origin", label: "Skąd", aliases: ["skad", "origin", "from", "zaladunek"] },
+  { key: "destination", label: "Dokąd", aliases: ["dokad", "destination", "to", "rozladunek"] },
+  { key: "cargo", label: "Ładunek", aliases: ["ladunek", "cargo", "towar"] },
+  { key: "weightKg", label: "Waga kg", aliases: ["waga", "weight"] },
+  { key: "price", label: "Stawka", aliases: ["stawka", "cena", "price", "rate", "fracht"] },
+  { key: "currency", label: "Waluta", aliases: ["currency"] },
+  { key: "vehicle", label: "Pojazd", aliases: ["rejestracja", "vehicle", "registration"] },
+  { key: "loadDate", label: "Załadunek", aliases: ["data zaladunku", "load date"] },
+  { key: "unloadDate", label: "Rozładunek", aliases: ["data rozladunku", "unload date"] },
+  { key: "notes", label: "Uwagi", aliases: ["komentarz", "notes", "notatki"] },
+];
+
+function orderNum(s: string | undefined): number | undefined {
+  const raw = (s ?? "").trim().replace(/\s/g, "").replace(",", ".");
+  if (!raw) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function validateOrderRow(
+  rec: Record<string, string>,
+): { ok: true; value: OrderImportRow } | { ok: false; error: string } {
+  const candidate = {
+    referenceNo: (rec.referenceNo ?? "").trim() || undefined,
+    shipper: (rec.shipper ?? "").trim() || undefined,
+    consignee: (rec.consignee ?? "").trim() || undefined,
+    origin: (rec.origin ?? "").trim() || undefined,
+    destination: (rec.destination ?? "").trim() || undefined,
+    cargo: (rec.cargo ?? "").trim() || undefined,
+    weightKg: orderNum(rec.weightKg),
+    price: orderNum(rec.price),
+    currency: (rec.currency ?? "").trim() || undefined,
+    loadDate: (rec.loadDate ?? "").trim() || undefined,
+    unloadDate: (rec.unloadDate ?? "").trim() || undefined,
+    notes: (rec.notes ?? "").trim() || undefined,
+  };
+  const hasContent = [
+    candidate.referenceNo,
+    candidate.shipper,
+    candidate.consignee,
+    candidate.origin,
+    candidate.destination,
+    candidate.cargo,
+  ].some(Boolean);
+  if (!hasContent) return { ok: false, error: "pusty wiersz (brak numeru/trasy/ładunku)" };
+  const parsed = orderSchema.safeParse(candidate);
+  if (!parsed.success) return { ok: false, error: firstZodError(parsed.error) };
+  return { ok: true, value: { input: parsed.data, registration: (rec.vehicle ?? "").trim() } };
+}
 
 export default function OrdersPage() {
   const t = useT();
@@ -324,6 +385,92 @@ export default function OrdersPage() {
     downloadCsv(`zlecenia_${csvDateStamp()}.csv`, headers, rows);
   }
 
+  async function exportXlsx() {
+    const headers = [
+      t("orders.csv.number"),
+      t("common.status"),
+      t("orders.csv.shipper"),
+      t("orders.csv.consignee"),
+      t("orders.csv.from"),
+      t("orders.csv.to"),
+      t("orders.csv.cargo"),
+      t("orders.csv.weight"),
+      t("orders.csv.rate"),
+      t("orders.csv.currency"),
+      t("common.vehicle"),
+      t("orders.csv.loadDate"),
+      t("orders.csv.unloadDate"),
+    ];
+    const rows = filtered.map((o) => [
+      o.reference_no ?? "",
+      orderStatusLabel(t, o.status),
+      o.shipper ?? "",
+      o.consignee ?? "",
+      o.origin ?? "",
+      o.destination ?? "",
+      o.cargo ?? "",
+      o.weight_kg ?? "",
+      o.price ?? "",
+      o.currency,
+      regOf(o.vehicle_id),
+      o.load_date ?? "",
+      o.unload_date ?? "",
+    ]);
+    await downloadXlsx(`zlecenia_${csvDateStamp()}.xlsx`, headers, rows);
+  }
+
+  const importOrders = useCallback(
+    async (rows: OrderImportRow[]) => {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) {
+        return {
+          inserted: 0,
+          failed: rows.length,
+          errors: ["Brak firmy — utwórz ją na Pulpicie."],
+        };
+      }
+      const regMap = new Map(vehicles.map((v) => [v.registration.toUpperCase(), v.id]));
+      const existingRefs = new Set(
+        (await listOrders(sb, m.companyId))
+          .map((o) => (o.reference_no ?? "").trim().toUpperCase())
+          .filter(Boolean),
+      );
+      let inserted = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      for (const { input, registration } of rows) {
+        const ref = (input.referenceNo ?? "").trim().toUpperCase();
+        if (ref && existingRefs.has(ref)) {
+          failed++;
+          if (errors.length < 8)
+            errors.push(`${input.referenceNo}: zlecenie już istnieje (pominięto)`);
+          continue;
+        }
+        const vehicleId = registration ? regMap.get(registration.toUpperCase()) : undefined;
+        if (registration && !vehicleId && errors.length < 8) {
+          errors.push(
+            `${input.referenceNo || "zlecenie"}: pojazd „${registration}" nierozpoznany (zapis bez pojazdu)`,
+          );
+        }
+        try {
+          await saveOrder(sb, m.companyId, { ...input, vehicleId });
+          if (ref) existingRefs.add(ref);
+          inserted++;
+        } catch (e) {
+          failed++;
+          if (errors.length < 8) {
+            errors.push(
+              `${input.referenceNo || "zlecenie"}: ${e instanceof Error ? e.message : "błąd"}`,
+            );
+          }
+        }
+      }
+      return { inserted, failed, errors };
+    },
+    [vehicles],
+  );
+
   /** Eksport zleceń do publikacji na giełdzie transportowej (uniwersalny CSV frachtu). */
   function exportFreight() {
     const rows = freightExportRows(
@@ -552,10 +699,29 @@ export default function OrdersPage() {
         <Button variant="ghost" onClick={exportCsv}>
           ⬇️ CSV
         </Button>
+        <Button variant="ghost" onClick={exportXlsx}>
+          ⬇️ XLSX
+        </Button>
         <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
           {filtered.length} z {orders.length}
         </span>
       </div>
+
+      {canManage && (
+        <div style={{ marginBottom: 16 }}>
+          <DataImport
+            columns={IMPORT_COLUMNS}
+            validate={validateOrderRow}
+            onImport={importOrders}
+            templateBase="zlecenia"
+            onDone={load}
+          />
+          <p style={{ fontSize: 12, color: palette.smoke, marginTop: 6 }}>
+            Kolumna „Pojazd" = rejestracja (mapowana na pojazd; nierozpoznana → zapis bez
+            przypisania). Kierowcę i status ustawisz po imporcie. Dedup po numerze zlecenia.
+          </p>
+        </div>
+      )}
 
       <ListStatus
         loading={loading}
