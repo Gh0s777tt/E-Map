@@ -12,6 +12,7 @@ import { setupMessage, TRIP_ACTIONS, tripEventSchema, zodFieldErrors } from "@e-
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CargoPhotos } from "@/components/CargoPhotos";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
@@ -424,6 +425,9 @@ export default function TripFormPage() {
             </select>
           </Field>
         )}
+
+        {/* #248: zdjęcia załącznika (towar / CMR / dokument) trafiają na wybrane zlecenie. */}
+        {needsWeight && orderId && <CargoPhotos orderId={orderId} />}
 
         <Field
           label={`${t("form.field.comment")}${commentRequired ? " (wymagane)" : ""}`}

@@ -10,6 +10,7 @@ import { palette } from "@e-logistic/ui";
 import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
@@ -213,6 +214,9 @@ export default function TripScreen() {
           </View>
         </>
       )}
+
+      {/* #248: zdjęcia załącznika (towar / CMR / dokument) trafiają na wybrane zlecenie. */}
+      {needsWeight && orderId && <CargoPhotosMobile orderId={orderId} />}
 
       <Text style={styles.label}>
         {t("form.field.comment")}
