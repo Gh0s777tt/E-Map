@@ -12,9 +12,9 @@ export interface OrderPhoto {
   caption: string | null;
   uploaded_by: string | null;
   created_at: string;
+  /** Typ załącznika (#249, migracja 0054 — kolumna generowana z `caption`). */
+  kind?: string | null;
 }
-
-const COLS = "id, order_id, path, mime, size_bytes, caption, uploaded_by, created_at";
 
 /** Zdjęcia danego zlecenia (najnowsze pierwsze). RLS: członek czyta. */
 export async function listOrderPhotos(
@@ -23,7 +23,7 @@ export async function listOrderPhotos(
 ): Promise<OrderPhoto[]> {
   const { data, error } = await client
     .from("order_photos")
-    .select(COLS)
+    .select("*")
     .eq("order_id", orderId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -61,7 +61,7 @@ export async function uploadOrderPhoto(
       size_bytes: file.size,
       caption: caption?.trim() || null,
     })
-    .select(COLS)
+    .select("*")
     .single();
   if (error) {
     await client.storage.from(CARGO_PHOTOS_BUCKET).remove([path]);
@@ -100,7 +100,7 @@ export async function uploadOrderPhotoBinary(
       size_bytes: opts.sizeBytes ?? null,
       caption: opts.caption?.trim() || null,
     })
-    .select(COLS)
+    .select("*")
     .single();
   if (error) {
     await client.storage.from(CARGO_PHOTOS_BUCKET).remove([path]);

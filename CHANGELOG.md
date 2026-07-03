@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-248-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.103.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-249-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.104.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.104.0] — 🔎 Filtrowanie załączników po typie (Towar / CMR / Dokument / POD) + kolumna `kind`
+
+- `[#249]` 🔎 **Filtr załączników zlecenia po typie** — chipy filtra (Wszystkie / Towar / CMR / Dokument / Inne / POD, z licznikami) nad siatką zdjęć w [`CargoPhotos`](apps/web/components/CargoPhotos.tsx) (web) i [`CargoPhotosMobile`](apps/mobile/components/CargoPhotosMobile.tsx) (mobile). Widoczne, gdy zlecenie ma > 1 typ załącznika; badge typu na miniaturze (poza „Towar"). Działa wszędzie, gdzie panel załączników (Zlecenia, Moje zlecenia, formularz Trasa).
+  - **Kolumna `kind`** (migracja [`0054_photo_kind.sql`](supabase/migrations/0054_photo_kind.sql)) — **generowana** przez Postgres z `caption` (`case … end … stored`) + indeks. **Zero zmian w insertach** aplikacji (kategoria dalej trafia do `caption`, #248) → bezpieczne przed i po migracji, backfill istniejących zdjęć automatyczny. **⚠️ Owner stosuje:** `supabase db push`.
+  - **Działa też bez migracji:** [`resolvePhotoKind`](packages/core/src/photoCategories.ts) preferuje kolumnę `kind`, a gdy jej brak — wyprowadza typ z `caption` client-side (ta sama logika co generowana kolumna SQL). Filtr działa od razu; migracja dokłada indeksowaną, zapytywalną kolumnę (pod przyszłe widoki „wszystkie CMR-y firmy"). **4 testy** ([photoCategories.test.ts](packages/core/src/photoCategories.test.ts)).
+  - Data layer: [`OrderPhoto.kind`](packages/api/src/data/orderPhotos.ts) + `select("*")` (schema-safe — kolumna dochodzi migracją, brak jej nie wywala odczytu).
+  - Domyka „i np. CMR" z #248 twardym filtrowaniem po typie. **QA:** biome (337) · `tsc` ×7 · **451 testów** (core +4) · build ✓. Ścieżki z danymi → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 451 testów · build ✓ · docs:check ✓.
 
 ## [1.103.0] — 📸 Zdjęcia załącznika w formularzu Trasa (towar / CMR / dokument) → auto‑przypisanie do zlecenia
 
