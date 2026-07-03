@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-245-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.101.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-246-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.102.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.102.0] — 💰 Koszt transportu per zlecenie (dystans load→unload × koszt/km) — domyka prośbę #2
+
+- `[#246]` 💰 **Koszt i zysk transportu na karcie zlecenia** — [web orders](apps/web/app/(app)/orders/page.tsx). Dla zlecenia z powiązanym **załadunkiem i rozładunkiem** (przez `order_id`, #245) liczony jest: **dystans** = licznik(rozładunek) − licznik(załadunek), **koszt** = dystans × koszt/km pojazdu, **zysk** = stawka zlecenia − koszt (+ marża %). Linia „🧭 Transport: N km · koszt · zysk (marża%)" pod pozycją zlecenia (zielony/czerwony wg znaku zysku).
+  - **Rdzeń (testowany):** [`orderTransportCosts`](packages/core/src/orderCost.ts) + [`fuelCostPerKmByVehicle`](packages/core/src/orderCost.ts). Koszt/km liczony z historii tankowań pojazdu: `(Σ paliwo + Σ AdBlue) / dystans z liczników tankowań`. **10 testów** ([orderCost.test.ts](packages/core/src/orderCost.test.ts)): koszt/km, komplet load+unload, brak rozładunku, różne pojazdy (dystans nieporównywalny), nadpisanie koszt/km, brak danych paliwowych, pomijanie niepowiązanych, sortowanie.
+  - **Uczciwe przybliżenie** (jak reszta metryk kosztowych): koszt/km z **całej historii pojazdu**, nie z dokładnego okna zlecenia; bez myta, kierowcy, leasingu. Gdy pojazd nie ma historii tankowań → pokazany sam dystans z adnotacją „koszt/km nieznany". Dystans liczony tylko gdy załadunek i rozładunek na **tym samym pojeździe**.
+  - **Wydajność:** strona zleceń dociąga trasy + tankowania (RLS: tylko firma) raz i liczy koszty w `useMemo`. Bez migracji — działa na danych już powiązanych przez #245.
+  - Domyka prośbę #2: „…system będzie w stanie wyliczyć koszt transportu". Para z #245 (auto‑zamykanie).
+  - **QA:** biome (pełne `check .`, 335 plików) · `tsc` ×7 · **443 testy** (core +10) · build ✓. Strona z danymi → **weryfikacja na koncie testowym** (zlecenie z load+unload → linia kosztu).
+  - **Bramki:** biome czysto · `tsc` ×7 · 443 testy · build ✓ · docs:check ✓.
 
 ## [1.101.0] — 🔗 Auto‑zamykanie zlecenia: powiązanie load/unload ze zleceniem → status „dostarczone" (prośba #2, wariant A)
 

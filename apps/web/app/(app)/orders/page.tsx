@@ -9,7 +9,9 @@ import {
   getCompany,
   listCompanyMembers,
   listContractors,
+  listFuelLogs,
   listOrders,
+  listTripEvents,
   type Order,
   saveOrder,
   setOrderStatus,
@@ -25,7 +27,9 @@ import {
   type OrderInput,
   type OrderSort,
   type OrderStatus,
+  type OrderTransportCost,
   orderSchema,
+  orderTransportCosts,
   round2,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
@@ -58,6 +62,22 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
 };
 
 type OrderImportRow = { input: OrderInput; registration: string };
+
+// #246: surowe wiersze do wyliczenia kosztu transportu. `order_id` opcjonalne —
+// kolumna dochodzi migracją 0052 (typy DB dogonią po gen:types), więc cast jest bezpieczny.
+type LegRow = {
+  order_id?: string | null;
+  action: string;
+  vehicle_id: string | null;
+  odometer_km: number | null;
+  created_at: string;
+};
+type FuelRow = {
+  vehicle_id: string | null;
+  odometer_km: number;
+  liters: number;
+  price_total: number | null;
+};
 
 /** Kolumny importu zleceń (kolumna „Pojazd" = rejestracja, mapowana na pojazd w handlerze). */
 const IMPORT_COLUMNS: ImportColumn[] = [
@@ -121,6 +141,10 @@ export default function OrdersPage() {
   const toast = useToast();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  // #246: surowe dane do kosztu transportu per zlecenie (trasy z order_id + tankowania).
+  const [legRows, setLegRows] = useState<LegRow[]>([]);
+  const [fuelRows, setFuelRows] = useState<FuelRow[]>([]);
+  const [adblueRows, setAdblueRows] = useState<FuelRow[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
@@ -161,16 +185,23 @@ export default function OrdersPage() {
       }
       const manage = m.role === "owner" || m.role === "dispatcher";
       setCanManage(manage);
-      const [ord, comp, mem, contr] = await Promise.all([
+      const [ord, comp, mem, contr, legs, fuel, adblue] = await Promise.all([
         listOrders(sb, m.companyId),
         getCompany(sb, m.companyId),
         manage ? listCompanyMembers(sb) : Promise.resolve([]),
         manage ? listContractors(sb, m.companyId) : Promise.resolve([]),
+        // Koszt transportu (#246): trasy z order_id + tankowania → koszt/km. RLS ogranicza do firmy.
+        listTripEvents(sb, { limit: 5000 }).catch(() => []),
+        listFuelLogs(sb, { limit: 5000 }).catch(() => []),
+        listFuelLogs(sb, { table: "adblue_logs", limit: 5000 }).catch(() => []),
       ]);
       setOrders(ord);
       setCompany(comp);
       setMembers(mem);
       setContractors(contr);
+      setLegRows(legs as LegRow[]);
+      setFuelRows(fuel as FuelRow[]);
+      setAdblueRows(adblue as FuelRow[]);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zleceń.");
     } finally {
@@ -204,6 +235,32 @@ export default function OrdersPage() {
     () => filterSortOrders(orders, { text: query, status: filter, sort }),
     [orders, filter, query, sort],
   );
+
+  // #246: koszt transportu per zlecenie — dystans z liczników load→unload × koszt/km pojazdu.
+  const costByOrder = useMemo(() => {
+    const events = legRows
+      .filter((r) => r.order_id)
+      .map((r) => ({
+        orderId: r.order_id ?? null,
+        action: r.action,
+        vehicleId: r.vehicle_id,
+        odometerKm: r.odometer_km,
+        createdAt: r.created_at,
+      }));
+    const toFuel = (r: FuelRow) => ({
+      vehicleId: r.vehicle_id,
+      odometerKm: r.odometer_km,
+      liters: r.liters,
+      priceTotal: r.price_total,
+    });
+    const list = orderTransportCosts({
+      orders: orders.map((o) => ({ id: o.id, price: o.price, currency: o.currency })),
+      events,
+      fuel: fuelRows.map(toFuel),
+      adblue: adblueRows.map(toFuel),
+    });
+    return new Map<string, OrderTransportCost>(list.map((c) => [c.orderId, c]));
+  }, [orders, legRows, fuelRows, adblueRows]);
 
   // Podsumowanie (wartość liczona dla zleceń w EUR — mieszane waluty pomijane w sumie).
   const summary = useMemo(() => {
@@ -759,6 +816,7 @@ export default function OrdersPage() {
                 {o.assigned_to && <span style={styles.dim}>👤 {emailOf(o.assigned_to)}</span>}
                 {o.load_date && <span style={styles.dim}>zał. {o.load_date}</span>}
               </div>
+              <TransportCostLine tc={costByOrder.get(o.id)} />
               <div style={styles.cardActions}>
                 <Button variant="ghost" onClick={() => setCmrOrder(o)}>
                   📄 CMR
@@ -802,6 +860,35 @@ export default function OrdersPage() {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** #246: linia kosztu transportu na karcie zlecenia (dystans · koszt · zysk/marża). */
+function TransportCostLine({ tc }: { tc: OrderTransportCost | undefined }) {
+  if (!tc || tc.distanceKm == null) return null;
+  return (
+    <div style={styles.costLine}>
+      🧭 Transport: <strong>{tc.distanceKm} km</strong>
+      {tc.cost != null ? (
+        <>
+          {" · koszt "}
+          <strong>
+            {tc.cost} {tc.currency}
+          </strong>
+          {tc.profit != null && (
+            <>
+              {" · zysk "}
+              <strong style={{ color: tc.profit >= 0 ? "#22c55e" : palette.red }}>
+                {tc.profit} {tc.currency}
+              </strong>
+              {tc.marginPercent != null ? ` (${tc.marginPercent}%)` : ""}
+            </>
+          )}
+        </>
+      ) : (
+        <span style={styles.dim}> · koszt/km pojazdu nieznany (brak historii tankowań)</span>
       )}
     </div>
   );
@@ -896,6 +983,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardHead: { display: "flex", gap: 10, alignItems: "center" },
   cardBody: { display: "flex", gap: 14, flexWrap: "wrap", fontSize: 14 },
+  costLine: {
+    fontSize: 13,
+    color: palette.offWhite,
+    paddingTop: 6,
+    borderTop: `1px dashed ${palette.graphite}`,
+  },
   cardActions: { display: "flex", gap: 8, alignItems: "center" },
   statusSel: {
     background: palette.black,
