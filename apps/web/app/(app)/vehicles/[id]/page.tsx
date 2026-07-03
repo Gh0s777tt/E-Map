@@ -47,7 +47,11 @@ import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-type DbVehicle = Awaited<ReturnType<typeof listVehicles>>[number];
+// Intersekcja z naczepą (#250): kolumny dochodzą migracją 0055 — opcjonalne (schema-safe).
+type DbVehicle = Awaited<ReturnType<typeof listVehicles>>[number] & {
+  trailer_registration?: string | null;
+  trailer_type?: string | null;
+};
 type FuelCard = {
   id: string;
   provider: string;
@@ -322,6 +326,12 @@ export default function VehicleCardPage() {
               <div style={styles.dim}>Ubezpieczyciel</div>
               <div style={{ fontWeight: 700 }}>{vehicle.insurer ?? "—"}</div>
               {vehicle.vin && <div style={styles.dim}>VIN {vehicle.vin}</div>}
+            </div>
+            {/* #250: naczepa (jeśli auto ją posiada) */}
+            <div style={styles.docCard}>
+              <div style={styles.dim}>🛻 Naczepa</div>
+              <div style={{ fontWeight: 700 }}>{vehicle.trailer_registration ?? "— brak —"}</div>
+              {vehicle.trailer_type && <div style={styles.dim}>{vehicle.trailer_type}</div>}
             </div>
           </div>
 

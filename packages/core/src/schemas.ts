@@ -53,6 +53,9 @@ export const vehicleSchema = z.object({
   vehicleType: z.enum(VEHICLE_TYPES),
   forwarder: z.string().optional(),
   comment: z.string().max(2000).optional(),
+  /** Naczepa (jeśli auto ją posiada — #250): rejestracja + typ. Opcjonalne. */
+  trailerRegistration: z.string().max(16).optional(),
+  trailerType: z.string().max(40).optional(),
 });
 export type VehicleInput = z.infer<typeof vehicleSchema>;
 

@@ -5,9 +5,9 @@ import type { TypedSupabaseClient as SupabaseClient } from "../client";
 export async function listVehicles(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
     .from("vehicles")
-    .select(
-      "id, registration, make, model, vehicle_type, vin, curb_weight_kg, max_payload_kg, fuel_tank_l, adblue_tank_l, height_cm, inspection_expiry, insurance_expiry, insurer, license_number, leasing_end, year",
-    )
+    // select("*") zamiast listy kolumn: schema-safe udostępnia nowe kolumny (naczepa #250) —
+    // przed migracją 0055 ich brak nie wywala zapytania, po niej dochodzą automatycznie.
+    .select("*")
     .eq("company_id", companyId)
     .order("registration");
   if (error) throw error;
@@ -27,7 +27,7 @@ export async function listVehiclesExpiry(client: SupabaseClient, companyId: stri
 
 /** Mapuje zwalidowany input pojazdu na wiersz tabeli (snake_case). */
 export function vehicleToRow(input: VehicleInput, companyId: string) {
-  return {
+  const base = {
     company_id: companyId,
     registration: input.registration,
     make: input.make ?? null,
@@ -51,6 +51,15 @@ export function vehicleToRow(input: VehicleInput, companyId: string) {
     forwarder: input.forwarder ?? null,
     comment: input.comment ?? null,
   };
+  // #250: naczepa dołączana do wiersza TYLKO gdy podana. Rzut do `typeof base` ukrywa kolumny
+  // naczepy przed typem Insert (RejectExcessProperties odrzuca nieznane kolumny) — dojdą runtime,
+  // a typ dogoni po migracji 0055 + gen:types. Bez migracji zapis bez naczepy działa bez zmian.
+  const row = {
+    ...base,
+    ...(input.trailerRegistration ? { trailer_registration: input.trailerRegistration } : {}),
+    ...(input.trailerType ? { trailer_type: input.trailerType } : {}),
+  };
+  return row as typeof base;
 }
 
 export async function insertVehicle(

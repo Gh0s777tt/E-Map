@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.104.0** (#249) · 2026-07-03
+> Status: **wdrożone** · stan kodu **v1.105.0** (#250) · 2026-07-03
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -136,7 +136,8 @@ z `memberships` zalogowanego użytkownika; kierowca dodatkowo ograniczony do
 `first_registration_date` · `inspection_expiry` (przegląd) · `insurance_expiry` ·
 `leasing_end` · `curb_weight` (waga auta) · `max_payload` (maks. ładunek) ·
 `height_cm` · `width_cm` · `length_cm` · `vehicle_type` (enum) ·
-`forwarder` (spedycja, pod którą jeździ) · `comment` · `created_at`.
+`forwarder` (spedycja, pod którą jeździ) · `comment` ·
+**`trailer_registration` / `trailer_type`** (naczepa — 0055, #250; opcjonalne) · `created_at`.
 > Pola wymiarów zasilają **profil pojazdu** w routingu TIR. Daty (przegląd/OC/leasing) →
 > przyszłe przypomnienia (Faza 3+).
 

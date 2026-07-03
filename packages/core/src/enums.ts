@@ -9,6 +9,21 @@ export type Role = (typeof ROLES)[number];
 export const VEHICLE_TYPES = ["truck", "tractor", "van", "trailer", "other"] as const;
 export type VehicleType = (typeof VEHICLE_TYPES)[number];
 
+/** Typy naczep — podpowiedzi w formularzu pojazdu (#250; pole tekstowe, nie enum bazy). */
+export const TRAILER_TYPES = [
+  "Plandeka",
+  "Chłodnia",
+  "Firana",
+  "Cysterna",
+  "Wywrotka",
+  "Kontenerowa",
+  "Niskopodwoziowa",
+  "Do przewozu aut",
+  "Silos",
+  "Inna",
+] as const;
+export type TrailerType = (typeof TRAILER_TYPES)[number];
+
 export const PAYMENT_METHODS = ["card", "cash"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
