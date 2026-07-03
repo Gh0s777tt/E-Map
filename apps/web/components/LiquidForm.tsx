@@ -153,6 +153,36 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
     );
   }
 
+  // A5: powtórz ostatni wpis — prefill stałych pól z ostatniego tankowania pojazdu
+  // (stacja/płatność/karta/„do pełna"). Zmienne pola (licznik, litry, cena) zostają puste.
+  async function repeatLast() {
+    if (!vehicleId) return;
+    try {
+      const rows = (await listFuelLogs(getBrowserSupabase(), { vehicleId, table, limit: 1 })) as {
+        station_country: string | null;
+        station_city: string | null;
+        payment_method: string | null;
+        fuel_card_id: string | null;
+        is_full: boolean | null;
+      }[];
+      const last = rows[0];
+      if (!last) {
+        toast("Brak wcześniejszych wpisów dla tego pojazdu.", "info");
+        return;
+      }
+      setCountry(last.station_country ?? "");
+      setCity(last.station_city ?? "");
+      if (last.payment_method === "card" || last.payment_method === "cash") {
+        setPaymentMethod(last.payment_method);
+      }
+      if (last.fuel_card_id) setFuelCardId(last.fuel_card_id);
+      setIsFull(last.is_full ?? true);
+      toast("Wczytano dane z ostatniego wpisu — uzupełnij licznik i litry.", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Nie udało się wczytać ostatniego wpisu.", "error");
+    }
+  }
+
   async function submit() {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     if (setupMsg) {
@@ -265,6 +295,12 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
             ))}
           </select>
         </Field>
+
+        {!editId && (
+          <button type="button" className={styles.ghost} onClick={repeatLast}>
+            ↺ Powtórz ostatni wpis
+          </button>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontSize: 12, color: palette.smoke }}>Wyszukaj miejsce (adres → GPS)</span>

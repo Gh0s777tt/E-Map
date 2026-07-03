@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-234-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.90.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-235-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.91.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.91.0] — ↺ „Powtórz ostatni wpis" na formularzu paliwa/AdBlue (discovery A5, web)
+
+- `[#235]` ↺ **Formularz paliwo/AdBlue (web): przycisk „Powtórz ostatni wpis"** ([LiquidForm.tsx](apps/web/components/LiquidForm.tsx)) — prefill stałych pól z ostatniego tankowania pojazdu (kraj/miasto stacji, metoda płatności, karta, „do pełna"); **zmienne pola — licznik, litry, cena — zostają puste** (wpisywane za każdym razem). Widoczny tylko przy nowym wpisie (nie w edycji).
+  - **Dlaczego (discovery, problem P6):** kierowca na powtarzalnych trasach wypełnia w kółko te same pola stacji/karty. Prefill z ostatniego wpisu = mniej pisania w kabinie.
+  - **Zakres:** pierwszy wycinek A5 (top‑5 #3) — tylko web `LiquidForm` (paliwo+AdBlue). Trip i mobile jako kolejne kroki po potwierdzeniu wzorca na realnych danych.
+  - **QA:** biome · `tsc` ×7 · 414 testów · build ✓. Zachowanie prefillu wymaga aktywnej sesji (odczyt historii pojazdu) → **weryfikacja na koncie testowym (przeglądarka właściciela)**, nie w kontekście preview.
+  - **Bramki:** biome czysto · `tsc` ×7 · 414 testów · build ✓ · docs:check ✓.
 
 ## [1.90.0] — 💶 Domyślne stawki €/km per pojazd — ożywienie tabeli `rates` (discovery A1)
 
