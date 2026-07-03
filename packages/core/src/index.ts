@@ -21,6 +21,7 @@ export * from "./freightExport";
 export * from "./fuelTrend";
 export * from "./ids";
 export * from "./invoice";
+export * from "./journeys";
 export * from "./money";
 export * from "./orderFilter";
 export * from "./orders";

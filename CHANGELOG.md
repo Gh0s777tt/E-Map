@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-243-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.99.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-244-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.100.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.100.0] — 🧭 Wyjazdy (trasy) — statystyki per wyjazd (rozpoczęcie → zakończenie), per kierowca
+
+- `[#244]` 🧭 **Statystyki podzielone na „wyjazdy"** — nowa strona [`/wyjazdy`](apps/web/app/(app)/wyjazdy/page.tsx) (menu Finanse, dostęp jak statystyki). Zdarzenia trasy grupowane w wyjazdy **od akcji „rozpoczęcie" do „zakończenie"** (per pojazd), przypisane do kierowcy. Na wyjazd: dystans (licznik start→end), czas (dni), tankowań/litry/spalanie, **załadunki/rozładunki + waga**, koszt (paliwo+AdBlue+serwis+inne), przychód (stawka €/km z `rates`) i zysk/marża. Widok pogrupowany: **kierowca → wyjazd #N · auto · okres · statystyki**; wyjazd bez „zakończenia" oznaczony „w toku".
+  - **Rdzeń (testowany):** [`buildJourneys`](packages/core/src/journeys.ts) — czysta segmentacja + rollup (okno czasowe tankowań, dystans z liczników, spalanie, przychód/zysk). **7 testów** ([journeys.test.ts](packages/core/src/journeys.test.ts)): okno paliwa, wyjazd otwarty, indeksowanie, start-bez-end, przychód, zdarzenia przed startem.
+  - Realizacja prośby: „statystyki podzielone na trasy — kierowca daje rozpoczęcie, jeździ, tankuje, ładuje, robi zakończenie → widok per wyjazd/kierowca/auto". i18n `nav.journeys` (PL/EN, parytet).
+  - **QA:** biome (pełne `check .`) · `tsc` ×7 · **435 testów** (core +7) · build ✓. UI z danymi → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 435 testów · build ✓ · docs:check ✓.
+  - ⏳ **Osobno (prośba #2 — auto‑zamykanie zlecenia z load/unload + koszt transportu):** wymaga powiązania zdarzeń trasy ze zleceniem (dziś brak `order_id` na `trip_events`) → migracja + decyzja projektowa (jawny wybór zlecenia vs dopasowanie po miejscu/wadze). Przygotowana propozycja do decyzji.
 
 ## [1.99.0] — ⚡ Optymistyczna zmiana statusu zleceń (discovery A3) — top‑5 discovery KOMPLET
 
