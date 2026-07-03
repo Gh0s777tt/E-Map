@@ -23,6 +23,7 @@ export * from "./ids";
 export * from "./invoice";
 export * from "./journeys";
 export * from "./money";
+export * from "./orderCost";
 export * from "./orderFilter";
 export * from "./orders";
 export * from "./payouts";

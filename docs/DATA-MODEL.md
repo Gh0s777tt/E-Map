@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.101.0** (#245) · 2026-07-03
+> Status: **wdrożone** · stan kodu **v1.102.0** (#246) · 2026-07-03
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -214,6 +214,7 @@ Liczone z formularzy + odometru, **per pojazd**:
 - **Koszt trasy** = paliwo + AdBlue + serwis (kwoty z formularzy).
 - **Przychód trasy** = przejechane km × `rate_per_km`.
 - **Zysk z trasy** = przychód − koszt.
+- **Koszt transportu / zlecenie** (#246, `orderTransportCosts`) = dystans `load→unload` (liczniki) × koszt/km pojazdu, gdzie koszt/km = `(Σ paliwo + Σ AdBlue) / dystans z tankowań`; zysk = stawka zlecenia − koszt. Przybliżenie (koszt/km z całej historii pojazdu).
 - **Uszkodzenia**: liczba + opis (z `trip_events.action='service'`/`other`) — co zepsute/naprawione.
 
 > Wszystkie wzory deterministyczne i testowane jednostkowo — to „nośna" matematyka pieniędzy.
