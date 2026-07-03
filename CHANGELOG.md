@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-247-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.102.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-248-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.103.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.103.0] — 📸 Zdjęcia załącznika w formularzu Trasa (towar / CMR / dokument) → auto‑przypisanie do zlecenia
+
+- `[#248]` 📸 **Robienie zdjęć bezpośrednio w formularzu Trasa** — przy akcji `załadunek`/`rozładunek` z wybranym zleceniem pojawia się panel załączników ([web](apps/web/app/(app)/forms/trip/page.tsx) — [`CargoPhotos`](apps/web/components/CargoPhotos.tsx), [mobile](apps/mobile/app/trip.tsx) — [`CargoPhotosMobile`](apps/mobile/components/CargoPhotosMobile.tsx)). Aparat/zdjęcie + podpis odbiorcy (POD/e‑CMR) — wszystko **automatycznie przypisane do wskazanego zlecenia** (towaru). Realizacja prośby: „przy formularzu trip opcja zrobienia zdjęcia → auto‑przypisanie do towaru".
+  - **Kategoria załącznika** (Towar / CMR / Dokument / Inne) — wybór przed zdjęciem, zapisywany w `order_photos.caption`, widoczny jako badge na miniaturze. Realizuje „i np. CMR" (sfotografowanie listu przewozowego CMR jako osobna kategoria). Rdzeń: [`photoCategoryCaption` / `PHOTO_CATEGORIES`](packages/core/src/photoCategories.ts) — **4 testy**.
+  - **Bez migracji** — wykorzystuje istniejącą tabelę `order_photos` (0044) + bucket `cargo-photos` + pole `caption` (POD ma osobny format captiona, więc kategorie się nie mylą). Upload: każdy aktywny członek (kierowca); kasowanie: owner/dispatcher (integralność dowodu) — RLS bez zmian. Chooser kategorii dostępny też na liście Zleceń (komponent współdzielony).
+  - **Uwaga:** upload zdjęć wymaga połączenia (Storage online); samo zdarzenie trasy pozostaje offline‑first (outbox) — panel pokazuje błąd, gdy offline.
+  - **QA:** biome (pełne `check .`, 337 plików) · `tsc` ×7 · **447 testów** (core +4) · build ✓. Ścieżki z sesją/aparatem → **weryfikacja na koncie testowym** (najlepiej mobka: załadunek → wybór zlecenia → 📷 → badge kategorii).
+  - **Bramki:** biome czysto · `tsc` ×7 · 447 testów · build ✓ · docs:check ✓.
 
 ## [1.102.1] — 🛡️ Hardening triggera auto‑zamykania (multi‑tenant) — #245/0052
 

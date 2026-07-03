@@ -28,6 +28,7 @@ export * from "./orderFilter";
 export * from "./orders";
 export * from "./payouts";
 export * from "./perDiem";
+export * from "./photoCategories";
 export * from "./pod";
 export * from "./profitability";
 export * from "./rates";

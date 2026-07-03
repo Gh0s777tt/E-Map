@@ -7,7 +7,14 @@ import {
   type OrderPhoto,
   uploadOrderPhoto,
 } from "@e-logistic/api";
-import { buildPodCaption, isPodCaption, parsePodCaption } from "@e-logistic/core";
+import {
+  buildPodCaption,
+  DEFAULT_PHOTO_CATEGORY,
+  isPodCaption,
+  PHOTO_CATEGORIES,
+  parsePodCaption,
+  photoCategoryCaption,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -32,6 +39,8 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [podOpen, setPodOpen] = useState(false);
   const [recipient, setRecipient] = useState("");
+  // #248: kategoria kolejnego zdjęcia (Towar/CMR/Dokument/Inne) → zapisywana w caption.
+  const [category, setCategory] = useState<string>(DEFAULT_PHOTO_CATEGORY);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -66,7 +75,7 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
       const sb = getBrowserSupabase();
       for (const f of Array.from(files)) {
         if (!f.type.startsWith("image/")) continue;
-        await uploadOrderPhoto(sb, companyId, orderId, f);
+        await uploadOrderPhoto(sb, companyId, orderId, f, photoCategoryCaption(category));
       }
       await load();
     } catch (e2) {
@@ -120,6 +129,19 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
         <Button variant="ghost" onClick={() => setPodOpen((v) => !v)} disabled={busy}>
           ✍️ Podpis (POD)
         </Button>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          disabled={busy}
+          aria-label="Kategoria załącznika"
+          style={styles.catSel}
+        >
+          {PHOTO_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
         <Button variant="ghost" onClick={() => fileRef.current?.click()} disabled={busy}>
           {busy ? "Wgrywam…" : "➕ Dodaj"}
         </Button>
@@ -174,6 +196,7 @@ export function CargoPhotos({ orderId }: { orderId: string }) {
                   <div style={{ ...styles.img, background: palette.black }} />
                 )}
                 {pod && <span style={styles.podBadge}>✍️ POD</span>}
+                {!pod && p.caption && <span style={styles.catBadge}>{p.caption}</span>}
                 {canManage && (
                   <button
                     type="button"
@@ -243,6 +266,25 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "1px 5px",
     borderRadius: 999,
     background: palette.red,
+    color: palette.white,
+  },
+  catSel: {
+    background: palette.black,
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "6px 8px",
+    fontSize: 13,
+  },
+  catBadge: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "1px 5px",
+    borderRadius: 999,
+    background: palette.graphite,
     color: palette.white,
   },
   cap: {

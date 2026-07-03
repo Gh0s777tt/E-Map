@@ -5,7 +5,14 @@ import {
   type OrderPhoto,
   uploadOrderPhotoBinary,
 } from "@e-logistic/api";
-import { buildPodCaption, isPodCaption, parsePodCaption } from "@e-logistic/core";
+import {
+  buildPodCaption,
+  DEFAULT_PHOTO_CATEGORY,
+  isPodCaption,
+  PHOTO_CATEGORIES,
+  parsePodCaption,
+  photoCategoryCaption,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { decode } from "base64-arraybuffer";
 import * as ImagePicker from "expo-image-picker";
@@ -38,6 +45,8 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [podOpen, setPodOpen] = useState(false);
   const [recipient, setRecipient] = useState("");
+  // #248: kategoria kolejnego zdjęcia (Towar/CMR/Dokument/Inne) → zapisywana w caption.
+  const [category, setCategory] = useState<string>(DEFAULT_PHOTO_CATEGORY);
 
   const load = useCallback(async () => {
     if (!supabaseConfigured) return;
@@ -92,6 +101,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
         contentType,
         ext: extFromMime(contentType),
         sizeBytes: asset.fileSize,
+        caption: photoCategoryCaption(category),
       });
       await load();
     } catch (e) {
@@ -135,6 +145,19 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
         <Text style={styles.count}>
           {photos.length > 0 ? `${photos.length} szt.` : "zdjęcia / podpis"}
         </Text>
+      </View>
+
+      <View style={styles.catChips}>
+        {PHOTO_CATEGORIES.map((c) => (
+          <Pressable
+            key={c}
+            style={[styles.catChip, category === c && styles.catChipActive]}
+            onPress={() => setCategory(c)}
+            disabled={busy}
+          >
+            <Text style={category === c ? styles.catChipTextActive : styles.catChipText}>{c}</Text>
+          </Pressable>
+        ))}
       </View>
 
       <View style={styles.actions}>
@@ -202,10 +225,21 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
                 </View>
               );
             }
-            return urls[p.id] ? (
-              <Image key={p.id} source={{ uri: urls[p.id] }} style={styles.thumb} />
-            ) : (
-              <View key={p.id} style={[styles.thumb, styles.thumbEmpty]} />
+            return (
+              <View key={p.id} style={styles.thumbWrap}>
+                {urls[p.id] ? (
+                  <Image source={{ uri: urls[p.id] }} style={styles.thumb} />
+                ) : (
+                  <View style={[styles.thumb, styles.thumbEmpty]} />
+                )}
+                {p.caption ? (
+                  <View style={styles.catBadge}>
+                    <Text style={styles.catBadgeText} numberOfLines={1}>
+                      {p.caption}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             );
           })}
         </View>
@@ -269,6 +303,29 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   thumb: { width: 84, height: 84, borderRadius: 8, backgroundColor: palette.nearBlack },
   thumbEmpty: { borderColor: palette.graphite, borderWidth: 1 },
+  thumbWrap: { position: "relative", width: 84, height: 84 },
+  catBadge: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    backgroundColor: palette.graphite,
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    maxWidth: 76,
+  },
+  catBadgeText: { color: palette.white, fontSize: 10, fontWeight: "700" },
+  catChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  catChip: {
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  catChipActive: { backgroundColor: palette.red, borderColor: palette.red },
+  catChipText: { color: palette.offWhite, fontSize: 12 },
+  catChipTextActive: { color: palette.white, fontWeight: "700", fontSize: 12 },
   podChip: {
     width: 110,
     minHeight: 84,
