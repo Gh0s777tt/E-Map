@@ -3,6 +3,7 @@
 import { listFuelLogs, listTripEvents } from "@e-logistic/api";
 import { buildSettlement, effectiveModules, round2, type Settlement } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
 import { Button, PageHeader, SetupNotice } from "@/components/ui";
@@ -255,6 +256,15 @@ export default function SettlementsPage() {
 
       {settlement && (
         <>
+          {vehicleId && (
+            <Link
+              href={`/vehicles/${vehicleId}`}
+              className="no-print"
+              style={{ color: palette.red, display: "inline-block", marginBottom: 8 }}
+            >
+              Karta pojazdu →
+            </Link>
+          )}
           <div className={styles.cards}>
             <Card label="Dystans" value={`${settlement.distanceKm} km`} />
             <Card

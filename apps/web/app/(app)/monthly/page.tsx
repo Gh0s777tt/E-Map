@@ -25,6 +25,7 @@ import {
   type VehicleCostCategory,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
@@ -345,7 +346,15 @@ export default function MonthlyPage() {
             <tbody>
               {summary.rows.map((r) => (
                 <tr key={r.vehicleId ?? "none"}>
-                  <td style={styles.td}>{regOf(r.vehicleId)}</td>
+                  <td style={styles.td}>
+                    {r.vehicleId ? (
+                      <Link href={`/vehicles/${r.vehicleId}`} style={{ color: palette.red }}>
+                        {regOf(r.vehicleId)}
+                      </Link>
+                    ) : (
+                      regOf(r.vehicleId)
+                    )}
+                  </td>
                   <td style={styles.tdR}>{r.revenueEur} €</td>
                   <td style={styles.tdR}>{r.fuelCost} €</td>
                   <td style={styles.tdR}>{r.adblueCost} €</td>

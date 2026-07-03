@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-232-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.88.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-233-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.89.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.89.0] — 🔗 Linki kontekstowe: raporty finansowe → karta pojazdu (discovery A4)
+
+- `[#233]` 🔗 **Deep-linki do karty pojazdu (`/vehicles/[id]`) z raportów finansowych** — [zestawienie miesięczne](apps/web/app/(app)/monthly/page.tsx) (rejestracja w tabeli per pojazd → link) + [rozliczenia tras](apps/web/app/(app)/settlements/page.tsx) („Karta pojazdu →" w wynikach, `no-print`). Czysto dodatkowe `<Link>` do gwarantowanej trasy.
+  - **Dlaczego (discovery, problem P1):** policzona inteligencja leży rozproszona po ~30 ekranach bez połączeń; owner, by odpowiedzieć „dlaczego pojazd X ma niską marżę?", musiał ręcznie skakać. Karta pojazdu (`/vehicles/[id]`) już agreguje P&L + paliwo + koszty + zlecenia — teraz jest o klik z miejsc, gdzie rodzi się pytanie.
+  - **Zakres:** bezpieczny, dodatkowy wycinek A4 z [DISCOVERY_REPORT.md](DISCOVERY_REPORT.md) (top‑5 #4). Nic nowego się nie liczy — spinamy istniejące encje i trasy.
+  - **QA:** biome · `tsc` ×7 · 408 testów · build ✓. Strony `monthly`/`settlements` crashują w trybie offline (`getBrowserSupabase()` w renderze), więc bez wizualnego QA — weryfikacja tsc/build + konstrukcja (jak #231).
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.88.0] — 🛡️ Formularze: blokada podwójnego zapisu offline (discovery A2)
 
