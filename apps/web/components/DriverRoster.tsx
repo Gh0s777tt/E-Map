@@ -11,8 +11,10 @@ import {
 } from "@e-logistic/api";
 import {
   DRIVER_QUALIFICATIONS,
+  type DriverInput,
   driverSchema,
   expiryStatus,
+  firstZodError,
   LICENSE_CATEGORIES,
   zodFieldErrors,
 } from "@e-logistic/core";
@@ -20,10 +22,12 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { DataImport, type ImportColumn } from "@/components/DataImport";
 import { useToast } from "@/components/Toast";
 import { Badge, Button } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { downloadXlsx } from "@/lib/xlsx";
 
 type Driver = Awaited<ReturnType<typeof listDrivers>>[number];
 type Docs = { idCard: string | null; passport: string | null; license: string | null };
@@ -38,6 +42,57 @@ const EXPIRY_DOCS = [
   { key: "psychotech_expiry", label: "Psychotechn." },
   { key: "adr_expiry", label: "ADR" },
 ] as const;
+
+/** Kolumny importu kierowców (bez numerów dokumentów — te dodaje się ręcznie, audytowane). */
+const IMPORT_COLUMNS: ImportColumn[] = [
+  { key: "lastName", label: "Nazwisko", aliases: ["last name", "surname"], required: true },
+  { key: "firstName", label: "Imię", aliases: ["imie", "first name"], required: true },
+  { key: "birthDate", label: "Data urodzenia", aliases: ["data ur", "dob", "birth"] },
+  { key: "licenseCategories", label: "Kategorie", aliases: ["kat", "categories"] },
+  { key: "qualifications", label: "Uprawnienia", aliases: ["kwalifikacje", "qualifications"] },
+  { key: "licenseExpiry", label: "Prawo jazdy", aliases: ["license"] },
+  { key: "code95Expiry", label: "Kod 95", aliases: ["code95", "code 95"] },
+  {
+    key: "medicalExpiry",
+    label: "Badania lek.",
+    aliases: ["badania lekarskie", "badania", "medical"],
+  },
+  { key: "psychotechExpiry", label: "Psychotechn.", aliases: ["psychotechnika", "psychotech"] },
+  { key: "adrExpiry", label: "ADR", aliases: [] },
+  { key: "notes", label: "Uwagi", aliases: ["komentarz", "notes", "notatki"] },
+];
+
+const splitCats = (s: string) =>
+  s
+    .split(/[,;|\s]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+const splitQuals = (s: string) =>
+  s
+    .split(/[,;|]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+function validateDriverRow(
+  rec: Record<string, string>,
+): { ok: true; value: DriverInput } | { ok: false; error: string } {
+  const candidate = {
+    firstName: (rec.firstName ?? "").trim(),
+    lastName: (rec.lastName ?? "").trim(),
+    birthDate: (rec.birthDate ?? "").trim() || undefined,
+    licenseCategories: splitCats(rec.licenseCategories ?? ""),
+    qualifications: splitQuals(rec.qualifications ?? ""),
+    notes: (rec.notes ?? "").trim() || undefined,
+    licenseExpiry: (rec.licenseExpiry ?? "").trim() || undefined,
+    code95Expiry: (rec.code95Expiry ?? "").trim() || undefined,
+    medicalExpiry: (rec.medicalExpiry ?? "").trim() || undefined,
+    psychotechExpiry: (rec.psychotechExpiry ?? "").trim() || undefined,
+    adrExpiry: (rec.adrExpiry ?? "").trim() || undefined,
+  };
+  const parsed = driverSchema.safeParse(candidate);
+  if (!parsed.success) return { ok: false, error: firstZodError(parsed.error) };
+  return { ok: true, value: parsed.data };
+}
 
 export function DriverRoster() {
   const confirm = useConfirm();
@@ -125,6 +180,69 @@ export function DriverRoster() {
     ]);
     downloadCsv(`kierowcy_${csvDateStamp()}.csv`, headers, rows);
   }
+
+  async function exportXlsx() {
+    const headers = [
+      "Nazwisko",
+      "Imię",
+      "Kategorie",
+      "Uprawnienia",
+      "Prawo jazdy",
+      "Kod 95",
+      "Badania lek.",
+      "Psychotechn.",
+      "ADR",
+    ];
+    const rows = drivers.map((d) => [
+      d.last_name,
+      d.first_name,
+      d.license_categories.join(" "),
+      d.qualifications.join("; "),
+      d.license_expiry ?? "",
+      d.code95_expiry ?? "",
+      d.medical_expiry ?? "",
+      d.psychotech_expiry ?? "",
+      d.adr_expiry ?? "",
+    ]);
+    await downloadXlsx(`kierowcy_${csvDateStamp()}.xlsx`, headers, rows);
+  }
+
+  const importDrivers = useCallback(async (values: DriverInput[]) => {
+    const sb = getBrowserSupabase();
+    const m = await getActiveMembership(sb);
+    if (!m || !(m.role === "owner" || m.role === "dispatcher")) {
+      return { inserted: 0, failed: values.length, errors: ["Brak uprawnień lub firmy."] };
+    }
+    // Dedup po imię|nazwisko|data ur. (driver_save z p_id=null zawsze wstawia nowy wiersz).
+    const key = (f: string, l: string, b: string | null | undefined) =>
+      `${f.trim().toLowerCase()}|${l.trim().toLowerCase()}|${(b ?? "").trim()}`;
+    const existing = new Set(
+      (await listDrivers(sb, m.companyId)).map((d) => key(d.first_name, d.last_name, d.birth_date)),
+    );
+    let inserted = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    for (const v of values) {
+      const k = key(v.firstName, v.lastName, v.birthDate);
+      if (existing.has(k)) {
+        failed++;
+        if (errors.length < 8)
+          errors.push(`${v.lastName} ${v.firstName}: już istnieje (pominięto)`);
+        continue;
+      }
+      try {
+        await insertDriver(sb, v, m.companyId);
+        existing.add(k);
+        inserted++;
+      } catch (e) {
+        failed++;
+        if (errors.length < 8) {
+          errors.push(`${v.lastName} ${v.firstName}: ${e instanceof Error ? e.message : "błąd"}`);
+        }
+      }
+    }
+    return { inserted, failed, errors };
+  }, []);
 
   function startEdit(d: Driver) {
     setEditingId(d.id);
@@ -434,6 +552,23 @@ export function DriverRoster() {
         </div>
       </div>
 
+      {allowed && (
+        <div style={{ marginTop: 20 }}>
+          <DataImport
+            columns={IMPORT_COLUMNS}
+            validate={validateDriverRow}
+            onImport={importDrivers}
+            templateBase="kierowcy"
+            onDone={load}
+          />
+          <p style={{ fontSize: 12, color: palette.smoke, marginTop: 6 }}>
+            Wymagane: Nazwisko, Imię. Kategorie oddziel spacją/przecinkiem (np. „C C+E"),
+            uprawnienia średnikiem/przecinkiem. Numery dokumentów (dowód/paszport) dodaj ręcznie —
+            są szyfrowane i audytowane, nie importujemy ich masowo.
+          </p>
+        </div>
+      )}
+
       {drivers.length === 0 ? (
         <p style={{ color: palette.smoke, marginTop: 20 }}>Brak kierowców w kartotece.</p>
       ) : (
@@ -442,6 +577,9 @@ export function DriverRoster() {
             <span style={{ flex: 1 }} />
             <Button variant="ghost" onClick={exportCsv}>
               ⬇️ CSV
+            </Button>
+            <Button variant="ghost" onClick={exportXlsx}>
+              ⬇️ XLSX
             </Button>
           </div>
           {drivers.map((d) => {
