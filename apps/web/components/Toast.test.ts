@@ -16,6 +16,7 @@ function Trigger({ msg, kind }: { msg: string; kind?: "success" | "error" | "inf
 }
 
 const provider = (msg: string, kind?: "success" | "error" | "info") =>
+  // biome-ignore lint/correctness/noChildrenProp: createElement w teście — children w props (wymóg tsc)
   h(ToastProvider, { children: h(Trigger, { msg, kind }) });
 
 describe("ToastProvider", () => {

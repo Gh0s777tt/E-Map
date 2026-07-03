@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-239-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.95.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-240-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.96.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.96.0] — 🗃️ Eksport zbiorczy „wszystko" (wieloarkuszowy Excel) + naprawa bramki lint
+
+- `[#240]` 🗃️ **„Eksportuj wszystko" — jeden plik `.xlsx` z arkuszem na moduł** — w [Ustawieniach](apps/web/app/(app)/settings/page.tsx) (owner). Arkusze: Kontrahenci, Pojazdy, Kierowcy, Zlecenia, Koszty pojazdu, Paliwo, AdBlue, Trasa + **Statystyki** (agregaty per pojazd: tankowań/litry/koszt paliwa/zdarzeń/zleceń/przychód). Nowe: [downloadXlsxWorkbook](apps/web/lib/xlsx.ts) (multi-sheet) + [exportAll.ts](apps/web/lib/exportAll.ts) (zbiera wszystkie moduły przez istniejące `list*`). **Import pozostaje granularny** (per element, na każdej liście) — zgodnie z prośbą.
+  - exceljs importowany dynamicznie (poza bundlem); typy przez `import type` (zero wpływu na bundle).
+- `[#240]` 🔧 **Naprawa bramki `biome check .`** (była czerwona „w tle" od #217/#232, bo lokalne uruchomienia biome szły tylko na zmienionych plikach): wykluczenie `sketches/**` (low-fi makiety discovery — nie kod aplikacji), `useBiomeIgnoreFolder: off`, `biome-ignore noChildrenProp` na 2 testach (children w props wymagane przez `tsc`), format 2 plików testowych (`push`/`perDiem`). **Cała bramka lint teraz zielona (329 plików).**
+  - **Bramki:** biome czysto (**pełne `biome check .`**) · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.95.0] — 📦 Import/Export Excel — zlecenia (faza 4/4, komplet)
 

@@ -22,6 +22,7 @@ function renderTable(extra: Record<string, unknown> = {}) {
   return render(
     h(LocaleProvider, {
       locale: "pl",
+      // biome-ignore lint/correctness/noChildrenProp: createElement w teście — children w props (wymóg tsc)
       children: h(DataTable<Row>, {
         rows,
         rowKey: (r: Row) => r.id,

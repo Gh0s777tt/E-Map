@@ -56,6 +56,8 @@ describe("listPushSubscriptionsForDelivery — scoping multi-tenant", () => {
     const { client } = mockSupabase({ data: [], error: null });
     await expect(listPushSubscriptionsForDelivery(client)).rejects.toThrow(/filtr/i);
     await expect(listPushSubscriptionsForDelivery(client, {})).rejects.toThrow(/filtr/i);
-    await expect(listPushSubscriptionsForDelivery(client, { userIds: [] })).rejects.toThrow(/filtr/i);
+    await expect(listPushSubscriptionsForDelivery(client, { userIds: [] })).rejects.toThrow(
+      /filtr/i,
+    );
   });
 });
