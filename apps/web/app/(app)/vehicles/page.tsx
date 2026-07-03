@@ -12,6 +12,7 @@ import {
   type FuelCardProvider,
   firstZodError,
   INSURERS,
+  TRAILER_TYPES,
   VEHICLE_MAKE_GROUPS,
   VEHICLE_TYPES,
   type VehicleInput,
@@ -33,7 +34,12 @@ import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { downloadXlsx } from "@/lib/xlsx";
 
-type DbVehicle = Awaited<ReturnType<typeof listVehicles>>[number];
+// Intersekcja z naczepą (#250): kolumny dochodzą migracją 0055 — opcjonalne, więc `listVehicles`
+// (Row bez naczepy przed gen:types) nadal przypisuje się do DbVehicle[].
+type DbVehicle = Awaited<ReturnType<typeof listVehicles>>[number] & {
+  trailer_registration?: string | null;
+  trailer_type?: string | null;
+};
 type CardRow = {
   id: string;
   provider: string;
@@ -72,6 +78,12 @@ const IMPORT_COLUMNS: ImportColumn[] = [
   { key: "widthCm", label: "Szerokość cm", aliases: ["szerokosc", "width"] },
   { key: "lengthCm", label: "Długość cm", aliases: ["dlugosc", "length"] },
   { key: "forwarder", label: "Spedycja", aliases: ["forwarder"] },
+  {
+    key: "trailerRegistration",
+    label: "Naczepa rej.",
+    aliases: ["naczepa", "trailer", "przyczepa", "rej naczepy"],
+  },
+  { key: "trailerType", label: "Typ naczepy", aliases: ["typ naczepy", "trailer type"] },
   { key: "comment", label: "Uwagi", aliases: ["komentarz", "comment", "notes"] },
 ];
 
@@ -123,6 +135,8 @@ function validateVehicleRow(
     widthCm: toNum(rec.widthCm),
     lengthCm: toNum(rec.lengthCm),
     forwarder: (rec.forwarder ?? "").trim() || undefined,
+    trailerRegistration: (rec.trailerRegistration ?? "").trim() || undefined,
+    trailerType: (rec.trailerType ?? "").trim() || undefined,
     comment: (rec.comment ?? "").trim() || undefined,
   };
   const parsed = vehicleSchema.safeParse(candidate);
@@ -159,6 +173,9 @@ export default function VehiclesPage() {
   const [insurer, setInsurer] = useState("");
   const [insurerOther, setInsurerOther] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
+  // #250: naczepa (jeśli auto ją posiada).
+  const [trailerRegistration, setTrailerRegistration] = useState("");
+  const [trailerType, setTrailerType] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const loadVehicles = useCallback(async () => {
@@ -204,6 +221,8 @@ export default function VehiclesPage() {
     setInsurer("");
     setInsurerOther("");
     setLicenseNumber("");
+    setTrailerRegistration("");
+    setTrailerType("");
     setErrors({});
   }
 
@@ -246,6 +265,8 @@ export default function VehiclesPage() {
     setInsuranceExpiry(v.insurance_expiry ?? "");
     pickListValue(v.insurer, INSURERS as unknown as string[], setInsurer, setInsurerOther);
     setLicenseNumber(v.license_number ?? "");
+    setTrailerRegistration(v.trailer_registration ?? "");
+    setTrailerType(v.trailer_type ?? "");
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -287,6 +308,8 @@ export default function VehiclesPage() {
       insuranceExpiry: insuranceExpiry || undefined,
       insurer: resolvedInsurer || undefined,
       licenseNumber: licenseNumber.trim() || undefined,
+      trailerRegistration: trailerRegistration.trim() || undefined,
+      trailerType: trailerType.trim() || undefined,
     };
 
     const parsed = vehicleSchema.safeParse(candidate);
@@ -346,6 +369,8 @@ export default function VehiclesPage() {
       "OC",
       "Leasing",
       "Ubezpieczyciel",
+      "Naczepa",
+      "Typ naczepy",
     ];
     const rows = dbVehicles.map((v) => [
       v.registration,
@@ -358,6 +383,8 @@ export default function VehiclesPage() {
       v.insurance_expiry ?? "",
       v.leasing_end ?? "",
       v.insurer ?? "",
+      v.trailer_registration ?? "",
+      v.trailer_type ?? "",
     ]);
     downloadCsv(`pojazdy_${csvDateStamp()}.csv`, headers, rows);
   }
@@ -374,6 +401,8 @@ export default function VehiclesPage() {
       "OC",
       "Leasing",
       "Ubezpieczyciel",
+      "Naczepa",
+      "Typ naczepy",
     ];
     const rows = dbVehicles.map((v) => [
       v.registration,
@@ -386,6 +415,8 @@ export default function VehiclesPage() {
       v.insurance_expiry ?? "",
       v.leasing_end ?? "",
       v.insurer ?? "",
+      v.trailer_registration ?? "",
+      v.trailer_type ?? "",
     ]);
     await downloadXlsx(`pojazdy_${csvDateStamp()}.xlsx`, headers, rows);
   }
@@ -641,6 +672,36 @@ export default function VehiclesPage() {
             />
           </label>
 
+          {/* #250: naczepa — dla ciągnika/ciężarówki (jeśli auto ją posiada). */}
+          {(vehicleType === "tractor" || vehicleType === "truck") && (
+            <div style={f.grid}>
+              <label style={f.field}>
+                <span style={f.label}>Naczepa — rejestracja</span>
+                <input
+                  style={f.input}
+                  value={trailerRegistration}
+                  onChange={(e) => setTrailerRegistration(e.target.value)}
+                  placeholder="np. WPR1234 (jeśli posiada)"
+                />
+              </label>
+              <label style={f.field}>
+                <span style={f.label}>Naczepa — typ</span>
+                <input
+                  style={f.input}
+                  value={trailerType}
+                  onChange={(e) => setTrailerType(e.target.value)}
+                  placeholder="Plandeka / Chłodnia…"
+                  list="trailer-types-dl"
+                />
+                <datalist id="trailer-types-dl">
+                  {TRAILER_TYPES.map((tt) => (
+                    <option key={tt} value={tt} />
+                  ))}
+                </datalist>
+              </label>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: 10 }}>
             <Button onClick={save}>{editingId ? "Zapisz zmiany" : t("common.save")}</Button>
             {editingId && (
@@ -709,6 +770,14 @@ export default function VehiclesPage() {
                   <strong style={{ minWidth: 110 }}>{v.registration}</strong>
                   <span style={f.cell}>{[v.make, v.model].filter(Boolean).join(" ")}</span>
                   <span style={f.cell}>{v.vehicle_type}</span>
+                  {v.trailer_registration && (
+                    <span
+                      style={f.meta}
+                      title={`Naczepa${v.trailer_type ? ` · ${v.trailer_type}` : ""}`}
+                    >
+                      🛻 {v.trailer_registration}
+                    </span>
+                  )}
                   <span style={{ flex: 1 }} />
                   <span style={f.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
                   <span style={f.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
@@ -749,6 +818,14 @@ export default function VehiclesPage() {
                       <Detail k="Ubezpieczyciel" v={v.insurer} />
                       <Detail k="Licencja" v={v.license_number} />
                       <Detail k="Leasing do" v={v.leasing_end} />
+                      <Detail
+                        k="Naczepa"
+                        v={
+                          v.trailer_registration
+                            ? `${v.trailer_registration}${v.trailer_type ? ` · ${v.trailer_type}` : ""}`
+                            : null
+                        }
+                      />
                     </div>
 
                     <div style={{ marginTop: 10 }}>

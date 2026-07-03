@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-249-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.104.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-250-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.105.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.105.0] — 🛻 Naczepa na karcie pojazdu (rejestracja + typ) — jeśli auto ją posiada
+
+- `[#250]` 🛻 **Informacja o naczepie w kartotece pojazdu** — dla ciągnika/ciężarówki w formularzu [Pojazdy](apps/web/app/(app)/vehicles/page.tsx) doszły pola **Naczepa: rejestracja + typ** (podpowiedzi typów: Plandeka / Chłodnia / Firana / Cysterna / Wywrotka / Kontenerowa / … — [`TRAILER_TYPES`](packages/core/src/enums.ts)). Widoczne na liście floty (badge „🛻 rej." + w rozwinięciu „Naczepa") oraz na karcie pojazdu (`vehicles/[id]`, sekcja „Dokumenty i terminy"). **Round-trip w imporcie/eksporcie** CSV/XLSX (kolumny „Naczepa rej." + „Typ naczepy").
+  - **Migracja [`0055_vehicle_trailer.sql`](supabase/migrations/0055_vehicle_trailer.sql):** kolumny `vehicles.trailer_registration`, `trailer_type` (tekst, opcjonalne). **⚠️ Owner stosuje `supabase db push`** — do czasu migracji zapis pojazdu **bez** naczepy działa bez zmian; zapis **z** wpisaną naczepą wymaga kolumn (schema-safe: [`vehicleToRow`](packages/api/src/data/vehicles.ts) dołącza naczepę do wiersza tylko gdy wypełniona).
+  - Schemat: [`vehicleSchema`](packages/core/src/schemas.ts) += `trailerRegistration` / `trailerType` (opcjonalne). `listVehicles` → `select("*")` (schema-safe udostępnia nowe kolumny bez łamania odczytu przed migracją). Pola naczepy pokazują się w formularzu dla typu `tractor`/`truck`.
+  - **QA:** biome (pełne `check .`, 337 plików) · `tsc` ×7 · 451 testów · build ✓. Ścieżka z sesją → **weryfikacja na koncie testowym po `supabase db push`** (dodaj ciągnik → wpisz naczepę → sprawdź badge na liście i kartę).
+  - **Bramki:** biome czysto · `tsc` ×7 · 451 testów · build ✓ · docs:check ✓.
 
 ## [1.104.0] — 🔎 Filtrowanie załączników po typie (Towar / CMR / Dokument / POD) + kolumna `kind`
 
