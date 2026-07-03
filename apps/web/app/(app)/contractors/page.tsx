@@ -2,6 +2,7 @@
 
 import {
   type Contractor,
+  type ContractorInput,
   deleteContractor,
   listContractors,
   updateContractor,
@@ -10,6 +11,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { DataImport, type ImportColumn } from "@/components/DataImport";
 import { type Column, DataTable } from "@/components/DataTable";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
@@ -19,6 +21,35 @@ import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { downloadXlsx } from "@/lib/xlsx";
+
+/** Kolumny importu kontrahentów: dopasowanie nagłówków pliku (elastyczne warianty). */
+const IMPORT_COLUMNS: ImportColumn[] = [
+  { key: "name", label: "Nazwa", aliases: ["name"], required: true },
+  {
+    key: "taxId",
+    label: "NIP",
+    aliases: ["nip / vat", "nip/vat", "vat", "vat id", "tax_id", "taxid"],
+  },
+  { key: "address", label: "Adres", aliases: ["address"] },
+  { key: "country", label: "Kraj", aliases: ["country"] },
+];
+
+function validateContractorRow(
+  rec: Record<string, string>,
+): { ok: true; value: ContractorInput } | { ok: false; error: string } {
+  const name = (rec.name ?? "").trim();
+  if (!name) return { ok: false, error: "brak nazwy" };
+  return {
+    ok: true,
+    value: {
+      name,
+      taxId: rec.taxId || null,
+      address: rec.address || null,
+      country: rec.country || null,
+    },
+  };
+}
 
 export default function ContractorsPage() {
   const t = useT();
@@ -126,6 +157,37 @@ export default function ContractorsPage() {
     downloadCsv(`kontrahenci_${csvDateStamp()}.csv`, headers, rows);
   }
 
+  async function exportXlsx() {
+    const headers = ["Nazwa", "NIP", "Adres", "Kraj"];
+    const rows = contractors.map((c) => [c.name, c.tax_id ?? "", c.address ?? "", c.country ?? ""]);
+    await downloadXlsx(`kontrahenci_${csvDateStamp()}.xlsx`, headers, rows);
+  }
+
+  const importContractors = useCallback(async (values: ContractorInput[]) => {
+    const sb = getBrowserSupabase();
+    const m = await getCachedMembership(sb);
+    if (!m) {
+      return {
+        inserted: 0,
+        failed: values.length,
+        errors: ["Brak firmy — utwórz ją na Pulpicie."],
+      };
+    }
+    let inserted = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    for (const v of values) {
+      try {
+        await upsertContractor(sb, m.companyId, v);
+        inserted++;
+      } catch (e) {
+        failed++;
+        if (errors.length < 8) errors.push(`${v.name}: ${e instanceof Error ? e.message : "błąd"}`);
+      }
+    }
+    return { inserted, failed, errors };
+  }, []);
+
   const cols: Column<Contractor>[] = [
     { key: "name", header: "Nazwa", sort: (c) => c.name, cell: (c) => <strong>{c.name}</strong> },
     { key: "tax_id", header: "NIP / VAT", sort: (c) => c.tax_id, cell: (c) => c.tax_id ?? "—" },
@@ -216,13 +278,30 @@ export default function ContractorsPage() {
         </div>
       )}
 
+      {canManage && (
+        <div style={{ marginTop: 16 }}>
+          <DataImport
+            columns={IMPORT_COLUMNS}
+            validate={validateContractorRow}
+            onImport={importContractors}
+            templateBase="kontrahenci"
+            onDone={load}
+          />
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Rejestr</h2>
         <span style={{ flex: 1 }} />
         {contractors.length > 0 && (
-          <Button variant="ghost" onClick={exportCsv}>
-            ⬇️ CSV
-          </Button>
+          <>
+            <Button variant="ghost" onClick={exportCsv}>
+              ⬇️ CSV
+            </Button>
+            <Button variant="ghost" onClick={exportXlsx}>
+              ⬇️ XLSX
+            </Button>
+          </>
         )}
       </div>
 

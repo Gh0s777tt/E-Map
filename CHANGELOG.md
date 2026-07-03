@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-235-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.91.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-236-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.92.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.92.0] — 📥 Import/Export Excel — fundament + kontrahenci (CSV + .xlsx)
+
+- `[#236]` 📥 **Import i eksport danych z/do CSV i Excela (.xlsx)** — fundament + pilotaż na **kontrahentach** (import CSV/xlsx, eksport CSV już był + nowy eksport .xlsx).
+  - **Rdzeń (testowany):** [`parseCsv`](packages/core/src/csvParse.ts) — parser RFC 4180 (odwrotność `toCsv`): pola w cudzysłowach z separatorem/nową linią/escapowanym `""`, CRLF/LF, BOM, auto-wykrywanie `;`/`,`. **14 testów** ([csvParse.test.ts](packages/core/src/csvParse.test.ts)) w tym round-trip z `toCsv`.
+  - **.xlsx:** [xlsx.ts](apps/web/lib/xlsx.ts) (`parseXlsx`/`downloadXlsx`) przez **`exceljs` ładowany dynamicznie** (`await import` — poza głównym bundlem; doładowuje się dopiero przy imporcie/eksporcie xlsx). **Świadomy wybór `exceljs` zamiast SheetJS/`xlsx`** — npm `xlsx` ma znane CVE (prototype pollution/ReDoS) i dystrybucję spoza npm.
+  - **Generyczny komponent** [DataImport](apps/web/components/DataImport.tsx): plik → dopasowanie nagłówków (elastyczne aliasy) → walidacja wiersz po wierszu → **podgląd (ile poprawnych / ile błędnych + powody)** → hurtowy zapis + „Pobierz szablon". Reużywalny dla kolejnych encji.
+  - **Kontrahenci** [contractors](apps/web/app/(app)/contractors/page.tsx): przycisk importu (CSV/xlsx), szablon, eksport ⬇️ XLSX obok CSV. Zapis przez `upsertContractor` (dedup po `company_id,name` — **ponowny import nie tworzy duplikatów**).
+  - **Zakres:** faza 1 z 4 (potem: pojazdy → kierowcy → zlecenia/koszty — ten sam framework). QA: biome · `tsc` ×7 · **428 testów** · build ✓ (exceljs bundluje się poprawnie, code-split). Ścieżki z danymi wymagają sesji → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.91.0] — ↺ „Powtórz ostatni wpis" na formularzu paliwa/AdBlue (discovery A5, web)
 
