@@ -31,6 +31,7 @@ export default function TripScreen() {
   const [comment, setComment] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [items, setItems] = useState<OutboxItem[]>([]);
+  const [busy, setBusy] = useState(false);
 
   const needsWeight = action === "load" || action === "unload";
   const commentRequired = action === "service" || action === "other";
@@ -47,7 +48,21 @@ export default function TripScreen() {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId]);
 
+  // A5: powtórz ostatnie zdarzenie — prefill akcji/kraju z ostatniego zdarzenia (outbox).
+  function repeatLast() {
+    const last = items[0];
+    if (!last) {
+      setMsg("Brak wcześniejszych zdarzeń.");
+      return;
+    }
+    const input = last.input as TripEventInput;
+    setAction(input.action);
+    setCountry(input.place.country ?? "");
+    setMsg("Wczytano dane z ostatniego zdarzenia — uzupełnij licznik.");
+  }
+
   async function submit() {
+    if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
     if (!vehicleId) {
       setMsg("Wybierz pojazd.");
@@ -69,16 +84,21 @@ export default function TripScreen() {
       setMsg(firstZodError(parsed.error));
       return;
     }
-    const item = await enqueue("trip", parsed.data, new Date().toISOString());
-    setMsg(
-      item.status === "synced"
-        ? `✅ Zapisano i zsynchronizowano: ${t(`trip.action.${parsed.data.action}`)}.`
-        : `📥 Zapisano lokalnie: ${t(`trip.action.${parsed.data.action}`)} — sync w tle.`,
-    );
-    setOdometer("");
-    setWeight("");
-    setComment("");
-    await refresh();
+    setBusy(true);
+    try {
+      const item = await enqueue("trip", parsed.data, new Date().toISOString());
+      setMsg(
+        item.status === "synced"
+          ? `✅ Zapisano i zsynchronizowano: ${t(`trip.action.${parsed.data.action}`)}.`
+          : `📥 Zapisano lokalnie: ${t(`trip.action.${parsed.data.action}`)} — sync w tle.`,
+      );
+      setOdometer("");
+      setWeight("");
+      setComment("");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -92,6 +112,11 @@ export default function TripScreen() {
         selectedId={vehicleId}
         onSelect={setVehicleId}
       />
+      {items.length > 0 && (
+        <Pressable style={styles.repeatBtn} onPress={repeatLast}>
+          <Text style={styles.repeatText}>↺ Powtórz ostatnie</Text>
+        </Pressable>
+      )}
 
       <Text style={styles.label}>Akcja</Text>
       <View style={styles.chips}>
@@ -149,8 +174,8 @@ export default function TripScreen() {
         multiline
       />
 
-      <Pressable style={styles.btn} onPress={submit}>
-        <Text style={styles.btnText}>{t("common.save")}</Text>
+      <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
+        <Text style={styles.btnText}>{busy ? "Zapisuję…" : t("common.save")}</Text>
       </Pressable>
       {msg && <Text style={styles.msg}>{msg}</Text>}
 
@@ -204,6 +229,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnText: { color: palette.white, fontWeight: "700", fontSize: 16 },
+  btnBusy: { opacity: 0.5 },
+  repeatBtn: {
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  repeatText: { color: palette.offWhite, fontWeight: "600" },
   msg: { color: palette.smoke, marginTop: 10 },
   queue: {
     marginTop: 16,

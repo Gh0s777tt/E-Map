@@ -1,6 +1,6 @@
 "use client";
 
-import { getTripEvent, notifyCompany, updateTripEvent } from "@e-logistic/api";
+import { getTripEvent, listTripEvents, notifyCompany, updateTripEvent } from "@e-logistic/api";
 import { setupMessage, TRIP_ACTIONS, tripEventSchema, zodFieldErrors } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -97,6 +97,34 @@ export default function TripFormPage() {
       (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => toast("Nie udało się pobrać GPS — wpisz lokalizację ręcznie.", "error"),
     );
+  }
+
+  // A5: powtórz ostatnie zdarzenie — prefill akcji/kraju/lokalizacji z ostatniego zdarzenia pojazdu.
+  async function repeatLast() {
+    if (!vehicleId) return;
+    try {
+      const rows = (await listTripEvents(getBrowserSupabase(), { vehicleId, limit: 1 })) as {
+        action: string;
+        country: string | null;
+        location: string | null;
+      }[];
+      const last = rows[0];
+      if (!last) {
+        toast("Brak wcześniejszych zdarzeń dla tego pojazdu.", "info");
+        return;
+      }
+      if ((TRIP_ACTIONS as readonly string[]).includes(last.action)) {
+        setAction(last.action as (typeof TRIP_ACTIONS)[number]);
+      }
+      setCountry(last.country ?? "");
+      setLocation(last.location ?? "");
+      toast("Wczytano dane z ostatniego zdarzenia — uzupełnij licznik i wagę.", "success");
+    } catch (e) {
+      toast(
+        e instanceof Error ? e.message : "Nie udało się wczytać ostatniego zdarzenia.",
+        "error",
+      );
+    }
   }
 
   async function submit() {
@@ -231,6 +259,24 @@ export default function TripFormPage() {
             ))}
           </select>
         </Field>
+
+        {!editId && (
+          <button
+            type="button"
+            onClick={repeatLast}
+            style={{
+              background: "transparent",
+              color: palette.offWhite,
+              border: `1px solid ${palette.graphite}`,
+              borderRadius: 8,
+              padding: "9px 14px",
+              cursor: "pointer",
+              alignSelf: "flex-start",
+            }}
+          >
+            ↺ Powtórz ostatnie zdarzenie
+          </button>
+        )}
 
         <Field label="Akcja" error={errors.action}>
           <select

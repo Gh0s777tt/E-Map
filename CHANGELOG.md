@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-241-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.97.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-242-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.98.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.98.0] — ↺ „Powtórz ostatni wpis" — trip (web) + mobile (A5 komplet) + fix guardu mobile-trip
+
+- `[#242]` ↺ **A5 dokończone: „powtórz ostatni wpis" na trasie (web) i formularzach mobilnych.**
+  - **Web trip** ([forms/trip](apps/web/app/(app)/forms/trip/page.tsx)): przycisk „↺ Powtórz ostatnie zdarzenie" — prefill akcji/kraju/lokalizacji z ostatniego zdarzenia pojazdu (`listTripEvents` limit 1). Widoczny tylko przy nowym wpisie.
+  - **Mobile** ([LiquidForm](apps/mobile/components/LiquidForm.tsx) paliwo/AdBlue + [trip](apps/mobile/app/trip.tsx)): „↺ Powtórz ostatni" prefilluje z **outboxa** (`items[0]`) — offline-first, bez zapytania: paliwo → kraj/płatność; trasa → akcja/kraj.
+  - 🛡️ **Fix:** mobile **trip** nie miał blokady in-flight z #232 (changelog #232 objął 4 formularze, ale guard trafił do 3 — mobile trip pominięty). Dodane `busy`+`disabled`+`try/finally` — komplet A2 na wszystkich 4 formularzach.
+  - **Zakres:** domyka A5 (top‑5 #3) rozpoczęte w #235 (web paliwo/AdBlue). QA: biome (pełne `check .`) · `tsc` ×7 · 428 testów · build ✓. Ścieżki z sesją → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.97.0] — 💸 Koszty pojazdów — osobna lista + import/eksport (CSV/xlsx)
 
