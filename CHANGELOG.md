@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-240-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.96.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-241-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.97.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.97.0] — 💸 Koszty pojazdów — osobna lista + import/eksport (CSV/xlsx)
+
+- `[#241]` 💸 **Nowa strona „Koszty pojazdów" (`/koszty`)** — [koszty/page.tsx](apps/web/app/(app)/koszty/page.tsx) (menu: Flota, owner/dispatcher). Lista wszystkich kosztów floty (`DataTable`, sort/filtr) + formularz dodawania + **import CSV/xlsx** + **eksport CSV/xlsx** + usuwanie.
+  - **Import** na silniku `DataImport`: kolumny Pojazd/Kategoria/Kwota/Waluta/Data/Opis; **„Pojazd"=rejestracja** → `vehicle_id` (nierozpoznana → pominięta), **kategoria PL→enum** (naprawa→repair, leasing, ubezpieczenie→insurance, podatek→tax, mandat→fine, parking, opony→tires, inne) oraz klucze EN; **dedup** po pojazd+kategoria+kwota+data+opis (ponowny import nie dubluje). **Round-trip 1:1** z arkuszem „Koszty pojazdu" z eksportu zbiorczego (#240).
+  - **Dlaczego:** dotąd koszty dodawało się tylko pojedynczo na karcie pojazdu; brak bulk-importu historii (napraw/leasingu/OC) i osobnego przeglądu. Domyka „import per element" dla wszystkich modułów.
+  - i18n `nav.costs` (PL/EN, parytet ✓). QA: biome (pełne `check .`) · `tsc` ×7 · 428 testów · build ✓. Ścieżka z danymi → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.96.0] — 🗃️ Eksport zbiorczy „wszystko" (wieloarkuszowy Excel) + naprawa bramki lint
 

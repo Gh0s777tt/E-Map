@@ -22,6 +22,7 @@ export const pl = {
   "nav.myOrders": "Moje zlecenia",
   "nav.service": "Serwis",
   "nav.damages": "Szkody / OC",
+  "nav.costs": "Koszty pojazdów",
   "nav.documents": "Sejf dokumentów",
   "nav.invoices": "Faktury",
   "nav.contractors": "Kontrahenci",
