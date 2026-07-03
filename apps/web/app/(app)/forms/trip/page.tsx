@@ -42,6 +42,7 @@ export default function TripFormPage() {
   const [weightKg, setWeightKg] = useState("");
   const [amount, setAmount] = useState("");
   const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -99,6 +100,7 @@ export default function TripFormPage() {
   }
 
   async function submit() {
+    if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     if (setupMsg) {
       toast(setupMsg, "error");
       return;
@@ -126,56 +128,61 @@ export default function TripFormPage() {
       return;
     }
 
-    if (editId) {
-      try {
-        await updateTripEvent(getBrowserSupabase(), editId, parsed.data);
-        toast("Zmiany zapisane. Przekierowuję do historii…", "success");
-        setTimeout(() => {
-          window.location.href = "/forms/history";
-        }, 900);
-      } catch (e) {
-        toast(e instanceof Error ? e.message : "Błąd zapisu zmian.", "error");
-      }
-      return;
-    }
-
-    const item = await enqueue("trip", parsed.data, new Date().toISOString());
-
-    // Kontrola przeładowania: waga załadunku > maks. ładowność pojazdu.
-    const veh = vehicles.find((v) => v.id === vehicleId);
-    const maxKg = veh?.maxPayloadKg ?? null;
-    const w = weightKg ? Number(weightKg) : 0;
-    let overloadMsg = "";
-    if (action === "load" && maxKg && w > maxKg) {
-      const over = w - maxKg;
-      overloadMsg = ` ⚠️ PRZEŁADOWANIE: ${w} kg > ładowność ${maxKg} kg (o ${over} kg)!`;
-      try {
-        const sb = getBrowserSupabase();
-        const m = await getCachedMembership(sb);
-        if (m) {
-          await notifyCompany(sb, {
-            companyId: m.companyId,
-            type: "overload",
-            title: `Przeładowanie ${veh?.registration ?? "pojazdu"}`,
-            body: `Załadunek ${w} kg przekracza ładowność ${maxKg} kg o ${over} kg.`,
-            severity: "danger",
-          });
+    setBusy(true);
+    try {
+      if (editId) {
+        try {
+          await updateTripEvent(getBrowserSupabase(), editId, parsed.data);
+          toast("Zmiany zapisane. Przekierowuję do historii…", "success");
+          setTimeout(() => {
+            window.location.href = "/forms/history";
+          }, 900);
+        } catch (e) {
+          toast(e instanceof Error ? e.message : "Błąd zapisu zmian.", "error");
         }
-      } catch {
-        // brak firmy/sesji — pomijamy powiadomienie
+        return;
       }
-    }
 
-    toast(
-      (item.status === "synced"
-        ? "Zapisano i zsynchronizowano."
-        : "Zapisano lokalnie — synchronizacja po połączeniu.") + overloadMsg,
-      item.status === "synced" ? "success" : "info",
-    );
-    setOdometerKm("");
-    setWeightKg("");
-    setAmount("");
-    setComment("");
+      const item = await enqueue("trip", parsed.data, new Date().toISOString());
+
+      // Kontrola przeładowania: waga załadunku > maks. ładowność pojazdu.
+      const veh = vehicles.find((v) => v.id === vehicleId);
+      const maxKg = veh?.maxPayloadKg ?? null;
+      const w = weightKg ? Number(weightKg) : 0;
+      let overloadMsg = "";
+      if (action === "load" && maxKg && w > maxKg) {
+        const over = w - maxKg;
+        overloadMsg = ` ⚠️ PRZEŁADOWANIE: ${w} kg > ładowność ${maxKg} kg (o ${over} kg)!`;
+        try {
+          const sb = getBrowserSupabase();
+          const m = await getCachedMembership(sb);
+          if (m) {
+            await notifyCompany(sb, {
+              companyId: m.companyId,
+              type: "overload",
+              title: `Przeładowanie ${veh?.registration ?? "pojazdu"}`,
+              body: `Załadunek ${w} kg przekracza ładowność ${maxKg} kg o ${over} kg.`,
+              severity: "danger",
+            });
+          }
+        } catch {
+          // brak firmy/sesji — pomijamy powiadomienie
+        }
+      }
+
+      toast(
+        (item.status === "synced"
+          ? "Zapisano i zsynchronizowano."
+          : "Zapisano lokalnie — synchronizacja po połączeniu.") + overloadMsg,
+        item.status === "synced" ? "success" : "info",
+      );
+      setOdometerKm("");
+      setWeightKg("");
+      setAmount("");
+      setComment("");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -339,12 +346,12 @@ export default function TripFormPage() {
             padding: "12px",
             fontWeight: 700,
             cursor: "pointer",
-            opacity: setupMsg ? 0.5 : 1,
+            opacity: setupMsg || busy ? 0.5 : 1,
           }}
           onClick={submit}
-          disabled={!!setupMsg}
+          disabled={!!setupMsg || busy}
         >
-          {t("common.save")}
+          {busy ? "Zapisuję…" : t("common.save")}
         </button>
       </div>
     </div>

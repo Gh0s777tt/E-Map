@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-231-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.87.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-232-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.88.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.88.0] — 🛡️ Formularze: blokada podwójnego zapisu offline (discovery A2)
+
+- `[#232]` 🛡️ **Blokada in-flight na zapisie formularzy (paliwo/AdBlue/trip, web + mobile)** — stan `busy` + `disabled` na przycisku „Zapisz" (tekst „Zapisuję…"), `if (busy) return` na wejściu `submit()`, async w `try/finally`. Pliki: [web LiquidForm](apps/web/components/LiquidForm.tsx), [web trip](apps/web/app/(app)/forms/trip/page.tsx), [mobile LiquidForm](apps/mobile/components/LiquidForm.tsx), [mobile trip](apps/mobile/app/trip.tsx).
+  - **Dlaczego (discovery, problem P4):** brak blokady = podwójne dotknięcie w słabym zasięgu tworzyło **dwa wpisy w outboxie** (każdy `enqueue` generuje nowy UUIDv7), więc idempotencja upsertu z #222 tego nie łapała (dotyczy retry tego samego `id`, nie dwóch tapnięć) → zafałszowane spalanie. Defekt integralności danych. Dowód: `apps/mobile/components/LiquidForm.tsx:38,117` (przed: brak `busy`/`disabled`).
+  - **Zakres:** pierwsza pozycja z [DISCOVERY_REPORT.md](DISCOVERY_REPORT.md) (top‑5 #1). Zmiana wyłącznie po stronie klienta.
+  - **QA:** biome · `tsc` ×7 · 408 testów · build ✓. Zachowanie `busy` uruchamia się tylko z aktywną sesją (strony formularzy renderują stan „setup" offline), więc weryfikacja bez wizualnego QA na danych — tsc/build/testy + konstrukcja (jak #231).
+  - **Bramki:** biome czysto · `tsc` ×7 · 408 testów · build ✓ · docs:check ✓.
 
 ## [1.87.0] — 🎨 Modernizacja frontu — Tier 3 etap 5: inline-styles → CSS Module (rozliczenia)
 

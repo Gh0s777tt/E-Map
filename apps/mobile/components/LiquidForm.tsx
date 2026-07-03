@@ -21,6 +21,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const [liters, setLiters] = useState("");
   const [payment, setPayment] = useState<"card" | "cash">("cash");
   const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<OutboxItem[]>([]);
 
   const refresh = useCallback(async () => {
@@ -36,6 +37,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   }, [vehicles, vehicleId]);
 
   async function submit() {
+    if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
     if (!vehicleId) {
       setMsg("Wybierz pojazd.");
@@ -52,15 +54,20 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
       setMsg(firstZodError(parsed.error));
       return;
     }
-    const item = await enqueue(kind, parsed.data, new Date().toISOString());
-    setMsg(
-      item.status === "synced"
-        ? "✅ Zapisano i zsynchronizowano."
-        : "📥 Zapisano lokalnie — synchronizacja w tle.",
-    );
-    setOdometer("");
-    setLiters("");
-    await refresh();
+    setBusy(true);
+    try {
+      const item = await enqueue(kind, parsed.data, new Date().toISOString());
+      setMsg(
+        item.status === "synced"
+          ? "✅ Zapisano i zsynchronizowano."
+          : "📥 Zapisano lokalnie — synchronizacja w tle.",
+      );
+      setOdometer("");
+      setLiters("");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -114,8 +121,8 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         ))}
       </View>
 
-      <Pressable style={styles.btn} onPress={submit}>
-        <Text style={styles.btnText}>Zapisz</Text>
+      <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
+        <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zapisz"}</Text>
       </Pressable>
       {msg && <Text style={styles.msg}>{msg}</Text>}
 
@@ -168,6 +175,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: "center",
   },
+  btnBusy: { opacity: 0.5 },
   btnText: { color: palette.white, fontWeight: "700", fontSize: 16 },
   msg: { color: palette.smoke, marginTop: 10 },
   queue: {
