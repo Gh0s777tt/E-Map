@@ -58,6 +58,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [editId, setEditId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [lastPriceInfo, setLastPriceInfo] = useState("");
 
@@ -153,6 +154,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   }
 
   async function submit() {
+    if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     if (setupMsg) {
       toast(setupMsg, "error");
       return;
@@ -179,33 +181,38 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
       return;
     }
 
-    if (editId) {
-      try {
-        await updateFuelLog(getBrowserSupabase(), editId, parsed.data, table);
-        toast("Zmiany zapisane. Przekierowuję do historii…", "success");
-        setTimeout(() => {
-          window.location.href = "/forms/history";
-        }, 900);
-      } catch (e) {
-        toast(e instanceof Error ? e.message : "Błąd zapisu zmian.", "error");
+    setBusy(true);
+    try {
+      if (editId) {
+        try {
+          await updateFuelLog(getBrowserSupabase(), editId, parsed.data, table);
+          toast("Zmiany zapisane. Przekierowuję do historii…", "success");
+          setTimeout(() => {
+            window.location.href = "/forms/history";
+          }, 900);
+        } catch (e) {
+          toast(e instanceof Error ? e.message : "Błąd zapisu zmian.", "error");
+        }
+        return;
       }
-      return;
-    }
 
-    const item = await enqueue(kind, parsed.data, new Date().toISOString());
-    toast(
-      item.status === "synced"
-        ? "Zapisano i zsynchronizowano."
-        : item.status === "error"
-          ? `Zapisano lokalnie (w kolejce). ${item.error ?? ""}`
-          : "Zapisano lokalnie — synchronizacja po połączeniu.",
-      item.status === "synced" ? "success" : "info",
-    );
-    setOdometerKm("");
-    setLiters("");
-    setIsFull(true);
-    setPriceTotal("");
-    setComment("");
+      const item = await enqueue(kind, parsed.data, new Date().toISOString());
+      toast(
+        item.status === "synced"
+          ? "Zapisano i zsynchronizowano."
+          : item.status === "error"
+            ? `Zapisano lokalnie (w kolejce). ${item.error ?? ""}`
+            : "Zapisano lokalnie — synchronizacja po połączeniu.",
+        item.status === "synced" ? "success" : "info",
+      );
+      setOdometerKm("");
+      setLiters("");
+      setIsFull(true);
+      setPriceTotal("");
+      setComment("");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -401,11 +408,11 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         <button
           type="button"
           className={styles.primary}
-          style={{ opacity: setupMsg ? 0.5 : 1 }}
+          style={{ opacity: setupMsg || busy ? 0.5 : 1 }}
           onClick={submit}
-          disabled={!!setupMsg}
+          disabled={!!setupMsg || busy}
         >
-          {t("common.save")}
+          {busy ? "Zapisuję…" : t("common.save")}
         </button>
       </div>
     </div>

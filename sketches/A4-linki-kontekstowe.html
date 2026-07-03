@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Szkic A4 — Linki kontekstowe między encjami</title>
+<link rel="stylesheet" href="_style.css"></head>
+<body><div class="wrap">
+<div class="nav">
+  <a href="A1-domyslne-stawki.html">A1 · Domyślne stawki</a>
+  <a href="A4-linki-kontekstowe.html" class="active">A4 · Linki kontekstowe</a>
+  <a href="C1-wyslij-trase-kierowcy.html">C1 · Wyślij trasę kierowcy</a>
+</div>
+
+<h1>A4 — Linki kontekstowe między encjami</h1>
+<p class="sub">Problem P1: policzona inteligencja leży w osobnych ekranach, które się nie linkują.
+Owner, by zrozumieć „dlaczego pojazd X ma niską marżę?" albo „która faktura dotyczy zlecenia Y?",
+skacze po 4–5 ekranach. Poniżej: te same karty, wzbogacone o <b>linki deep‑link</b> (na czerwono) — reużywają istniejące trasy <code>?edit=</code>/<code>?from=</code>.</p>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Karta pojazdu — mini P&L (istnieje: <code>vehicles/[id]</code>)</h2>
+    <div style="font-weight:800;font-size:16px">WL5145U · Volvo FH</div>
+    <table>
+      <tr><td>Przychód (czerwiec)</td><td style="text-align:right">4 516 €</td>
+        <td style="text-align:right"><a class="link" href="#">Zestawienie mies.</a></td></tr>
+      <tr><td>Paliwo</td><td style="text-align:right">1 640 €</td>
+        <td style="text-align:right"><a class="link" href="#">Rozliczenie trasy</a></td></tr>
+      <tr><td>Pozostałe koszty</td><td style="text-align:right">263 €</td>
+        <td style="text-align:right"><a class="link" href="#">Koszty pojazdu</a></td></tr>
+      <tr><td><b>Zysk / marża</b></td><td style="text-align:right;color:var(--green)"><b>2 613 €</b></td>
+        <td style="text-align:right;color:var(--green)">57,9%</td></tr>
+    </table>
+    <div style="margin-top:12px" class="new">
+      <span class="tag-new">NOWE</span> <a class="link" href="#">Usterki pojazdu (2 otwarte)</a>
+      &nbsp;·&nbsp; <a class="link" href="#">Zlecenia (12)</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Karta zlecenia (istnieje: <code>orders</code>)</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:800;font-size:16px">ZL/2026/0311</div>
+      <span class="pill ok">dostarczone</span>
+    </div>
+    <div class="muted" style="margin:6px 0 12px">Berlin (DE) → Warszawa (PL) · 24 t · Volvo FH</div>
+    <table>
+      <tr><td>Kierowca</td><td><a class="link new" href="#">Jan Kowalski</a> <span class="tag-new">NOWE</span></td></tr>
+      <tr><td>Faktura</td><td><a class="link new" href="#">FV/2026/0042 · 4&nbsp;516&nbsp;€</a> <span class="tag-new">NOWE</span></td></tr>
+      <tr><td>Trasa</td><td><a class="link" href="#">Pokaż na mapie</a></td></tr>
+      <tr><td>Dokumenty</td><td><a class="link" href="#">CMR</a> · <a class="link" href="#">POD (podpisany)</a></td></tr>
+    </table>
+    <div class="note" style="margin-top:14px">Dziś: zlecenie i faktura żyją osobno — nie widać „FV/2026/0042 dla ZL/2026/0311".
+    Link działa w obie strony (faktura → zlecenie).</div>
+  </div>
+</div>
+
+<p class="note" style="margin-top:24px"><b>Zasada:</b> nic nowego się nie liczy — spinamy istniejące encje i trasy.
+Największa dźwignia „odblokuj to, co już policzone". Uzupełnia się z <a href="A1-domyslne-stawki.html">A1</a>
+i profilem kierowcy (→ jego godziny/diety/wypłaty, po <b>B1</b>).</p>
+
+<div class="legend">
+  <span><span class="dot" style="background:var(--red)"></span> nowy link kontekstowy</span>
+  <span><span class="dot" style="background:var(--surface2);border:1px solid var(--border)"></span> istniejąca zawartość</span>
+</div>
+</div></body></html>

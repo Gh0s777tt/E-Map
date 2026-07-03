@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Szkic A1 — Domyślne stawki (rozliczenia)</title>
+<link rel="stylesheet" href="_style.css"></head>
+<body><div class="wrap">
+<div class="nav">
+  <a href="A1-domyslne-stawki.html" class="active">A1 · Domyślne stawki</a>
+  <a href="A4-linki-kontekstowe.html">A4 · Linki kontekstowe</a>
+  <a href="C1-wyslij-trase-kierowcy.html">C1 · Wyślij trasę kierowcy</a>
+</div>
+
+<h1>A1 — Domyślne stawki per pojazd (ożywienie tabeli <code>rates</code>)</h1>
+<p class="sub">Problem P2: stawka €/km i myto wpisywane ręcznie <b>przy każdym</b> rozliczeniu
+(<code>settlements/page.tsx:57,232</code>), choć tabela <code>rates</code> istnieje w schemacie i jest nieużywana.
+Poniżej: pasek sterowania rozliczeń, gdy stawka i ostatnie myto są wstępnie wypełnione z kartoteki pojazdu.</p>
+
+<div class="panel">
+  <div class="row">
+    <div style="flex:1 1 190px">
+      <label class="label">Pojazd</label>
+      <select class="select"><option>WL5145U — Volvo FH (12 t)</option></select>
+    </div>
+    <div style="flex:0 1 140px">
+      <label class="label">Od</label><input class="input" value="2026-06-01">
+    </div>
+    <div style="flex:0 1 140px">
+      <label class="label">Do</label><input class="input" value="2026-06-30">
+    </div>
+    <div style="flex:0 1 150px" class="new">
+      <label class="label">Stawka €/km <span class="tag-new">AUTO</span></label>
+      <input class="input" value="1,42">
+      <div style="margin-top:6px"><span class="pill">z kartoteki pojazdu</span></div>
+    </div>
+    <div style="flex:0 1 150px" class="new">
+      <label class="label">Myto (EUR) <span class="tag-new">AUTO</span></label>
+      <input class="input" value="84,00">
+      <div style="margin-top:6px"><span class="pill muted">ostatnie: WL5145U</span></div>
+    </div>
+    <div><button class="primary">Przelicz</button></div>
+  </div>
+</div>
+
+<div class="row" style="margin-top:20px">
+  <div class="card kpi"><div class="muted" style="font-size:12px">Dystans</div><div class="v">3 180 km</div></div>
+  <div class="card kpi"><div class="muted" style="font-size:12px">Koszt razem</div><div class="v">1 903 €</div></div>
+  <div class="card kpi"><div class="muted" style="font-size:12px">Przychód</div><div class="v">4 516 €</div><div class="muted" style="font-size:11px">3 180 × 1,42</div></div>
+  <div class="card kpi"><div class="muted" style="font-size:12px">Zysk</div><div class="v" style="color:var(--green)">+2 613 €</div></div>
+  <div class="card kpi"><div class="muted" style="font-size:12px">Marża</div><div class="v" style="color:var(--green)">57,9%</div></div>
+</div>
+
+<p class="note"><b>Przed:</b> owner wpisuje „1,42" i „84,00" z pamięci co miesiąc, per pojazd — źródło błędów i niespójności (brak nawet walidacji stawka&nbsp;≥&nbsp;0).<br>
+<b>Po:</b> wartości domyślne z <code>rates</code> (edytowalne jednorazowo); myto podpowiadane z ostatniego rozliczenia pojazdu. Koszt S–M, tabela i typy już istnieją.</p>
+
+<div class="legend">
+  <span><span class="dot" style="background:var(--red)"></span> nowy element (AUTO‑fill)</span>
+  <span><span class="dot" style="background:var(--surface2);border:1px solid var(--border)"></span> istniejący ekran rozliczeń</span>
+</div>
+</div></body></html>
