@@ -311,11 +311,14 @@ export default function OrdersPage() {
   }
 
   async function changeStatus(id: string, s: OrderStatus) {
+    // Optymistycznie: zmień status lokalnie od razu; przy błędzie cofnij (bez pełnego reloadu).
+    const prev = orders.find((o) => o.id === id)?.status;
+    setOrders((list) => list.map((o) => (o.id === id ? { ...o, status: s } : o)));
     try {
       await setOrderStatus(getBrowserSupabase(), id, s);
       toast("Status zaktualizowany.", "success");
-      await load();
     } catch (e) {
+      if (prev) setOrders((list) => list.map((o) => (o.id === id ? { ...o, status: prev } : o)));
       toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
     }
   }
