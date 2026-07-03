@@ -962,6 +962,7 @@ export interface Database {
           caption: string | null;
           uploaded_by: string | null;
           created_at: string;
+          kind: string | null;
         };
         Insert: {
           id?: string;
@@ -973,6 +974,7 @@ export interface Database {
           caption?: string | null;
           uploaded_by?: string | null;
           created_at?: string;
+          kind?: string | null;
         };
         Update: {
           id?: string;
@@ -984,6 +986,7 @@ export interface Database {
           caption?: string | null;
           uploaded_by?: string | null;
           created_at?: string;
+          kind?: string | null;
         };
         Relationships: [];
       };
@@ -1575,6 +1578,8 @@ export interface Database {
           license_number: string | null;
           fuel_tank_l: number | null;
           adblue_tank_l: number | null;
+          trailer_registration: string | null;
+          trailer_type: string | null;
         };
         Insert: {
           id?: string;
@@ -1602,6 +1607,8 @@ export interface Database {
           license_number?: string | null;
           fuel_tank_l?: number | null;
           adblue_tank_l?: number | null;
+          trailer_registration?: string | null;
+          trailer_type?: string | null;
         };
         Update: {
           id?: string;
@@ -1629,6 +1636,8 @@ export interface Database {
           license_number?: string | null;
           fuel_tank_l?: number | null;
           adblue_tank_l?: number | null;
+          trailer_registration?: string | null;
+          trailer_type?: string | null;
         };
         Relationships: [];
       };
