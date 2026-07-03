@@ -4,6 +4,9 @@
  * głównym bundlem: doładowuje się dopiero, gdy użytkownik faktycznie importuje/eksportuje xlsx.
  */
 
+// Import wyłącznie typów (usuwany w buildzie) — nie wciąga exceljs do bundla; runtime = dynamic import.
+import type { Worksheet } from "exceljs";
+
 /** Zamienia wartość komórki exceljs (string/number/Date/formuła/hyperlink/richText) na string. */
 function cellToString(v: unknown): string {
   if (v == null) return "";
@@ -37,6 +40,36 @@ export async function parseXlsx(file: File): Promise<string[][]> {
   return rows;
 }
 
+/** Jeden arkusz zbiorczego skoroszytu (nazwa ≤ 31 znaków wg limitu Excela). */
+export interface XlsxSheet {
+  name: string;
+  headers: string[];
+  rows: (string | number | null)[][];
+}
+
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+function triggerDownload(buf: ArrayBuffer, filename: string): void {
+  const blob = new Blob([buf], { type: XLSX_MIME });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function autoWidth(ws: Worksheet): void {
+  ws.columns.forEach((col) => {
+    let max = 10;
+    col.eachCell?.({ includeEmpty: true }, (cell) => {
+      const len = String(cell.value ?? "").length;
+      if (len > max) max = len;
+    });
+    col.width = Math.min(max + 2, 60);
+  });
+}
+
 /** Pobiera dane jako plik `.xlsx` (jeden arkusz, pogrubione nagłówki, auto-szerokość kolumn). */
 export async function downloadXlsx(
   filename: string,
@@ -49,22 +82,19 @@ export async function downloadXlsx(
   const ws = wb.addWorksheet(sheetName);
   ws.addRow(headers).font = { bold: true };
   for (const r of rows) ws.addRow(r);
-  ws.columns.forEach((col) => {
-    let max = 10;
-    col.eachCell?.({ includeEmpty: true }, (cell) => {
-      const len = String(cell.value ?? "").length;
-      if (len > max) max = len;
-    });
-    col.width = Math.min(max + 2, 60);
-  });
-  const buf = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buf as ArrayBuffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  autoWidth(ws);
+  triggerDownload((await wb.xlsx.writeBuffer()) as ArrayBuffer, filename);
+}
+
+/** Pobiera **wieloarkuszowy** skoroszyt `.xlsx` — jeden arkusz na moduł (eksport zbiorczy). */
+export async function downloadXlsxWorkbook(filename: string, sheets: XlsxSheet[]): Promise<void> {
+  const ExcelJS = await import("exceljs");
+  const wb = new ExcelJS.Workbook();
+  for (const s of sheets) {
+    const ws = wb.addWorksheet(s.name.slice(0, 31));
+    ws.addRow(s.headers).font = { bold: true };
+    for (const r of s.rows) ws.addRow(r);
+    autoWidth(ws);
+  }
+  triggerDownload((await wb.xlsx.writeBuffer()) as ArrayBuffer, filename);
 }

@@ -203,6 +203,11 @@ describe("computePerDiem — granice progów (regresja off-by-one)", () => {
     });
   });
   it("krajowa wielodobowa: reszta tuż powyżej 8h (32.5h) → pełna + 1/1", () => {
-    expect(d("domestic", 32.5, 45)).toMatchObject({ fullDays: 1, fraction: 1, days: 2, amount: 90 });
+    expect(d("domestic", 32.5, 45)).toMatchObject({
+      fullDays: 1,
+      fraction: 1,
+      days: 2,
+      amount: 90,
+    });
   });
 });

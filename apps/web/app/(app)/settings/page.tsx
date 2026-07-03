@@ -10,6 +10,7 @@ import { useT } from "@/components/LocaleProvider";
 import { PushToggle } from "@/components/PushToggle";
 import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
+import { exportCompanyWorkbook } from "@/lib/exportAll";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -34,6 +35,7 @@ export default function SettingsPage() {
   // Dane firmy (sprzedawca na fakturach/CMR) — edycja tylko dla właściciela.
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [cName, setCName] = useState("");
   const [cTaxId, setCTaxId] = useState("");
   const [cAddress, setCAddress] = useState("");
@@ -250,10 +252,37 @@ export default function SettingsPage() {
 
   const qrSrc = qr.startsWith("data:") ? qr : `data:image/svg+xml;utf8,${encodeURIComponent(qr)}`;
 
+  async function handleExportAll() {
+    if (!companyId) return;
+    setExporting(true);
+    try {
+      await exportCompanyWorkbook(getBrowserSupabase(), companyId);
+      toast("Wyeksportowano dane firmy do Excela.", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Nie udało się wyeksportować danych.", "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div style={{ maxWidth: 560 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.settings")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>{t("settings.subtitle")}</p>
+
+      {companyId && isOwner && (
+        <div style={styles.card}>
+          <strong style={{ fontSize: 16 }}>Eksport danych firmy</strong>
+          <p style={{ color: palette.smoke, fontSize: 13, margin: "6px 0 10px" }}>
+            Jeden plik Excel (.xlsx) ze wszystkim: kontrahenci, pojazdy, kierowcy, zlecenia, koszty,
+            paliwo, AdBlue, trasa + arkusz statystyk per pojazd. Import robisz osobno na każdej
+            liście (per element).
+          </p>
+          <Button onClick={handleExportAll} disabled={exporting}>
+            {exporting ? "Eksportuję…" : "⬇️ Eksportuj wszystko (Excel)"}
+          </Button>
+        </div>
+      )}
 
       {companyId && (
         <div style={styles.card}>
