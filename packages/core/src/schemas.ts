@@ -178,12 +178,15 @@ export const tripEventSchema = z.discriminatedUnion("action", [
     action: z.literal("load"),
     ...tripBase,
     weightKg: z.number().int().nonnegative(),
+    /** Powiązanie z zleceniem (do auto-zamykania + kosztu transportu). */
+    orderId: z.string().uuid().optional(),
     comment: z.string().max(2000).optional(),
   }),
   z.object({
     action: z.literal("unload"),
     ...tripBase,
     weightKg: z.number().int().nonnegative(),
+    orderId: z.string().uuid().optional(),
     comment: z.string().max(2000).optional(),
   }),
   z.object({

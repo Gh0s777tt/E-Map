@@ -1,3 +1,4 @@
+import { listMyOrders, type Order } from "@e-logistic/api";
 import {
   firstZodError,
   TRIP_ACTIONS,
@@ -11,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
+import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
 const t = createTranslator("pl");
@@ -20,6 +22,16 @@ const STATUS_ICON: Record<OutboxItem["status"], string> = {
   synced: "✅",
   error: "⚠️",
 };
+
+// #245: aktywne statusy zlecenia, które można powiązać z załadunkiem/rozładunkiem.
+const OPEN_STATUSES = ["new", "assigned", "in_progress"];
+
+/** Krótka etykieta zlecenia w pickerze: numer · trasa/ładunek. */
+function orderLabel(o: Order): string {
+  const ref = o.reference_no ? `#${o.reference_no}` : "";
+  const route = [o.origin, o.destination].filter(Boolean).join(" → ");
+  return [ref, route || o.cargo].filter(Boolean).join(" · ") || o.id.slice(0, 8);
+}
 
 export default function TripScreen() {
   const { vehicles, loading } = useFleet();
@@ -32,6 +44,9 @@ export default function TripScreen() {
   const [msg, setMsg] = useState<string | null>(null);
   const [items, setItems] = useState<OutboxItem[]>([]);
   const [busy, setBusy] = useState(false);
+  // #245: powiązanie load/unload ze zleceniem → auto-zamknięcie po komplecie load+unload.
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
 
   const needsWeight = action === "load" || action === "unload";
   const commentRequired = action === "service" || action === "other";
@@ -47,6 +62,14 @@ export default function TripScreen() {
   useEffect(() => {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId]);
+
+  // #245: zlecenia kierowcy do powiązania przy załadunku/rozładunku (tylko aktywne).
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    listMyOrders(getSupabase())
+      .then((rows) => setOrders(rows.filter((o) => OPEN_STATUSES.includes(o.status))))
+      .catch(() => {});
+  }, []);
 
   // A5: powtórz ostatnie zdarzenie — prefill akcji/kraju z ostatniego zdarzenia (outbox).
   function repeatLast() {
@@ -76,7 +99,7 @@ export default function TripScreen() {
       comment: comment || undefined,
     };
     const candidate = needsWeight
-      ? { ...base, weightKg: weight ? Number(weight) : undefined }
+      ? { ...base, weightKg: weight ? Number(weight) : undefined, orderId: orderId || undefined }
       : base;
 
     const parsed = tripEventSchema.safeParse(candidate);
@@ -95,6 +118,7 @@ export default function TripScreen() {
       setOdometer("");
       setWeight("");
       setComment("");
+      setOrderId(null);
       await refresh();
     } finally {
       setBusy(false);
@@ -160,6 +184,33 @@ export default function TripScreen() {
             onChangeText={setWeight}
             keyboardType="numeric"
           />
+        </>
+      )}
+
+      {needsWeight && orders.length > 0 && (
+        <>
+          <Text style={styles.label}>Zlecenie (auto-zamknięcie po load+unload)</Text>
+          <View style={styles.chips}>
+            <Pressable
+              style={[styles.chip, orderId === null && styles.chipActive]}
+              onPress={() => setOrderId(null)}
+            >
+              <Text style={orderId === null ? styles.chipTextActive : styles.chipText}>
+                — bez —
+              </Text>
+            </Pressable>
+            {orders.map((o) => (
+              <Pressable
+                key={o.id}
+                style={[styles.chip, orderId === o.id && styles.chipActive]}
+                onPress={() => setOrderId(o.id)}
+              >
+                <Text style={orderId === o.id ? styles.chipTextActive : styles.chipText}>
+                  {orderLabel(o)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </>
       )}
 

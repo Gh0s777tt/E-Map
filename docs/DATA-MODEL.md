@@ -1,12 +1,12 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.100.0** (#244) · 2026-07-03
+> Status: **wdrożone** · stan kodu **v1.101.0** (#245) · 2026-07-03
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
 ---
 
-## 0. Aktualny schemat (stan v1.51.0 — migracje 0001–0051)
+## 0. Aktualny schemat (stan v1.51.0 — migracje 0001–0052)
 
 **~40 tabel `public` (wszystkie z RLS).** Poniżej rdzeń; sekcje 0.1–0.3 obejmują moduły dodawane kolejno (liczba tabel weryfikowana automatycznie — patrz [SECURITY-RLS.md](SECURITY-RLS.md) / `pnpm audit:rls`).
 
@@ -17,7 +17,7 @@
 - `drivers` (kartoteka, 0012) — **tożsamość szyfrowana** `first_name_enc`/`last_name_enc`/`birth_date_enc` (0022) + dokumenty `id_card_enc`/`passport_enc`/`license_enc` (0015); `license_categories`/`qualifications` text[], `notes`.
 - `fuel_cards` — `provider`, `card_number_masked`, **`pin_encrypted`** (pgcrypto+Vault, 0003), `discount`, `valid_until`, **`vehicle_id`/`registration`** (0011).
 - `fuel_logs` / `adblue_logs` — `odometer_km`, `liters`, **`is_full`** (0017), `price_total`, `payment_method`, `fuel_card_id`, stacja + `geo`.
-- `trip_events` — `action` (load/unload/start/end/service/other), `weight_kg`, `amount`, miejsce + `geo`.
+- `trip_events` — `action` (load/unload/start/end/service/other), `weight_kg`, `amount`, `order_id` (0052 — opc. powiązanie ze zleceniem), miejsce + `geo`.
 - `vehicle_defects` (0019) — `part`/`side`/`severity`/`dashboard_light`/`description`/`status`/`resolved_by`.
 - `notifications` (0017) — `type`/`title`/`body`/`severity`/`read_at`/`dedup_key` (`user_id`+`company_id`).
 - `push_subscriptions` (0020, RLS `company_id` 0021) — `endpoint`/`p256dh`/`auth`.
@@ -177,7 +177,8 @@ Identyczna struktura jak `fuel_logs`, pole `liters` = AdBlue. Osobne statystyki 
 ### `trip_events` — Formularz Trip
 `action` (enum: `load`, `unload`, `start`, `end`, `service`, `other`) ·
 `country` · `location` · `gps_lat` · `gps_lng` · `odometer_km` ·
-`weight_kg` (załadunek/rozładunek) · `amount` (serwis, opcjonalne) · `comment`.
+`weight_kg` (załadunek/rozładunek) · `amount` (serwis, opcjonalne) ·
+`order_id` (0052 — opcjonalne powiązanie `load`/`unload` ze zleceniem) · `comment`.
 
 **Pola wg akcji (walidacja Zod warunkowa):**
 
@@ -189,6 +190,8 @@ Identyczna struktura jak `fuel_logs`, pole `liters` = AdBlue. Osobne statystyki 
 | `end` (Zakończenie) | ✅ | ✅ | — | — | ✅ |
 | `service` (Serwis) | ✅ | ✅ | — | ✅ (opc.) | ✅ (co naprawiono) |
 | `other` (Inne) | ✅ | ✅ | — | opc. | ✅ (opis akcji) |
+
+**Auto‑zamknięcie zlecenia (0052):** gdy zdarzenie ma `order_id`, trigger `auto_close_order_on_delivery` (AFTER INSERT, SECURITY DEFINER) sprawdza, czy zlecenie ma komplet `load`+`unload` → ustawia `orders.status='delivered'` (tylko z `new/assigned/in_progress`, nie nadpisuje `delivered/invoiced/cancelled`). Koszt transportu per zlecenie (okno load→unload) liczony w `packages/core` — #246.
 
 ### `fuel_log_revisions`, `trip_event_revisions`
 Pełna historia każdej edycji (kto, kiedy, poprzednie wartości) — wymóg historii + audyt.
