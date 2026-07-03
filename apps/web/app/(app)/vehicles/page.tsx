@@ -10,9 +10,11 @@ import {
 import {
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
+  firstZodError,
   INSURERS,
   VEHICLE_MAKE_GROUPS,
   VEHICLE_TYPES,
+  type VehicleInput,
   vehicleSchema,
   zodFieldErrors,
 } from "@e-logistic/core";
@@ -20,6 +22,7 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { DataImport, type ImportColumn } from "@/components/DataImport";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
@@ -28,6 +31,7 @@ import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { downloadXlsx } from "@/lib/xlsx";
 
 type DbVehicle = Awaited<ReturnType<typeof listVehicles>>[number];
 type CardRow = {
@@ -41,6 +45,90 @@ const OTHER = "__other__";
 const ALL_MAKES = VEHICLE_MAKE_GROUPS.flatMap((g) => g.makes);
 const providerLabel = (p: string) =>
   FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
+
+/** Kolumny importu pojazdów (elastyczne nagłówki). */
+const IMPORT_COLUMNS: ImportColumn[] = [
+  {
+    key: "registration",
+    label: "Rejestracja",
+    aliases: ["nr rej", "registration", "plate"],
+    required: true,
+  },
+  { key: "make", label: "Marka", aliases: ["make", "brand"] },
+  { key: "model", label: "Model", aliases: ["model"], required: true },
+  { key: "vehicleType", label: "Typ", aliases: ["type", "rodzaj"], required: true },
+  { key: "vin", label: "VIN", aliases: ["vin"] },
+  { key: "year", label: "Rok", aliases: ["year"], required: true },
+  {
+    key: "inspectionExpiry",
+    label: "Przegląd",
+    aliases: ["przeglad", "inspection", "badanie techniczne"],
+  },
+  { key: "insuranceExpiry", label: "OC", aliases: ["ubezpieczenie", "insurance"] },
+  { key: "leasingEnd", label: "Leasing", aliases: ["leasing"] },
+  { key: "insurer", label: "Ubezpieczyciel", aliases: ["insurer", "towarzystwo"] },
+  { key: "maxPayloadKg", label: "Ładowność kg", aliases: ["ladownosc", "payload", "max payload"] },
+  { key: "heightCm", label: "Wysokość cm", aliases: ["wysokosc", "height"] },
+  { key: "widthCm", label: "Szerokość cm", aliases: ["szerokosc", "width"] },
+  { key: "lengthCm", label: "Długość cm", aliases: ["dlugosc", "length"] },
+  { key: "forwarder", label: "Spedycja", aliases: ["forwarder"] },
+  { key: "comment", label: "Uwagi", aliases: ["komentarz", "comment", "notes"] },
+];
+
+const VEHICLE_TYPE_ALIASES: Record<string, (typeof VEHICLE_TYPES)[number]> = {
+  truck: "truck",
+  ciężarówka: "truck",
+  ciezarowka: "truck",
+  tractor: "tractor",
+  ciągnik: "tractor",
+  ciagnik: "tractor",
+  siodłowy: "tractor",
+  siodlowy: "tractor",
+  van: "van",
+  dostawczy: "van",
+  bus: "van",
+  furgon: "van",
+  trailer: "trailer",
+  naczepa: "trailer",
+  przyczepa: "trailer",
+  other: "other",
+  inny: "other",
+  inne: "other",
+};
+
+function toNum(s: string | undefined): number | undefined {
+  const t = (s ?? "").trim().replace(/\s/g, "").replace(",", ".");
+  if (!t) return undefined;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function validateVehicleRow(
+  rec: Record<string, string>,
+): { ok: true; value: VehicleInput } | { ok: false; error: string } {
+  const typeRaw = (rec.vehicleType ?? "").trim().toLowerCase();
+  const candidate = {
+    registration: (rec.registration ?? "").trim(),
+    make: (rec.make ?? "").trim() || undefined,
+    model: (rec.model ?? "").trim(),
+    vehicleType: VEHICLE_TYPE_ALIASES[typeRaw] ?? typeRaw,
+    vin: (rec.vin ?? "").trim() || undefined,
+    year: toNum(rec.year),
+    inspectionExpiry: (rec.inspectionExpiry ?? "").trim() || undefined,
+    insuranceExpiry: (rec.insuranceExpiry ?? "").trim() || undefined,
+    leasingEnd: (rec.leasingEnd ?? "").trim() || undefined,
+    insurer: (rec.insurer ?? "").trim() || undefined,
+    maxPayloadKg: toNum(rec.maxPayloadKg),
+    heightCm: toNum(rec.heightCm),
+    widthCm: toNum(rec.widthCm),
+    lengthCm: toNum(rec.lengthCm),
+    forwarder: (rec.forwarder ?? "").trim() || undefined,
+    comment: (rec.comment ?? "").trim() || undefined,
+  };
+  const parsed = vehicleSchema.safeParse(candidate);
+  if (!parsed.success) return { ok: false, error: firstZodError(parsed.error) };
+  return { ok: true, value: parsed.data };
+}
 
 export default function VehiclesPage() {
   const confirm = useConfirm();
@@ -274,6 +362,72 @@ export default function VehiclesPage() {
     downloadCsv(`pojazdy_${csvDateStamp()}.csv`, headers, rows);
   }
 
+  async function exportXlsx() {
+    const headers = [
+      "Rejestracja",
+      "Marka",
+      "Model",
+      "Typ",
+      "VIN",
+      "Rok",
+      "Przegląd",
+      "OC",
+      "Leasing",
+      "Ubezpieczyciel",
+    ];
+    const rows = dbVehicles.map((v) => [
+      v.registration,
+      v.make ?? "",
+      v.model ?? "",
+      v.vehicle_type ?? "",
+      v.vin ?? "",
+      v.year ?? "",
+      v.inspection_expiry ?? "",
+      v.insurance_expiry ?? "",
+      v.leasing_end ?? "",
+      v.insurer ?? "",
+    ]);
+    await downloadXlsx(`pojazdy_${csvDateStamp()}.xlsx`, headers, rows);
+  }
+
+  const importVehicles = useCallback(async (values: VehicleInput[]) => {
+    const supabase = getBrowserSupabase();
+    const membership = await getCachedMembership(supabase);
+    if (!membership) {
+      return {
+        inserted: 0,
+        failed: values.length,
+        errors: ["Brak firmy — utwórz ją na Pulpicie."],
+      };
+    }
+    // Dedup po rejestracji (insertVehicle nie jest upsertem) — ponowny import nie duplikuje.
+    const existing = new Set(
+      (await listVehicles(supabase, membership.companyId)).map((v) => v.registration.toUpperCase()),
+    );
+    let inserted = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    for (const v of values) {
+      const key = v.registration.toUpperCase();
+      if (existing.has(key)) {
+        failed++;
+        if (errors.length < 8) errors.push(`${v.registration}: pojazd już istnieje (pominięto)`);
+        continue;
+      }
+      try {
+        await insertVehicle(supabase, v, membership.companyId);
+        existing.add(key);
+        inserted++;
+      } catch (e) {
+        failed++;
+        if (errors.length < 8) {
+          errors.push(`${v.registration}: ${e instanceof Error ? e.message : "błąd"}`);
+        }
+      }
+    }
+    return { inserted, failed, errors };
+  }, []);
+
   return (
     <div style={{ maxWidth: 820 }}>
       <PageHeader
@@ -498,13 +652,34 @@ export default function VehiclesPage() {
         </div>
       )}
 
+      {canManage && (
+        <div style={{ marginTop: 16 }}>
+          <DataImport
+            columns={IMPORT_COLUMNS}
+            validate={validateVehicleRow}
+            onImport={importVehicles}
+            templateBase="pojazdy"
+            onDone={loadVehicles}
+          />
+          <p style={{ fontSize: 12, color: palette.smoke, marginTop: 6 }}>
+            Kolumna „Typ": truck / tractor / van / trailer / other (lub po polsku: ciężarówka /
+            ciągnik / dostawczy / naczepa / inny). Wymagane: Rejestracja, Model, Typ, Rok.
+          </p>
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Flota</h2>
         <span style={{ flex: 1 }} />
         {dbVehicles.length > 0 && (
-          <Button variant="ghost" onClick={exportCsv}>
-            ⬇️ CSV
-          </Button>
+          <>
+            <Button variant="ghost" onClick={exportCsv}>
+              ⬇️ CSV
+            </Button>
+            <Button variant="ghost" onClick={exportXlsx}>
+              ⬇️ XLSX
+            </Button>
+          </>
         )}
       </div>
 

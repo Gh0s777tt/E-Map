@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-236-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.92.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-237-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.93.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.93.0] — 🚛 Import/Export Excel — pojazdy (faza 2/4)
+
+- `[#237]` 🚛 **Import i eksport floty (CSV/xlsx)** — [vehicles](apps/web/app/(app)/vehicles/page.tsx) na tym samym silniku `DataImport` co kontrahenci (#236). Import CSV/xlsx + nowy eksport ⬇️ XLSX obok CSV + szablon.
+  - **Walidacja przez `vehicleSchema`** (reużyty schemat Zod z core — DRY): wymagane Rejestracja/Model/Typ/Rok; VIN sprawdzany wzorcem, daty `YYYY-MM-DD`, wymiary/ładowność liczbami. Elastyczne nagłówki (aliasy PL/EN) + **mapowanie „Typ"** (ciężarówka→truck, ciągnik→tractor, dostawczy→van, naczepa→trailer, …).
+  - **Dedup po rejestracji:** `insertVehicle` nie jest upsertem, więc import pobiera istniejące rejestracje i **pomija duplikaty** (raportuje „pojazd już istnieje").
+  - **Zakres:** faza 2 z 4 (dalej: kierowcy → zlecenia/koszty). QA: biome · `tsc` ×7 · 428 testów · build ✓. Ścieżka z danymi → **weryfikacja na koncie testowym**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 428 testów · build ✓ · docs:check ✓.
 
 ## [1.92.0] — 📥 Import/Export Excel — fundament + kontrahenci (CSV + .xlsx)
 
