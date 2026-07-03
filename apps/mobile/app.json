@@ -3,7 +3,7 @@
     "name": "E-Logistic",
     "slug": "e-logistic",
     "scheme": "elogistic",
-    "version": "1.26.0",
+    "version": "1.27.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -40,7 +40,8 @@
           "cameraPermission": "E-Logistic używa aparatu do zdjęć towaru (dowód zabezpieczenia ładunku).",
           "photosPermission": "E-Logistic potrzebuje dostępu do zdjęć, by dołączyć zdjęcie towaru do zlecenia."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

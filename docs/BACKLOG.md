@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.105.0 · #250 · 2026-07-03 -->
+<!-- SYNC: po v1.106.0 · #251 · 2026-07-04 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -107,7 +107,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [x] **Locale hardcoded** naprawione — `createTranslator("pl")` → `useT()` na 4 stronach + `LiquidForm` (#211). Publiczne (landing/reset) pozostają PL (poza `LocaleProvider`).
 
 ## 🟡 P3 — Bezpieczeństwo (hardening; brak P0/P1)
-- [ ] **Mobile**: sesja w `AsyncStorage` → rozważyć `expo-secure-store` (szyfrowany keychain).
+- [x] **Mobile**: sesja szyfrowana (#251) — klucz AES-256 w `expo-secure-store`, szyfrogram w AsyncStorage (`apps/mobile/lib/secureSession.ts`), migracja legacy bez wylogowania.
 - [ ] Potwierdzić **rotację sekretów**, które trafiły kiedyś do historii czatu (Upstash, `sbp_` Supabase).
 
 ## 🟢 P4 — Infra / docelowy stack

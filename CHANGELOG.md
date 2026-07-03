@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-250-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.105.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-251-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.106.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.106.0] — 🔐 Mobile: sesja w szyfrowanym keychainie (expo-secure-store)
+
+- `[#251]` 🔐 **Hardening sesji mobilnej (P3 z [BACKLOG](docs/BACKLOG.md))** — sesja Supabase (JWT) nie leży już jawnie w AsyncStorage. Nowy adapter [`secureSession.ts`](apps/mobile/lib/secureSession.ts) wg wzorca „LargeSecureStore" z docs Supabase: **klucz AES-256 w keychainie** (`expo-secure-store`, limit 2048 B wystarcza na klucz), **szyfrogram AES-CTR w AsyncStorage** (sesja bywa większa niż limit keychaina). Świeży klucz przy każdym zapisie.
+  - **Migracja bez wylogowania:** jawna sesja sprzed aktualizacji jest przy pierwszym odczycie honorowana i szyfrowana w miejscu ([`secureSession.ts`](apps/mobile/lib/secureSession.ts) — ścieżka legacy).
+  - Moduł bez importów React Native (zależności wstrzykiwane: `vault`/`cache`/`randomBytes`) — testowalny w vitest; okablowanie expo w [`supabase.ts`](apps/mobile/lib/supabase.ts) (`expo-secure-store` + `expo-crypto`).
+  - Zależności: `expo-secure-store ~56.0.4` (config plugin dopisany do [`app.json`](apps/mobile/app.json)), `expo-crypto ~56.0.4`, `aes-js 3.1.2`. Wersja mobile **1.27.0**.
+  - **Testy:** [`secureSession.test.ts`](apps/mobile/lib/secureSession.test.ts) — round-trip, brak jawnego JWT w cache, migracja legacy, uszkodzony szyfrogram → `null`, `removeItem` czyści oba magazyny (**+5, mobile 24**). ⚠️ QA na urządzeniu (login → restart → sesja trzyma) — przy najbliższym `eas build`.
+  - **Bramki:** biome czysto · `tsc` ×7 · 456 testów · docs:check ✓.
 
 ## [1.105.0] — 🛻 Naczepa na karcie pojazdu (rejestracja + typ) — jeśli auto ją posiada
 
