@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-255-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.110.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-256-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.111.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.111.0] — 📜 Polityka prywatności + komplet karty sklepu Google Play
+
+- `[#256]` 📜 **Wymogi Google Play domknięte po stronie repo** (konto dewelopera już zweryfikowane — pozostaje `eas login/init/build` i klik w konsoli):
+  - **`/privacy`** — publiczna polityka prywatności ([`apps/web/app/privacy/page.tsx`](apps/web/app/privacy/page.tsx)): administrator, zakres danych (konto, PII kierowców szyfrowane, lokalizacja tylko podczas używania, zdjęcia CMR/POD, tokeny push), Supabase EU/RLS, prawa (usunięcie danych), uprawnienia aplikacji; PL + skrót EN. URL do karty sklepu: `https://e-logistic-one.vercel.app/privacy` (po deploy'u Vercela z tego commita).
+  - **Karta sklepu** — [`apps/mobile/store/`](apps/mobile/store/listing.md): nazwa/krótki/pełny opis do wklejenia, **feature graphic 1024×500** i **ikona 512²** (generator [`gen-store-assets.mjs`](scripts/gen-store-assets.mjs)), lista zrzutów do zrobienia przy QA, ściąga do deklaracji **Data safety** spójna z `/privacy`.
+  - **E2E:** `/privacy` dopięta do przepływów publicznych ([`public.spec.ts`](e2e/public.spec.ts)) — **9/9 zielonych**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 458 testów + 9 E2E · docs:check ✓.
 
 ## [1.110.0] — 🎨 Finalna grafika mobile + EAS CLI — przygotowanie do sklepów
 

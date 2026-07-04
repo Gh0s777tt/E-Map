@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.29.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.110.0 (#255) · 2026-07-04
+> Stan: **v1.29.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.111.0 (#256) · 2026-07-04
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.
@@ -52,7 +52,7 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
 3. ~~Finalna grafika~~ ✅ (#255) — monogram „E" + droga (czerń/czerwień), generowane skryptem `scripts/gen-mobile-assets.mjs` (icon/adaptive/splash/favicon).
 4. Dev build + **QA na urządzeniu**: login → zlecenia + status → zdjęcia z aparatu → formularze offline → push.
 5. `eas build -p android/ios --profile production` → `eas submit`.
-6. Konta deweloperskie: Apple Developer + Google Play Console; polityka prywatności + opisy uprawnień (już w `app.json`).
+6. Konta deweloperskie: Apple Developer + ~~Google Play Console~~ ✅ (konto zweryfikowane). Polityka prywatności ✅ (#256 — `/privacy` na web) + opisy uprawnień w `app.json` ✅. Karta sklepu: gotowe teksty/grafiki w `apps/mobile/store/` (`listing.md`).
 
 ## Aktualizacje zależności (Expo)
 - **Nie** aktualizuj pakietów `expo-*`/`react-native*` ręcznie wg `pnpm outdated` (pokazuje mylące skoki przez
