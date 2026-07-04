@@ -25,6 +25,8 @@ import {
   stationMatchesProviders,
 } from "@e-logistic/core";
 import {
+  anyWithinKm,
+  buildGridIndex,
   type FuelStationPrice,
   fetchPois,
   type GeoHit,
@@ -787,20 +789,20 @@ export default function MapPage() {
     }
     setPoiBusy(true);
     try {
-      const lats = geo.map((p) => p.lat);
-      const lngs = geo.map((p) => p.lng);
-      const all = await fetchPois({
-        south: Math.min(...lats),
-        west: Math.min(...lngs),
-        north: Math.max(...lats),
-        east: Math.max(...lngs),
-      });
-      // Próbkujemy linię trasy i zostawiamy POI bliżej niż 6 km od najbliższego punktu.
-      const step = Math.max(1, Math.floor(geo.length / 300));
-      const sample = geo.filter((_, i) => i % step === 0);
-      const near = all.filter((poi) =>
-        sample.some((pt) => haversineKm({ lat: poi.lat, lng: poi.lng }, pt) <= 6),
+      // reduce zamiast Math.min(...arr) — spread wywala stos przy bardzo długich trasach.
+      const bbox = geo.reduce(
+        (b, p) => ({
+          south: Math.min(b.south, p.lat),
+          west: Math.min(b.west, p.lng),
+          north: Math.max(b.north, p.lat),
+          east: Math.max(b.east, p.lng),
+        }),
+        { south: 90, west: 180, north: -90, east: -180 },
       );
+      const all = await fetchPois(bbox);
+      // Indeks kratowy (#261) zamiast O(n·m): POI zostaje, gdy ≤6 km od linii trasy.
+      const index = buildGridIndex(geo, 6);
+      const near = all.filter((poi) => anyWithinKm(index, { lat: poi.lat, lng: poi.lng }, 6));
       allPoisRef.current = near;
       applyPoiFilter();
     } catch {

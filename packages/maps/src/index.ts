@@ -9,6 +9,7 @@ export * from "./fuelprice";
 export * from "./geo";
 export * from "./geocode";
 export * from "./graphhopper";
+export * from "./gridIndex";
 export * from "./here";
 export * from "./heretraffic";
 export * from "./mock";

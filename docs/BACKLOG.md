@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.114.0 · #260 · 2026-07-04 -->
+<!-- SYNC: po v1.115.0 · #261 · 2026-07-04 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -94,7 +94,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 ## 🟠 P2 — Wydajność (punktowo; DB ogólnie wzorowe)
 - [~] **`map/page.tsx`** — dekompozycja: **etap 1 zrobiony (#224)** — 4 prezentacyjne komponenty do `mapPanels.tsx` (1452→1343 l.). Pozostają sekcje sprzężone ze stanem (TIR/wymiary, POI, filtr kart, ruch) — dalsze etapy wg potrzeby.
-- [ ] **POI O(n·m)** — filtr stacji wg marek + near‑route Haversine: cache marek / grid spatial index / próbka co ~2 km.
+- [x] **POI O(n·m)** — grid spatial index dostarczony (#261): `packages/maps/src/gridIndex.ts` (+testy parytetu z naiwnym filtrem); mapa filtruje POI przy trasie w O(n).
 
 ## 🟠 P2 — Mobile do publikacji
 - [~] **Mapa (faza M3)** — fala 1 dostarczona (#253): `@maplibre/maplibre-react-native` v11, ekran `app/map.tsx` (render + lokalizacja + POI z `@e-logistic/maps`). Fala 2: routing TIR na mapie; wymaga QA na urządzeniu (dev build — natywny moduł, nie Expo Go).

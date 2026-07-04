@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-260-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.114.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-261-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.115.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.115.0] — 🗂️ Indeks przestrzenny POI (koniec O(n·m)) + docs w pionie
+
+- `[#261]` 🗂️ **POI przy trasie w O(n)** — dług P2 z audytu: filtr „POI ≤6 km od linii trasy" liczył haversine dla każdej pary POI×punkt-próbki (do ~1 mln wywołań na klik przy długiej trasie).
+  - Nowy [`gridIndex.ts`](packages/maps/src/gridIndex.ts) w `@e-logistic/maps`: punkty trasy w komórkach ~6 km (stopnie), zapytanie sprawdza sąsiedztwo komórki z poszerzeniem 1/cos(lat) na wysokich szerokościach, dokładność domyka haversine. **Testy** ([`gridIndex.test.ts`](packages/maps/src/gridIndex.test.ts)): parytet 1:1 z filtrem naiwnym na siatce punktów, przypadek Tromsø (69°N), pusty indeks (maps 56→60).
+  - [`map/page.tsx`](apps/web/app/(app)/map/page.tsx): `sample.some(haversine)` → `anyWithinKm(index, …)`; bbox trasy przez `reduce` zamiast `Math.min(...spread)` (przepełniał stos przy bardzo długich trasach). Bez próbkowania co N punktów — indeks trzyma pełną linię.
+  - **Docs w pionie:** nagłówki [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) i [`DATA-MODEL.md`](docs/DATA-MODEL.md) zsynchronizowane — miękkie ostrzeżenia docs-check znikają.
+  - **Bramki:** biome czysto · `tsc` ×7 · 464 testów · docs:check ✓.
 
 ## [1.114.0] — 🧬 gen:types 2.0 — prawdziwe sygnatury RPC + tryb bez hasła do bazy
 
