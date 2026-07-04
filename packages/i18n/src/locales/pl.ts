@@ -3,6 +3,13 @@ export const pl = {
   "app.name": "E-Logistic",
   "app.tagline": "Platforma dla transportu",
 
+  "mobileMap.locate": "Moja lokalizacja",
+  "mobileMap.poiLoad": "POI w okolicy",
+  "mobileMap.poiFuel": "Stacja paliw",
+  "mobileMap.poiParking": "Parking TIR",
+  "mobileMap.permissionDenied": "Brak zgody na lokalizację — pokazuję Europę.",
+  "mobileMap.poiError": "Nie udało się pobrać POI — spróbuj ponownie.",
+
   "role.developer": "Developer",
   "role.owner": "Właściciel",
   "role.dispatcher": "Spedytor",

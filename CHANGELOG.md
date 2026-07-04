@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-252-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.107.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-253-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.108.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.108.0] — 🗺️ Mobile M3 fala 1 — mapa MapLibre w aplikacji kierowcy
+
+- `[#253]` 🗺️ **Mapa w mobile** (faza **M3** z [MOBILE-PLAN](docs/MOBILE-PLAN.md) — największa luka parytetu web↔mobile) — nowy ekran [`app/map.tsx`](apps/mobile/app/map.tsx) + kafel „Mapa" na pulpicie:
+  - **Render:** `@maplibre/maplibre-react-native` **v11** (nowe API: `Map`/`Camera`/`GeoJSONSource`/`Layer`; config plugin w [`app.json`](apps/mobile/app.json)). Styl: MapTiler dark przez `EXPO_PUBLIC_MAPTILER_KEY` albo fallback raster OSM przyciemniony — [`lib/mapStyle.ts`](apps/mobile/lib/mapStyle.ts), odpowiednik webowego `mapTheme.ts`. Mapa świadomie ciemna jak na web.
+  - **„Moja lokalizacja":** `expo-location` (permission plugin z opisem PL) + `easeTo` kamery + kropka `UserLocation`; bez zgody — widok Europy i komunikat.
+  - **POI TIR:** parkingi `hgv` + stacje paliw z Overpass — **reużycie** [`fetchPois`](packages/maps/src/poi.ts) z `@e-logistic/maps` (nowa zależność workspace w mobile), ładowane na żądanie dla widocznego bboxa (`getBounds`), warstwa `circle` (czerwone=stacje, niebieskie=parkingi), tap → pasek z nazwą.
+  - **i18n:** klucze `mobileMap.*` w PL i EN (parytet ✓). Wersja mobile **1.28.0**.
+  - ⚠️ **Natywny moduł** — wymaga dev buildu / EAS (nie działa w Expo Go). **QA na urządzeniu** (mapa + lokalizacja + POI) — przy najbliższym `eas build`; routing TIR na mapie mobile — **fala 2**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 458 testów · docs:check ✓.
 
 ## [1.107.0] — 🧹 Koniec `as unknown` na RPC — typy zamiast ślepych rzutowań
 

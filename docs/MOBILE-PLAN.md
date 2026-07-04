@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.27.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.107.0 (#252) · 2026-07-04
+> Stan: **v1.28.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.108.0 (#253) · 2026-07-04
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.
@@ -9,14 +9,14 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
 
 | Funkcja | Status | Dowód |
 |:--|:--:|:--|
-| Logowanie + sesja (AsyncStorage, guard tras) | ✅ | `app/login.tsx`, `components/AuthProvider.tsx` |
+| Logowanie + sesja (szyfrowana: keychain + AES, #251) | ✅ | `app/login.tsx`, `lib/secureSession.ts` |
 | Klient Supabase + warstwa `@e-logistic/api` | ✅ | `lib/supabase.ts` |
 | Formularze Paliwo / AdBlue / Trip (realne dane) | ✅ | `components/LiquidForm.tsx`, `app/{fuel,adblue,trip}.tsx` |
 | Outbox offline (`queued → synced → error`) | ✅ | `lib/outbox.ts` |
 | Moje zlecenia + zmiana statusów | ✅ | `app/my-orders.tsx` |
 | Zdjęcia ładunku (aparat/galeria) + podpis POD | ✅ | `components/CargoPhotosMobile.tsx`, `SignaturePadMobile.tsx` |
 | Push (expo-notifications) | ⚠️ | `lib/push.ts` — wymaga `eas.projectId` |
-| Mapa / POI | ❌ | brak (faza M3) |
+| Mapa / POI | 🚧 | `app/map.tsx` (M3 fala 1, #253) — routing na mapie: fala 2 |
 
 > Odpowiada to ukończeniu faz **M1, M2, M4**. Pozostaje **M3** (mapa) i opcjonalnie **M5** (PowerSync).
 
@@ -31,10 +31,12 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
 - Outbox na `AsyncStorage` (`lib/outbox.ts`: `enqueue`/`trySync`/`flushQueued`) + re-sync po połączeniu.
 - Walidacja współdzielona (`fuelLogSchema`/`tripEventSchema` z `@e-logistic/core`).
 
-## Faza M3 — Mapa i POI ⬜ DO ZROBIENIA (następny krok mobile)
-- `@maplibre/maplibre-react-native` (render) + reużycie `@e-logistic/maps` (`/api/route` przez web
-  lub bezpośrednio provider). POI z Overpass, „moja lokalizacja" (expo-location).
-- **Test:** trasa TIR + POI na urządzeniu.
+## Faza M3 — Mapa i POI 🚧 FALA 1 DOSTARCZONA (#253)
+- [x] Fala 1 (#253): `@maplibre/maplibre-react-native` v11 (config plugin), ekran `app/map.tsx` —
+  styl MapTiler dark / fallback OSM (`lib/mapStyle.ts`), „moja lokalizacja" (expo-location),
+  POI TIR (parkingi hgv + stacje) z Overpass przez `@e-logistic/maps` (`fetchPois`), i18n `mobileMap.*`.
+- [ ] Fala 2: routing TIR na mapie (`/api/route` przez web lub provider bezpośrednio) + warstwa trasy.
+- ⚠️ **Natywny moduł** — działa w dev buildach / EAS, NIE w Expo Go. **Test:** mapa + POI na urządzeniu.
 
 ## Faza M4 — Powiadomienia push (natywne) ✅ ZREALIZOWANE (z zastrzeżeniem)
 - `expo-notifications` + token urządzenia → tabela `expo_push_tokens` (`lib/push.ts`).

@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.107.0 · #252 · 2026-07-04 -->
+<!-- SYNC: po v1.108.0 · #253 · 2026-07-04 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -97,7 +97,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] **POI O(n·m)** — filtr stacji wg marek + near‑route Haversine: cache marek / grid spatial index / próbka co ~2 km.
 
 ## 🟠 P2 — Mobile do publikacji
-- [ ] **Mapa (faza M3)** — `@maplibre/maplibre-react-native` + reużycie `@e-logistic/maps`.
+- [~] **Mapa (faza M3)** — fala 1 dostarczona (#253): `@maplibre/maplibre-react-native` v11, ekran `app/map.tsx` (render + lokalizacja + POI z `@e-logistic/maps`). Fala 2: routing TIR na mapie; wymaga QA na urządzeniu (dev build — natywny moduł, nie Expo Go).
 - [ ] **`eas.projectId`** (`eas init`) — wymagany do push.
 - [ ] Finalna grafika (ikony/splash), **QA na urządzeniu**, `eas build`/`submit`.
 

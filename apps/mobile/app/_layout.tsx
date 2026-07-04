@@ -46,6 +46,7 @@ function RootNav() {
       <Stack.Screen name="fuel" options={{ title: "Tankowanie" }} />
       <Stack.Screen name="adblue" options={{ title: "AdBlue" }} />
       <Stack.Screen name="trip" options={{ title: "Trasa" }} />
+      <Stack.Screen name="map" options={{ title: "Mapa" }} />
     </Stack>
   );
 }

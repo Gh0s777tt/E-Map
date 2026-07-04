@@ -5,6 +5,13 @@ export const en: Record<MessageKey, string> = {
   "app.name": "E-Logistic",
   "app.tagline": "Platform for transport",
 
+  "mobileMap.locate": "My location",
+  "mobileMap.poiLoad": "POI nearby",
+  "mobileMap.poiFuel": "Fuel station",
+  "mobileMap.poiParking": "HGV parking",
+  "mobileMap.permissionDenied": "Location permission denied — showing Europe.",
+  "mobileMap.poiError": "Failed to load POI — try again.",
+
   "role.developer": "Developer",
   "role.owner": "Owner",
   "role.dispatcher": "Dispatcher",

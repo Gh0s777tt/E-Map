@@ -51,6 +51,12 @@ export default function Home() {
         </Pressable>
       </Link>
 
+      <Link href="/map" asChild>
+        <Pressable style={styles.ctaSecondary}>
+          <Text style={styles.ctaText}>🗺️ {t("nav.map")}</Text>
+        </Pressable>
+      </Link>
+
       <Text style={styles.note}>E-Logistic · mobile</Text>
     </View>
   );

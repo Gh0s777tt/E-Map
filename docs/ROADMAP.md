@@ -1,6 +1,6 @@
 # 🗺️ Roadmapa — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.107.0 (#252) · 2026-07-04
+> Status: **w realizacji** · stan na v1.108.0 (#253) · 2026-07-04
 > Zasada: każda faza = działający przyrost. Część zarobkowa (Faza 1) **nie wymaga drogich API map**.
 >
 > **Stan dostarczenia** (autorytatywnie: [CHANGELOG](../CHANGELOG.md)):
@@ -51,7 +51,7 @@ statystyki i zysk per pojazd; rozliczenia pokryte testami jednostkowymi.
 
 **Cel:** routing ciężarówkowy z mytem i POI (hybryda MapLibre + HERE/GraphHopper).
 
-- [x] MapLibre render + styl red/black (dzień/noc), web (**mobile — planowane, faza M3**).
+- [x] MapLibre render + styl red/black (dzień/noc), web + **mobile (M3 fala 1, #253** — render/lokalizacja/POI; routing na mapie mobile — fala 2**)**.
 - [x] `RoutingProvider` + adapter HERE (start) / GraphHopper; profil pojazdu z `vehicles`.
 - [x] Trasa z przystankami (adres dostawy + stopy: parking/stacja).
 - [x] Omijanie: kraje (np. CH/NO), myto, promy, drogi gruntowe.
