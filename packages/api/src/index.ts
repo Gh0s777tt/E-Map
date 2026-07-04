@@ -27,6 +27,7 @@ export * from "./data/push";
 export * from "./data/rates";
 export * from "./data/savedPlaces";
 export * from "./data/service";
+export * from "./data/settlementSettings";
 export * from "./data/tripEvents";
 export * from "./data/vehicleCosts";
 export * from "./data/vehicles";

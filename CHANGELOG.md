@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-264-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.117.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-265-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.118.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.118.0] — 🧾 Rozliczenie miesięczne kierowcy — generator wg formularza właściciela
+
+- `[#265]` 🧾 **Koniec ręcznego Excela co miesiąc** — nowa strona [`/settlements/driver`](apps/web/app/(app)/settlements/driver/page.tsx) (link z Rozliczeń) odtwarza wzorcowy arkusz rozliczenia:
+  - **Normy i stawki PER FIRMA** (decyzja właściciela: „każdy właściciel ustala własne") — migracja [`0057_settlement_settings.sql`](supabase/migrations/0057_settlement_settings.sql): `company_settlement_settings` (stawka dzienna, norma km/dzień, stawka za km nadwyżki, ubezpieczenie/dzień, telefon i premia dokumentacyjna /30 dni), RLS: czyta członek, zapisuje owner; edycja na stronie (sekcja ⚙️). ✅ **Zastosowana na żywej bazie**; wartości domyślne to tylko seed z formularza przykładowego.
+  - **Silnik w core** ([`driverSettlement.ts`](packages/core/src/driverSettlement.ts)) — formuły odtworzone z arkusza co do grosza: podstawa `dni×stawka`, premia tygodniowa `max(0, km − dni×norma)×stawka_km`, dokumentacyjna i telefon `×dni/30`, ubezpieczenie `×dni`, hotele, potrącenia → BALANS. **Testy** ([`driverSettlement.test.ts`](packages/core/src/driverSettlement.test.ts)): parytet 1:1 z arkuszem wzorcowym (12 545,12 zł), tydzień poniżej normy → 0, własne stawki, korekty (core 267→271).
+  - **Auto-dane z systemu**: dni z modułu czasu pracy, km per tydzień ISO z liczników `trip_events` kierowcy — każdy wiersz **edytowalny przed wydrukiem** (+ premia norma, korekta premii dok., hotele, potrącenia).
+  - **Wydruk/PDF** — arkusz w oryginalnych kolorach (róż/niebieski/żółty/zielony) przez `PrintButton`; **„Zapisz jako należność"** tworzy wpis `due` w wypłatach kierowcy z notą okresu.
+  - **API**: [`settlementSettings.ts`](packages/api/src/data/settlementSettings.ts) (get z fallbackiem na domyślne / upsert), typy tabeli z `gen:types` (41 tabel).
+  - **Bramki:** biome czysto · `tsc` ×7 · 468 testów · docs:check ✓.
 
 ## [1.117.0] — 🔦 Fala odkrywalności — audyt „ukrytych funkcji" web+mobile
 

@@ -198,6 +198,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      company_settlement_settings: {
+        Row: {
+          company_id: string;
+          daily_rate: number;
+          km_norm_per_day: number;
+          km_rate: number;
+          insurance_per_day: number;
+          phone_monthly: number;
+          doc_bonus_monthly: number;
+          updated_at: string;
+        };
+        Insert: {
+          company_id: string;
+          daily_rate?: number;
+          km_norm_per_day?: number;
+          km_rate?: number;
+          insurance_per_day?: number;
+          phone_monthly?: number;
+          doc_bonus_monthly?: number;
+          updated_at?: string;
+        };
+        Update: {
+          company_id?: string;
+          daily_rate?: number;
+          km_norm_per_day?: number;
+          km_rate?: number;
+          insurance_per_day?: number;
+          phone_monthly?: number;
+          doc_bonus_monthly?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       contractors: {
         Row: {
           id: string;

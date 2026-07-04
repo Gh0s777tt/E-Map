@@ -12,6 +12,7 @@ export * from "./co2";
 export * from "./csv";
 export * from "./csvParse";
 export * from "./damageClaims";
+export * from "./driverSettlement";
 export * from "./duration";
 export * from "./enums";
 export * from "./expiry";

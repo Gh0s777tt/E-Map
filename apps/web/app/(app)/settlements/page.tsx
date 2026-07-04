@@ -234,6 +234,13 @@ export default function SettlementsPage() {
         subtitle="Podsumowanie kosztów (paliwo, AdBlue, serwis, myto) i zysku dla pojazdu w wybranym okresie. Eksport do CSV (Excel) i wydruk/PDF."
       />
 
+      {/* #265: generator rozliczenia miesięcznego kierowcy (normy/stawki firmy). */}
+      <p style={{ marginTop: 4 }}>
+        <a href="/settlements/driver" style={{ color: palette.red, fontWeight: 700 }}>
+          🧾 Rozliczenie miesięczne kierowcy → generator (dni, km, premie, wydruk PDF)
+        </a>
+      </p>
+
       <SetupNotice source={source} noVehicles="Dodaj pojazd, aby rozliczyć trasy." />
       {denied && (
         <p style={{ color: palette.red, marginTop: 16 }}>
