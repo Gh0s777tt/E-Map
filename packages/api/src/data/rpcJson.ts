@@ -1,11 +1,11 @@
 /**
- * Zwrot RPC w wygenerowanym typie `Functions` to dziś zawsze `Json` —
- * `scripts/gen-types.mjs` nie introspektuje jeszcze sygnatur funkcji SQL.
- * Kształt danych gwarantują definicje funkcji w `supabase/migrations/`
- * (SECURITY DEFINER, `json_agg`/`json_build_object`), więc rzutowanie jest
- * bezpieczne — ale trzymamy je w JEDNYM miejscu zamiast `as unknown` po
- * warstwie danych. Gdy gen:types nauczy się emitować precyzyjne typy RPC,
- * helper zniknie mechanicznie (dług: docs/BACKLOG.md → P3 „as unknown").
+ * Zwrot RPC to `Json`, gdy funkcja SQL faktycznie zwraca json/jsonb (json_agg /
+ * json_build_object): list_drivers, create_invoice, create_blank_invoice,
+ * duplicate_invoice, driver_documents, list_invites, dev_stats, company_wipe_data.
+ * Kształt gwarantują definicje w `supabase/migrations/` — rzutowanie trzymamy
+ * w JEDNYM miejscu. Funkcje TABLE/skalarne mają od #260 precyzyjne typy
+ * (gen:types introspektuje pg_proc) i tego helpera NIE potrzebują; zniknie
+ * całkiem dopiero po przepisaniu powyższych funkcji SQL na RETURNS TABLE.
  */
 export function rpcJson<T>(data: unknown): T {
   return data as T;

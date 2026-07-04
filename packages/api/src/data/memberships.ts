@@ -1,7 +1,6 @@
 /** Warstwa danych: członkostwo użytkownika (firma + rola) i onboarding firmy. */
 import type { Role } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
-import { rpcJson } from "./rpcJson";
 
 export interface ActiveMembership {
   companyId: string;
@@ -46,7 +45,7 @@ export interface CompanyMember {
 export async function listCompanyMembers(client: SupabaseClient): Promise<CompanyMember[]> {
   const { data, error } = await client.rpc("company_members");
   if (error) throw error;
-  return rpcJson<CompanyMember[]>(data ?? []);
+  return data ?? [];
 }
 
 /** Aktualizacja roli i modułów członka (owner). */

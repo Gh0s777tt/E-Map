@@ -52,3 +52,7 @@ android/.gradle/
 # Playwright
 test-results/
 playwright-report/
+
+# Artefakty buildów mobile
+*.aab
+*.apk

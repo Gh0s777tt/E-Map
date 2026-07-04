@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-259-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.113.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-260-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.114.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.114.0] — 🧬 gen:types 2.0 — prawdziwe sygnatury RPC + tryb bez hasła do bazy
+
+- `[#260]` 🧬 **Generator typów uczy się funkcji SQL** ([`gen-types.mjs`](scripts/gen-types.mjs)) — dług P3 („as unknown"/rpcJson) zredukowany u źródła:
+  - **Introspekcja `pg_proc`**: argumenty wejściowe (z opcjonalnością wg `DEFAULT` i `| null` — SQL zawsze przyjmuje NULL), zwroty: `RETURNS TABLE` → typowane wiersze, skalary/enumy → dokładny typ, `json/jsonb` → `Json`. Efekt: `company_members` i `list_fuel_cards_for_user` w pełni typowane — **`rpcJson` znika z memberships**; literówka w nazwie argumentu RPC = błąd kompilacji.
+  - **Tryb Management API**: `SUPABASE_MGMT_TOKEN=sbp_… pnpm gen:types` działa bez hasła do bazy (dotąd wymagał `SUPABASE_DB_URL`/`.env.local`). Wygenerowano z żywej bazy: 40 tabel · 9 enumów · 27 funkcji.
+  - Generator sam formatuje wynik biome (regeneracja nigdy nie psuje bramki lint). [`rpcJson`](packages/api/src/data/rpcJson.ts) zostaje wyłącznie dla funkcji faktycznie zwracających json (list_drivers, faktury…) — z komentarzem, że zniknie po przepisaniu ich na `RETURNS TABLE` (świadomie NIE ruszamy działających funkcji produkcyjnych).
+  - **Bramki:** biome czysto · `tsc` ×7 · 460 testów · docs:check ✓.
 
 ## [1.113.0] — 🗑️ Strefa niebezpieczna — właściciel może wyczyścić dane firmy
 

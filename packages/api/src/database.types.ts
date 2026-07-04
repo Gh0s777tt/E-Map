@@ -1683,33 +1683,124 @@ export interface Database {
     };
     Views: { [_ in never]: never };
     Functions: {
-      _card_key: { Args: Record<string, unknown>; Returns: Json };
-      _pii_key: { Args: Record<string, unknown>; Returns: Json };
-      accept_invite: { Args: Record<string, unknown>; Returns: Json };
-      bootstrap_company: { Args: Record<string, unknown>; Returns: Json };
-      company_members: { Args: Record<string, unknown>; Returns: Json };
-      company_wipe_data: { Args: Record<string, unknown>; Returns: Json };
-      create_blank_invoice: { Args: Record<string, unknown>; Returns: Json };
-      create_invite: { Args: Record<string, unknown>; Returns: Json };
-      create_invoice: { Args: Record<string, unknown>; Returns: Json };
-      dev_stats: { Args: Record<string, unknown>; Returns: Json };
-      driver_documents: { Args: Record<string, unknown>; Returns: Json };
-      driver_link_user: { Args: Record<string, unknown>; Returns: Json };
-      driver_save: { Args: Record<string, unknown>; Returns: Json };
-      driver_set_documents: { Args: Record<string, unknown>; Returns: Json };
-      duplicate_invoice: { Args: Record<string, unknown>; Returns: Json };
-      fuel_card_pin: { Args: Record<string, unknown>; Returns: Json };
-      fuel_card_set_pin: { Args: Record<string, unknown>; Returns: Json };
-      generate_expiry_notifications: { Args: Record<string, unknown>; Returns: Json };
-      has_role: { Args: Record<string, unknown>; Returns: Json };
-      is_assigned_to_vehicle: { Args: Record<string, unknown>; Returns: Json };
-      is_developer: { Args: Record<string, unknown>; Returns: Json };
-      is_member_of: { Args: Record<string, unknown>; Returns: Json };
-      list_drivers: { Args: Record<string, unknown>; Returns: Json };
-      list_fuel_cards_for_user: { Args: Record<string, unknown>; Returns: Json };
-      list_invites: { Args: Record<string, unknown>; Returns: Json };
-      notify_company: { Args: Record<string, unknown>; Returns: Json };
-      order_set_status: { Args: Record<string, unknown>; Returns: Json };
+      _card_key: { Args: Record<PropertyKey, never>; Returns: string };
+      _pii_key: { Args: Record<PropertyKey, never>; Returns: string };
+      accept_invite: { Args: { p_token: string | null }; Returns: string };
+      bootstrap_company: { Args: { p_name: string | null }; Returns: string };
+      company_members: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          user_id: string;
+          email: string;
+          role: Database["public"]["Enums"]["role"];
+          modules: string[];
+          status: string;
+        }[];
+      };
+      company_wipe_data: {
+        Args: { p_company: string | null; p_confirm_name: string | null };
+        Returns: Json;
+      };
+      create_blank_invoice: {
+        Args: {
+          p_company: string | null;
+          p_buyer_name: string | null;
+          p_buyer_tax_id?: string | null;
+          p_buyer_address?: string | null;
+          p_currency?: string | null;
+        };
+        Returns: Json;
+      };
+      create_invite: {
+        Args: {
+          p_role?: Database["public"]["Enums"]["role"] | null;
+          p_vehicle?: string | null;
+          p_email?: string | null;
+        };
+        Returns: string;
+      };
+      create_invoice: {
+        Args: { p_order: string | null; p_vat_rate?: number | null };
+        Returns: Json;
+      };
+      dev_stats: { Args: Record<PropertyKey, never>; Returns: Json };
+      driver_documents: { Args: { p_driver: string | null }; Returns: Json };
+      driver_link_user: {
+        Args: { p_driver: string | null; p_company: string | null; p_user: string | null };
+        Returns: undefined;
+      };
+      driver_save: {
+        Args: {
+          p_id: string | null;
+          p_company: string | null;
+          p_first: string | null;
+          p_last: string | null;
+          p_birth: string | null;
+          p_categories: string[] | null;
+          p_quals: string[] | null;
+          p_notes: string | null;
+          p_license_expiry?: string | null;
+          p_code95_expiry?: string | null;
+          p_medical_expiry?: string | null;
+          p_adr_expiry?: string | null;
+          p_psychotech_expiry?: string | null;
+        };
+        Returns: string;
+      };
+      driver_set_documents: {
+        Args: {
+          p_driver: string | null;
+          p_id_card: string | null;
+          p_passport: string | null;
+          p_license: string | null;
+        };
+        Returns: undefined;
+      };
+      duplicate_invoice: { Args: { p_invoice: string | null }; Returns: Json };
+      fuel_card_pin: { Args: { p_card: string | null }; Returns: string };
+      fuel_card_set_pin: {
+        Args: { p_card: string | null; p_pin: string | null };
+        Returns: undefined;
+      };
+      generate_expiry_notifications: { Args: { p_company: string | null }; Returns: undefined };
+      has_role: {
+        Args: { p_company: string | null; p_roles: Database["public"]["Enums"]["role"][] | null };
+        Returns: boolean;
+      };
+      is_assigned_to_vehicle: { Args: { p_vehicle: string | null }; Returns: boolean };
+      is_developer: { Args: Record<PropertyKey, never>; Returns: boolean };
+      is_member_of: { Args: { p_company: string | null }; Returns: boolean };
+      list_drivers: { Args: { p_company: string | null }; Returns: Json };
+      list_fuel_cards_for_user: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          provider: Database["public"]["Enums"]["fuel_card_provider"];
+          card_number_masked: string;
+          valid_until: string;
+          discount_percent: number;
+          vehicle_id: string;
+          registration: string;
+        }[];
+      };
+      list_invites: { Args: { p_company: string | null }; Returns: Json };
+      notify_company: {
+        Args: {
+          p_company: string | null;
+          p_type: string | null;
+          p_title: string | null;
+          p_body: string | null;
+          p_severity: string | null;
+        };
+        Returns: undefined;
+      };
+      order_set_status: {
+        Args: {
+          p_order: string | null;
+          p_status: Database["public"]["Enums"]["order_status"] | null;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       fuel_card_provider:

@@ -6,9 +6,12 @@
 //
 // Użycie:
 //   SUPABASE_DB_URL="postgresql://user:pass@host:5432/postgres" pnpm gen:types
-// albo (fallback) z apps/web/.env.local: SUPABASE_DB_PASSWORD + stały pooler.
+// albo (fallback) z apps/web/.env.local: SUPABASE_DB_PASSWORD + stały pooler,
+// albo BEZ hasła do bazy: SUPABASE_MGMT_TOKEN="sbp_…" pnpm gen:types
+// (zapytania idą wtedy przez Supabase Management API; ref z SUPABASE_PROJECT_REF).
 //
 // Wyjście: packages/api/src/database.types.ts
+import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,7 +62,28 @@ const SCALAR = {
   geometry: "unknown",
 };
 
-const client = new pg.Client({ ...connConfig(), ssl: { rejectUnauthorized: false } });
+// Tryb Management API (#260): bez hasła do bazy — token sbp_… wystarcza.
+const MGMT_TOKEN = process.env.SUPABASE_MGMT_TOKEN;
+const MGMT_REF = process.env.SUPABASE_PROJECT_REF ?? "jcmqbqvsvtjtxvmopcxp";
+
+let client = null;
+
+async function runQuery(sql) {
+  if (MGMT_TOKEN) {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${MGMT_REF}/database/query`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${MGMT_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: sql }),
+    });
+    if (!res.ok) throw new Error(`Management API ${res.status}: ${await res.text()}`);
+    return { rows: await res.json() };
+  }
+  if (!client) {
+    client = new pg.Client({ ...connConfig(), ssl: { rejectUnauthorized: false } });
+    await client.connect();
+  }
+  return client.query(sql);
+}
 
 const enumsRes = await runQuery(`
   select t.typname, e.enumlabel
@@ -69,14 +93,6 @@ const enumsRes = await runQuery(`
   where n.nspname = 'public'
   order by t.typname, e.enumsortorder;
 `);
-
-async function runQuery(sql) {
-  if (!runQuery.connected) {
-    await client.connect();
-    runQuery.connected = true;
-  }
-  return client.query(sql);
-}
 
 const enums = {};
 for (const r of enumsRes.rows) {
@@ -102,8 +118,18 @@ for (const r of colsRes.rows) {
   tables[r.table_name].push(r);
 }
 
+// Pełne sygnatury funkcji (#260): argumenty wejściowe (opcjonalne wg DEFAULT)
+// + typ zwrotu (TABLE → wiersze[], skalar/enum → typ, json/jsonb → Json).
 const fnRes = await runQuery(`
-  select distinct p.proname
+  select p.proname,
+         p.proretset,
+         p.prorettype::regtype::text as rettype,
+         p.pronargdefaults,
+         to_jsonb(p.proargmodes) as argmodes,
+         to_jsonb(p.proargnames) as argnames,
+         (select coalesce(jsonb_agg(u.x::regtype::text order by u.ord), '[]'::jsonb)
+            from unnest(coalesce(p.proallargtypes, p.proargtypes::oid[]))
+                 with ordinality u(x, ord)) as argtypes
   from pg_proc p
   join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public'
@@ -112,7 +138,71 @@ const fnRes = await runQuery(`
     and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
   order by p.proname;
 `);
-const fns = fnRes.rows.map((r) => r.proname);
+
+/** regtype (np. "uuid", "role[]", "timestamp with time zone") → typ TS. */
+const REGTYPE = {
+  uuid: "string",
+  text: "string",
+  "character varying": "string",
+  character: "string",
+  name: "string",
+  boolean: "boolean",
+  smallint: "number",
+  integer: "number",
+  bigint: "number",
+  numeric: "number",
+  real: "number",
+  "double precision": "number",
+  json: "Json",
+  jsonb: "Json",
+  date: "string",
+  "time without time zone": "string",
+  "time with time zone": "string",
+  "timestamp without time zone": "string",
+  "timestamp with time zone": "string",
+  bytea: "string",
+  void: "undefined",
+};
+
+const regToTs = (reg) => {
+  const arr = reg.endsWith("[]");
+  const base = arr ? reg.slice(0, -2) : reg;
+  const ts = enums[base] ? `Database["public"]["Enums"]["${base}"]` : (REGTYPE[base] ?? "unknown");
+  return arr ? `${ts}[]` : ts;
+};
+
+const fns = fnRes.rows.map((r) => {
+  const modes = r.argmodes; // null ⇒ wszystkie argumenty wejściowe
+  const names = r.argnames ?? [];
+  const types = r.argtypes ?? [];
+  const all = types.map((t, i) => ({ type: t, name: names[i] ?? null, mode: modes?.[i] ?? "i" }));
+  const inputs = all.filter((a) => a.mode === "i" || a.mode === "b" || a.mode === "v");
+  const cols = all.filter((a) => a.mode === "t" || a.mode === "o");
+
+  let args = "Record<PropertyKey, never>";
+  if (inputs.length > 0) {
+    if (inputs.some((a) => !a.name)) {
+      args = "Record<string, unknown>"; // argumenty bez nazw — nie zbudujemy obiektu
+    } else {
+      const firstOptional = inputs.length - (r.pronargdefaults ?? 0);
+      // Każdy argument SQL przyjmuje NULL — emitujemy `| null`, żeby wywołania
+      // przekazujące jawnie null (np. `p_vat_rate: vatRate ?? null`) typowały się wprost.
+      const fields = inputs.map(
+        (a, i) => `${a.name}${i >= firstOptional ? "?" : ""}: ${regToTs(a.type)} | null`,
+      );
+      args = `{ ${fields.join("; ")} }`;
+    }
+  }
+
+  let returns;
+  if (cols.length > 0 && cols.every((c) => c.name)) {
+    returns = `{ ${cols.map((c) => `${c.name}: ${regToTs(c.type)}`).join("; ")} }[]`;
+  } else {
+    const base = regToTs(r.rettype);
+    returns = r.proretset ? `${base}[]` : base;
+  }
+  return { name: r.proname, args, returns };
+});
 
 const tsType = (col) => {
   let udt = col.udt_name;
@@ -173,7 +263,7 @@ if (fns.length === 0) {
   out.push("    Functions: { [_ in never]: never };");
 } else {
   out.push("    Functions: {");
-  for (const fn of fns) out.push(`      ${fn}: { Args: Record<string, unknown>; Returns: Json };`);
+  for (const fn of fns) out.push(`      ${fn.name}: { Args: ${fn.args}; Returns: ${fn.returns} };`);
   out.push("    };");
 }
 out.push("    Enums: {");
@@ -186,8 +276,11 @@ out.push("  };");
 out.push("}");
 out.push("");
 
-writeFileSync(resolve(ROOT, "packages/api/src/database.types.ts"), out.join("\n"));
+const OUT_FILE = resolve(ROOT, "packages/api/src/database.types.ts");
+writeFileSync(OUT_FILE, out.join("\n"));
+// Format zgodny z bramką lint — regeneracja nigdy nie psuje `biome check`.
+execSync(`pnpm exec biome format --write "${OUT_FILE}"`, { cwd: ROOT, stdio: "ignore" });
 console.log(
   `✓ database.types.ts: ${Object.keys(tables).length} tabel, ${Object.keys(enums).length} enumów, ${fns.length} funkcji`,
 );
-await client.end();
+if (client) await client.end();
