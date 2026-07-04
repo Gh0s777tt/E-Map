@@ -31,7 +31,6 @@ import {
   fetchPois,
   type GeoHit,
   geocode,
-  haversineKm,
   itemsNearRoute,
   jamSeverity,
   type LatLng,
