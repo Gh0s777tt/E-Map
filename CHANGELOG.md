@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-256-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.111.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-257-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.111.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.111.1] — 🔧 Fix pierwszego buildu EAS — pnpm 11 ignorował `node-linker` z .npmrc
+
+- `[#257]` 🔧 **Build EAS padał w fazie „Bundle JavaScript"** (`Unable to resolve module @expo/metro-runtime` i kolejne — Metro nie widzi zależności w izolowanym layoucie pnpm). Przyczyna źródłowa: **pnpm 11 czyta ustawienia z `pnpm-workspace.yaml`, a nie z `.npmrc`** — obecny w repo `node-linker=hoisted` był martwy.
+  - Fix: [`pnpm-workspace.yaml`](pnpm-workspace.yaml) → **`nodeLinker: hoisted`** (z komentarzem dlaczego); czysta reinstalacja → płaski `node_modules`, `expo export --platform android` bunduje czysto (5,7 MB hbc).
+  - Dopisany jawny peer dep `@expo/metro-runtime` w [`apps/mobile/package.json`](apps/mobile/package.json) (wymóg expo-routera).
+  - Zweryfikowane po zmianie layoutu: biome czysto · `tsc` ×7 · 458 testów · docs:check ✓. Diagnoza pierwszego builda: `eas init` podpiął istniejący projekt `@gh0stt77/e-logistic`, keystore wygenerowany zdalnie — kolejny build z tego commita.
 
 ## [1.111.0] — 📜 Polityka prywatności + komplet karty sklepu Google Play
 

@@ -2,6 +2,11 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Expo + React Native (Metro) wymaga płaskiego node_modules w monorepo.
+# pnpm 11 czyta ustawienia STĄD — .npmrc z tym samym kluczem jest ignorowany
+# (dlatego pierwszy build EAS padł na „Unable to resolve module").
+nodeLinker: hoisted
+
 # Skrypty buildów natywnych zależności dozwolone jawnie (pnpm 11).
 allowBuilds:
   sharp: true
