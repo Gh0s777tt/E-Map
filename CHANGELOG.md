@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-258-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.112.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-259-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.113.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.113.0] — 🗑️ Strefa niebezpieczna — właściciel może wyczyścić dane firmy
+
+- `[#259]` 🗑️ **Czyszczenie danych firmy przez właściciela** (prośba właściciela) — multi-tenant: każdy owner czyści WYŁĄCZNIE swoją firmę.
+  - **Migracja [`0056_company_wipe.sql`](supabase/migrations/0056_company_wipe.sql)** — RPC `company_wipe_data(p_company, p_confirm_name)` (SECURITY DEFINER): wymaga roli **owner** (`has_role`) i potwierdzenia DOKŁADNĄ nazwą firmy; kasuje 22 tabele firmowe w kolejności FK (rewizje/pozycje/przypisania lecą kaskadą); **zostają** firma, zespół (memberships), dziennik audytu (+ wpis `company.wipe_data` z licznikami), tokeny push i profile. Zwraca `{tabela: liczba}`. ✅ **Zastosowana na żywej bazie** (zweryfikowano `pg_proc`).
+  - **API** ([`companies.ts`](packages/api/src/data/companies.ts)): `wipeCompanyData()` + wpis `company_wipe_data` w `Functions` ([`database.types.ts`](packages/api/src/database.types.ts) — zgodny z przyszłym `gen:types`). **Testy** ([`companies.test.ts`](packages/api/src/data/companies.test.ts)): argumenty RPC + propagacja błędu (api 66→68).
+  - **UI** ([`/settings`](apps/web/app/(app)/settings/page.tsx)): karta „Strefa niebezpieczna" (tylko owner, czerwona ramka) — **type-to-confirm** (przepisz nazwę firmy) + dialog potwierdzenia + toast z liczbą usuniętych wierszy. i18n `settings.danger.*` (PL/EN, parytet ✓).
+  - **Bramki:** biome czysto · `tsc` ×7 · 460 testów · docs:check ✓.
 
 ## [1.112.0] — 💧 AdBlue z opcją „do pełna" — web i mobile (parytet z dieslem)
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { getCompany, updateCompany } from "@e-logistic/api";
+import { getCompany, updateCompany, wipeCompanyData } from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
@@ -46,6 +46,10 @@ export default function SettingsPage() {
   const [cAccount, setCAccount] = useState("");
   const [cMsg, setCMsg] = useState<string | null>(null);
   const [cBusy, setCBusy] = useState(false);
+
+  // Strefa niebezpieczna (#259): czyszczenie danych firmy — tylko owner, type-to-confirm.
+  const [wipeConfirm, setWipeConfirm] = useState("");
+  const [wipeBusy, setWipeBusy] = useState(false);
 
   const loadCompany = useCallback(async () => {
     try {
@@ -94,6 +98,30 @@ export default function SettingsPage() {
       setCMsg(e instanceof Error ? e.message : t("settings.company.saveError"));
     } finally {
       setCBusy(false);
+    }
+  }
+
+  async function wipeCompany() {
+    if (!companyId || wipeBusy) return;
+    if (wipeConfirm.trim() !== cName.trim()) {
+      toast(t("settings.danger.mismatch"), "error");
+      return;
+    }
+    const ok = await confirm(t("settings.danger.desc"), {
+      danger: true,
+      confirmLabel: t("settings.danger.button"),
+    });
+    if (!ok) return;
+    setWipeBusy(true);
+    try {
+      const counts = await wipeCompanyData(getBrowserSupabase(), companyId, wipeConfirm.trim());
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      toast(t("settings.danger.success").replace("{count}", String(total)), "success");
+      setWipeConfirm("");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("settings.danger.mismatch"), "error");
+    } finally {
+      setWipeBusy(false);
     }
   }
 
@@ -489,6 +517,39 @@ export default function SettingsPage() {
       </div>
 
       <PushToggle />
+
+      {isOwner && companyId && (
+        <div style={{ ...styles.card, borderColor: palette.red }}>
+          <strong style={{ fontSize: 16, color: palette.red }}>{t("settings.danger.title")}</strong>
+          <p style={{ color: palette.smoke, fontSize: 13, margin: 0 }}>
+            {t("settings.danger.desc")}
+          </p>
+          <label style={styles.field}>
+            <span style={{ fontSize: 12, color: palette.smoke }}>
+              {t("settings.danger.confirmLabel")}{" "}
+              <code style={{ color: palette.offWhite }}>{cName}</code>
+            </span>
+            <input
+              style={styles.cInput}
+              value={wipeConfirm}
+              onChange={(e) => setWipeConfirm(e.target.value)}
+              placeholder={cName}
+              autoComplete="off"
+            />
+          </label>
+          <button
+            type="button"
+            style={{
+              ...styles.danger,
+              opacity: wipeBusy || wipeConfirm.trim() !== cName.trim() ? 0.5 : 1,
+            }}
+            disabled={wipeBusy || wipeConfirm.trim() !== cName.trim()}
+            onClick={wipeCompany}
+          >
+            {wipeBusy ? t("settings.danger.working") : `🗑️ ${t("settings.danger.button")}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

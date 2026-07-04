@@ -1,5 +1,6 @@
 /** Warstwa danych: firma (dane przewoźnika do dokumentów). */
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { rpcJson } from "./rpcJson";
 
 export interface Company {
   id: string;
@@ -67,4 +68,22 @@ export async function updateCompany(
   if (patch.bankAccount !== undefined) row.bank_account = patch.bankAccount ?? null;
   const { error } = await client.from("companies").update(row).eq("id", companyId);
   if (error) throw error;
+}
+
+/**
+ * Czyszczenie danych firmy (strefa niebezpieczna, #259) — RPC `company_wipe_data`:
+ * tylko owner, potwierdzenie DOKŁADNĄ nazwą firmy; zostają firma/zespół/audyt/tokeny push.
+ * Zwraca liczbę usuniętych wierszy per tabela (wpis trafia też do audit_log).
+ */
+export async function wipeCompanyData(
+  client: SupabaseClient,
+  companyId: string,
+  confirmName: string,
+): Promise<Record<string, number>> {
+  const { data, error } = await client.rpc("company_wipe_data", {
+    p_company: companyId,
+    p_confirm_name: confirmName,
+  });
+  if (error) throw error;
+  return rpcJson<Record<string, number>>(data);
 }

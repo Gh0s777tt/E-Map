@@ -3,6 +3,15 @@ export const pl = {
   "app.name": "E-Logistic",
   "app.tagline": "Platforma dla transportu",
 
+  "settings.danger.title": "Strefa niebezpieczna",
+  "settings.danger.desc":
+    "Trwale usuwa WSZYSTKIE dane firmy: zlecenia, faktury, tankowania, trasy, flotę, kierowców, kontrahentów, dokumenty i rozliczenia. Zostają: firma, zespół i dziennik audytu. Tej operacji nie można cofnąć.",
+  "settings.danger.confirmLabel": "Przepisz nazwę firmy, aby potwierdzić:",
+  "settings.danger.button": "Wyczyść dane firmy",
+  "settings.danger.working": "Czyszczenie…",
+  "settings.danger.success": "Dane firmy wyczyszczone (usunięte wiersze: {count}).",
+  "settings.danger.mismatch": "Nazwa nie zgadza się z nazwą firmy.",
+
   "mobileMap.locate": "Moja lokalizacja",
   "mobileMap.poiLoad": "POI w okolicy",
   "mobileMap.poiFuel": "Stacja paliw",

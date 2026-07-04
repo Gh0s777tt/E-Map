@@ -5,6 +5,15 @@ export const en: Record<MessageKey, string> = {
   "app.name": "E-Logistic",
   "app.tagline": "Platform for transport",
 
+  "settings.danger.title": "Danger zone",
+  "settings.danger.desc":
+    "Permanently deletes ALL company data: orders, invoices, fuel logs, trips, fleet, drivers, contractors, documents and settlements. Kept: company, team and audit log. This cannot be undone.",
+  "settings.danger.confirmLabel": "Type the company name to confirm:",
+  "settings.danger.button": "Wipe company data",
+  "settings.danger.working": "Wiping…",
+  "settings.danger.success": "Company data wiped ({count} rows removed).",
+  "settings.danger.mismatch": "Name does not match the company name.",
+
   "mobileMap.locate": "My location",
   "mobileMap.poiLoad": "POI nearby",
   "mobileMap.poiFuel": "Fuel station",
