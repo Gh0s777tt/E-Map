@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-254-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.109.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-255-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.110.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.110.0] — 🎨 Finalna grafika mobile + EAS CLI — przygotowanie do sklepów
+
+- `[#255]` 🎨 **Koniec czerwonych placeholderów** (krok 3 checklisty publikacji z [MOBILE-PLAN](docs/MOBILE-PLAN.md)) — komplet grafik aplikacji kierowcy w motywie GH0ST EMPIRE (czerń `#0a0a0a` + czerwień `#E50914`): monogram **„E" nad jezdnią z przerywaną linią**.
+  - Generator [`scripts/gen-mobile-assets.mjs`](scripts/gen-mobile-assets.mjs) (sharp, czysta geometria SVG — bez fontów, render powtarzalny): `icon.png` 1024² (pełne tło, iOS sam maskuje), `adaptive-icon.png` (przezroczysty foreground, logo w strefie bezpiecznej ~62%, tło z `app.json`), `splash-icon.png` (przezroczysty, `contain` na czerni), `favicon.png` 48².
+  - **EAS CLI 20.5.1** zainstalowane globalnie na maszynie. Pozostały krok wymaga konta właściciela: `eas login && eas init` (uzupełni `extra.eas.projectId` — wymagany do push), potem `eas build --profile development -p android` i QA na urządzeniu (mapa M3 + szyfrowana sesja to natywne moduły — nie Expo Go). Wersja mobile **1.29.0**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 458 testów + 8 E2E · docs:check ✓.
 
 ## [1.109.0] — 🎭 Fundament E2E (Playwright) — przepływy publiczne + bramka auth w CI
 

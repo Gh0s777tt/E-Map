@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.28.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.108.0 (#253) · 2026-07-04
+> Stan: **v1.29.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.110.0 (#255) · 2026-07-04
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.
@@ -49,7 +49,7 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
 ## Do publikacji w sklepach (pozostałe kroki)
 1. `eas init` → uzupełnia `extra.eas.projectId` (wymagany także do tokenów push).
 2. `npx expo install --fix` (dociągnięcie wersji natywnych do SDK — patrz „aktualizacje" niżej).
-3. **Finalna grafika**: ikony/splash 1024² + adaptive (zastąpić czerwone placeholdery z `assets/`).
+3. ~~Finalna grafika~~ ✅ (#255) — monogram „E" + droga (czerń/czerwień), generowane skryptem `scripts/gen-mobile-assets.mjs` (icon/adaptive/splash/favicon).
 4. Dev build + **QA na urządzeniu**: login → zlecenia + status → zdjęcia z aparatu → formularze offline → push.
 5. `eas build -p android/ios --profile production` → `eas submit`.
 6. Konta deweloperskie: Apple Developer + Google Play Console; polityka prywatności + opisy uprawnień (już w `app.json`).
