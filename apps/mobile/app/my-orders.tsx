@@ -82,7 +82,10 @@ export default function MyOrdersScreen() {
       {err && <Text style={styles.err}>{err}</Text>}
       {msg && <Text style={styles.msg}>{msg}</Text>}
       {!loading && !err && orders.length === 0 && (
-        <Text style={styles.note}>Brak przypisanych zleceń.</Text>
+        <Text style={styles.note}>
+          Brak przypisanych zleceń — to normalne, jeśli spedytor jeszcze nic Ci nie przydzielił.
+          Lista odświeża się przy każdym wejściu; dostaniesz też push o nowym zleceniu.
+        </Text>
       )}
 
       {orders.map((o) => (

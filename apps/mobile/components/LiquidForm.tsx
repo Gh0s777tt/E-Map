@@ -97,11 +97,16 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         selectedId={vehicleId}
         onSelect={setVehicleId}
       />
-      {items.length > 0 && (
-        <Pressable style={styles.repeatBtn} onPress={repeatLast}>
-          <Text style={styles.repeatText}>↺ Powtórz ostatni</Text>
-        </Pressable>
-      )}
+      {/* #264: przycisk zawsze widoczny — bez historii disabled z wyjaśnieniem. */}
+      <Pressable
+        style={[styles.repeatBtn, items.length === 0 && styles.repeatBtnOff]}
+        onPress={repeatLast}
+        disabled={items.length === 0}
+      >
+        <Text style={styles.repeatText}>
+          {items.length > 0 ? "↺ Powtórz ostatni" : "↺ Powtórz ostatni — po pierwszym wpisie"}
+        </Text>
+      </Pressable>
 
       <Text style={styles.label}>Kraj</Text>
       <TextInput
@@ -223,6 +228,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnBusy: { opacity: 0.5 },
+  repeatBtnOff: { opacity: 0.45 },
   repeatBtn: {
     borderColor: palette.graphite,
     borderWidth: 1,

@@ -137,11 +137,16 @@ export default function TripScreen() {
         selectedId={vehicleId}
         onSelect={setVehicleId}
       />
-      {items.length > 0 && (
-        <Pressable style={styles.repeatBtn} onPress={repeatLast}>
-          <Text style={styles.repeatText}>↺ Powtórz ostatnie</Text>
-        </Pressable>
-      )}
+      {/* #264: przycisk zawsze widoczny — bez historii disabled z wyjaśnieniem. */}
+      <Pressable
+        style={[styles.repeatBtn, items.length === 0 && styles.repeatBtnOff]}
+        onPress={repeatLast}
+        disabled={items.length === 0}
+      >
+        <Text style={styles.repeatText}>
+          {items.length > 0 ? "↺ Powtórz ostatnie" : "↺ Powtórz ostatnie — po pierwszym wpisie"}
+        </Text>
+      </Pressable>
 
       <Text style={styles.label}>Akcja</Text>
       <View style={styles.chips}>
@@ -297,6 +302,7 @@ const styles = StyleSheet.create({
   },
   btnText: { color: palette.white, fontWeight: "700", fontSize: 16 },
   btnBusy: { opacity: 0.5 },
+  repeatBtnOff: { opacity: 0.45 },
   repeatBtn: {
     borderColor: palette.graphite,
     borderWidth: 1,

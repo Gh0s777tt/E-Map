@@ -426,8 +426,20 @@ export default function TripFormPage() {
           </Field>
         )}
 
-        {/* #248: zdjęcia załącznika (towar / CMR / dokument) trafiają na wybrane zlecenie. */}
+        {/* #248: zdjęcia załącznika (towar / CMR / dokument) trafiają na wybrane zlecenie.
+            #264: hinty, gdy sekcja ukryta — analogicznie do mobile (#263). */}
         {needsWeight && orderId && <CargoPhotos orderId={orderId} />}
+        {needsWeight && !orderId && orders.length > 0 && (
+          <p style={{ color: palette.smoke, fontSize: 13, margin: 0 }}>
+            📷 Wybierz zlecenie powyżej, aby dodać zdjęcia towaru / CMR — trafią prosto do niego.
+          </p>
+        )}
+        {needsWeight && orders.length === 0 && (
+          <p style={{ color: palette.smoke, fontSize: 13, margin: 0 }}>
+            📷 Brak otwartych zleceń — zapis załadunku/rozładunku bez powiązania jest dozwolony;
+            zdjęcia towaru / CMR dodasz po utworzeniu zlecenia.
+          </p>
+        )}
 
         <Field
           label={`${t("form.field.comment")}${commentRequired ? " (wymagane)" : ""}`}

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-263-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.116.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-264-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.117.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.117.0] — 🔦 Fala odkrywalności — audyt „ukrytych funkcji" web+mobile
+
+- `[#264]` 🔦 **Audyt odkrywalności po #263** (pytanie właściciela: „czy są jeszcze ukryte funkcje?") — przegląd wszystkich warunkowych renderów w web (32 strony) i mobile (20 plików). Naprawione 4 realne przypadki:
+  - **Web, formularz Trasa** ([`forms/trip/page.tsx`](apps/web/app/(app)/forms/trip/page.tsx)) — TEN SAM problem co mobile: sekcja zdjęć towaru/CMR znikała bez śladu; hinty jak w #263 + komunikat, gdy kierowca nie ma otwartych zleceń (zapis „bez powiązania" jest dozwolony).
+  - **Mobile, „Powtórz ostatni/ostatnie"** ([`trip.tsx`](apps/mobile/app/trip.tsx), [`LiquidForm.tsx`](apps/mobile/components/LiquidForm.tsx)) — przycisk pojawiał się dopiero PO pierwszym wpisie, więc nikt go nie odkrywał; teraz zawsze widoczny (disabled z dopiskiem „po pierwszym wpisie").
+  - **Mobile, Moje zlecenia** ([`my-orders.tsx`](apps/mobile/app/my-orders.tsx)) — pusty stan tłumaczy, że to normalne (spedytor nic nie przydzielił) i że będzie push.
+  - **Fałszywe alarmy audytu odrzucone świadomie:** mapa mobile ma zawsze fallback OSM · push ma projectId od `eas init` · 3D/ruch HERE/Fakturownia mają komunikaty (reaktywne — wystarczające) · nawigacja per-moduł to celowy design. Wersja mobile **1.31.0**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 464 testów · docs:check ✓.
 
 ## [1.116.1] — 📷 Odkrywalność zdjęć w formularzu Trasa (mobile)
 
