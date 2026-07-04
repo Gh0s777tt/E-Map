@@ -20,7 +20,9 @@ export default function PrivacyPage() {
         <h1 style={styles.title}>
           Polityka prywatności <span style={styles.accent}>E-Logistic</span>
         </h1>
-        <p style={styles.meta}>Obowiązuje od: 4 lipca 2026 · dotyczy aplikacji mobilnej i panelu web</p>
+        <p style={styles.meta}>
+          Obowiązuje od: 4 lipca 2026 · dotyczy aplikacji mobilnej i panelu web
+        </p>
 
         <h2 style={styles.h2}>1. Administrator danych</h2>
         <p style={styles.p}>
@@ -31,8 +33,8 @@ export default function PrivacyPage() {
         <h2 style={styles.h2}>2. Jakie dane przetwarzamy i po co</h2>
         <ul style={styles.ul}>
           <li>
-            <strong>Dane konta</strong> (adres e-mail, hasło w postaci skrótu, opcjonalnie passkey) —
-            logowanie i bezpieczeństwo konta.
+            <strong>Dane konta</strong> (adres e-mail, hasło w postaci skrótu, opcjonalnie passkey)
+            — logowanie i bezpieczeństwo konta.
           </li>
           <li>
             <strong>Dane kadrowe kierowcy</strong> (imię i nazwisko, dokumenty, terminy badań) —
@@ -41,8 +43,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Lokalizacja (dokładna, tylko podczas używania aplikacji)</strong> — wyłącznie do
-            pokazania Twojej pozycji na mapie TIR i POI w okolicy. Nie śledzimy lokalizacji w tle
-            i nie budujemy historii przemieszczania.
+            pokazania Twojej pozycji na mapie TIR i POI w okolicy. Nie śledzimy lokalizacji w tle i
+            nie budujemy historii przemieszczania.
           </li>
           <li>
             <strong>Zdjęcia</strong> (aparat/galeria) — dokumentacja ładunku, CMR i potwierdzenia
@@ -89,7 +91,9 @@ export default function PrivacyPage() {
 
         <h2 style={styles.h2}>7. Uprawnienia aplikacji mobilnej</h2>
         <ul style={styles.ul}>
-          <li>Lokalizacja „podczas używania" — mapa TIR (opcjonalna; bez zgody mapa pokazuje Europę).</li>
+          <li>
+            Lokalizacja „podczas używania" — mapa TIR (opcjonalna; bez zgody mapa pokazuje Europę).
+          </li>
           <li>Aparat i zdjęcia — dokumentacja ładunku (opcjonalne).</li>
           <li>Powiadomienia — alerty o zleceniach (opcjonalne).</li>
         </ul>
