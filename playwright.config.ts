@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 /**
@@ -28,10 +30,14 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: {
-      NEXT_PUBLIC_SUPABASE_URL:
-        process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "placeholder",
-    },
+    // Placeholdery TYLKO gdy nie ma prawdziwej konfiguracji (env albo apps/web/.env.local) —
+    // inaczej nadpisałyby ją i przepływy z sesją (authed.spec) by się nie zalogowały.
+    env:
+      process.env.NEXT_PUBLIC_SUPABASE_URL || existsSync(resolve(__dirname, "apps/web/.env.local"))
+        ? {}
+        : {
+            NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co",
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: "placeholder",
+          },
   },
 });

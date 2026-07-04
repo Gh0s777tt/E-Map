@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-261-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.115.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-262-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.116.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.116.0] — 🔐🎭 E2E z zalogowaną sesją — największa biała plama QA domknięta
+
+- `[#262]` 🎭 **Przepływy z sesją** ([`e2e/authed.spec.ts`](e2e/authed.spec.ts)) — biała plama „e2e (app) z sesją" z TEST_REPORT/BACKLOG P1:
+  - Dedykowane konto testowe na żywym Supabase (`e2e-tester@…` + firma „E2E Test Company", rola owner). Testy **tylko czytają** — idempotentne.
+  - Scenariusze: login (UI, hasło) → `/dashboard` z nawigacją · `/orders` renderuje pusty stan świeżej firmy · `/settings` pokazuje sekcję firmy właściciela. Razem z publicznymi: **12/12 E2E** (~24 s).
+  - Bez kompletu `E2E_EMAIL`/`E2E_PASSWORD` specy się pomijają (fork/PR z zewnątrz nie wybucha). [`playwright.config.ts`](playwright.config.ts): placeholdery Supabase tylko gdy brak prawdziwej konfiguracji (env / `apps/web/.env.local`) — inaczej by ją nadpisały.
+  - **CI**: sekrety `E2E_*` + `NEXT_PUBLIC_SUPABASE_*` ustawione w repo, krok E2E w [`ci.yml`](.github/workflows/ci.yml) podpięty pod nie.
+  - **Bramki:** biome czysto · `tsc` ×7 · 464 testów unit + 12 E2E · docs:check ✓.
 
 ## [1.115.0] — 🗂️ Indeks przestrzenny POI (koniec O(n·m)) + docs w pionie
 
