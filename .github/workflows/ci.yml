@@ -44,6 +44,12 @@ jobs:
       - name: Build web
         run: pnpm --filter @e-logistic/web build
 
+      - name: Playwright (chromium)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E (przepływy publiczne)
+        run: pnpm e2e
+
   rls:
     name: Audyt RLS
     runs-on: ubuntu-latest

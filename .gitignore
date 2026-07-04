@@ -48,3 +48,7 @@ coverage/
 *.keystore
 ios/Pods/
 android/.gradle/
+
+# Playwright
+test-results/
+playwright-report/

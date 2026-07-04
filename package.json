@@ -1,8 +1,8 @@
 {
   "name": "e-logistic",
-  "version": "1.108.0",
+  "version": "1.109.0",
   "private": true,
-  "description": "E-Logistic — platforma dla kierowców, spedytorów i firm transportowych (GH0ST EMPIRE)",
+  "description": "E-Logistic \u2014 platforma dla kierowc\u00f3w, spedytor\u00f3w i firm transportowych (GH0ST EMPIRE)",
   "license": "UNLICENSED",
   "packageManager": "pnpm@11.5.2",
   "engines": {
@@ -17,10 +17,12 @@
     "test": "turbo run test",
     "gen:types": "node scripts/gen-types.mjs",
     "audit:rls": "node scripts/audit-rls.mjs",
-    "docs:check": "node scripts/docs-check.mjs"
+    "docs:check": "node scripts/docs-check.mjs",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
+    "@playwright/test": "^1.61.1",
     "pg": "8.22.0",
     "turbo": "2.10.0",
     "typescript": "6.0.3"

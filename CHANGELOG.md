@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-253-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.108.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-254-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.109.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.109.0] — 🎭 Fundament E2E (Playwright) — przepływy publiczne + bramka auth w CI
+
+- `[#254]` 🎭 **Pierwsze testy E2E w repo** (biała plama z [TEST_REPORT](TEST_REPORT.md)) — Playwright (chromium, port dedykowany 3103, `workers: 1`, trace/screenshot na porażce):
+  - [`e2e/public.spec.ts`](e2e/public.spec.ts) — landing (marka + tytuł), formularz logowania (pola e-mail/hasło), strona resetu hasła.
+  - [`e2e/auth-guard.spec.ts`](e2e/auth-guard.spec.ts) — bramka `(app)/layout.tsx`: 5 reprezentatywnych tras (`/dashboard`, `/vehicles`, `/orders`, `/map`, `/settings`) bez sesji → redirect na `/login`.
+  - [`playwright.config.ts`](playwright.config.ts): dev-server on-demand z placeholderami Supabase (trasy publiczne nie potrzebują żywej bazy; bramka auth przy braku sesji i tak przekierowuje). `pnpm e2e` lokalnie; **CI** — kroki „Playwright (chromium)" + „E2E" w [`ci.yml`](.github/workflows/ci.yml).
+  - **8/8 zielone lokalnie** (~19 s). Przepływy z sesją (`(app)` po zalogowaniu) — kolejny etap (konto testowe, BACKLOG P1).
+  - **Bramki:** biome czysto · `tsc` ×7 · 458 testów unit + 8 E2E · docs:check ✓.
 
 ## [1.108.0] — 🗺️ Mobile M3 fala 1 — mapa MapLibre w aplikacji kierowcy
 
