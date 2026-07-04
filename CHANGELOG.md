@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-257-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.111.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-258-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.112.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.112.0] — 💧 AdBlue z opcją „do pełna" — web i mobile (parytet z dieslem)
+
+- `[#258]` 💧 **„Do pełna" w formularzu AdBlue** (prośba właściciela) — kolumna `adblue_logs.is_full` istniała od migracji 0017, ale UI ją ukrywał:
+  - **Web** ([`LiquidForm.tsx`](apps/web/components/LiquidForm.tsx)): checkbox widoczny dla obu cieczy — diesel „Zatankowano do pełna (liczenie spalania)", AdBlue „Dolano do pełna (liczenie zużycia AdBlue)". Edycja wpisu odczytuje `is_full` jak dotychczas.
+  - **Mobile** ([`LiquidForm.tsx`](apps/mobile/components/LiquidForm.tsx)): checkbox (dotąd mobile ZAWSZE zapisywał `is_full=true` z defaultu schematu) + „Powtórz ostatni" przenosi także tę flagę. Wersja mobile **1.30.0**.
+  - Dane pod przyszłe zużycie AdBlue full-to-full są od teraz wiarygodne.
+  - **Przy okazji (build #3 EAS):** `expo install --fix` wyrównał wersje natywne do SDK 56 — `expo-notifications` 0.29→56.0.19 i `expo-image-picker` 16→56.0.19 (stare wersje wywalały `compileReleaseKotlin` na EAS); zgodnie z regułą z [MOBILE-PLAN](docs/MOBILE-PLAN.md) („używaj expo install --fix, nie pnpm outdated").
+  - **Bramki:** biome czysto · `tsc` ×7 · 458 testów · docs:check ✓.
 
 ## [1.111.1] — 🔧 Fix pierwszego buildu EAS — pnpm 11 ignorował `node-linker` z .npmrc
 

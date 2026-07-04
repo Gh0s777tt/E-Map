@@ -356,20 +356,20 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           </Field>
         </div>
 
-        {kind === "fuel" && (
-          <label
-            style={{
-              color: palette.offWhite,
-              fontSize: 14,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
-            Zatankowano do pełna (potrzebne do liczenia spalania)
-          </label>
-        )}
+        <label
+          style={{
+            color: palette.offWhite,
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <input type="checkbox" checked={isFull} onChange={(e) => setIsFull(e.target.checked)} />
+          {kind === "fuel"
+            ? "Zatankowano do pełna (potrzebne do liczenia spalania)"
+            : "Dolano do pełna (potrzebne do liczenia zużycia AdBlue)"}
+        </label>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontSize: 12, color: palette.smoke }}>

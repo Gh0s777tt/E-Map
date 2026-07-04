@@ -20,6 +20,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const [odometer, setOdometer] = useState("");
   const [liters, setLiters] = useState("");
   const [payment, setPayment] = useState<"card" | "cash">("cash");
+  const [isFull, setIsFull] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<OutboxItem[]>([]);
@@ -48,6 +49,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
     if (input.paymentMethod === "card" || input.paymentMethod === "cash") {
       setPayment(input.paymentMethod);
     }
+    setIsFull(input.isFull !== false);
     setMsg("Wczytano dane z ostatniego wpisu — uzupełnij licznik i litry.");
   }
 
@@ -64,6 +66,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
       odometerKm: Number(odometer),
       liters: Number(liters),
       paymentMethod: payment,
+      isFull,
     });
     if (!parsed.success) {
       setMsg(firstZodError(parsed.error));
@@ -141,6 +144,17 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         ))}
       </View>
 
+      <Pressable style={styles.fullRow} onPress={() => setIsFull((v) => !v)}>
+        <View style={[styles.checkbox, isFull && styles.checkboxOn]}>
+          {isFull && <Text style={styles.checkboxTick}>✓</Text>}
+        </View>
+        <Text style={styles.fullLabel}>
+          {kind === "fuel"
+            ? "Zatankowano do pełna (liczenie spalania)"
+            : "Dolano do pełna (liczenie zużycia AdBlue)"}
+        </Text>
+      </Pressable>
+
       <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
         <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zapisz"}</Text>
       </Pressable>
@@ -188,6 +202,19 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: palette.red, borderColor: palette.red },
   chipText: { color: palette.offWhite },
   chipTextActive: { color: palette.white, fontWeight: "700" },
+  fullRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxOn: { backgroundColor: palette.red, borderColor: palette.red },
+  checkboxTick: { color: palette.white, fontSize: 14, fontWeight: "700" },
+  fullLabel: { color: palette.offWhite, fontSize: 14, flex: 1 },
   btn: {
     marginTop: 14,
     backgroundColor: palette.red,
