@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-262-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.116.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-263-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.116.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.116.1] — 📷 Odkrywalność zdjęć w formularzu Trasa (mobile)
+
+- `[#263]` 📷 **Zdjęcia towaru/CMR w Trasie były niewidoczne dla kierowców** (zgłoszenie właściciela: „powinna być opcja zrób zdjęcie") — funkcja istnieje od #248 (aparat/galeria/podpis, kategorie Towar/CMR/Dokument, auto-przypisanie do zlecenia), ale sekcja renderowała się dopiero po wybraniu zlecenia — bez żadnej wskazówki, że w ogóle jest.
+  - [`trip.tsx`](apps/mobile/app/trip.tsx): podpowiedź przy załadunku/rozładunku, gdy zlecenie niewybrane („Wybierz zlecenie powyżej, aby dodać zdjęcia…") oraz gdy kierowca nie ma otwartych zleceń (odsyła do „Moje zlecenia"). Wersja mobile **1.30.1**.
+  - **Bramki:** biome czysto · `tsc` ×7 · 464 testów · docs:check ✓.
 
 ## [1.116.0] — 🔐🎭 E2E z zalogowaną sesją — największa biała plama QA domknięta
 

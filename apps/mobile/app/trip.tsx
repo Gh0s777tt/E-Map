@@ -215,8 +215,20 @@ export default function TripScreen() {
         </>
       )}
 
-      {/* #248: zdjęcia załącznika (towar / CMR / dokument) trafiają na wybrane zlecenie. */}
+      {/* #248: zdjęcia załącznika (towar / CMR / dokument) trafiają na wybrane zlecenie.
+          #263: podpowiedzi, gdy sekcja ukryta — kierowcy nie widzieli, że funkcja istnieje. */}
       {needsWeight && orderId && <CargoPhotosMobile orderId={orderId} />}
+      {needsWeight && !orderId && orders.length > 0 && (
+        <Text style={styles.hint}>
+          📷 Wybierz zlecenie powyżej, aby dodać zdjęcia towaru / CMR — trafią prosto do niego.
+        </Text>
+      )}
+      {needsWeight && orders.length === 0 && (
+        <Text style={styles.hint}>
+          📷 Zdjęcia towaru / CMR dodasz po przypisaniu Ci otwartego zlecenia (ekran „Moje
+          zlecenia").
+        </Text>
+      )}
 
       <Text style={styles.label}>
         {t("form.field.comment")}
@@ -295,6 +307,7 @@ const styles = StyleSheet.create({
   },
   repeatText: { color: palette.offWhite, fontWeight: "600" },
   msg: { color: palette.smoke, marginTop: 10 },
+  hint: { color: palette.smoke, fontSize: 13, marginTop: 6, lineHeight: 18 },
   queue: {
     marginTop: 16,
     borderTopColor: palette.graphite,
