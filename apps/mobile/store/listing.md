@@ -68,3 +68,23 @@ Minimum 2, zalecane 4–8 (telefon, 16:9 lub natywne):
 - Dane osobowe (imię, e-mail): zbierane, cel: zarządzanie kontem/flotą. NIE udostępniane.
 - Identyfikatory urządzenia (token push): zbierane, cel: powiadomienia.
 - Dane szyfrowane w tranzycie: TAK. Możliwość żądania usunięcia: TAK (e-mail z polityki).
+
+## Test zamknięty — wymóg konta osobistego (12 testerów × 14 dni)
+
+Konto dewelopera jest **osobiste** (zweryfikowane 2026-07), więc przed pierwszą publikacją
+produkcyjną Google wymaga testu zamkniętego: **min. 12 testerów zapisanych nieprzerwanie
+przez 14 ostatnich dni**. Procedura:
+
+1. Play Console → **Testy → Test zamknięty** → utwórz ścieżkę (np. "Beta") → wgraj `.aab`.
+2. Zakładka **Testerzy** → utwórz listę e-mail (konta Google testerów) → zapisz → skopiuj
+   **link do dołączenia** (web + Android) i roześlij.
+3. Każdy tester MUSI kliknąć opt-in w linku i zainstalować apkę ze Sklepu. Licznik
+   aktywnych testerów widać w konsoli — pilnuj, żeby nie spadł poniżej 12 (dodaj 15–16 osób
+   na zapas).
+4. Po **14 nieprzerwanych dniach** w konsoli pojawi się **"Złóż wniosek o dostęp do
+   produkcji"** → formularz (jak testowano, co poprawiono) → zwykle akceptacja w kilka dni.
+5. W trakcie 14 dni można normalnie wgrywać kolejne wersje do tej samej ścieżki.
+
+Skąd wziąć 12 testerów: kierowcy/znajomi firmy · społeczność Discorda (E-Bot!) ·
+r/AndroidClosedTesting i grupy "closed testing" (wzajemne testowanie). Testerem może być
+każde konto Google — nie musi być aktywnym użytkownikiem logistyki.
