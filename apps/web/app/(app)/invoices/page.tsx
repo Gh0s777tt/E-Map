@@ -24,7 +24,7 @@ import {
   vatSummary,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
@@ -79,6 +79,23 @@ export default function InvoicesPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // #268: link kontekstowy ze zlecenia — ?focus=<id> otwiera fakturę i dowozi do wiersza.
+  const focusDone = useRef(false);
+  useEffect(() => {
+    if (focusDone.current || invoices.length === 0) return;
+    const id = new URLSearchParams(window.location.search).get("focus");
+    if (!id) return;
+    focusDone.current = true;
+    const inv = invoices.find((i) => i.id === id);
+    if (inv) {
+      setSelected(inv);
+      setTimeout(
+        () => document.getElementById(`inv-${id}`)?.scrollIntoView({ block: "center" }),
+        50,
+      );
+    }
+  }, [invoices]);
 
   async function cancel(inv: Invoice) {
     if (!(await confirm(`Anulować fakturę ${inv.number}? (numer zostanie zachowany)`))) return;
@@ -389,9 +406,22 @@ export default function InvoicesPage() {
           {filtered.map(({ inv, pay }) => {
             const cancelled = inv.status === "cancelled";
             return (
-              <div key={inv.id} style={{ ...styles.row, opacity: cancelled ? 0.55 : 1 }}>
+              <div
+                key={inv.id}
+                id={`inv-${inv.id}`}
+                style={{ ...styles.row, opacity: cancelled ? 0.55 : 1 }}
+              >
                 <button type="button" style={styles.rowMain} onClick={() => setSelected(inv)}>
                   <strong style={{ minWidth: 130 }}>{inv.number}</strong>
+                  {inv.order_id && (
+                    <a
+                      href={`/orders?focus=${inv.order_id}`}
+                      title="Pokaż zlecenie źródłowe"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      📦
+                    </a>
+                  )}
                   <span style={styles.dim}>{inv.issue_date}</span>
                   {cancelled ? (
                     <Badge color={palette.red}>Anulowana</Badge>

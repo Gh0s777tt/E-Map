@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-267-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.120.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-268-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.121.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.121.0] — 🔗 Zlecenie ↔ Faktura — linki kontekstowe w obie strony
+
+- `[#268]` 🔗 **Koniec skakania po ekranach** przy pytaniu „gdzie faktura do tego zlecenia?":
+  - [`orders`](apps/web/app/(app)/orders/page.tsx): ikona **🧾** przy zleceniu z fakturą (tooltip z numerem) → `/invoices?focus=<id>` otwiera szczegóły i dowozi do wiersza; slim mapa zlecenie→faktura (3 kolumny).
+  - [`invoices`](apps/web/app/(app)/invoices/page.tsx): ikona **📦** przy fakturze ze zleceniem źródłowym → `/orders?focus=<id>` otwiera edycję zlecenia; obsługa `?focus` + scroll.
+  - „Pokaż na mapie" ze zlecenia i prefill `?from&to` istniały już wcześniej (audyt się mylił) — dopięto brakującą parę zlecenie↔faktura.
+  - **Bramki:** `pnpm check` ✓ (biome · tsc ×7 · 472 testy · docs).
 
 ## [1.120.0] — 🛠️ Szybkie wygrane techniczne (audyt 2026-07-05)
 

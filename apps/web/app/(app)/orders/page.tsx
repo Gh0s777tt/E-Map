@@ -32,7 +32,7 @@ import {
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";
 import { CmrDoc } from "@/components/CmrDoc";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -156,6 +156,8 @@ export default function OrdersPage() {
   const [sort, setSort] = useState<OrderSort>("date_desc");
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [invByOrder, setInvByOrder] = useState<Record<string, { id: string; number: string }>>({});
+  const focusDone = useRef(false);
   const [referenceNo, setReferenceNo] = useState("");
   const [shipper, setShipper] = useState("");
   const [consignee, setConsignee] = useState("");
@@ -210,6 +212,17 @@ export default function OrdersPage() {
           .then((r) => r.data ?? []),
       ]);
       setOrders(ord);
+      // #268: mapa zlecenie→faktura (slim) — link 🧾 na wierszu zlecenia.
+      sb.from("invoices")
+        .select("id, number, order_id")
+        .not("order_id", "is", null)
+        .then((r) => {
+          const map: Record<string, { id: string; number: string }> = {};
+          for (const row of r.data ?? []) {
+            if (row.order_id) map[row.order_id] = { id: row.id, number: row.number };
+          }
+          setInvByOrder(map);
+        });
       setCompany(comp);
       setMembers(mem);
       setContractors(contr);
@@ -226,6 +239,22 @@ export default function OrdersPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // #268: link kontekstowy z faktury — ?focus=<orderId> otwiera edycję zlecenia.
+  useEffect(() => {
+    if (focusDone.current || orders.length === 0) return;
+    const id = new URLSearchParams(window.location.search).get("focus");
+    if (!id) return;
+    focusDone.current = true;
+    const o = orders.find((x) => x.id === id);
+    if (o) {
+      startEdit(o);
+      setTimeout(
+        () => document.getElementById(`ord-${id}`)?.scrollIntoView({ block: "center" }),
+        50,
+      );
+    }
+  }, [orders]);
 
   const regOf = (id: string | null) =>
     id ? (vehicles.find((v) => v.id === id)?.registration ?? "—") : "—";
@@ -862,6 +891,18 @@ export default function OrdersPage() {
                       </option>
                     ))}
                   </select>
+                  {(() => {
+                    const inv = invByOrder[o.id];
+                    return inv ? (
+                      <a
+                        href={`/invoices?focus=${inv.id}`}
+                        title={`Faktura ${inv.number}`}
+                        style={{ alignSelf: "center" }}
+                      >
+                        🧾
+                      </a>
+                    ) : null;
+                  })()}
                   <Button variant="ghost" onClick={() => startEdit(o)}>
                     ✏️
                   </Button>
