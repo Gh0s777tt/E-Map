@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-268-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.121.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-269-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.122.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.122.0] — ⏱️ ETA per przystanek — „u klienta o 14:30"
+
+- `[#269]` ⏱️ **Okna dostaw dla klienta** — silnik multileg liczył czasy odcinków, ale je gubił przy agregacji:
+  - [`types.ts`](packages/maps/src/types.ts)/[`multileg.ts`](packages/maps/src/multileg.ts): `RouteSegment.durationMin` (HERE/GraphHopper przez adaptery; [`mock.ts`](packages/maps/src/mock.ts) estymuje ~65 km/h spójnie z całkowitą).
+  - [`RouteSummary`](apps/web/app/(app)/map/mapPanels.tsx): lista „ETA przystanków (start teraz)" — zegar przyjazdu + skumulowany czas jazdy per przystanek.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.121.0] — 🔗 Zlecenie ↔ Faktura — linki kontekstowe w obie strony
 

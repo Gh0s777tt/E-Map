@@ -40,6 +40,8 @@ export interface RouteSegment {
   to: LatLng;
   distanceKm: number;
   tollCost: number;
+  /** Czas jazdy odcinka [min] — #269: ETA per przystanek. */
+  durationMin: number;
 }
 
 export interface RouteResult {

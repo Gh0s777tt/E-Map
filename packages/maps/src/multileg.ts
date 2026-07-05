@@ -25,7 +25,13 @@ export async function routeMultiLeg(
     if (!from || !to) continue;
 
     const leg = await provider.route({ ...req, waypoints: [from, to] });
-    segments.push({ from, to, distanceKm: leg.distanceKm, tollCost: leg.tollCost });
+    segments.push({
+      from,
+      to,
+      distanceKm: leg.distanceKm,
+      tollCost: leg.tollCost,
+      durationMin: leg.durationMin,
+    });
     for (const p of i === 1 ? leg.geometry : leg.geometry.slice(1)) geometry.push(p);
     distanceKm += leg.distanceKm;
     durationMin += leg.durationMin;

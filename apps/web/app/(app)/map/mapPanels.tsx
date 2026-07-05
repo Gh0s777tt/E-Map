@@ -39,6 +39,31 @@ export function RouteSummary({
         <Row k="Paliwo (szac.)" v={`${fuelTotal} ${result.currency}`} />
         <div style={{ height: 1, background: cssPalette.graphite, margin: "2px 0" }} />
         <Row k="Razem (myto+paliwo)" v={`${grandTotal} ${result.currency}`} />
+        {result.segments.length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <div style={{ color: cssPalette.smoke, fontSize: 12, marginBottom: 2 }}>
+              ETA przystanków (start teraz):
+            </div>
+            {(() => {
+              let cum = 0;
+              const start = Date.now();
+              return result.segments.map((seg, i) => {
+                cum += seg.durationMin ?? 0;
+                const eta = new Date(start + cum * 60_000);
+                const hh = String(eta.getHours()).padStart(2, "0");
+                const mm = String(eta.getMinutes()).padStart(2, "0");
+                return (
+                  <Row
+                    // biome-ignore lint/suspicious/noArrayIndexKey: segmenty są pozycyjne
+                    key={`eta-${i * 1}`}
+                    k={`→ przystanek ${i + 1}`}
+                    v={`${hh}:${mm} (po ${formatDuration(cum)})`}
+                  />
+                );
+              });
+            })()}
+          </div>
+        )}
         <Row k="Dostawca" v={result.provider} />
       </div>
 

@@ -35,7 +35,14 @@ export class MockRoutingProvider implements RoutingProvider {
       if (!from || !to) continue;
       const segDistance = round2(haversineKm(from, to));
       const segToll = estimateTollEur(segDistance, { weightKg, avoidTolls });
-      segments.push({ from, to, distanceKm: segDistance, tollCost: segToll });
+      // ~65 km/h średnia TIR — spójnie z estymatą całkowitą mocka.
+      segments.push({
+        from,
+        to,
+        distanceKm: segDistance,
+        tollCost: segToll,
+        durationMin: round2((segDistance / 65) * 60),
+      });
       geometry.push(to);
       distanceKm += segDistance;
       tollCost += segToll;

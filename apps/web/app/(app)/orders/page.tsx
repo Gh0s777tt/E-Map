@@ -241,6 +241,7 @@ export default function OrdersPage() {
   }, [load]);
 
   // #268: link kontekstowy z faktury — ?focus=<orderId> otwiera edycję zlecenia.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: jednorazowy focus po załadowaniu listy
   useEffect(() => {
     if (focusDone.current || orders.length === 0) return;
     const id = new URLSearchParams(window.location.search).get("focus");
