@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-265-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.118.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-267-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.120.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,22 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.120.0] — 🛠️ Szybkie wygrane techniczne (audyt 2026-07-05)
+
+- `[#267]` 🛠️ Cztery domknięcia z analizy technicznej:
+  - **Rate-limit na rejestracji passkey** — `/api/passkey/register/options` i `/verify` (klucz `passkey-reg`, 429) — anty brute-force; ostatnie niechronione mutacje API.
+  - **`pnpm check`** — lint+typecheck+testy+docs jednym poleceniem (parytet z konwencją E-Bot).
+  - **Auto-flush web outboxu po powrocie online** ([`outbox.ts`](apps/web/lib/outbox.ts) `flushQueued`/`initOutboxAutoFlush`, uzbrajane w [`AppSidebar`](apps/web/components/AppSidebar.tsx)) — mobile robił to od zawsze, web dopiero przy następnym zapisie.
+  - **Aktualizacje**: biome 2.5.1→2.5.2 (+ nowe reguły: schema, env-vars w turbo.json, formaty — dopięte), turbo 2.10.0→2.10.3.
+  - **Bramki:** `pnpm check` exit 0 (biome · tsc ×7 · 472 testy · docs) ✓.
+
+## [1.119.0] — ⚡ /orders bez balastu — slim zapytania kosztu transportu
+
+- `[#266]` ⚡ **Najcięższa strona panelu odchudzona** — `/orders` pobierał do **3×5000 pełnych wierszy** (trip_events + fuel_logs + adblue_logs, ~MB JSON) tylko po to, by policzyć koszt transportu (#246). Teraz ([`orders/page.tsx`](apps/web/app/(app)/orders/page.tsx)):
+  - trasy: wyłącznie wiersze **powiązane ze zleceniem** (`order_id is not null`) i 5 kolumn,
+  - tankowania/AdBlue: 4 kolumny, najnowsze 2000 (koszt/km to metryka krocząca) — semantyka #246 bez zmian, payload spada o ~95%.
+  - **Bramki:** biome · tsc ×7 · 472 testy · docs ✓.
 
 ## [1.118.0] — 🧾 Rozliczenie miesięczne kierowcy — generator wg formularza właściciela
 

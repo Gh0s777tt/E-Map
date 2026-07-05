@@ -103,3 +103,21 @@ function errorMessage(e: unknown): string {
   }
   return "Błąd synchronizacji";
 }
+
+/** Próba synchronizacji wszystkich niewysłanych wpisów (np. po powrocie sieci). */
+export async function flushQueued(): Promise<void> {
+  for (const it of read()) {
+    if (it.status !== "synced") await trySync(it.id);
+  }
+}
+
+let autoFlushArmed = false;
+
+/** #267: auto-flush outboxu po powrocie online (mobile robi to od zawsze). Idempotentne. */
+export function initOutboxAutoFlush(): void {
+  if (autoFlushArmed || typeof window === "undefined") return;
+  autoFlushArmed = true;
+  window.addEventListener("online", () => {
+    void flushQueued();
+  });
+}

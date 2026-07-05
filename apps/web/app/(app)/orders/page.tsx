@@ -9,9 +9,7 @@ import {
   getCompany,
   listCompanyMembers,
   listContractors,
-  listFuelLogs,
   listOrders,
-  listTripEvents,
   type Order,
   saveOrder,
   setOrderStatus,
@@ -190,10 +188,26 @@ export default function OrdersPage() {
         getCompany(sb, m.companyId),
         manage ? listCompanyMembers(sb) : Promise.resolve([]),
         manage ? listContractors(sb, m.companyId) : Promise.resolve([]),
-        // Koszt transportu (#246): trasy z order_id + tankowania → koszt/km. RLS ogranicza do firmy.
-        listTripEvents(sb, { limit: 5000 }).catch(() => []),
-        listFuelLogs(sb, { limit: 5000 }).catch(() => []),
-        listFuelLogs(sb, { table: "adblue_logs", limit: 5000 }).catch(() => []),
+        // Koszt transportu (#246, slim #266): tylko trasy POWIĄZANE ze zleceniem
+        // (ułamek tabeli) i 4 kolumny tankowań — zamiast 3×5000 pełnych wierszy.
+        sb
+          .from("trip_events")
+          .select("order_id, action, vehicle_id, odometer_km, created_at")
+          .not("order_id", "is", null)
+          .limit(5000)
+          .then((r) => r.data ?? []),
+        sb
+          .from("fuel_logs")
+          .select("vehicle_id, odometer_km, liters, price_total")
+          .order("created_at", { ascending: false })
+          .limit(2000)
+          .then((r) => r.data ?? []),
+        sb
+          .from("adblue_logs")
+          .select("vehicle_id, odometer_km, liters, price_total")
+          .order("created_at", { ascending: false })
+          .limit(2000)
+          .then((r) => r.data ?? []),
       ]);
       setOrders(ord);
       setCompany(comp);

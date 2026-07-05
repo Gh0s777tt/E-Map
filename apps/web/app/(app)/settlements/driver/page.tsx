@@ -329,6 +329,7 @@ export default function DriverSettlementPage() {
               </label>
             </div>
             {weeks.map((w, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: tygodnie są czysto pozycyjne (Tydzień 1..N)
               <div key={`w-${i * 1}`} style={styles.weekRow}>
                 <span style={{ width: 90, color: palette.smoke }}>Tydzień {i + 1}</span>
                 <input
@@ -407,6 +408,7 @@ export default function DriverSettlementPage() {
                   <td style={styles.num}>{zl(result.normBonus)}</td>
                 </tr>
                 {weeks.map((w, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: wiersze pozycyjne (Tydzień 1..N)
                   <tr key={`p-${i * 1}`} style={styles.blue}>
                     <td>
                       <strong>Tydzień {i + 1}</strong> | dni | km | stawka

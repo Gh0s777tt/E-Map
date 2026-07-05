@@ -19,18 +19,14 @@
     "SUPABASE_DB_URL",
     "SUPABASE_DB_HOST",
     "E2E_EMAIL",
-    "E2E_PASSWORD"
+    "E2E_PASSWORD",
+    "SUPABASE_MGMT_TOKEN",
+    "SUPABASE_PROJECT_REF"
   ],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "dist/**",
-        ".next/**",
-        "!.next/cache/**"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {
       "cache": false,
@@ -38,14 +34,10 @@
     },
     "lint": {},
     "typecheck": {
-      "dependsOn": [
-        "^build"
-      ]
+      "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": [
-        "^build"
-      ]
+      "dependsOn": ["^build"]
     }
   }
 }

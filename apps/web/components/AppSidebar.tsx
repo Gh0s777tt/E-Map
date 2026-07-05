@@ -1,13 +1,14 @@
 "use client";
 
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { NotificationBell } from "@/components/NotificationBell";
 import { type NavGroup, SidebarNav } from "@/components/SidebarNav";
 import { SignOutButton } from "@/components/SignOutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { initOutboxAutoFlush } from "@/lib/outbox";
 
 /**
  * Powłoka sidebara z mobilnym drawerem. Desktop (>820px): pełny boczny panel.
@@ -23,6 +24,11 @@ export function AppSidebar({
   email: string;
   supabaseConfigured: boolean;
 }) {
+  // #267: uzbrojenie auto-flusha outboxu (sidebar jest zawsze zamontowany w (app)).
+  useEffect(() => {
+    initOutboxAutoFlush();
+  }, []);
+
   const [open, setOpen] = useState(false);
   return (
     <aside className={open ? "app-sidebar open" : "app-sidebar"}>

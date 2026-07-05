@@ -3,12 +3,17 @@ import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import { NextResponse } from "next/server";
 import { REG_COOKIE, rpFromRequest } from "@/lib/passkey";
+import { rateLimit } from "@/lib/ratelimit";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 /** Weryfikuje rejestrację passkey i zapisuje klucz dla zalogowanego użytkownika. */
 export async function POST(request: Request) {
+  // #267: limit prób rejestracji passkey (anty brute-force / enumeracja).
+  if (!(await rateLimit(request, "passkey-reg")).ok) {
+    return NextResponse.json({ error: "Za dużo prób — spróbuj za chwilę." }, { status: 429 });
+  }
   const supabase = await getServerSupabase();
   const {
     data: { user },
