@@ -15,6 +15,8 @@ export interface DriverPayoutRecord {
 
 export interface DriverPayoutInput {
   driverName?: string | null;
+  /** #271: FK do kartoteki — spójna tożsamość kierowcy obok nazwy. */
+  driverId?: string | null;
   kind: PayoutKind;
   amount: number;
   currency: string;
@@ -49,6 +51,7 @@ export async function insertDriverPayout(
     .insert({
       company_id: companyId,
       driver_name: input.driverName?.trim() || null,
+      driver_id: input.driverId ?? null,
       kind: input.kind,
       amount: input.amount,
       currency: input.currency,

@@ -14,6 +14,8 @@ export interface WorkTimeRecord {
 
 export interface WorkTimeInput {
   driverName?: string | null;
+  /** #271: FK do kartoteki — spójna tożsamość kierowcy obok nazwy. */
+  driverId?: string | null;
   workDate: string;
   driving: number;
   otherWork: number;
@@ -48,6 +50,7 @@ export async function insertWorkTimeEntry(
     .insert({
       company_id: companyId,
       driver_name: input.driverName?.trim() || null,
+      driver_id: input.driverId ?? null,
       work_date: input.workDate,
       driving: input.driving,
       other_work: input.otherWork,

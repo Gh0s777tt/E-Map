@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  type DriverRow,
   deletePerDiemTrip,
   insertPerDiemTrip,
+  listDrivers,
   listPerDiemTrips,
   type PerDiemTrip,
 } from "@e-logistic/api";
@@ -48,6 +50,8 @@ function toTrip(t: PerDiemTrip): DietTrip {
 export default function PerDiemPage() {
   const confirm = useConfirm();
   const [driver, setDriver] = useState("");
+  // #271: kartoteka do podpowiedzi + FK driver_id przy zapisie.
+  const [driversList, setDriversList] = useState<DriverRow[]>([]);
   const [tripDate, setTripDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [saved, setSaved] = useState<PerDiemTrip[]>([]);
@@ -67,6 +71,9 @@ export default function PerDiemPage() {
       const manage = m.role === "owner" || m.role === "dispatcher";
       setCanManage(manage);
       setCompanyId(m.companyId);
+      listDrivers(sb, m.companyId)
+        .then(setDriversList)
+        .catch(() => {});
       if (manage) setSaved(await listPerDiemTrips(sb, m.companyId));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Nie udało się pobrać diet.");
@@ -106,6 +113,12 @@ export default function PerDiemPage() {
           sb,
           {
             driverName: driver,
+            driverId:
+              driversList.find(
+                (d) =>
+                  `${d.first_name} ${d.last_name}`.trim().toLowerCase() ===
+                  driver.trim().toLowerCase(),
+              )?.id ?? null,
             destination: r.destination,
             mode: r.mode,
             hours: r.hours,
@@ -204,9 +217,15 @@ export default function PerDiemPage() {
           <input
             style={f.input}
             value={driver}
+            list="drivers-dl"
             onChange={(e) => setDriver(e.target.value)}
             placeholder="Imię i nazwisko"
           />
+          <datalist id="drivers-dl">
+            {driversList.map((d) => (
+              <option key={d.id} value={`${d.first_name} ${d.last_name}`.trim()} />
+            ))}
+          </datalist>
         </div>
         <div style={{ ...f.field, maxWidth: 180 }}>
           <span style={f.label}>Data podróży</span>

@@ -2,9 +2,11 @@
 
 import {
   type DriverPayoutRecord,
+  type DriverRow,
   deleteDriverPayout,
   insertDriverPayout,
   listDriverPayouts,
+  listDrivers,
 } from "@e-logistic/api";
 import {
   PAYOUT_KIND_LABELS,
@@ -44,6 +46,8 @@ function emptyRow(): Row {
 export default function PayoutsPage() {
   const confirm = useConfirm();
   const [driver, setDriver] = useState("");
+  // #271: kartoteka do podpowiedzi + FK driver_id przy zapisie.
+  const [driversList, setDriversList] = useState<DriverRow[]>([]);
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [saved, setSaved] = useState<DriverPayoutRecord[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -63,6 +67,9 @@ export default function PayoutsPage() {
       const manage = m.role === "owner" || m.role === "dispatcher";
       setCanManage(manage);
       setCompanyId(m.companyId);
+      listDrivers(sb, m.companyId)
+        .then(setDriversList)
+        .catch(() => {});
       if (manage)
         setSaved(await listDriverPayouts(sb, m.companyId, driver ? { driverName: driver } : {}));
     } catch (e) {
@@ -104,6 +111,12 @@ export default function PayoutsPage() {
           sb,
           {
             driverName: driver,
+            driverId:
+              driversList.find(
+                (d) =>
+                  `${d.first_name} ${d.last_name}`.trim().toLowerCase() ===
+                  driver.trim().toLowerCase(),
+              )?.id ?? null,
             kind: r.kind,
             amount: r.amount,
             currency: r.currency,
@@ -194,9 +207,15 @@ export default function PayoutsPage() {
         <input
           style={f.input}
           value={driver}
+          list="drivers-dl"
           onChange={(e) => setDriver(e.target.value)}
           placeholder="Imię i nazwisko"
         />
+        <datalist id="drivers-dl">
+          {driversList.map((d) => (
+            <option key={d.id} value={`${d.first_name} ${d.last_name}`.trim()} />
+          ))}
+        </datalist>
       </div>
 
       <div style={f.card}>

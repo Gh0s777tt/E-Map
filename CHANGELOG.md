@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-270-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.123.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-271-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.124.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.124.0] — 🧑‍✈️ Kierowca jako encja w HR — driver_id w wypłatach, dietach i czasie pracy
+
+- `[#271]` 🧑‍✈️ **Koniec tożsamości „po sznurku"** — wypłaty/diety/czas pracy trzymały kierowcę wyłącznie jako wolny tekst (literówka „adam" ≠ „Adam" = rozjazd agregatów):
+  - **Migracja [`0058_hr_driver_id.sql`](supabase/migrations/0058_hr_driver_id.sql)** — `driver_id` (FK→drivers, `on delete set null`) + indeksy w 3 tabelach; **backfill deszyfruje PII** (pgp_sym jak `list_drivers`) i dopasowuje po znormalizowanej nazwie w firmie tylko przy JEDNOZNACZNYM trafieniu. ✅ Zastosowana na żywej bazie, typy zregenerowane.
+  - **API**: `driverId` w inputach 3 modułów ([`driverPayouts`](packages/api/src/data/driverPayouts.ts), [`perDiemTrips`](packages/api/src/data/perDiemTrips.ts), [`workTimeEntries`](packages/api/src/data/workTimeEntries.ts)).
+  - **UI**: pola „Kierowca" w [`/payouts`](apps/web/app/(app)/payouts/page.tsx), [`/per-diem`](apps/web/app/(app)/per-diem/page.tsx), [`/work-time`](apps/web/app/(app)/work-time/page.tsx) dostały **podpowiedzi z kartoteki** (datalist) — wybór z listy zapisuje FK, wolny tekst dalej działa (kompatybilność).
+  - Przy okazji: nagłówki ARCHITECTURE/DATA-MODEL/MOBILE-PLAN w pionie.
+  - **Bramki:** `pnpm check` ✓ (biome · tsc ×7 · 472 testy · docs).
 
 ## [1.123.0] — 📎 Dowody w szkodach OC — zdjęcia i skany na karcie szkody
 

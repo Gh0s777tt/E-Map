@@ -396,6 +396,7 @@ export interface Database {
           note: string | null;
           created_by: string | null;
           created_at: string;
+          driver_id: string | null;
         };
         Insert: {
           id?: string;
@@ -408,6 +409,7 @@ export interface Database {
           note?: string | null;
           created_by?: string | null;
           created_at?: string;
+          driver_id?: string | null;
         };
         Update: {
           id?: string;
@@ -420,6 +422,7 @@ export interface Database {
           note?: string | null;
           created_by?: string | null;
           created_at?: string;
+          driver_id?: string | null;
         };
         Relationships: [];
       };
@@ -1136,6 +1139,7 @@ export interface Database {
           note: string | null;
           created_by: string | null;
           created_at: string;
+          driver_id: string | null;
         };
         Insert: {
           id?: string;
@@ -1150,6 +1154,7 @@ export interface Database {
           note?: string | null;
           created_by?: string | null;
           created_at?: string;
+          driver_id?: string | null;
         };
         Update: {
           id?: string;
@@ -1164,6 +1169,7 @@ export interface Database {
           note?: string | null;
           created_by?: string | null;
           created_at?: string;
+          driver_id?: string | null;
         };
         Relationships: [];
       };
@@ -1686,6 +1692,7 @@ export interface Database {
           note: string | null;
           created_by: string | null;
           created_at: string;
+          driver_id: string | null;
         };
         Insert: {
           id?: string;
@@ -1698,6 +1705,7 @@ export interface Database {
           note?: string | null;
           created_by?: string | null;
           created_at?: string;
+          driver_id?: string | null;
         };
         Update: {
           id?: string;
@@ -1710,6 +1718,7 @@ export interface Database {
           note?: string | null;
           created_by?: string | null;
           created_at?: string;
+          driver_id?: string | null;
         };
         Relationships: [];
       };

@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.31.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.117.0 (#264) · 2026-07-04
+> Stan: **v1.31.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.124.0 (#271) · 2026-07-04
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.

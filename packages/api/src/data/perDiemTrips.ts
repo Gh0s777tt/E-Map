@@ -17,6 +17,8 @@ export interface PerDiemTrip {
 
 export interface PerDiemTripInput {
   driverName?: string | null;
+  /** #271: FK do kartoteki — spójna tożsamość kierowcy obok nazwy. */
+  driverId?: string | null;
   destination?: string | null;
   mode: DietMode;
   hours: number;
@@ -54,6 +56,7 @@ export async function insertPerDiemTrip(
     .insert({
       company_id: companyId,
       driver_name: input.driverName?.trim() || null,
+      driver_id: input.driverId ?? null,
       destination: input.destination?.trim() || null,
       mode: input.mode,
       hours: input.hours,
