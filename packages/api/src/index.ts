@@ -7,6 +7,7 @@ export * from "./data/audit";
 export * from "./data/companies";
 export * from "./data/contractors";
 export * from "./data/damageClaims";
+export * from "./data/damagePhotos";
 export * from "./data/defects";
 export * from "./data/dev";
 export * from "./data/documents";

@@ -19,6 +19,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
+import { DamagePhotos } from "@/components/DamagePhotos";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { Button, PageHeader } from "@/components/ui";
@@ -333,6 +334,7 @@ export default function DamageClaimsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {claims.map((c) => (
             <div key={c.id} style={f.card}>
+              {companyId && <DamagePhotos companyId={companyId} claimId={c.id} />}
               <div style={f.listRow}>
                 <span style={{ width: 100, fontWeight: 700 }}>{c.claim_date}</span>
                 <span style={{ ...f.cell, width: 100 }}>🚚 {regOf(c.vehicle_id)}</span>

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-269-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.122.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-270-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.123.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.123.0] — 📎 Dowody w szkodach OC — zdjęcia i skany na karcie szkody
+
+- `[#270]` 📎 **Rejestr szkód z dowodami** — dotąd sama metryka (status/koszt/ubezpieczyciel), bez miejsca na zdjęcia uszkodzeń czy protokół:
+  - **Bez migracji**: pliki w prywatnym buckecie `cargo-photos` pod `{companyId}/damage-{claimId}/…` — istniejące polityki storage (prefiks=firma, RLS 0044) obejmują je automatycznie. Metadane = listing bucketa.
+  - **API** [`damagePhotos.ts`](packages/api/src/data/damagePhotos.ts): list (podpisane URL-e 10 min, batch), upload (zdjęcia + PDF), remove.
+  - **UI** [`DamagePhotos`](apps/web/components/DamagePhotos.tsx): zwijana sekcja „📎 Dowody szkody" na każdej karcie w [`/damages`](apps/web/app/(app)/damages/page.tsx) — siatka miniatur (klik = pełny podgląd), multi-upload, usuwanie wg roli.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.122.0] — ⏱️ ETA per przystanek — „u klienta o 14:30"
 
