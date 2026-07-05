@@ -3,12 +3,15 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import {
+  type DriverRow,
   deleteSavedPlace,
   insertMapReport,
   insertSavedPlace,
   listActiveMapReports,
+  listDrivers,
   listSavedPlaces,
   type SavedPlace,
+  sendDriverRoute,
 } from "@e-logistic/api";
 import {
   FUEL_CARD_PROVIDER_LABELS,
@@ -113,6 +116,10 @@ export default function MapPage() {
   const [savedCat, setSavedCat] = useState<SavedPlaceCategory>("company");
   const [deltaMsg, setDeltaMsg] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+  // #272: wysyłka trasy do kierowcy (owner/dispatcher) — kartoteka ładowana leniwie.
+  const [sendDrivers, setSendDrivers] = useState<DriverRow[] | null>(null);
+  const [sendDriverId, setSendDriverId] = useState("");
+  const [sendBusy, setSendBusy] = useState(false);
 
   // Wymiary TIR (do routingu HERE) + filtr stacji wg kart flotowych.
   const { cards } = useFleet();
@@ -686,6 +693,51 @@ export default function MapPage() {
     }
   }
 
+  async function openSendToDriver() {
+    if (sendDrivers) {
+      setSendDrivers(null);
+      return;
+    }
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) return;
+      setSendDrivers(await listDrivers(sb, m.companyId));
+    } catch {
+      setShareMsg("Kartoteka kierowców dostępna dla właściciela/spedytora.");
+    }
+  }
+
+  async function sendRouteToDriver() {
+    if (!companyId || !sendDriverId || sendBusy) return;
+    const geo = routeGeoRef.current;
+    setSendBusy(true);
+    try {
+      const first = stops[0]?.label ?? "";
+      const last = stops[stops.length - 1]?.label ?? "";
+      await sendDriverRoute(getBrowserSupabase(), companyId, sendDriverId, {
+        name: `${first} → ${last}`,
+        stops: stops.map((st) => ({ lat: st.lat, lng: st.lng, label: st.label })),
+        geometry: (geo ?? []).map((pt) => [pt.lng, pt.lat] as [number, number]),
+        summary: result
+          ? {
+              distanceKm: result.distanceKm,
+              durationMin: result.durationMin,
+              tollCost: result.tollCost,
+              currency: result.currency,
+            }
+          : {},
+      });
+      setShareMsg("📤 Trasa wysłana — kierowca zobaczy ją na mapie w aplikacji.");
+      setSendDrivers(null);
+      setSendDriverId("");
+    } catch (e) {
+      setShareMsg(e instanceof Error ? e.message : "Nie udało się wysłać trasy.");
+    } finally {
+      setSendBusy(false);
+    }
+  }
+
   function shareRoute() {
     const r = stops
       .map((s) => `${s.lat.toFixed(5)},${s.lng.toFixed(5)},${encodeURIComponent(s.label)}`)
@@ -1004,6 +1056,33 @@ export default function MapPage() {
           >
             🔗 Udostępnij trasę
           </button>
+          <button type="button" className={styles.ghost} onClick={openSendToDriver}>
+            📤 Wyślij kierowcy
+          </button>
+          {sendDrivers && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <select
+                style={{ flex: 1, minWidth: 0 }}
+                value={sendDriverId}
+                onChange={(e) => setSendDriverId(e.target.value)}
+              >
+                <option value="">— wybierz kierowcę —</option>
+                {sendDrivers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.first_name} {d.last_name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className={styles.ghost}
+                disabled={!sendDriverId || sendBusy}
+                onClick={sendRouteToDriver}
+              >
+                {sendBusy ? "…" : "Wyślij"}
+              </button>
+            </div>
+          )}
           {shareMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{shareMsg}</div>}
           {deltaMsg && (
             <div

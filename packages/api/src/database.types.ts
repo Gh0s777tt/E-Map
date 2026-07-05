@@ -456,6 +456,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      driver_routes: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_id: string;
+          driver_user_id: string | null;
+          name: string;
+          stops: Json;
+          geometry: Json;
+          summary: Json;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          driver_id: string;
+          driver_user_id?: string | null;
+          name?: string;
+          stops?: Json;
+          geometry?: Json;
+          summary?: Json;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_id?: string;
+          driver_user_id?: string | null;
+          name?: string;
+          stops?: Json;
+          geometry?: Json;
+          summary?: Json;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       drivers: {
         Row: {
           id: string;
@@ -1842,6 +1881,17 @@ export interface Database {
           p_status: Database["public"]["Enums"]["order_status"] | null;
         };
         Returns: undefined;
+      };
+      send_driver_route: {
+        Args: {
+          p_company: string | null;
+          p_driver: string | null;
+          p_name: string | null;
+          p_stops: Json | null;
+          p_geometry: Json | null;
+          p_summary: Json | null;
+        };
+        Returns: string;
       };
     };
     Enums: {

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-271-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.124.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-272-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.125.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.125.0] — 📤 „Wyślij trasę kierowcy" — most dyspozytor→kierowca (M3 fala 2)
+
+- `[#272]` 📤 **Domknięta pętla planowania**: dyspozytor planuje trasę TIR na web (myto, omijanie, ETA), klika **„📤 Wyślij kierowcy"** — kierowca widzi ją na mapie w aplikacji:
+  - **Migracja [`0059_driver_routes.sql`](supabase/migrations/0059_driver_routes.sql)** — tabela `driver_routes` (przystanki + **cała policzona geometria** + podsumowanie dystans/czas/myto; denormalizowany `driver_user_id` do RLS kierowcy) + RPC `send_driver_route` (SECURITY DEFINER, owner/dispatcher; dokleja user_id z kartoteki). ✅ Na żywej bazie, typy zregenerowane (42 tabele, 28 funkcji).
+  - **Web** ([`map/page.tsx`](apps/web/app/(app)/map/page.tsx)): przycisk obok „Udostępnij trasę" — picker kierowcy z kartoteki, wysyłka snapshotu trasy.
+  - **Mobile — M3 FALA 2** ([`map.tsx`](apps/mobile/app/map.tsx)): chips „🧭" z odebranymi trasami nad mapą → czerwona linia trasy (dokładna geometria TIR z web — **bez silnika routingu w telefonie**), przystanki jako punkty, pasek podsumowania (km · czas · myto). API: [`driverRoutes.ts`](packages/api/src/data/driverRoutes.ts). Wersja mobile **1.32.0**; Metro bunduje ✓; QA na urządzeniu przy najbliższym buildzie.
+  - **Bramki:** `pnpm check` ✓ (biome · tsc ×7 · 472 testy · docs).
 
 ## [1.124.0] — 🧑‍✈️ Kierowca jako encja w HR — driver_id w wypłatach, dietach i czasie pracy
 

@@ -12,6 +12,7 @@ export * from "./data/defects";
 export * from "./data/dev";
 export * from "./data/documents";
 export * from "./data/driverPayouts";
+export * from "./data/driverRoutes";
 export * from "./data/drivers";
 export * from "./data/expoPush";
 export * from "./data/fuelCards";

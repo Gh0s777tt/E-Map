@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.31.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.124.0 (#271) · 2026-07-04
+> Stan: **v1.32.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.125.0 (#272) · 2026-07-04
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.
@@ -35,7 +35,7 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
 - [x] Fala 1 (#253): `@maplibre/maplibre-react-native` v11 (config plugin), ekran `app/map.tsx` —
   styl MapTiler dark / fallback OSM (`lib/mapStyle.ts`), „moja lokalizacja" (expo-location),
   POI TIR (parkingi hgv + stacje) z Overpass przez `@e-logistic/maps` (`fetchPois`), i18n `mobileMap.*`.
-- [ ] Fala 2: routing TIR na mapie (`/api/route` przez web lub provider bezpośrednio) + warstwa trasy.
+- [x] Fala 2 (#272): **warstwa trasy na mapie mobile** — web liczy trasę TIR i wysyła (`driver_routes`: przystanki+geometria+podsumowanie), mobile rysuje linię, przystanki i pasek dystans/czas/myto. Chips „🧭" z odebranymi trasami.
 - ⚠️ **Natywny moduł** — działa w dev buildach / EAS, NIE w Expo Go. **Test:** mapa + POI na urządzeniu.
 
 ## Faza M4 — Powiadomienia push (natywne) ✅ ZREALIZOWANE (z zastrzeżeniem)
