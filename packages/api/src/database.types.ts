@@ -156,6 +156,75 @@ export interface Database {
         };
         Relationships: [];
       };
+      checklist_submissions: {
+        Row: {
+          id: string;
+          company_id: string;
+          template_id: string | null;
+          template_name: string;
+          driver_id: string | null;
+          driver_user_id: string | null;
+          driver_label: string;
+          vehicle_id: string | null;
+          answers: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          template_id?: string | null;
+          template_name?: string;
+          driver_id?: string | null;
+          driver_user_id?: string | null;
+          driver_label?: string;
+          vehicle_id?: string | null;
+          answers?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          template_id?: string | null;
+          template_name?: string;
+          driver_id?: string | null;
+          driver_user_id?: string | null;
+          driver_label?: string;
+          vehicle_id?: string | null;
+          answers?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      checklist_templates: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          items: Json;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          items?: Json;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          items?: Json;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       companies: {
         Row: {
           id: string;

@@ -1,4 +1,10 @@
-import { getActiveMembership, insertFuelLog, insertTripEvent } from "@e-logistic/api";
+import {
+  type ChecklistSubmissionInput,
+  getActiveMembership,
+  insertChecklistSubmission,
+  insertFuelLog,
+  insertTripEvent,
+} from "@e-logistic/api";
 import { type FuelLogInput, newId, type TripEventInput } from "@e-logistic/core";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -10,12 +16,12 @@ import { getSupabase, supabaseConfigured } from "./supabase";
  */
 const KEY = "el-outbox";
 
-export type OutboxKind = "fuel" | "adblue" | "trip";
+export type OutboxKind = "fuel" | "adblue" | "trip" | "checklist";
 
 export interface OutboxItem {
   id: string;
   kind: OutboxKind;
-  input: FuelLogInput | TripEventInput;
+  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput;
   status: "queued" | "synced" | "error";
   createdAt: string;
   error?: string;
@@ -45,7 +51,7 @@ export async function removeOutbox(itemId: string): Promise<void> {
 /** Dodaje wpis do outboxu (zawsze lokalnie) i próbuje od razu zsynchronizować. */
 export async function enqueue(
   kind: OutboxKind,
-  input: FuelLogInput | TripEventInput,
+  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput,
   createdAt: string,
 ): Promise<OutboxItem> {
   const item: OutboxItem = { id: newId(), kind, input, status: "queued", createdAt };
@@ -74,7 +80,14 @@ export async function trySync(itemId: string): Promise<void> {
     if (!membership) throw new Error("Brak firmy — wpis czeka w kolejce.");
     const ctx = { id: item.id, companyId: membership.companyId, driverId: user.id };
 
-    if (item.kind === "trip") {
+    if (item.kind === "checklist") {
+      // #273: checklisty — trigger w bazie dopina driver_id po auth.uid().
+      await insertChecklistSubmission(
+        sb,
+        membership.companyId,
+        item.input as ChecklistSubmissionInput,
+      );
+    } else if (item.kind === "trip") {
       await insertTripEvent(sb, item.input as TripEventInput, ctx);
     } else {
       await insertFuelLog(

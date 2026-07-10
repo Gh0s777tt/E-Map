@@ -32,6 +32,7 @@ export const pl = {
   "nav.stats": "Statystyki",
   "nav.journeys": "Wyjazdy",
   "nav.settlements": "Rozliczenia",
+  "nav.checklists": "Checklisty",
   "nav.reports": "Usterki",
   "nav.settings": "Ustawienia",
   "nav.orders": "Zlecenia",

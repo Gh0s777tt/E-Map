@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-272-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.125.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-273-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.126.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.126.0] — 📋 Checklisty kierowców — „Wjazd do UK" i „Tachograf" (offline)
+
+- `[#273]` 📋 **Procedury kierowcy w aplikacji** (specyfikacja właściciela) — zgłoszenie automatycznie przypina się do kierowcy (trigger po `auth.uid()` → kartoteka) i wybranego pojazdu; nic się nie miesza, wszystko sortowalne:
+  - **Migracja [`0060_checklists.sql`](supabase/migrations/0060_checklists.sql)** — `checklist_templates` (pozycje jsonb: Tak/Nie · wielokrotny wybór · zdjęcie · godzina) + `checklist_submissions` (bez update — dziennik; delete tylko owner). RLS: kierowca dodaje/widzi swoje, zarząd wszystko. ✅ Na żywej bazie, typy zregenerowane (44 tabele).
+  - **Domyślne szablony** ([`checklists.ts`](packages/core/src/checklists.ts) + testy walidacji): **„Wjazd do UK"** (lista Border Force z opcją zdjęcia · plomba na lince celnej · kontrola pasażera na gapę) i **„Tachograf"** (tryb: Młotki/Łóżko/Prom/Rozpoczęcie/Zakończenie dnia — multi + edytowalna godzina HH:MM przy dacie automatycznej · OOC · młotki na załadunku/rozładunku).
+  - **Mobile** ([`checklists.tsx`](apps/mobile/app/checklists.tsx), kafel 📋 na pulpicie): chipy Tak/Nie i multi, godzina, **zdjęcie z aparatu** do pozycji (np. Border Force), **offline przez outbox** (nowy typ `checklist`); zdjęcia best-effort przy zasięgu. Wersja mobile **1.33.0**.
+  - **Web** ([`/checklists`](apps/web/app/(app)/checklists/page.tsx), pozycja w nawigacji): przegląd zgłoszeń (filtr po pojeździe, odpowiedzi ✅/❌/☑ + 🕐 + podgląd 📷 przez signed URL) i **edytor szablonów** (seed domyślnych jednym klikiem + własne pozycje/typy/opcje).
+  - Fundament pod przyszłe auto-liczenie czasu pracy z checklisty tachografu (tryb+godzina już są danymi).
+  - **Bramki:** `pnpm check` ✓ (biome · tsc ×7 · 477 testów · docs).
 
 ## [1.125.0] — 📤 „Wyślij trasę kierowcy" — most dyspozytor→kierowca (M3 fala 2)
 

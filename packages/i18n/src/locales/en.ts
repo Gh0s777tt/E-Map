@@ -34,6 +34,7 @@ export const en: Record<MessageKey, string> = {
   "nav.stats": "Statistics",
   "nav.journeys": "Journeys",
   "nav.settlements": "Settlements",
+  "nav.checklists": "Checklists",
   "nav.reports": "Defects",
   "nav.settings": "Settings",
   "nav.orders": "Orders",
