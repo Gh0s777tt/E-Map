@@ -26,8 +26,8 @@ więc **kolejne buildy iOS są już automatyczne** (jak Android). Wynik: plik `.
 ## Utworzenie apki + wysyłka
 
 1. App Store Connect → **Apps → +** → nowa apka iOS, bundle ID `com.ghostempire.elogistic`,
-   nazwa „E-Logistic", język PL. Skopiuj **Apple ID apki** (numeryczne) → wpisz jako
-   `submit.production.ios.ascAppId` w `eas.json`.
+   nazwa „E-Logistic", język PL. Skopiuj **Apple ID apki** (numeryczne) — podasz je przy `eas submit` (prompt) lub flagą
+   `--asc-app-id`. (Uwaga: `eas.json` nie przyjmuje komentarzy — `submit.production` zostaje pusty.)
 2. `eas submit --profile production --platform ios` → apka trafia do **TestFlight**.
 3. Karta apki (App Store): opis/zrzuty z `apps/mobile/store/listing.md`, polityka prywatności
    `https://e-logistic-one.vercel.app/privacy`, „App Privacy" wg ściągi Data safety.
