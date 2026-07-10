@@ -56,3 +56,10 @@ playwright-report/
 # Artefakty buildów mobile
 *.aab
 *.apk
+
+# Lokalne credentials iOS (NIE commitować)
+apps/mobile/credentials/
+apps/mobile/credentials.json
+*.p12
+*.mobileprovision
+*.p8
