@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-279-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.132.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-280-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.133.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.133.0] — 🍎 iOS gotowe pod App Store + PWA macOS dopięta
+
+- `[#280]` 🍎 **Hardening iOS pod recenzję Apple** (konto Apple Developer opłacone):
+  - [`app.json`](apps/mobile/app.json) → `ios.infoPlist`: opisy uprawnień **lokalizacja / aparat / zdjęcia** (wymagane przy recenzji) + `ITSAppUsesNonExemptEncryption: false` (tylko HTTPS — zero papierologii eksportowej przy każdym TestFlight). Metro bunduje `--platform ios` czysto. Wersja mobile **1.37.0**.
+  - [`eas.json`](apps/mobile/eas.json): scaffold `submit.production.ios` + **ścieżka non-interactive** (App Store Connect API Key) obok interaktywnej. Runbook: [`store/ios-runbook.md`](apps/mobile/store/ios-runbook.md) — obie ścieżki buildu, utworzenie apki, TestFlight, macOS.
+  - **Bloker (Twój, jednorazowy):** pierwszy `eas build -p ios` interaktywnie (login Apple + 2FA tworzy certyfikat na serwerze Expo); potem automat.
+- 💻 **PWA macOS dopięta**: meta `appleWebApp` + apple-touch-icon + `themeColor` w [`layout.tsx`](apps/web/app/layout.tsx) — Safari „Dodaj do Docka" i Chrome „Zainstaluj" dają panel jako aplikację. **macOS dla kierowcy**: apka iOS na Apple Silicon (jedna zgoda w App Store Connect, bez osobnego buildu).
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.132.0] — 💻 macOS: panel jako aplikacja (PWA) + przygotowanie iOS
 

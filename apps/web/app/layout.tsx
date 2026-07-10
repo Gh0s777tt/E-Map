@@ -5,6 +5,20 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "E-Logistic · GH0ST EMPIRE",
   description: "Platforma dla kierowców, spedytorów i firm transportowych.",
+  // #279: instalacja jako aplikacja na macOS (Safari „Dodaj do Docka") i iOS.
+  appleWebApp: {
+    capable: true,
+    title: "E-Logistic",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0a0a0a",
 };
 
 /**

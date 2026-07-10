@@ -3,7 +3,7 @@
     "name": "E-Logistic",
     "slug": "e-logistic",
     "scheme": "elogistic",
-    "version": "1.36.0",
+    "version": "1.37.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -17,7 +17,14 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ghostempire.elogistic"
+      "bundleIdentifier": "com.ghostempire.elogistic",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "E-Logistic pokazuje Twoją pozycję na mapie TIR (parkingi i stacje w okolicy).",
+        "NSCameraUsageDescription": "E-Logistic używa aparatu do zdjęć towaru (dowód zabezpieczenia ładunku) i checklist.",
+        "NSPhotoLibraryUsageDescription": "E-Logistic potrzebuje dostępu do zdjęć, by dołączyć zdjęcie towaru do zlecenia.",
+        "NSPhotoLibraryAddUsageDescription": "E-Logistic zapisuje zdjęcia dokumentów przewozowych.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.ghostempire.elogistic",
