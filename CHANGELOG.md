@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-281-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.134.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-282-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.135.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.135.0] — 🧾 Karta App Store gotowa + strona wsparcia
+
+- `[#282]` 🧾 **Materiały do recenzji App Store** (odblokowanie „Add for Review"):
+  - **Strona wsparcia** [`/support`](apps/web/app/support/page.tsx) — wymagany przez Apple/Google **Support URL** (`https://e-logistic-one.vercel.app/support`): kontakt, FAQ, usuwanie konta, skrót EN. Styl spójny z [`/privacy`](apps/web/app/privacy/page.tsx).
+  - **Karta iOS do wklejenia** w [`store/listing.md`](apps/mobile/store/listing.md): Subtitle, **Keywords** (96/100 zn.), Description PL, Promotional text, wszystkie URL-e + ściąga do Content Rights / Age Rating (4+) / Contact Info / wyboru buildu **1.37.0 (13)**.
+  - **Bramki:** `pnpm check` ✓ (web tsc czysto).
 
 ## [1.134.0] — 🚀 iOS w TestFlight (binarka wysłana do Apple)
 

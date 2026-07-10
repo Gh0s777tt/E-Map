@@ -1,6 +1,71 @@
-# Karta sklepu Google Play — materiały (E-Logistic)
+# Karta sklepu — materiały (E-Logistic)
 
-Gotowe do wklejenia w Play Console → Obecność w sklepie → Główna karta sklepu.
+Gotowe do wklejenia. Sekcja **App Store (iOS)** poniżej, dalej **Google Play**.
+
+---
+
+## App Store (iOS) — pola do wklejenia
+
+Ścieżka: App Store Connect → Twoja apka → **Wersja 1.0** (Polski) oraz **App Information**.
+
+| Pole (ASC) | Wartość |
+|---|---|
+| Name | `E-Logistic` |
+| Subtitle (≤30) | `Flota, zlecenia i mapa TIR` |
+| Keywords (≤100, po przecinku, bez spacji) | `transport,spedycja,flota,kierowca,TIR,ciezarowka,zlecenia,CMR,paliwo,logistyka,przewoz,tachograf` |
+| Support URL | `https://e-logistic-one.vercel.app/support` |
+| Marketing URL (opcjonalny) | `https://e-logistic-one.vercel.app` |
+| Privacy Policy URL (App Privacy) | `https://e-logistic-one.vercel.app/privacy` |
+
+**Promotional text (≤170, opcjonalny):**
+
+```
+Aplikacja dla firm transportowych: zlecenia, CMR/POD, paliwo i mapa TIR — działa też bez zasięgu. Konto kierowcy zakłada Twoja firma (link/QR).
+```
+
+**Description (Polish) — wklej całość:**
+
+```
+E-Logistic to platforma dla firm transportowych: aplikacja kierowcy + panel dla właściciela i spedytora.
+
+DLA KIEROWCY
+• Zlecenia z pełnymi danymi załadunku i rozładunku, zmiana statusów jednym dotknięciem
+• Dokumentacja ładunku: zdjęcia z aparatu, CMR oraz podpis odbiorcy (POD) na ekranie
+• Formularze Paliwo / AdBlue / Trasa — działają BEZ ZASIĘGU i synchronizują się po powrocie sieci
+• Mapa TIR: Twoja pozycja, parkingi dla ciężarówek i stacje paliw w okolicy
+• Powiadomienia push o nowych zleceniach i terminach
+
+DLA WŁAŚCICIELA I SPEDYTORA (panel web)
+• Flota: pojazdy, naczepy, przeglądy, OC, leasing, karty paliwowe z rabatami
+• Zlecenia, faktury VAT z eksportem do Fakturowni, rentowność tras i klientów
+• Rozliczenia kierowców: diety, czas pracy, wypłaty
+• Statystyki spalania i kosztów liczone z realnych tankowań
+• Przypomnienia o terminach: przeglądy, ubezpieczenia, badania kierowców
+
+BEZPIECZEŃSTWO
+• Dane firmy odizolowane od innych firm (Row Level Security)
+• Sesja na urządzeniu szyfrowana (klucz w systemowym keychainie)
+• Dane osobowe kierowców szyfrowane w bazie, transmisja wyłącznie HTTPS
+• Logowanie z 2FA i passkey
+
+Aplikacja przeznaczona dla firm — konto kierowcy tworzy Twoja firma transportowa (zaproszenie link/QR).
+
+Wsparcie: https://e-logistic-one.vercel.app/support
+Polityka prywatności: https://e-logistic-one.vercel.app/privacy
+```
+
+**Pozostałe sekcje ASC (klik w panelu):**
+- **App Information → Content Rights**: „No, it does not contain, show, or access third-party content" (apka nie używa cudzych treści).
+- **Age Rating** (kwestionariusz): na wszystkie pytania **None/No** → wynik **4+**.
+- **General → App Review → Contact Information**: Twoje imię, e-mail `dzierzawskii98.dam@gmail.com`, telefon.
+- **Build**: wybierz build **1.37.0 (13)** (już VALID w TestFlight).
+- **App Privacy**: wg ściągi „Data safety" na dole tego pliku (te same odpowiedzi dla iOS).
+
+---
+
+## Google Play — materiały
+
+Do wklejenia w Play Console → Obecność w sklepie → Główna karta sklepu.
 
 ## Nazwa aplikacji (maks. 30 znaków)
 
