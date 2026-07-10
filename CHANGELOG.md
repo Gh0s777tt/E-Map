@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-278-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.131.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-279-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.132.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.132.0] — 💻 macOS: panel jako aplikacja (PWA) + przygotowanie iOS
+
+- `[#279]` 💻 **E-Logistic na komputerze** (prośba właściciela: „aplikacja na telefony i macOS"):
+  - **PWA panelu** — [`app/manifest.ts`](apps/web/app/manifest.ts) (standalone, start `/dashboard`, motyw czerń) + ikony 192/512 (maskable) z generatora ([`gen-store-assets.mjs`](scripts/gen-store-assets.mjs)). macOS: Chrome/Edge „Zainstaluj aplikację", Safari „Dodaj do Docka"; działa też na Windows.
+  - **iOS przygotowany**: konto Apple Developer opłacone; config kompletny (bundleId `com.ghostempire.elogistic`, profil production). Bloker: pierwszy build wymaga JEDNORAZOWO interaktywnego `eas build -p ios` (login Apple + 2FA tworzy certyfikat dystrybucyjny na serwerze Expo) — potem buildy automatyczne. Aplikacja iOS obejmie też **Maki z Apple Silicon** (Designed for iPad).
+  - Korekta stanu kont: **Google Play Console do założenia** (25 USD) — wcześniejsza notatka o zweryfikowanym koncie dotyczyła konta Google, nie konsoli.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.131.0] — 🔐 Uprawnienia etap 2 — matryca przy zaproszeniu, profil kierowcy, egzekwowanie podglądu
 

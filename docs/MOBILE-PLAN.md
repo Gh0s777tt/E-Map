@@ -52,7 +52,7 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
 3. ~~Finalna grafika~~ ✅ (#255) — monogram „E" + droga (czerń/czerwień), generowane skryptem `scripts/gen-mobile-assets.mjs` (icon/adaptive/splash/favicon).
 4. Dev build + **QA na urządzeniu**: login → zlecenia + status → zdjęcia z aparatu → formularze offline → push.
 5. `eas build -p android/ios --profile production` → `eas submit`.
-6. Konta deweloperskie: Apple Developer + ~~Google Play Console~~ ✅ (konto zweryfikowane). Polityka prywatności ✅ (#256 — `/privacy` na web) + opisy uprawnień w `app.json` ✅. Karta sklepu: gotowe teksty/grafiki w `apps/mobile/store/` (`listing.md`).
+6. Konta deweloperskie: ~~Apple Developer~~ ✅ (opłacone 2026-07) — do buildu iOS jednorazowo `eas build -p ios` interaktywnie (login Apple + 2FA, credentials zapisują się na serwerze Expo). **Google Play Console — DO ZAŁOŻENIA** (25 USD, play.google.com/console). Polityka prywatności ✅ (#256 — `/privacy` na web) + opisy uprawnień w `app.json` ✅. Karta sklepu: gotowe teksty/grafiki w `apps/mobile/store/` (`listing.md`).
 
 ## Aktualizacje zależności (Expo)
 - **Nie** aktualizuj pakietów `expo-*`/`react-native*` ręcznie wg `pnpm outdated` (pokazuje mylące skoki przez

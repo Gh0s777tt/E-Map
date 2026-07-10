@@ -48,3 +48,9 @@ await sharp(Buffer.from(feature)).png().toFile(resolve(OUT, "feature-graphic-102
 console.log("✓ feature-graphic-1024x500.png");
 await sharp(Buffer.from(icon512)).resize(512, 512).png().toFile(resolve(OUT, "icon-512.png"));
 console.log("✓ icon-512.png");
+
+// #279: ikony PWA panelu web (instalacja na macOS/Windows).
+const WEB = resolve(dirname(fileURLToPath(import.meta.url)), "../apps/web/public");
+await sharp(Buffer.from(icon512)).resize(512, 512).png().toFile(resolve(WEB, "icon-512.png"));
+await sharp(Buffer.from(icon512)).resize(192, 192).png().toFile(resolve(WEB, "icon-192.png"));
+console.log("✓ web/public/icon-512.png + icon-192.png (PWA)");
