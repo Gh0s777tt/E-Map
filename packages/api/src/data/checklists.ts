@@ -94,7 +94,7 @@ export async function insertChecklistSubmission(
 export async function listChecklistSubmissions(
   client: SupabaseClient,
   companyId: string,
-  opts: { vehicleId?: string; driverUserId?: string; limit?: number } = {},
+  opts: { vehicleId?: string; driverUserId?: string; templateName?: string; limit?: number } = {},
 ): Promise<ChecklistSubmission[]> {
   let q = client
     .from("checklist_submissions")
@@ -104,6 +104,7 @@ export async function listChecklistSubmissions(
     .limit(opts.limit ?? 200);
   if (opts.vehicleId) q = q.eq("vehicle_id", opts.vehicleId);
   if (opts.driverUserId) q = q.eq("driver_user_id", opts.driverUserId);
+  if (opts.templateName) q = q.eq("template_name", opts.templateName);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((r) => ({

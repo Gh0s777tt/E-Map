@@ -38,6 +38,7 @@ export * from "./savedPlaces";
 export * from "./schemas";
 export * from "./search";
 export * from "./setup";
+export * from "./tachoTime";
 export * from "./vehicleCosts";
 export * from "./vehiclePnl";
 export * from "./workTime";

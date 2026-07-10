@@ -18,6 +18,7 @@ import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { TachoAutoSection } from "./TachoAutoSection";
 
 interface Row extends WorkTimeEntry {
   id: string;
@@ -201,6 +202,14 @@ export default function WorkTimePage() {
         title="Czas pracy kierowcy"
         subtitle="Ewidencja godzin jazdy / innej pracy / odpoczynku z podsumowaniem. Dzienny limit jazdy (10 h) tylko sygnalizuje przekroczenie — to nie interpretacja prawna."
       />
+
+      {companyId && (
+        <TachoAutoSection
+          companyId={companyId}
+          savedKeys={new Set(saved.map((r) => `${r.driver_name ?? ""}|${r.work_date}`))}
+          onImported={load}
+        />
+      )}
 
       <div style={{ ...f.field, maxWidth: 320, marginBottom: 14 }}>
         <span style={f.label}>Kierowca (do zestawienia)</span>

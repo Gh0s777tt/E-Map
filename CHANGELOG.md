@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-276-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.129.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-277-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.130.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.130.0] — ⏱️ Auto czas pracy z checklisty Tachograf — dni, odpoczynki, naruszenia
+
+- `[#277]` ⏱️ **Ewidencja liczy się sama** (prośba właściciela: „czas pracy, przerwa dzienna/tygodniowa, skrócona czy normalna — automatycznie z checklisty tachografu"):
+  - **Silnik [`tachoTime.ts`](packages/core/src/tachoTime.ts)** (+7 testów, razem 481): wpisy „Rozpoczęcie/Zakończenie dnia" z godziną → dni służby (parowanie po czasie — nocne zmiany przez północ działają); odpoczynek przed dniem klasyfikowany wg 561/2006: **dobowy ≥11 h normalny / 9–11 h SKRÓCONY / <9 h naruszenie**, **tygodniowy ≥45 h normalny / 24–45 h SKRÓCONY**; alerty: służba >13 h / >15 h, dzień niedomknięty, >6 dni bez odpoczynku tygodniowego. Pomoc ewidencyjna — nie zamiennik karty kierowcy.
+  - **Czas pracy** ([`TachoAutoSection`](apps/web/app/(app)/work-time/TachoAutoSection.tsx)): „Wylicz z checklist" → wybór kierowcy → tabela dni (start/koniec/służba/odpoczynek z typem/uwagi) + suma i licznik alertów → **„➕ Dopisz brakujące dni do ewidencji"** (dedup po kierowcy+dacie, nota `auto z checklisty Tachograf`).
+  - API: filtr `templateName` w zgłoszeniach checklist.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.129.0] — 🔐 Granularne uprawnienia — właściciel decyduje o każdym module
 
