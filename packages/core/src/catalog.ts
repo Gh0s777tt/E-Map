@@ -61,6 +61,10 @@ export const APP_MODULES = [
   "map",
   "stats",
   "settlements",
+  "orders",
+  "checklists",
+  "documents",
+  "damages",
 ] as const;
 export type AppModule = (typeof APP_MODULES)[number];
 
@@ -74,6 +78,10 @@ export const APP_MODULE_LABELS: Record<AppModule, string> = {
   map: "Mapa",
   stats: "Statystyki",
   settlements: "Rozliczenia",
+  orders: "Zlecenia",
+  checklists: "Checklisty",
+  documents: "Dokumenty",
+  damages: "Szkody / OC",
 };
 
 /** Domyślny zestaw modułów wg roli (gdy członek nie ma własnego `modules`). */
@@ -81,7 +89,7 @@ export const DEFAULT_MODULES: Record<string, AppModule[]> = {
   owner: [...APP_MODULES],
   dispatcher: [...APP_MODULES],
   manager: [...APP_MODULES],
-  driver: ["forms", "reports", "map"],
+  driver: ["forms", "reports", "map", "orders", "checklists", "documents", "damages"],
   developer: [],
 };
 
@@ -381,3 +389,40 @@ export const INSURERS = [
   "Trasti",
   "mtu24",
 ] as const;
+
+// ── #276: granularne uprawnienia per członek ─────────────────────────────
+// Poziom per moduł: none (niewidoczny) · view (podgląd) · edit (pełne akcje).
+// Owner/dispatcher zawsze edit (zarząd); reszta wg matrycy ustawianej przez
+// właściciela (fallback: moduł włączony ⇒ edit — zachowanie historyczne).
+
+export const PERMISSION_LEVELS = ["none", "view", "edit"] as const;
+export type PermissionLevel = (typeof PERMISSION_LEVELS)[number];
+export type MemberPermissions = Partial<Record<AppModule, PermissionLevel>>;
+
+export const PERMISSION_LEVEL_LABELS: Record<PermissionLevel, string> = {
+  none: "brak",
+  view: "podgląd",
+  edit: "edycja",
+};
+
+/** Efektywny poziom uprawnień członka do modułu. */
+export function effectivePermission(
+  role: string,
+  modules: string[] | null | undefined,
+  permissions: MemberPermissions | null | undefined,
+  module: AppModule,
+): PermissionLevel {
+  if (role === "owner" || role === "dispatcher") return "edit";
+  const explicit = permissions?.[module];
+  if (explicit) return explicit;
+  return effectiveModules(role, modules).includes(module) ? "edit" : "none";
+}
+
+/** Moduły widoczne (poziom ≥ view) — do nawigacji/kafli. */
+export function visibleModules(
+  role: string,
+  modules: string[] | null | undefined,
+  permissions: MemberPermissions | null | undefined,
+): AppModule[] {
+  return APP_MODULES.filter((m) => effectivePermission(role, modules, permissions, m) !== "none");
+}

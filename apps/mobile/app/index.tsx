@@ -1,13 +1,26 @@
+import { getActiveMembership } from "@e-logistic/api";
+import { type AppModule, visibleModules } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { Link } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
+import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 const t = createTranslator("pl");
 
 export default function Home() {
   const { session, signOut } = useAuth();
+  // #276: kafle wg uprawnień nadanych przez właściciela (fail-open offline).
+  const [mods, setMods] = useState<AppModule[] | null>(null);
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    getActiveMembership(getSupabase())
+      .then((m) => m && setMods(visibleModules(m.role, m.modules, m.permissions)))
+      .catch(() => {});
+  }, []);
+  const show = (m: AppModule) => mods === null || mods.includes(m);
   const email = session?.user?.email ?? "—";
 
   return (
@@ -27,47 +40,61 @@ export default function Home() {
       </Text>
       <Text style={styles.subtitle}>{t("app.tagline")}</Text>
 
-      <Link href="/my-orders" asChild>
-        <Pressable style={styles.cta}>
-          <Text style={styles.ctaText}>📋 Moje zlecenia</Text>
-        </Pressable>
-      </Link>
+      {show("orders") && (
+        <Link href="/my-orders" asChild>
+          <Pressable style={styles.cta}>
+            <Text style={styles.ctaText}>📋 Moje zlecenia</Text>
+          </Pressable>
+        </Link>
+      )}
 
-      <Link href="/fuel" asChild>
-        <Pressable style={styles.ctaSecondary}>
-          <Text style={styles.ctaText}>⛽ {t("form.fuel.title")}</Text>
-        </Pressable>
-      </Link>
+      {show("forms") && (
+        <Link href="/fuel" asChild>
+          <Pressable style={styles.ctaSecondary}>
+            <Text style={styles.ctaText}>⛽ {t("form.fuel.title")}</Text>
+          </Pressable>
+        </Link>
+      )}
 
-      <Link href="/adblue" asChild>
-        <Pressable style={styles.ctaSecondary}>
-          <Text style={styles.ctaText}>💧 {t("form.adblue.title")}</Text>
-        </Pressable>
-      </Link>
+      {show("forms") && (
+        <Link href="/adblue" asChild>
+          <Pressable style={styles.ctaSecondary}>
+            <Text style={styles.ctaText}>💧 {t("form.adblue.title")}</Text>
+          </Pressable>
+        </Link>
+      )}
 
-      <Link href="/trip" asChild>
-        <Pressable style={styles.ctaSecondary}>
-          <Text style={styles.ctaText}>🚚 {t("form.trip.title")}</Text>
-        </Pressable>
-      </Link>
+      {show("forms") && (
+        <Link href="/trip" asChild>
+          <Pressable style={styles.ctaSecondary}>
+            <Text style={styles.ctaText}>🚚 {t("form.trip.title")}</Text>
+          </Pressable>
+        </Link>
+      )}
 
-      <Link href="/checklists" asChild>
-        <Pressable style={styles.ctaSecondary}>
-          <Text style={styles.ctaText}>📋 Checklisty</Text>
-        </Pressable>
-      </Link>
+      {show("checklists") && (
+        <Link href="/checklists" asChild>
+          <Pressable style={styles.ctaSecondary}>
+            <Text style={styles.ctaText}>📋 Checklisty</Text>
+          </Pressable>
+        </Link>
+      )}
 
-      <Link href="/documents" asChild>
-        <Pressable style={styles.ctaSecondary}>
-          <Text style={styles.ctaText}>📄 Dokumenty</Text>
-        </Pressable>
-      </Link>
+      {show("documents") && (
+        <Link href="/documents" asChild>
+          <Pressable style={styles.ctaSecondary}>
+            <Text style={styles.ctaText}>📄 Dokumenty</Text>
+          </Pressable>
+        </Link>
+      )}
 
-      <Link href="/map" asChild>
-        <Pressable style={styles.ctaSecondary}>
-          <Text style={styles.ctaText}>🗺️ {t("nav.map")}</Text>
-        </Pressable>
-      </Link>
+      {show("map") && (
+        <Link href="/map" asChild>
+          <Pressable style={styles.ctaSecondary}>
+            <Text style={styles.ctaText}>🗺️ {t("nav.map")}</Text>
+          </Pressable>
+        </Link>
+      )}
 
       <Text style={styles.note}>E-Logistic · mobile</Text>
     </View>

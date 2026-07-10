@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { getActiveMembership } from "@e-logistic/api";
-import { type AppModule, effectiveModules } from "@e-logistic/core";
+import { type AppModule, visibleModules } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -48,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     try {
       const m = await getActiveMembership(supabase);
       if (m) {
-        allowed = effectiveModules(m.role, m.modules);
+        allowed = visibleModules(m.role, m.modules, m.permissions);
         isOwner = m.role === "owner";
         isDeveloper = m.role === "developer";
         manage = m.role === "owner" || m.role === "dispatcher";
@@ -92,9 +92,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(manage ? [{ href: "/service", label: t("nav.service") }] : []),
         ...(manage ? [{ href: "/damages", label: t("nav.damages") }] : []),
         ...(manage ? [{ href: "/koszty", label: t("nav.costs") }] : []),
-        { href: "/documents", label: t("nav.documents") },
+        ...(has("documents") ? [{ href: "/documents", label: t("nav.documents") }] : []),
         ...(has("reports") ? [{ href: "/reports", label: t("nav.reports") }] : []),
-        { href: "/checklists", label: t("nav.checklists") },
+        ...(has("checklists") ? [{ href: "/checklists", label: t("nav.checklists") }] : []),
       ],
     },
     {

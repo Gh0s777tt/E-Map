@@ -1041,6 +1041,7 @@ export interface Database {
           status: Database["public"]["Enums"]["membership_status"];
           created_at: string;
           modules: string[] | null;
+          permissions: Json;
         };
         Insert: {
           id?: string;
@@ -1050,6 +1051,7 @@ export interface Database {
           status?: Database["public"]["Enums"]["membership_status"];
           created_at?: string;
           modules?: string[] | null;
+          permissions?: Json;
         };
         Update: {
           id?: string;
@@ -1059,6 +1061,7 @@ export interface Database {
           status?: Database["public"]["Enums"]["membership_status"];
           created_at?: string;
           modules?: string[] | null;
+          permissions?: Json;
         };
         Relationships: [];
       };
@@ -1850,6 +1853,7 @@ export interface Database {
           email: string;
           role: Database["public"]["Enums"]["role"];
           modules: string[];
+          permissions: Json;
           status: string;
         }[];
       };

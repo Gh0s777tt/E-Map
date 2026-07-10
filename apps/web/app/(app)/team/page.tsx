@@ -1,7 +1,14 @@
 "use client";
 
 import { type CompanyMember, listCompanyMembers, updateMember } from "@e-logistic/api";
-import { APP_MODULE_LABELS, APP_MODULES, type AppModule, effectiveModules } from "@e-logistic/core";
+import {
+  APP_MODULE_LABELS,
+  APP_MODULES,
+  type AppModule,
+  effectivePermission,
+  type MemberPermissions,
+  type PermissionLevel,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
@@ -79,12 +86,26 @@ function MemberRow({
 }) {
   const isOwnerRow = member.role === "owner";
   const [role, setRole] = useState<string>(member.role);
-  const [mods, setMods] = useState<AppModule[]>(effectiveModules(member.role, member.modules));
+  // #276: matryca uprawnień — poziom per moduł (klik cyklicznie brak→podgląd→edycja).
+  const [perms, setPerms] = useState<MemberPermissions>(() => {
+    const init: MemberPermissions = {};
+    for (const mod of APP_MODULES) {
+      init[mod] = effectivePermission(member.role, member.modules, member.permissions, mod);
+    }
+    return init;
+  });
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
-  function toggle(mod: AppModule) {
-    setMods((a) => (a.includes(mod) ? a.filter((x) => x !== mod) : [...a, mod]));
+  const NEXT: Record<PermissionLevel, PermissionLevel> = {
+    none: "view",
+    view: "edit",
+    edit: "none",
+  };
+  const LEVEL_ICON: Record<PermissionLevel, string> = { none: "🚫", view: "👁", edit: "✏️" };
+
+  function cycle(mod: AppModule) {
+    setPerms((p) => ({ ...p, [mod]: NEXT[p[mod] ?? "none"] }));
   }
 
   async function save() {
@@ -92,7 +113,9 @@ function MemberRow({
     try {
       await updateMember(getBrowserSupabase(), companyId, member.user_id, {
         role: role as CompanyMember["role"],
-        modules: mods,
+        // modules = kompatybilność wstecz (widoczność ≥ podgląd); permissions = pełna matryca.
+        modules: APP_MODULES.filter((m) => (perms[m] ?? "none") !== "none"),
+        permissions: perms,
       });
       toast("Zapisano.", "success");
       onSaved();
@@ -120,16 +143,23 @@ function MemberRow({
       {!isOwnerRow && (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            {APP_MODULES.map((mod) => (
-              <button
-                key={mod}
-                type="button"
-                onClick={() => toggle(mod)}
-                style={{ ...styles.chip, ...(mods.includes(mod) ? styles.chipOn : {}) }}
-              >
-                {APP_MODULE_LABELS[mod]}
-              </button>
-            ))}
+            {APP_MODULES.map((mod) => {
+              const lvl = perms[mod] ?? "none";
+              return (
+                <button
+                  key={mod}
+                  type="button"
+                  onClick={() => cycle(mod)}
+                  title="Klikaj: brak → podgląd → edycja"
+                  style={{
+                    ...styles.chip,
+                    ...(lvl === "edit" ? styles.chipOn : lvl === "view" ? styles.chipView : {}),
+                  }}
+                >
+                  {LEVEL_ICON[lvl]} {APP_MODULE_LABELS[mod]}
+                </button>
+              );
+            })}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
             <Button onClick={save} disabled={busy}>
@@ -161,6 +191,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
   },
   chipOn: { background: palette.red, color: palette.white, borderColor: palette.red },
+  chipView: { borderColor: "#eab308", color: "#eab308" },
   primary: {
     background: palette.red,
     color: palette.white,

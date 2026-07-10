@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-275-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.128.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-276-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.129.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.129.0] — 🔐 Granularne uprawnienia — właściciel decyduje o każdym module
+
+- `[#276]` 🔐 **Matryca uprawnień per członek** (prośba właściciela: „szef nadaje kierowcom do czego mają dostęp i co mogą edytować"):
+  - **Katalog modułów** rozszerzony o `orders`/`checklists`/`documents`/`damages` (12 łącznie) + **poziomy `none`/`view`/`edit`** ([`catalog.ts`](packages/core/src/catalog.ts): `effectivePermission`, `visibleModules`; zarząd zawsze `edit`, fallback = dotychczasowe moduły).
+  - **Migracja [`0062_member_permissions.sql`](supabase/migrations/0062_member_permissions.sql)** — `memberships.permissions` (jsonb) + `company_members` zwraca matrycę. ✅ Na żywej bazie.
+  - **Zespół** ([`/team`](apps/web/app/(app)/team/page.tsx)): chip modułu klikany cyklicznie **🚫 brak → 👁 podgląd → ✏️ edycja** per osoba; zapis aktualizuje moduły (kompatybilność) i matrycę.
+  - **Nawigacja web wg uprawnień** (checklisty/dokumenty dołączone do systemu modułów) i **kafle mobile wg uprawnień** — kierowca widzi tylko to, co nadał właściciel (offline: fail-open). Wersja mobile **1.35.0**.
+  - Etap 2 (zaplanowany): matryca przy zaproszeniu + edycja z profilu kierowcy + egzekwowanie `view` (blokada przycisków edycji) w modułach.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.128.0] — 📄 Dokumenty firmowe z widocznością — tachobooki dla kierowców
 

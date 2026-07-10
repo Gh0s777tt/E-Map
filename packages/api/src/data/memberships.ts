@@ -1,11 +1,12 @@
 /** Warstwa danych: członkostwo użytkownika (firma + rola) i onboarding firmy. */
-import type { Role } from "@e-logistic/core";
+import type { MemberPermissions, Role } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export interface ActiveMembership {
   companyId: string;
   role: Role;
   modules: string[] | null;
+  permissions: MemberPermissions | null;
 }
 
 /** Aktywne członkostwo zalogowanego użytkownika (null gdy brak sesji lub firmy). */
@@ -19,7 +20,7 @@ export async function getActiveMembership(
 
   const { data, error } = await client
     .from("memberships")
-    .select("company_id, role, modules")
+    .select("company_id, role, modules, permissions")
     .eq("user_id", user.id)
     .eq("status", "active")
     .limit(1)
@@ -30,6 +31,7 @@ export async function getActiveMembership(
     companyId: data.company_id as string,
     role: data.role as Role,
     modules: (data.modules as string[] | null) ?? null,
+    permissions: (data.permissions as MemberPermissions | null) ?? null,
   };
 }
 
@@ -38,6 +40,7 @@ export interface CompanyMember {
   email: string;
   role: Role;
   modules: string[] | null;
+  permissions: MemberPermissions;
   status: string;
 }
 
@@ -45,7 +48,10 @@ export interface CompanyMember {
 export async function listCompanyMembers(client: SupabaseClient): Promise<CompanyMember[]> {
   const { data, error } = await client.rpc("company_members");
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((r) => ({
+    ...r,
+    permissions: (r.permissions as MemberPermissions | null) ?? {},
+  }));
 }
 
 /** Aktualizacja roli i modułów członka (owner). */
@@ -53,11 +59,17 @@ export async function updateMember(
   client: SupabaseClient,
   companyId: string,
   userId: string,
-  patch: { role?: Role; modules?: string[] | null },
+  patch: { role?: Role; modules?: string[] | null; permissions?: MemberPermissions },
 ) {
   const { error } = await client
     .from("memberships")
-    .update({ role: patch.role, modules: patch.modules ?? null })
+    .update({
+      role: patch.role,
+      modules: patch.modules ?? null,
+      ...(patch.permissions !== undefined
+        ? { permissions: patch.permissions as import("../client").Json }
+        : {}),
+    })
     .eq("company_id", companyId)
     .eq("user_id", userId);
   if (error) throw error;
