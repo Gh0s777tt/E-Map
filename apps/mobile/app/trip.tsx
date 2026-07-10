@@ -15,6 +15,7 @@ import { VehiclePicker } from "../components/VehiclePicker";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
+import { usePermission } from "../lib/usePermission";
 
 const t = createTranslator("pl");
 
@@ -36,6 +37,7 @@ function orderLabel(o: Order): string {
 
 export default function TripScreen() {
   const { vehicles, loading } = useFleet();
+  const perm = usePermission("forms"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
   const [country, setCountry] = useState("");
@@ -246,9 +248,13 @@ export default function TripScreen() {
         multiline
       />
 
-      <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
-        <Text style={styles.btnText}>{busy ? "Zapisuję…" : t("common.save")}</Text>
-      </Pressable>
+      {perm === "view" ? (
+        <Text style={styles.viewOnly}>👁 Masz uprawnienia tylko do podglądu formularzy.</Text>
+      ) : (
+        <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
+          <Text style={styles.btnText}>{busy ? "Zapisuję…" : t("common.save")}</Text>
+        </Pressable>
+      )}
       {msg && <Text style={styles.msg}>{msg}</Text>}
 
       {items.length > 0 && (
@@ -313,6 +319,7 @@ const styles = StyleSheet.create({
   },
   repeatText: { color: palette.offWhite, fontWeight: "600" },
   msg: { color: palette.smoke, marginTop: 10 },
+  viewOnly: { color: palette.smoke, marginTop: 14, fontSize: 13, textAlign: "center" },
   hint: { color: palette.smoke, fontSize: 13, marginTop: 6, lineHeight: 18 },
   queue: {
     marginTop: 16,

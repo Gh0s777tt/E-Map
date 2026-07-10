@@ -1,11 +1,13 @@
 "use client";
 
 import { createInvite } from "@e-logistic/api";
+import { DEFAULT_MODULES, type MemberPermissions } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
 import { DriverRoster } from "@/components/DriverRoster";
 import * as f from "@/components/formStyles";
 import { useT } from "@/components/LocaleProvider";
+import { PermissionsMatrix } from "@/components/PermissionsMatrix";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -16,6 +18,12 @@ export default function DriversPage() {
   const t = useT();
   const [canInvite, setCanInvite] = useState(false);
   const [vehicleId, setVehicleId] = useState("");
+  // #278: matryca uprawnień ustawiana już przy zaproszeniu (preset roli kierowca).
+  const [invPerms, setInvPerms] = useState<MemberPermissions>(() => {
+    const init: MemberPermissions = {};
+    for (const m of DEFAULT_MODULES.driver ?? []) init[m] = "edit";
+    return init;
+  });
   const [link, setLink] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,6 +49,7 @@ export default function DriversPage() {
       const token = await createInvite(getBrowserSupabase(), {
         role: "driver",
         vehicleId: vehicleId || undefined,
+        permissions: invPerms,
       });
       const url = `${window.location.origin}/join?token=${token}`;
       setLink(url);
@@ -95,6 +104,14 @@ export default function DriversPage() {
               ))}
             </select>
           </label>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 12, color: palette.smoke }}>
+              Uprawnienia zapraszanego (🚫 brak → 👁 podgląd → ✏️ edycja) — zmienisz też później w
+              Zespole
+            </span>
+            <PermissionsMatrix value={invPerms} onChange={setInvPerms} />
+          </div>
           <Button onClick={generate} disabled={busy}>
             {busy ? "Generuję…" : "Generuj zaproszenie"}
           </Button>

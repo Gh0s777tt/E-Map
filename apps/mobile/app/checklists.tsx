@@ -20,6 +20,7 @@ import { VehiclePicker } from "../components/VehiclePicker";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
+import { usePermission } from "../lib/usePermission";
 
 /**
  * #273: checklisty kierowcy (np. „Wjazd do UK", „Tachograf") — offline-first:
@@ -39,6 +40,7 @@ function nowHHMM(): string {
 
 export default function ChecklistsScreen() {
   const { vehicles, loading } = useFleet();
+  const perm = usePermission("checklists"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [tpl, setTpl] = useState<ChecklistTemplate | null>(null);
@@ -256,9 +258,17 @@ export default function ChecklistsScreen() {
             );
           })}
 
-          <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
-            <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zapisz checklistę"}</Text>
-          </Pressable>
+          {perm === "view" ? (
+            <Text style={styles.viewOnly}>👁 Masz uprawnienia tylko do podglądu checklist.</Text>
+          ) : (
+            <Pressable
+              style={[styles.btn, busy && styles.btnBusy]}
+              onPress={submit}
+              disabled={busy}
+            >
+              <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zapisz checklistę"}</Text>
+            </Pressable>
+          )}
           <Pressable style={styles.cancelBtn} onPress={() => setTpl(null)}>
             <Text style={styles.cancelText}>← Wróć do listy</Text>
           </Pressable>
@@ -356,6 +366,7 @@ const styles = StyleSheet.create({
   cancelBtn: { marginTop: 8, alignItems: "center", paddingVertical: 8 },
   cancelText: { color: palette.smoke },
   msg: { color: palette.smoke, marginTop: 10 },
+  viewOnly: { color: palette.smoke, marginTop: 14, fontSize: 13, textAlign: "center" },
   queue: {
     marginTop: 16,
     borderTopColor: palette.graphite,

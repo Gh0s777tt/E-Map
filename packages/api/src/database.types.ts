@@ -845,6 +845,7 @@ export interface Database {
           accepted_at: string | null;
           created_at: string;
           email_enc: string | null;
+          permissions: Json;
         };
         Insert: {
           id?: string;
@@ -856,6 +857,7 @@ export interface Database {
           accepted_at?: string | null;
           created_at?: string;
           email_enc?: string | null;
+          permissions?: Json;
         };
         Update: {
           id?: string;
@@ -867,6 +869,7 @@ export interface Database {
           accepted_at?: string | null;
           created_at?: string;
           email_enc?: string | null;
+          permissions?: Json;
         };
         Relationships: [];
       };
@@ -1876,6 +1879,7 @@ export interface Database {
           p_role?: Database["public"]["Enums"]["role"] | null;
           p_vehicle?: string | null;
           p_email?: string | null;
+          p_permissions?: Json | null;
         };
         Returns: string;
       };

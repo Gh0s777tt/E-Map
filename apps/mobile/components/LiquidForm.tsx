@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { useFleet } from "../lib/useFleet";
+import { usePermission } from "../lib/usePermission";
 import { VehiclePicker } from "./VehiclePicker";
 
 const STATUS_ICON: Record<OutboxItem["status"], string> = {
@@ -15,6 +16,7 @@ const STATUS_ICON: Record<OutboxItem["status"], string> = {
 /** Wspólny formularz cieczy: paliwo (`fuel`) i AdBlue (`adblue`) — ta sama walidacja. */
 export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const { vehicles, loading } = useFleet();
+  const perm = usePermission("forms"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [country, setCountry] = useState("");
   const [odometer, setOdometer] = useState("");
@@ -160,9 +162,13 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         </Text>
       </Pressable>
 
-      <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
-        <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zapisz"}</Text>
-      </Pressable>
+      {perm === "view" ? (
+        <Text style={styles.viewOnly}>👁 Masz uprawnienia tylko do podglądu formularzy.</Text>
+      ) : (
+        <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
+          <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zapisz"}</Text>
+        </Pressable>
+      )}
       {msg && <Text style={styles.msg}>{msg}</Text>}
 
       {items.length > 0 && (
@@ -240,6 +246,7 @@ const styles = StyleSheet.create({
   repeatText: { color: palette.offWhite, fontWeight: "600" },
   btnText: { color: palette.white, fontWeight: "700", fontSize: 16 },
   msg: { color: palette.smoke, marginTop: 10 },
+  viewOnly: { color: palette.smoke, marginTop: 14, fontSize: 13, textAlign: "center" },
   queue: {
     marginTop: 16,
     borderTopColor: palette.graphite,

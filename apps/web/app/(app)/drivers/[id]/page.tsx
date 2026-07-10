@@ -16,6 +16,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { MemberPermissionsEditor } from "@/components/MemberPermissionsEditor";
 import { useToast } from "@/components/Toast";
 import { Badge, PageHeader } from "@/components/ui";
 import { orderStatusLabel } from "@/lib/labels";
@@ -202,6 +203,10 @@ export default function DriverCardPage() {
               Powiązanie łączy kartotekę z kontem (do historii zleceń).
             </span>
           </div>
+
+          {driver.user_id && companyId && (
+            <MemberPermissionsEditor companyId={companyId} userId={driver.user_id} />
+          )}
 
           {/* Historia zleceń */}
           <h2 style={styles.h2}>Historia zleceń</h2>
