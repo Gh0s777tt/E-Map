@@ -176,6 +176,7 @@ export default function ChecklistsPage() {
                 </label>
               </div>
               {editing.items.map((it, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: pozycje edytora są czysto pozycyjne
                 <div key={`it-${i * 1}`} style={styles.itemRow}>
                   <input
                     style={{ ...f.input, flex: 2 }}

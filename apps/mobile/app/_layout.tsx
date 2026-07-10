@@ -48,6 +48,7 @@ function RootNav() {
       <Stack.Screen name="trip" options={{ title: "Trasa" }} />
       <Stack.Screen name="map" options={{ title: "Mapa" }} />
       <Stack.Screen name="checklists" options={{ title: "Checklisty" }} />
+      <Stack.Screen name="documents" options={{ title: "Dokumenty" }} />
     </Stack>
   );
 }

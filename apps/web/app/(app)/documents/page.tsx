@@ -1,10 +1,13 @@
 "use client";
 
 import {
+  type CompanyMember,
   type DocumentMeta,
   deleteDocument,
   getDocumentUrl,
+  listCompanyMembers,
   listDocuments,
+  setDocumentVisibility,
   uploadDocument,
 } from "@e-logistic/api";
 import { DOCUMENT_CATEGORIES, type ExpiryLevel, expiryStatus } from "@e-logistic/core";
@@ -50,6 +53,10 @@ export default function DocumentsPage() {
   const [category, setCategory] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
+  // #275: widoczność — zarząd / cała firma / wybrane osoby.
+  const [visibility, setVisibility] = useState<"management" | "company" | "selected">("management");
+  const [allowed, setAllowed] = useState<string[]>([]);
+  const [members, setMembers] = useState<CompanyMember[]>([]);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -75,6 +82,12 @@ export default function DocumentsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    listCompanyMembers(getBrowserSupabase())
+      .then(setMembers)
+      .catch(() => {});
+  }, []);
 
   const today = new Date().toISOString().slice(0, 10);
   const regOf = (id: string | null) =>
@@ -127,6 +140,8 @@ export default function DocumentsPage() {
         vehicleId: vehicleId || undefined,
         category: category || undefined,
         expiryDate: expiryDate || undefined,
+        visibility,
+        allowedUserIds: visibility === "selected" ? allowed : [],
       });
       toast("Dokument wgrany.", "success");
       resetForm();
@@ -219,6 +234,41 @@ export default function DocumentsPage() {
               </select>
             </label>
             <label style={styles.field}>
+              <span style={f.label}>Widoczność</span>
+              <select
+                style={f.input}
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value as typeof visibility)}
+              >
+                <option value="management">tylko zarząd</option>
+                <option value="company">cała firma (kierowcy też)</option>
+                <option value="selected">wybrane osoby</option>
+              </select>
+            </label>
+            {visibility === "selected" && (
+              <div style={{ ...styles.field, gridColumn: "1 / -1" }}>
+                <span style={f.label}>Kto widzi (zaznacz)</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {members.map((mm) => (
+                    <label key={mm.user_id} style={{ fontSize: 13, display: "flex", gap: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={allowed.includes(mm.user_id)}
+                        onChange={(e) =>
+                          setAllowed((a) =>
+                            e.target.checked
+                              ? [...a, mm.user_id]
+                              : a.filter((x) => x !== mm.user_id),
+                          )
+                        }
+                      />
+                      {mm.email}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <label style={styles.field}>
               <span style={f.label}>Pojazd (opcjonalnie)</span>
               <select
                 style={f.input}
@@ -296,6 +346,28 @@ export default function DocumentsPage() {
                     📄 {d.name}
                   </button>
                   {d.category && <Badge color={palette.smoke}>{d.category}</Badge>}
+                  <select
+                    style={{ ...f.input, width: "auto", padding: "4px 8px", fontSize: 12 }}
+                    value={d.visibility}
+                    title="Kto widzi dokument"
+                    onChange={async (e) => {
+                      try {
+                        await setDocumentVisibility(
+                          getBrowserSupabase(),
+                          d.id,
+                          e.target.value as DocumentMeta["visibility"],
+                          d.allowed_user_ids,
+                        );
+                        await load();
+                      } catch {
+                        toast("Błąd zmiany widoczności.", "error");
+                      }
+                    }}
+                  >
+                    <option value="management">🔒 zarząd</option>
+                    <option value="company">👥 firma</option>
+                    <option value="selected">👤 wybrani</option>
+                  </select>
                   {exp && (
                     <Badge color={EXPIRY_COLOR[exp.level]}>
                       {exp.level === "expired"

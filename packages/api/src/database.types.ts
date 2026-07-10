@@ -397,6 +397,8 @@ export interface Database {
           expiry_date: string | null;
           uploaded_by: string | null;
           created_at: string;
+          visibility: string;
+          allowed_user_ids: string[];
         };
         Insert: {
           id?: string;
@@ -410,6 +412,8 @@ export interface Database {
           expiry_date?: string | null;
           uploaded_by?: string | null;
           created_at?: string;
+          visibility?: string;
+          allowed_user_ids?: string[];
         };
         Update: {
           id?: string;
@@ -423,6 +427,8 @@ export interface Database {
           expiry_date?: string | null;
           uploaded_by?: string | null;
           created_at?: string;
+          visibility?: string;
+          allowed_user_ids?: string[];
         };
         Relationships: [];
       };

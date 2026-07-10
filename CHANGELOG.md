@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-274-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.127.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-275-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.128.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.128.0] — 📄 Dokumenty firmowe z widocznością — tachobooki dla kierowców
+
+- `[#275]` 📄 **Właściciel decyduje, kto widzi dokument** (prośba właściciela: tachobooki, listy kontrolne do podglądu/druku):
+  - **Migracja [`0061_document_visibility.sql`](supabase/migrations/0061_document_visibility.sql)** — `documents.visibility` (`management` = tylko zarząd — zachowanie historyczne · `company` = cała firma · `selected` = wskazani) + `allowed_user_ids`; polityka SELECT egzekwuje widoczność w bazie (RLS, nie w UI). ✅ Na żywej bazie.
+  - **Web** ([`/documents`](apps/web/app/(app)/documents/page.tsx)): wybór widoczności przy wgrywaniu (z checkboxami członków przy „wybrane osoby") + szybka zmiana 🔒/👥/👤 na każdym wierszu.
+  - **Mobile** ([`documents.tsx`](apps/mobile/app/documents.tsx), kafel 📄): kierowca widzi wyłącznie udostępnione mu pliki; otwarcie = podpisany URL → systemowy podgląd PDF (drukowanie z poziomu telefonu). Wersja mobile **1.34.0**.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.127.0] — 💳📍 Statystyki: najczęściej używane karty i najczęstsze stacje
 

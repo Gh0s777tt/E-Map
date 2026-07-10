@@ -14,6 +14,9 @@ export interface DocumentMeta {
   expiry_date: string | null;
   uploaded_by: string | null;
   created_at: string;
+  /** #275: kto widzi — 'management' (zarząd), 'company' (wszyscy), 'selected'. */
+  visibility: "management" | "company" | "selected";
+  allowed_user_ids: string[];
 }
 
 export interface UploadDocumentInput {
@@ -21,10 +24,12 @@ export interface UploadDocumentInput {
   vehicleId?: string | null;
   category?: string | null;
   expiryDate?: string | null;
+  visibility?: "management" | "company" | "selected";
+  allowedUserIds?: string[];
 }
 
 const COLS =
-  "id, vehicle_id, name, path, size_bytes, mime, category, expiry_date, uploaded_by, created_at";
+  "id, vehicle_id, name, path, size_bytes, mime, category, expiry_date, uploaded_by, created_at, visibility, allowed_user_ids";
 
 export async function listDocuments(
   client: SupabaseClient,
@@ -79,6 +84,8 @@ export async function uploadDocument(
     mime: file.type || null,
     category: input.category ?? null,
     expiry_date: input.expiryDate ?? null,
+    visibility: input.visibility ?? "management",
+    allowed_user_ids: input.allowedUserIds ?? [],
   };
   const { data, error } = await client.from("documents").insert(row).select(COLS).single();
   if (error) {
@@ -107,5 +114,19 @@ export async function deleteDocument(client: SupabaseClient, doc: DocumentMeta):
   const rm = await client.storage.from(DOCUMENTS_BUCKET).remove([doc.path]);
   if (rm.error) throw rm.error;
   const { error } = await client.from("documents").delete().eq("id", doc.id);
+  if (error) throw error;
+}
+
+/** #275: zmiana widoczności dokumentu (owner/dispatcher — RLS write). */
+export async function setDocumentVisibility(
+  client: SupabaseClient,
+  docId: string,
+  visibility: "management" | "company" | "selected",
+  allowedUserIds: string[] = [],
+): Promise<void> {
+  const { error } = await client
+    .from("documents")
+    .update({ visibility, allowed_user_ids: allowedUserIds })
+    .eq("id", docId);
   if (error) throw error;
 }
