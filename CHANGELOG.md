@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-277-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.130.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-278-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.131.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.131.0] — 🔐 Uprawnienia etap 2 — matryca przy zaproszeniu, profil kierowcy, egzekwowanie podglądu
+
+- `[#278]` 🔐 Domknięcie wizji „szef nadaje uprawnienia przy dodawaniu kierowcy i zmienia je w dowolnej chwili":
+  - **Migracja [`0063_invite_permissions.sql`](supabase/migrations/0063_invite_permissions.sql)** — `invites.permissions` + `create_invite(p_permissions)` i `accept_invite` przenoszący matrycę na membership. ✅ Na żywej bazie.
+  - **Zaproszenie** ([`/drivers`](apps/web/app/(app)/drivers/page.tsx)): matryca uprawnień w formularzu (preset roli kierowca) — link/QR niesie już nadane dostępy.
+  - **Profil kierowcy** ([`drivers/[id]`](apps/web/app/(app)/drivers/[id]/page.tsx)): sekcja „🔐 Uprawnienia" przy powiązanym koncie ([`MemberPermissionsEditor`](apps/web/components/MemberPermissionsEditor.tsx)) — zmiana w dowolnej chwili. Wspólny [`PermissionsMatrix`](apps/web/components/PermissionsMatrix.tsx) (Zespół · profil · zaproszenie).
+  - **Egzekwowanie `view` w mobile** ([`usePermission`](apps/mobile/lib/usePermission.ts)): przy „podglądzie" formularze Paliwo/AdBlue/Trasa i checklisty chowają przycisk zapisu (👁; offline fail-open — RLS pilnuje serwerowo). Wersja mobile **1.36.0**.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.130.0] — ⏱️ Auto czas pracy z checklisty Tachograf — dni, odpoczynki, naruszenia
 
