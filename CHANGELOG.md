@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-280-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.133.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-281-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.134.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.134.0] — 🚀 iOS w TestFlight (binarka wysłana do Apple)
+
+- `[#281]` 🚀 **E-Logistic trafił na TestFlight** — pełna, automatyczna ścieżka publikacji iOS:
+  - **Rekord aplikacji w App Store Connect**: utworzony (nazwa **E-Logistic**, język polski, bundle `com.ghostempire.elogistic`, SKU `ELOGISTIC0001`) → **ASC App ID `6789726653`**. (Utworzenie przez API jest zablokowane przez Apple — `403 CREATE forbidden` — więc rekord zakłada się raz w panelu; reszta automatem.)
+  - **`eas submit -p ios` w pełni non-interactive**: [`eas.json`](apps/mobile/eas.json) → `submit.production.ios` z `ascAppId` + `appleTeamId` + kluczem **App Store Connect API** (`ascApiKeyPath`/`ascApiKeyId`/`ascApiKeyIssuerId`, plik `.p8` lokalny/gitignored). Klucz musi siedzieć w profilu — zmienne środowiskowe nie wystarczają dla `submit`.
+  - **Wysłano** build `1.37.0 (13)` (`.ipa` z chmurowego EAS) → App Store Connect; Apple przetwarza binarkę (TestFlight: [apps/6789726653/testflight/ios](https://appstoreconnect.apple.com/apps/6789726653/testflight/ios)).
+  - 💻 **macOS**: apka iOS działa na Makach z Apple Silicon (jedna zgoda w Availability, bez osobnego buildu) — obok już działającej PWA panelu. Runbook zaktualizowany: [`store/ios-runbook.md`](apps/mobile/store/ios-runbook.md).
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.133.0] — 🍎 iOS gotowe pod App Store + PWA macOS dopięta
 

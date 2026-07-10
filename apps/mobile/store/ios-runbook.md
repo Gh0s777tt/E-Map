@@ -23,15 +23,37 @@ więc **kolejne buildy iOS są już automatyczne** (jak Android). Wynik: plik `.
    POZA repo i podawaj przy `eas submit --api-key-path`).
 3. Od teraz build/submit iOS działają non-interactive (CI/skrypty).
 
-## Utworzenie apki + wysyłka
+## Utworzenie apki + wysyłka — ZROBIONE (#281)
 
-1. App Store Connect → **Apps → +** → nowa apka iOS, bundle ID `com.ghostempire.elogistic`,
-   nazwa „E-Logistic", język PL. Skopiuj **Apple ID apki** (numeryczne) — podasz je przy `eas submit` (prompt) lub flagą
-   `--asc-app-id`. (Uwaga: `eas.json` nie przyjmuje komentarzy — `submit.production` zostaje pusty.)
-2. `eas submit --profile production --platform ios` → apka trafia do **TestFlight**.
-3. Karta apki (App Store): opis/zrzuty z `apps/mobile/store/listing.md`, polityka prywatności
+Rekord apki istnieje: **ASC App ID `6789726653`** (nazwa „E-Logistic", bundle
+`com.ghostempire.elogistic`, SKU `ELOGISTIC0001`, język PL). Utworzenie przez API jest
+zablokowane (`403 CREATE forbidden`), więc rekord zakłada się **raz** w panelu ASC.
+
+Konfiguracja submit (już w [`eas.json`](../eas.json), `submit.production.ios`) — działa
+w pełni non-interactive, klucz ASC API w profilu (env vary NIE wystarczają dla `submit`):
+
+```jsonc
+"ios": {
+  "ascAppId": "6789726653",
+  "appleTeamId": "CM2PFZ4W8J",
+  "ascApiKeyPath": "./credentials/AuthKey_CKTYH9UR2C.p8",  // gitignored
+  "ascApiKeyId": "CKTYH9UR2C",
+  "ascApiKeyIssuerId": "7dcd79de-f80a-4f23-beae-0a0f57b97152"
+}
+```
+
+Wysyłka builda na TestFlight (podmień `--id` na najnowszy FINISHED build):
+
+```bash
+cd apps/mobile
+eas submit --profile production --platform ios --id <BUILD_ID> --non-interactive
+```
+
+Kolejne kroki (Twoje, w panelu ASC):
+1. Karta apki (App Store): opis/zrzuty z `apps/mobile/store/listing.md`, polityka prywatności
    `https://e-logistic-one.vercel.app/privacy`, „App Privacy" wg ściągi Data safety.
-4. Wyślij do recenzji Apple (zwykle 24–48 h).
+2. TestFlight: dodaj testerów (test wewnętrzny — natychmiast po przetworzeniu binarki).
+3. Wyślij do recenzji Apple (zwykle 24–48 h).
 
 ## macOS
 
