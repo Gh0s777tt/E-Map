@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-273-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.126.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-274-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.127.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.127.0] — 💳📍 Statystyki: najczęściej używane karty i najczęstsze stacje
+
+- `[#274]` 💳 **Nowa sekcja w Statystykach** (prośba właściciela) — [`TopUsageSection`](apps/web/app/(app)/stats/TopUsageSection.tsx): ranking **kart paliwowych** (provider + maska numeru; liczba tankowań · litry · kwota) i **stacji** (miasto, kraj z formularzy Paliwo) z okna analizy 24 mies., z paskami proporcji. Widoczna dla owner/dispatcher.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.126.0] — 📋 Checklisty kierowców — „Wjazd do UK" i „Tachograf" (offline)
 

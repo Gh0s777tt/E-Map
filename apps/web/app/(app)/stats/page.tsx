@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  listFuelCardsSafe,
   listFuelLogs,
   listOrders,
   listTripEvents,
@@ -36,12 +37,14 @@ import { AlertsBanner } from "./AlertsBanner";
 import { EmissionsSection } from "./EmissionsSection";
 import { ProfitabilitySection } from "./ProfitabilitySection";
 import { entry, FleetStat, type FuelRaw, styles, type TripRaw } from "./shared";
+import { type CardOpt, TopUsageSection } from "./TopUsageSection";
 import { VehicleDetail } from "./VehicleDetail";
 
 export default function StatsPage() {
   const t = useT();
   const [vehicles, setVehicles] = useState<{ id: string; registration: string }[]>([]);
   const [fuel, setFuel] = useState<FuelRaw[]>([]);
+  const [cards, setCards] = useState<CardOpt[]>([]);
   const [adblue, setAdblue] = useState<FuelRaw[]>([]);
   const [trips, setTrips] = useState<TripRaw[]>([]);
   const [orders, setOrders] = useState<
@@ -75,6 +78,9 @@ export default function StatsPage() {
         const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
           .toISOString()
           .slice(0, 10);
+        listFuelCardsSafe(sb, m.companyId)
+          .then((cs) => setCards(cs as unknown as CardOpt[]))
+          .catch(() => {});
         const [f, a, tr, vs, ord, vc] = await Promise.all([
           listFuelLogs(sb, { from, limit: 5000 }),
           listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
@@ -494,6 +500,8 @@ export default function StatsPage() {
           {canManage && profit.clients.length > 0 && (
             <ProfitabilitySection data={profit} trend={trendInput} />
           )}
+
+          {canManage && <TopUsageSection fuel={fuel} cards={cards} />}
 
           {canManage && co2Rows.length > 0 && (
             <EmissionsSection rows={co2Rows} clientRows={co2ClientRows} />
