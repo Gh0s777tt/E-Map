@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-282-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.135.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-283-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.136.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.136.0] — 🚦 E-Logistic WYSŁANY do recenzji Apple (Waiting for Review)
+
+- `[#283]` 🚦 **Zgłoszenie do App Review złożone** — „1 Item Submitted": wersja **1.0 (build 1.37.0/13)**, recenzja do 48 h, wynik przyjdzie e-mailem. Cała ścieżka od buildu po submit wykonana zdalnie (przeglądarka + ASC API):
+  - **Zrzuty ekranu generowane skryptem** [`scripts/gen-ios-screenshots.mjs`](scripts/gen-ios-screenshots.mjs): 4 ekrany (Pulpit, Mapa TIR, Moje zlecenia, Paliwo offline) × 2 urządzenia — **iPhone 6.5"** (1284×2778) i **iPad 13"** (2048×2732), motyw czerń/czerwień, mockup w ramce telefonu + baner marketingowy. PNG commitowane w [`store/screenshots/`](apps/mobile/store/screenshots/). Upload przez **ASC API** (reserve → PUT chunk → commit MD5) — obejście limitu uploadu przeglądarkowego.
+  - **Konto demo dla recenzenta**: `apple-review@ghostempire.dev` (owner firmy testowej) — utworzone SQL-em przez Management API (auth.users + identity + membership, hasło bcrypt), zweryfikowane realnym loginem do GoTrue. Dane wpisane w Sign-In Information.
+  - **App Review Information**: kontakt (imię/nazwisko/telefon/e-mail właściciela) + notatki EN dla recenzenta (charakter B2B, brak samodzielnej rejestracji, link do panelu/supportu/privacy).
+  - **Cena: Free** (0,00 USD, 175 krajów) — brakujący „price tier" blokował Add for Review.
+  - **Wydanie ręczne** (Manually release) — właściciel kontroluje moment publikacji po akceptacji.
+  - **Bramki:** `pnpm check` ✓.
 
 ## [1.135.0] — 🧾 Karta App Store gotowa + strona wsparcia
 
