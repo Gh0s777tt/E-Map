@@ -1212,6 +1212,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
           assigned_to: string | null;
+          tracking_token: string;
         };
         Insert: {
           id?: string;
@@ -1233,6 +1234,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           assigned_to?: string | null;
+          tracking_token?: string;
         };
         Update: {
           id?: string;
@@ -1254,6 +1256,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           assigned_to?: string | null;
+          tracking_token?: string;
         };
         Relationships: [];
       };
@@ -2009,6 +2012,18 @@ export interface Database {
           p_status: Database["public"]["Enums"]["order_status"] | null;
         };
         Returns: undefined;
+      };
+      order_tracking: {
+        Args: { p_token: string | null };
+        Returns: {
+          reference_no: string;
+          origin: string;
+          destination: string;
+          status: Database["public"]["Enums"]["order_status"];
+          load_date: string;
+          unload_date: string;
+          updated_at: string;
+        }[];
       };
       send_driver_route: {
         Args: {

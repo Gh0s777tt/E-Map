@@ -9,6 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CargoPhotosMobile } from "../../components/CargoPhotosMobile";
+import { TrackingQrButton } from "../../components/TrackingQr";
 import { Card, ScreenTitle } from "../../components/ui";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
@@ -165,6 +166,12 @@ export default function OrdersScreen() {
           )}
 
           {segment !== "done" && <CargoPhotosMobile orderId={o.id} />}
+          {(o.status === "in_progress" || o.status === "delivered") && (
+            <TrackingQrButton
+              orderId={o.id}
+              label={`${o.origin || "?"} → ${o.destination || "?"}`}
+            />
+          )}
         </Card>
       ))}
     </ScrollView>

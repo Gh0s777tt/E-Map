@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-288-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.141.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-289-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.142.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.142.0] — 📱 POD z kodem QR + publiczne śledzenie przesyłki
+
+- `[#289]` 📱 **QR potwierdzenia dostawy + portal śledzenia dla klienta** (mockupy 09/17, mobile **1.43.0**):
+  - **Migracja [`0065`](supabase/migrations/0065_order_tracking.sql)** (zastosowana na żywej bazie): `orders.tracking_token` (sekretny UUID, unikalny indeks) + RPC **`order_tracking`** (SECURITY DEFINER, `anon`) zwracające wyłącznie bezpieczny podzbiór pól — RLS `orders` bez zmian.
+  - **Mobile**: przycisk **„📱 QR dla odbiorcy"** na karcie zlecenia w trasie/dostarczonego ([`TrackingQr.tsx`](apps/mobile/components/TrackingQr.tsx), `react-native-qrcode-svg` + `react-native-svg`) — modal z kodem, odbiorca skanuje i widzi status; **„Udostępnij link"** wysyła ten sam adres klientowi (Messenger/SMS/mail).
+  - **Web**: publiczna strona **[`/track/[token]`](apps/web/app/track/%5Btoken%5D/page.tsx)** — oś czasu Przyjęte → Przypisany kierowca → W trasie → Dostarczone (czerń/czerwień, bez logowania).
+  - API: [`orderTracking.ts`](packages/api/src/data/orderTracking.ts) (`getOrderTrackingToken` · `fetchOrderTracking` · `trackingUrl`) + `gen:types` (29 funkcji).
+  - Build iOS **1.43.0** z auto-submitem; wersja w recenzji Apple podmieniona na najnowszą.
+  - **Bramki:** mobile+web `tsc` ✓ · `pnpm check` ✓.
 
 ## [1.141.0] — 🧾 Rejestr wydatków + 📅 Harmonogram serwisów + ⭐ Scoring kierowców
 
