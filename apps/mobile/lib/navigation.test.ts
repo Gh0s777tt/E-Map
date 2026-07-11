@@ -13,7 +13,9 @@ describe("guardRedirect (bramka tras)", () => {
     expect(guardRedirect({ ...base, configured: false, segments: ["login"] })).toBeNull();
     // nawet z (teoretyczną) sesją bez konfiguracji nie wpuszczamy na pulpit
     expect(guardRedirect({ ...base, configured: false, session: {} })).toBe("/login");
-    expect(guardRedirect({ ...base, configured: false, session: {}, segments: ["login"] })).toBeNull();
+    expect(
+      guardRedirect({ ...base, configured: false, session: {}, segments: ["login"] }),
+    ).toBeNull();
   });
 
   it("bez sesji poza /login → /login", () => {
