@@ -135,7 +135,7 @@ export function LoginForm({ locale }: { locale: Locale }) {
       return { error };
     }, t("auth.resetSent"));
 
-  const oauth = (provider: "google" | "apple") =>
+  const oauth = (provider: "google" | "apple" | "azure") =>
     run(async () => {
       const redirectTo = `${window.location.origin}/auth/callback`;
       const { error } = await getBrowserSupabase().auth.signInWithOAuth({
@@ -295,6 +295,14 @@ export function LoginForm({ locale }: { locale: Locale }) {
           disabled={busy}
         >
           {t("auth.continueApple")}
+        </button>
+        <button
+          type="button"
+          className={styles.oauth}
+          onClick={() => oauth("azure")}
+          disabled={busy}
+        >
+          {t("auth.continueMicrosoft")}
         </button>
         <button type="button" className={styles.passkey} onClick={loginPasskey} disabled={busy}>
           🔑 {t("auth.passkeyLogin")}

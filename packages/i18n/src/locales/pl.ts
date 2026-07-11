@@ -103,6 +103,7 @@ export const pl = {
   "auth.magicLink": "Wyślij link logujący",
   "auth.continueGoogle": "Kontynuuj z Google",
   "auth.continueApple": "Kontynuuj z Apple",
+  "auth.continueMicrosoft": "Kontynuuj z Microsoft",
   "auth.toSignUp": "Nie masz konta? Zarejestruj się",
   "auth.toSignIn": "Masz już konto? Zaloguj się",
   "auth.signInSub": "Zaloguj się do konta",

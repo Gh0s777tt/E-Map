@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-286-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.139.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-287-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.140.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.140.0] — 🔐 Logowanie Apple / Google / Microsoft w aplikacji mobilnej
+
+- `[#287]` 🔐 **Nowe sposoby logowania** (prośba właściciela; mobile **1.41.0**):
+  -  **Sign in with Apple — natywnie, w pełni działające**: capability `APPLE_ID_AUTH` włączone na bundlu przez ASC API + **nowy profil provisioning `B677DJRANL`** (entitlementy push + applesignin, podmieniony w `credentials/`), `expo-apple-authentication` + `usesAppleSignIn` w [`app.json`](apps/mobile/app.json), przycisk w [`login.tsx`](apps/mobile/app/login.tsx) → `signInWithIdToken`. Provider **włączony w Supabase** (Management API, `client_id` = bundle — natywny flow bez sekretu).
+  - 🟢🟦 **Google i Microsoft (Azure)** — OAuth **PKCE** w przeglądarce systemowej (`expo-web-browser`, deep link `elogistic://auth` dopisany do `uri_allow_list` Supabase; `flowType: "pkce"` w [`client.ts`](packages/api/src/client.ts) + `exchangeCodeForSession`). Przy wyłączonym providerze czytelny komunikat — **do aktywacji Google/Microsoft właściciel podaje client ID + secret** (Google Cloud / Azure AD) w Supabase.
+  - 🌐 **Web**: przycisk **„Kontynuuj z Microsoft"** w [`LoginForm`](apps/web/components/LoginForm.tsx) (obok Google/Apple/passkey), i18n PL/EN.
+  - 🔑 Passkey na mobile: notka na ekranie logowania (konfiguracja w panelu web; natywny WebAuthn — osobny etap).
+  - Build iOS **1.41.0** z auto-submitem do TestFlight. **Bramki:** `pnpm check` ✓.
 
 ## [1.139.0] — 🎨 Restyle LogiFlow: mobile wg mockupów właściciela + nowy landing
 

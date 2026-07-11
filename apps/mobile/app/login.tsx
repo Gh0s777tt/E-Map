@@ -1,13 +1,50 @@
+/**
+ * Logowanie (#287): e-mail/hasło + Sign in with Apple (natywnie, iOS) +
+ * Google i Microsoft przez OAuth PKCE w przeglądarce systemowej (deep link
+ * `elogistic://auth`). Provider wyłączony w Supabase → czytelny komunikat.
+ * Passkey działa w panelu web (natywny WebAuthn w RN — osobny etap).
+ */
 import { palette } from "@e-logistic/ui";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
+
+WebBrowser.maybeCompleteAuthSession();
+
+const REDIRECT = "elogistic://auth";
+
+function friendlyOAuthError(message: string): string {
+  if (/not enabled|disabled|unsupported provider/i.test(message)) {
+    return "Ten sposób logowania nie jest jeszcze włączony przez administratora firmy.";
+  }
+  return message;
+}
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<null | "password" | "apple" | "google" | "azure">(null);
   const [error, setError] = useState<string | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      AppleAuthentication.isAvailableAsync()
+        .then(setAppleAvailable)
+        .catch(() => {});
+    }
+  }, []);
 
   async function signIn() {
     setError(null);
@@ -15,7 +52,7 @@ export default function Login() {
       setError("Podaj e-mail i hasło.");
       return;
     }
-    setBusy(true);
+    setBusy("password");
     try {
       const { error: e } = await getSupabase().auth.signInWithPassword({
         email: email.trim(),
@@ -26,12 +63,75 @@ export default function Login() {
     } catch {
       setError("Nie udało się zalogować.");
     } finally {
-      setBusy(false);
+      setBusy(null);
+    }
+  }
+
+  /** Natywny Sign in with Apple → token tożsamości → sesja Supabase. */
+  async function signInApple() {
+    setError(null);
+    setBusy("apple");
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) throw new Error("Apple nie zwróciło tokenu.");
+      const { error: e } = await getSupabase().auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+      });
+      if (e) setError(friendlyOAuthError(e.message));
+    } catch (e) {
+      // ERR_REQUEST_CANCELED = użytkownik zamknął arkusz — bez komunikatu.
+      const msg = e instanceof Error ? e.message : "";
+      if (!/canceled|cancelled/i.test(msg)) {
+        setError(friendlyOAuthError(msg || "Logowanie Apple nie powiodło się."));
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** OAuth w przeglądarce systemowej (PKCE): Google / Microsoft. */
+  async function signInOAuth(provider: "google" | "azure") {
+    setError(null);
+    setBusy(provider);
+    try {
+      const sb = getSupabase();
+      const { data, error: e } = await sb.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: REDIRECT,
+          skipBrowserRedirect: true,
+          ...(provider === "azure" ? { scopes: "openid profile email" } : {}),
+        },
+      });
+      if (e) {
+        setError(friendlyOAuthError(e.message));
+        return;
+      }
+      if (!data?.url) throw new Error("Brak adresu logowania.");
+      const res = await WebBrowser.openAuthSessionAsync(data.url, REDIRECT);
+      if (res.type !== "success" || !res.url) return; // anulowane
+      const code = new URL(res.url).searchParams.get("code");
+      if (!code) {
+        setError("Logowanie przerwane — brak kodu autoryzacji.");
+        return;
+      }
+      const { error: ex } = await sb.auth.exchangeCodeForSession(code);
+      if (ex) setError(friendlyOAuthError(ex.message));
+    } catch (e) {
+      setError(friendlyOAuthError(e instanceof Error ? e.message : "Logowanie nie powiodło się."));
+    } finally {
+      setBusy(null);
     }
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <Text style={styles.brand}>GH0ST EMPIRE</Text>
       <Text style={styles.title}>
         <Text style={styles.accent}>E</Text>-Logistic
@@ -65,28 +165,75 @@ export default function Login() {
           />
           {error && <Text style={styles.error}>{error}</Text>}
           <Pressable
-            style={[styles.cta, busy && styles.ctaDisabled]}
-            disabled={busy}
+            style={[styles.cta, busy === "password" && styles.ctaDisabled]}
+            disabled={busy !== null}
             onPress={signIn}
           >
-            {busy ? (
+            {busy === "password" ? (
               <ActivityIndicator color={palette.white} />
             ) : (
               <Text style={styles.ctaText}>Zaloguj się</Text>
             )}
           </Pressable>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>albo</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {appleAvailable && (
+            <Pressable
+              style={[styles.provider, styles.providerApple]}
+              onPress={signInApple}
+              disabled={busy !== null}
+            >
+              {busy === "apple" ? (
+                <ActivityIndicator color={palette.black} />
+              ) : (
+                <Text style={styles.providerAppleText}> Zaloguj się przez Apple</Text>
+              )}
+            </Pressable>
+          )}
+          <Pressable
+            style={styles.provider}
+            onPress={() => signInOAuth("google")}
+            disabled={busy !== null}
+          >
+            {busy === "google" ? (
+              <ActivityIndicator color={palette.white} />
+            ) : (
+              <Text style={styles.providerText}>🟢 Zaloguj się przez Google</Text>
+            )}
+          </Pressable>
+          <Pressable
+            style={styles.provider}
+            onPress={() => signInOAuth("azure")}
+            disabled={busy !== null}
+          >
+            {busy === "azure" ? (
+              <ActivityIndicator color={palette.white} />
+            ) : (
+              <Text style={styles.providerText}>🟦 Zaloguj się przez Microsoft</Text>
+            )}
+          </Pressable>
+
+          <Text style={styles.passkeyNote}>
+            🔑 Passkey i 2FA skonfigurujesz w panelu web — logowanie hasłem i kontami działa
+            niezależnie.
+          </Text>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: palette.black },
   container: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.black,
     gap: 8,
     padding: 24,
   },
@@ -99,20 +246,34 @@ const styles = StyleSheet.create({
     backgroundColor: palette.nearBlack,
     borderColor: palette.graphite,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
     color: palette.offWhite,
     fontSize: 16,
   },
   cta: {
     backgroundColor: palette.red,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: "center",
     marginTop: 4,
   },
   ctaDisabled: { opacity: 0.6 },
   ctaText: { color: palette.white, fontWeight: "700", fontSize: 16 },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 6 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: palette.graphite },
+  dividerText: { color: palette.smoke, fontSize: 12 },
+  provider: {
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  providerApple: { backgroundColor: palette.white, borderColor: palette.white },
+  providerAppleText: { color: palette.black, fontWeight: "700", fontSize: 15 },
+  providerText: { color: palette.offWhite, fontWeight: "600", fontSize: 15 },
+  passkeyNote: { color: palette.smoke, fontSize: 12, textAlign: "center", marginTop: 8 },
   error: { color: palette.red, fontSize: 13, textAlign: "center" },
 });

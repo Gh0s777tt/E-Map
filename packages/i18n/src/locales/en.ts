@@ -105,6 +105,7 @@ export const en: Record<MessageKey, string> = {
   "auth.magicLink": "Send magic link",
   "auth.continueGoogle": "Continue with Google",
   "auth.continueApple": "Continue with Apple",
+  "auth.continueMicrosoft": "Continue with Microsoft",
   "auth.toSignUp": "No account? Sign up",
   "auth.toSignIn": "Already have an account? Sign in",
   "auth.signInSub": "Sign in to your account",

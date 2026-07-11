@@ -60,6 +60,9 @@ export function createSupabaseMobileClient(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
+      // #287: OAuth (Google/Microsoft) natywnie — kod wraca deep linkiem,
+      // wymieniany na sesje przez exchangeCodeForSession (PKCE).
+      flowType: "pkce",
     },
   });
 }
