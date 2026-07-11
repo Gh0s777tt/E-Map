@@ -66,6 +66,12 @@ export default function MoreScreen() {
           subtitle="dni służby i odpoczynki"
           onPress={() => router.push("/work-time")}
         />
+        <ListRow
+          glyph="🧾"
+          title="Rejestr wydatków"
+          subtitle="opłaty drogowe · parkingi · paragony"
+          onPress={() => router.push("/expenses")}
+        />
         {show("settlements") && (
           <ListRow
             glyph="💶"

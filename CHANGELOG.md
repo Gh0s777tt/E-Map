@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-287-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.140.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-288-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.141.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.141.0] — 🧾 Rejestr wydatków + 📅 Harmonogram serwisów + ⭐ Scoring kierowców
+
+- `[#288]` Trzy moduły z mockupów właściciela (mobile **1.42.0**):
+  - 🧾 **Rejestr wydatków** (mockup 10, pełny stack): migracja [`0064_driver_expenses`](supabase/migrations/0064_driver_expenses.sql) (kategorie: opłaty drogowe/parking/naprawa/myjnia/inne, kwota+waluta, zdjęcie paragonu, statusy submitted/approved/rejected; **RLS**: kierowca swoje, zarząd wszystko — zastosowana na żywej bazie) + warstwa [`driverExpenses`](packages/api/src/data/driverExpenses.ts) (upload paragonu do Storage) + **ekran mobilny** [`expenses.tsx`](apps/mobile/app/expenses.tsx) (chipy kategorii, „Dodaj wydatek", lista ze statusami, wpis w „Więcej") + **strona web** [`/expenses`](<apps/web/app/(app)/expenses/page.tsx>) (filtry, podgląd paragonu, ✓ Zatwierdź / ✗ Odrzuć, suma „do rozliczenia" per waluta).
+  - 📅 **Harmonogram serwisów** ([`/schedule`](<apps/web/app/(app)/schedule/page.tsx>), mockup 12): jedna oś czasu wszystkich terminów — przegląd/OC/leasing pojazdów, badania kierowców (prawo jazdy, kod 95, lekarskie, psychotesty, ADR) i serwis wg przebiegu (km do interwału z realnych liczników); sort po pilności, kolor po terminie/<14 dni/ok, licznik „po terminie" w nagłówku.
+  - ⭐ **Scoring kierowców** ([`/scoring`](<apps/web/app/(app)/scoring/page.tsx>), mockup 11): ranking 90 dni z realnych danych — terminowość (domknięte zlecenia z minioną datą rozładunku), dyscyplina checklist, wolumen dostaw → **1–5 gwiazdek** (60/30/10), 🏆 dla lidera, jawny wzór pod tabelą.
+  - Nawigacja web (Flota: Harmonogram+Scoring; Finanse: Rejestr wydatków — widoczny też dla kierowcy) + i18n PL/EN + `gen:types` (45 tabel). Build iOS **1.42.0** z auto-submitem. **Bramki:** `pnpm check` ✓ (66 migracji).
 
 ## [1.140.0] — 🔐 Logowanie Apple / Google / Microsoft w aplikacji mobilnej
 

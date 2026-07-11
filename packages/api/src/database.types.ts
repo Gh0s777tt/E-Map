@@ -459,6 +459,51 @@ export interface Database {
         };
         Relationships: [];
       };
+      driver_expenses: {
+        Row: {
+          id: string;
+          company_id: string;
+          user_id: string;
+          vehicle_id: string | null;
+          category: string;
+          amount: number;
+          currency: string;
+          expense_date: string;
+          note: string | null;
+          photo_path: string | null;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          user_id?: string;
+          vehicle_id?: string | null;
+          category: string;
+          amount: number;
+          currency?: string;
+          expense_date?: string;
+          note?: string | null;
+          photo_path?: string | null;
+          status?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          user_id?: string;
+          vehicle_id?: string | null;
+          category?: string;
+          amount?: number;
+          currency?: string;
+          expense_date?: string;
+          note?: string | null;
+          photo_path?: string | null;
+          status?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       driver_payouts: {
         Row: {
           id: string;
