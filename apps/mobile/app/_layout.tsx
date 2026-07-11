@@ -48,6 +48,7 @@ function RootNav() {
       <Stack.Screen name="trip" options={{ title: "Trasa" }} />
       <Stack.Screen name="checklists" options={{ title: "Checklisty" }} />
       <Stack.Screen name="documents" options={{ title: "Dokumenty" }} />
+      <Stack.Screen name="chat" options={{ title: "Czat z dyspozytorem" }} />
       <Stack.Screen name="expenses" options={{ title: "Rejestr wydatków" }} />
       <Stack.Screen name="work-time" options={{ title: "Czas pracy" }} />
       <Stack.Screen name="settlement" options={{ title: "Moje rozliczenie" }} />

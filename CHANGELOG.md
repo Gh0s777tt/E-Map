@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-289-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.142.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-290-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.143.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.143.0] — 💬 Czat kierowca ↔ dyspozytor (na żywo)
+
+- `[#290]` 💬 **Czat firmowy w czasie rzeczywistym** (mockup 14, mobile **1.44.0**):
+  - **Migracja [`0066`](supabase/migrations/0066_company_chat.sql)** (na żywej bazie): tabela `messages` (RLS: czyta członek firmy, pisze wyłącznie we własnym imieniu) + publikacja `supabase_realtime` (INSERT dociera na żywo).
+  - **Mobile**: ekran [`Czat z dyspozytorem`](apps/mobile/app/chat.tsx) — dymki (moje czerwone po prawej, reszta z etykietą nadawcy), auto-scroll, wysyłka Enterem, wpis w „Więcej → Praca".
+  - **Web**: strona [`/chat`](<apps/web/app/(app)/chat/page.tsx>) dla zarządu (ten sam kanał, Enter wysyła) + pozycja **„Czat firmowy"** w nawigacji (i18n PL/EN).
+  - API: [`messages.ts`](packages/api/src/data/messages.ts) (`listMessages` · `sendMessage` · `subscribeMessages`).
+  - Build iOS **1.44.0** z auto-submitem do TestFlight. **Bramki:** mobile+web `tsc` ✓ · `pnpm check` ✓.
 
 ## [1.142.0] — 📱 POD z kodem QR + publiczne śledzenie przesyłki
 

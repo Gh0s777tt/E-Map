@@ -23,6 +23,7 @@ export * from "./data/invites";
 export * from "./data/invoices";
 export * from "./data/mapReports";
 export * from "./data/memberships";
+export * from "./data/messages";
 export * from "./data/notifications";
 export * from "./data/orderPhotos";
 export * from "./data/orders";

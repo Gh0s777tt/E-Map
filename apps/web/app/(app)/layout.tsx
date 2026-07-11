@@ -106,6 +106,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(manage ? [{ href: "/contractors", label: t("nav.contractors") }] : []),
         ...(has("settlements") ? [{ href: "/settlements", label: t("nav.settlements") }] : []),
         ...(has("settlements") ? [{ href: "/monthly", label: t("nav.monthly") }] : []),
+        { href: "/chat", label: t("nav.chat") },
         { href: "/expenses", label: t("nav.expenses") },
         ...(manage ? [{ href: "/per-diem", label: t("nav.perDiem") }] : []),
         ...(manage ? [{ href: "/work-time", label: t("nav.workTime") }] : []),

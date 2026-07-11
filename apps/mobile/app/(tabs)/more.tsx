@@ -52,6 +52,12 @@ export default function MoreScreen() {
 
       <SectionTitle>Praca</SectionTitle>
       <Card style={s.list}>
+        <ListRow
+          glyph="💬"
+          title="Czat z dyspozytorem"
+          subtitle="wspólny kanał firmy · na żywo"
+          onPress={() => router.push("/chat")}
+        />
         {show("checklists") && (
           <ListRow
             glyph="✅"

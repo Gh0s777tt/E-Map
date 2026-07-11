@@ -1113,6 +1113,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      messages: {
+        Row: {
+          id: string;
+          company_id: string;
+          sender_id: string;
+          sender_label: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          sender_id?: string;
+          sender_label?: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          sender_id?: string;
+          sender_label?: string;
+          body?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       notifications: {
         Row: {
           id: string;
