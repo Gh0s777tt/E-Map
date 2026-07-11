@@ -6,7 +6,9 @@
 /**
  * Bramka tras: dokąd przekierować przy danym stanie sesji. `null` = zostań.
  * Bez sesji poza ekranem logowania → `/login`; z sesją na `/login` → pulpit.
- * Dopóki trwa ładowanie lub brak konfiguracji Supabase — nie przekierowujemy.
+ * Dopóki trwa ładowanie — nie przekierowujemy. Brak konfiguracji Supabase
+ * traktujemy jak brak sesji (login pokazuje ostrzeżenie) — wcześniej build
+ * bez env udawał zalogowanego użytkownika (bug z TestFlight, #284).
  */
 export function guardRedirect(s: {
   session: unknown;
@@ -14,10 +16,11 @@ export function guardRedirect(s: {
   configured: boolean;
   segments: readonly string[];
 }): "/login" | "/" | null {
-  if (s.loading || !s.configured) return null;
+  if (s.loading) return null;
   const onLogin = s.segments[0] === "login";
-  if (!s.session && !onLogin) return "/login";
-  if (s.session && onLogin) return "/";
+  const authed = Boolean(s.session) && s.configured;
+  if (!authed && !onLogin) return "/login";
+  if (authed && onLogin) return "/";
   return null;
 }
 

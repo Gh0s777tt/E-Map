@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-283-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.136.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-284-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.137.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.137.0] — 🐛 Mobile: koniec „fałszywego zalogowania" (brak env w buildzie EAS)
+
+- `[#284]` 🐛 **Krytyczny fix z QA na urządzeniu** (TestFlight/macOS): build produkcyjny **nie miał konfiguracji Supabase** (`.env.local` jest gitignored, a `eas.json` nie przekazywał env do chmury EAS) → `supabaseConfigured=false`, bramka tras świadomie nie przekierowywała, a pulpit udawał zalogowanego użytkownika („👤 —"), „Wyloguj" był pusty. Naprawy (mobile **1.38.0**):
+  - [`eas.json`](apps/mobile/eas.json): sekcje `env` (production/preview/development) z `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_ANON_KEY` — wartości **publiczne** (anon key chroni RLS), więc mogą być w repo.
+  - [`lib/navigation.ts`](apps/mobile/lib/navigation.ts): brak konfiguracji = brak sesji → **zawsze `/login`** (ekran logowania ma już komunikat o braku env). Testy zaktualizowane (25 ✓).
+  - [`AuthProvider`](apps/mobile/components/AuthProvider.tsx): `signOut` z fallbackiem `scope: "local"` (offline/unieważniony token) + natychmiastowe wyczyszczenie stanu — „Wyloguj" działa zawsze.
+  - Nowy build iOS **1.38.0** z auto-submitem do TestFlight (grupa wewnętrzna ma auto-dystrybucję).
+  - **Bramki:** mobile `tsc` ✓ + testy 25 ✓, `pnpm check` ✓.
 
 ## [1.136.0] — 🚦 E-Logistic WYSŁANY do recenzji Apple (Waiting for Review)
 

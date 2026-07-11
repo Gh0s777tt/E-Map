@@ -4,9 +4,16 @@ import { guardRedirect, notificationTarget } from "./navigation";
 describe("guardRedirect (bramka tras)", () => {
   const base = { session: null, loading: false, configured: true, segments: ["index"] as string[] };
 
-  it("nie przekierowuje podczas ładowania ani bez konfiguracji", () => {
+  it("nie przekierowuje podczas ładowania", () => {
     expect(guardRedirect({ ...base, loading: true })).toBeNull();
-    expect(guardRedirect({ ...base, configured: false })).toBeNull();
+  });
+
+  it("brak konfiguracji = brak sesji: poza /login → /login, na /login zostań (#284)", () => {
+    expect(guardRedirect({ ...base, configured: false })).toBe("/login");
+    expect(guardRedirect({ ...base, configured: false, segments: ["login"] })).toBeNull();
+    // nawet z (teoretyczną) sesją bez konfiguracji nie wpuszczamy na pulpit
+    expect(guardRedirect({ ...base, configured: false, session: {} })).toBe("/login");
+    expect(guardRedirect({ ...base, configured: false, session: {}, segments: ["login"] })).toBeNull();
   });
 
   it("bez sesji poza /login → /login", () => {

@@ -52,7 +52,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       configured: supabaseConfigured,
       signOut: async () => {
-        if (supabaseConfigured) await getSupabase().auth.signOut();
+        if (!supabaseConfigured) return;
+        const sb = getSupabase();
+        try {
+          await sb.auth.signOut();
+        } catch {
+          // offline / unieważniony refresh token — i tak czyścimy sesję lokalnie
+          await sb.auth.signOut({ scope: "local" }).catch(() => {});
+        }
+        setSession(null);
       },
     }),
     [session, loading],
