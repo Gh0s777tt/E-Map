@@ -1,7 +1,8 @@
 /**
- * #285: Pulpit 2.0 — powitanie, karta aktywnego zlecenia, szybkie akcje,
- * podsumowanie dnia (checklisty + synchronizacja). Każdy blok ładuje się
- * niezależnie i znosi offline (fail-soft).
+ * Pulpit kierowcy 2.1 — restyle LogiFlow (#286): „Witaj," + pojazd, karta
+ * bieżącego zlecenia z paskiem akcji (Rozpocznij Trip / Tankuj / Checklist),
+ * 3 kafle KPI dnia i „Ostatnie aktywności" z wyróżnionym najnowszym wpisem.
+ * Każdy blok ładuje się niezależnie i znosi offline (fail-soft).
  */
 import {
   getActiveMembership,
@@ -10,47 +11,59 @@ import {
   listMyOrders,
   type Order,
 } from "@e-logistic/api";
-import { type AppModule, visibleModules } from "@e-logistic/core";
+import { type AppModule, type FuelLogInput, visibleModules } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import {
-  Avatar,
-  Card,
-  Chip,
-  GhostButton,
-  PrimaryButton,
-  QuickAction,
-  SectionTitle,
-} from "../../components/ui";
-import { listOutbox } from "../../lib/outbox";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Avatar, Card, GhostButton, PrimaryButton, SectionTitle } from "../../components/ui";
+import { listOutbox, type OutboxItem } from "../../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
+import { useFleet } from "../../lib/useFleet";
 import { initialOf, roleLabel, useProfile } from "../../lib/useProfile";
 
 const ACTIVE: Order["status"][] = ["in_progress", "assigned", "new"];
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 5) return "Dobrej nocy";
-  if (h < 12) return "Dzień dobry";
-  if (h < 18) return "Miłej trasy";
-  return "Dobry wieczór";
+const KIND_LABEL: Record<OutboxItem["kind"], string> = {
+  fuel: "Tankowanie",
+  adblue: "AdBlue",
+  trip: "Trasa",
+  checklist: "Checklista",
+};
+const KIND_GLYPH: Record<OutboxItem["kind"], string> = {
+  fuel: "⛽",
+  adblue: "💧",
+  trip: "🚚",
+  checklist: "✅",
+};
+
+function activitySub(it: OutboxItem): string {
+  const when = it.createdAt.slice(5, 16).replace("T", " ");
+  if (it.kind === "fuel" || it.kind === "adblue") {
+    const input = it.input as FuelLogInput;
+    return `${input.liters} l · ${input.station.country || "—"} · ${when}`;
+  }
+  if (it.kind === "checklist") {
+    const input = it.input as { templateName?: string };
+    return `${input.templateName ?? ""} · ${when}`.replace(/^ · /, "");
+  }
+  return when;
 }
 
 export default function Dashboard() {
   const router = useRouter();
   const profile = useProfile();
+  const { vehicles } = useFleet();
   const [mods, setMods] = useState<AppModule[] | null>(null);
   const [active, setActive] = useState<Order | null>(null);
   const [checklistsDue, setChecklistsDue] = useState<number | null>(null);
-  const [pendingSync, setPendingSync] = useState(0);
+  const [outbox, setOutbox] = useState<OutboxItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     // Outbox działa zawsze (lokalny), reszta wymaga konfiguracji/sieci.
     listOutbox()
-      .then((items) => setPendingSync(items.filter((i) => i.status !== "synced").length))
+      .then((items) => setOutbox([...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))))
       .catch(() => {});
     if (!supabaseConfigured) return;
     const sb = getSupabase();
@@ -58,7 +71,6 @@ export default function Dashboard() {
       .then(async (m) => {
         if (!m) return;
         setMods(visibleModules(m.role, m.modules, m.permissions));
-        // Checklisty „na dziś": aktywne szablony minus dzisiejsze wysłania.
         try {
           const [templates, subs] = await Promise.all([
             listChecklistTemplates(sb, m.companyId, { activeOnly: true }),
@@ -90,6 +102,17 @@ export default function Dashboard() {
 
   const show = (m: AppModule) => mods === null || mods.includes(m);
   const name = profile.email ? profile.email.split("@")[0] : "kierowco";
+  const myReg = active?.vehicle_id
+    ? (vehicles.find((v) => v.id === active.vehicle_id)?.registration ?? null)
+    : (vehicles[0]?.registration ?? null);
+
+  // KPI dnia liczone z lokalnego outboxu — działają także bez zasięgu.
+  const today = new Date().toISOString().slice(0, 10);
+  const todayItems = outbox.filter((i) => i.createdAt.slice(0, 10) === today);
+  const fuelToday = todayItems
+    .filter((i) => i.kind === "fuel" || i.kind === "adblue")
+    .reduce((a, i) => a + ((i.input as FuelLogInput).liters ?? 0), 0);
+  const pendingSync = outbox.filter((i) => i.status !== "synced").length;
 
   return (
     <ScrollView
@@ -107,10 +130,13 @@ export default function Dashboard() {
         />
       }
     >
+      {/* Nagłówek „Witaj," (mockup 01) */}
       <View style={s.header}>
         <View style={{ flex: 1 }}>
-          <Text style={s.hello} numberOfLines={1}>
-            {greeting()}, {name}
+          <Text style={s.hello}>Witaj,</Text>
+          <Text style={s.who} numberOfLines={1}>
+            {name}
+            {myReg ? ` · ${myReg}` : ""}
           </Text>
           <Text style={s.sub} numberOfLines={1}>
             {[profile.companyName, roleLabel(profile.role)].filter(Boolean).join(" · ") ||
@@ -120,10 +146,11 @@ export default function Dashboard() {
         <Avatar initial={initialOf(profile.email)} />
       </View>
 
+      {/* Bieżące zlecenie */}
       {show("orders") && (
         <Card style={s.orderCard}>
           <View style={s.redStripe} />
-          <Text style={s.orderLabel}>AKTYWNE ZLECENIE</Text>
+          <Text style={s.orderLabel}>BIEŻĄCE ZLECENIE</Text>
           {active ? (
             <>
               <Text style={s.orderTitle} numberOfLines={2}>
@@ -153,48 +180,67 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Rząd akcji: Rozpocznij Trip / Tankuj / Checklist (mockup 01) */}
       {show("forms") && (
-        <>
-          <SectionTitle>Szybkie akcje</SectionTitle>
-          <View style={s.quickRow}>
-            <QuickAction glyph="⛽" label="Paliwo" onPress={() => router.push("/fuel")} />
-            <QuickAction glyph="💧" label="AdBlue" onPress={() => router.push("/adblue")} />
-            <QuickAction glyph="🚚" label="Trasa" onPress={() => router.push("/trip")} />
-            <QuickAction glyph="📷" label="CMR" onPress={() => router.push("/orders")} />
-          </View>
-        </>
+        <View style={s.actionRow}>
+          <Pressable style={s.actionPrimary} onPress={() => router.push("/trip")}>
+            <Text style={s.actionPrimaryText}>Rozpocznij Trip</Text>
+          </Pressable>
+          <Pressable style={s.actionGhost} onPress={() => router.push("/fuel")}>
+            <Text style={s.actionGhostText}>Tankuj</Text>
+          </Pressable>
+          {show("checklists") && (
+            <Pressable style={s.actionGhost} onPress={() => router.push("/checklists")}>
+              <Text style={s.actionGhostText}>Checklist</Text>
+            </Pressable>
+          )}
+        </View>
       )}
 
+      {/* KPI dnia */}
       <SectionTitle>Dzisiaj</SectionTitle>
-      <View style={s.todayRow}>
+      <View style={s.kpiRow}>
+        <View style={s.kpi}>
+          <Text style={s.kpiLabel}>Paliwo dziś</Text>
+          <Text style={s.kpiValue}>
+            {fuelToday} <Text style={s.kpiUnit}>l</Text>
+          </Text>
+        </View>
         {show("checklists") && (
-          <Card style={s.todayCard}>
-            <Text style={s.todayLabel}>Checklisty</Text>
-            <Text style={s.todayValue}>{checklistsDue ?? "—"}</Text>
-            <Text style={s.todayHint}>
-              {checklistsDue === 0 ? "wszystko wypełnione ✓" : "do wypełnienia"}
+          <View style={s.kpi}>
+            <Text style={s.kpiLabel}>Checklisty</Text>
+            <Text style={[s.kpiValue, (checklistsDue ?? 0) > 0 && { color: palette.warning }]}>
+              {checklistsDue ?? "—"}
             </Text>
-          </Card>
+          </View>
         )}
-        <Card style={s.todayCard}>
-          <Text style={s.todayLabel}>Synchronizacja</Text>
-          <Text style={[s.todayValue, pendingSync === 0 && { color: palette.success }]}>
+        <View style={s.kpi}>
+          <Text style={s.kpiLabel}>Sync</Text>
+          <Text style={[s.kpiValue, pendingSync === 0 && { color: palette.success }]}>
             {pendingSync === 0 ? "✓" : pendingSync}
           </Text>
-          <Text style={s.todayHint}>
-            {pendingSync === 0 ? "wszystko wysłane" : "formularze w kolejce"}
-          </Text>
-        </Card>
+        </View>
       </View>
 
-      {checklistsDue !== null && checklistsDue > 0 && show("checklists") && (
-        <Card style={s.alertCard}>
-          <Chip label={`${checklistsDue}`} color={palette.warning} />
-          <Text style={s.alertText} onPress={() => router.push("/checklists")}>
-            Masz checklisty do wypełnienia — otwórz →
-          </Text>
-        </Card>
+      {/* Ostatnie aktywności — najnowszy wpis wyróżniony (mockup 01) */}
+      <SectionTitle>Ostatnie aktywności</SectionTitle>
+      {outbox.length === 0 && (
+        <Text style={s.empty}>
+          Jeszcze nic tu nie ma — pierwszy zapisany formularz pojawi się na tej liście.
+        </Text>
       )}
+      {outbox.slice(0, 3).map((it, i) => (
+        <View key={it.id} style={[s.activity, i === 0 && s.activityHot]}>
+          <Text style={s.activityGlyph}>{KIND_GLYPH[it.kind]}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.activityTitle}>{KIND_LABEL[it.kind]}</Text>
+            <Text style={s.activitySub} numberOfLines={1}>
+              {activitySub(it)}
+            </Text>
+          </View>
+          <Text style={s.activityStatus}>{it.status === "synced" ? "✓" : "⏳"}</Text>
+        </View>
+      ))}
     </ScrollView>
   );
 }
@@ -203,8 +249,9 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.black },
   content: { padding: 16, paddingTop: 24, gap: 12, paddingBottom: 32 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 },
-  hello: { color: palette.offWhite, fontSize: 28, fontWeight: "800" },
-  sub: { color: palette.smoke, fontSize: 14, marginTop: 2 },
+  hello: { color: palette.offWhite, fontSize: 32, fontWeight: "800", lineHeight: 36 },
+  who: { color: palette.offWhite, fontSize: 19, fontWeight: "600", marginTop: 2 },
+  sub: { color: palette.smoke, fontSize: 13, marginTop: 2 },
   orderCard: { gap: 8, overflow: "hidden" },
   redStripe: {
     position: "absolute",
@@ -218,12 +265,52 @@ const s = StyleSheet.create({
   orderTitle: { color: palette.offWhite, fontSize: 22, fontWeight: "800" },
   orderMeta: { color: palette.smoke, fontSize: 14, lineHeight: 20 },
   btnRow: { flexDirection: "row", gap: 10, marginTop: 8 },
-  quickRow: { flexDirection: "row", gap: 10 },
-  todayRow: { flexDirection: "row", gap: 10 },
-  todayCard: { flex: 1, gap: 4 },
-  todayLabel: { color: palette.smoke, fontSize: 13 },
-  todayValue: { color: palette.offWhite, fontSize: 30, fontWeight: "800" },
-  todayHint: { color: palette.smoke, fontSize: 12 },
-  alertCard: { flexDirection: "row", alignItems: "center", gap: 12 },
-  alertText: { color: palette.offWhite, fontSize: 14, flex: 1 },
+  actionRow: { flexDirection: "row", gap: 10 },
+  actionPrimary: {
+    flex: 1.3,
+    backgroundColor: palette.red,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  actionPrimaryText: { color: palette.white, fontWeight: "800", fontSize: 15 },
+  actionGhost: {
+    flex: 1,
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  actionGhostText: { color: palette.offWhite, fontWeight: "700", fontSize: 15 },
+  kpiRow: { flexDirection: "row", gap: 10 },
+  kpi: {
+    flex: 1,
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    gap: 6,
+    backgroundColor: palette.nearBlack,
+  },
+  kpiLabel: { color: palette.smoke, fontSize: 12 },
+  kpiValue: { color: palette.offWhite, fontSize: 26, fontWeight: "800" },
+  kpiUnit: { fontSize: 15, color: palette.smoke, fontWeight: "600" },
+  empty: { color: palette.smoke, fontSize: 13, lineHeight: 19 },
+  activity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: palette.nearBlack,
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+  },
+  activityHot: { borderColor: palette.red, backgroundColor: "#1c0d0f" },
+  activityGlyph: { fontSize: 22 },
+  activityTitle: { color: palette.offWhite, fontSize: 15, fontWeight: "700" },
+  activitySub: { color: palette.smoke, fontSize: 12, marginTop: 1 },
+  activityStatus: { color: palette.smoke, fontSize: 15 },
 });

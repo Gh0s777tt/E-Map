@@ -1,4 +1,7 @@
-/** #285: Statystyki — ostatnie 30 dni tankowań (litry, koszt) + lista wpisów. */
+/**
+ * Statystyki — restyle LogiFlow (#286): KPI z czerwonymi wartościami,
+ * wykres słupkowy litrów z 14 dni i lista tankowań z 30 dni.
+ */
 import { listFuelLogs } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
@@ -16,6 +19,8 @@ interface FuelRow {
   station_city: string | null;
   created_at: string;
 }
+
+const DAYS = 14;
 
 export default function StatsScreen() {
   const { vehicles } = useFleet();
@@ -47,6 +52,19 @@ export default function StatsScreen() {
   const regOf = (id: string | null) =>
     id ? (vehicles.find((v) => v.id === id)?.registration ?? "—") : "—";
 
+  // Słupki: suma litrów per dzień, ostatnie DAYS dni (najstarszy z lewej).
+  const days: { key: string; label: string; liters: number }[] = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86_400_000);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ key, label: String(d.getDate()), liters: 0 });
+  }
+  for (const l of logs) {
+    const day = days.find((d) => d.key === l.created_at.slice(0, 10));
+    if (day) day.liters += l.liters ?? 0;
+  }
+  const maxLiters = Math.max(1, ...days.map((d) => d.liters));
+
   return (
     <ScrollView
       style={s.screen}
@@ -63,13 +81,33 @@ export default function StatsScreen() {
         </Card>
         <Card style={s.kpi}>
           <Text style={s.kpiLabel}>Litry</Text>
-          <Text style={s.kpiValue}>{Math.round(liters)}</Text>
+          <Text style={s.kpiValueRed}>{Math.round(liters)}</Text>
         </Card>
         <Card style={s.kpi}>
           <Text style={s.kpiLabel}>Koszt</Text>
-          <Text style={s.kpiValue}>{Math.round(cost)}</Text>
+          <Text style={s.kpiValueRed}>{Math.round(cost)}</Text>
         </Card>
       </View>
+
+      <SectionTitle>Litry dziennie (14 dni)</SectionTitle>
+      <Card style={s.chartCard}>
+        <View style={s.chart}>
+          {days.map((d) => (
+            <View key={d.key} style={s.barCol}>
+              <View
+                style={[
+                  s.bar,
+                  {
+                    height: Math.max(3, Math.round((d.liters / maxLiters) * 120)),
+                    backgroundColor: d.liters > 0 ? palette.red : palette.graphite,
+                  },
+                ]}
+              />
+              <Text style={s.barLabel}>{d.label}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
 
       {err && <Text style={s.err}>{err}</Text>}
       {!loading && !err && logs.length === 0 && (
@@ -105,7 +143,19 @@ const s = StyleSheet.create({
   row: { flexDirection: "row", gap: 10 },
   kpi: { flex: 1, gap: 4 },
   kpiLabel: { color: palette.smoke, fontSize: 12 },
-  kpiValue: { color: palette.offWhite, fontSize: 20, fontWeight: "800" },
+  kpiValue: { color: palette.offWhite, fontSize: 24, fontWeight: "800" },
+  kpiValueRed: { color: palette.red, fontSize: 24, fontWeight: "800" },
+  chartCard: { paddingVertical: 18 },
+  chart: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    height: 148,
+    gap: 3,
+  },
+  barCol: { flex: 1, alignItems: "center", gap: 5 },
+  bar: { width: "70%", borderRadius: 4 },
+  barLabel: { color: palette.smoke, fontSize: 9 },
   err: { color: palette.red, fontSize: 13 },
   note: { color: palette.smoke, fontSize: 14, textAlign: "center", marginTop: 8 },
   entry: { gap: 4 },

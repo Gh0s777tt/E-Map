@@ -4,8 +4,9 @@
  */
 import { getActiveMembership, listMyOrders, listVehiclesExpiry } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Card, SectionTitle } from "../components/ui";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
@@ -30,6 +31,7 @@ function expiryColor(days: number | null): string {
 }
 
 export default function VehicleScreen() {
+  const router = useRouter();
   const [mine, setMine] = useState<VehicleExpiry | null>(null);
   const [fleet, setFleet] = useState<VehicleExpiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +97,19 @@ export default function VehicleScreen() {
             <Text style={s.heroHint}>pojazd z Twojego aktywnego zlecenia</Text>
           </Card>
 
+          {/* Rząd akcji jak w mockupie 15: Rozpocznij Trip / Tankuj / Zgłoś problem */}
+          <View style={s.actions}>
+            <Pressable style={s.actionBtn} onPress={() => router.push("/trip")}>
+              <Text style={s.actionText}>Rozpocznij Trip</Text>
+            </Pressable>
+            <Pressable style={s.actionBtn} onPress={() => router.push("/fuel")}>
+              <Text style={s.actionText}>Tankuj</Text>
+            </Pressable>
+            <Pressable style={s.actionBtn} onPress={() => router.push("/defects")}>
+              <Text style={s.actionText}>Zgłoś problem</Text>
+            </Pressable>
+          </View>
+
           <SectionTitle>Terminy</SectionTitle>
           <Card style={s.terms}>
             {terms(mine).map(([label, date], i, arr) => {
@@ -145,6 +160,15 @@ const s = StyleSheet.create({
   err: { color: palette.red, fontSize: 13 },
   note: { color: palette.smoke, fontSize: 14, textAlign: "center", marginTop: 16 },
   hero: { alignItems: "center", gap: 6, paddingVertical: 24 },
+  actions: { flexDirection: "row", gap: 8 },
+  actionBtn: {
+    flex: 1,
+    backgroundColor: palette.red,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  actionText: { color: palette.white, fontWeight: "700", fontSize: 12.5 },
   heroGlyph: { fontSize: 44 },
   heroReg: { color: palette.offWhite, fontSize: 30, fontWeight: "800", letterSpacing: 2 },
   heroHint: { color: palette.smoke, fontSize: 12 },

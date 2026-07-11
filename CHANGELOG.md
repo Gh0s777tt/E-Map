@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-285-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.138.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-286-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.139.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.139.0] — 🎨 Restyle LogiFlow: mobile wg mockupów właściciela + nowy landing
+
+- `[#286]` 🎨 **Język designu z mockupów `LogiFlow_UI_Mockups`** przeniesiony na istniejące funkcje (mobile **1.40.0**):
+  - **Pulpit kierowcy 2.1** ([`(tabs)/index.tsx`](<apps/mobile/app/(tabs)/index.tsx>)): nagłówek „Witaj," + imię · **rejestracja pojazdu**, rząd akcji jak w mockupie (czerwony **Rozpocznij Trip** + Tankuj + Checklist), 3 kafle KPI dnia (Paliwo dziś / Checklisty / Sync — liczone z lokalnego outboxu, działają offline), **„Ostatnie aktywności"** z wyróżnionym najnowszym wpisem (czerwony obrys).
+  - **Tankowanie** ([`LiquidForm`](apps/mobile/components/LiquidForm.tsx)): **segment Diesel | AdBlue** przełączany bez zmiany ekranu, pola pill, płatność 💳/💵 na pół szerokości, przycisk „Zapisz Tankowanie", karta **„Historia ostatnich 3 tankowań"** (data · litry · kraj · licznik).
+  - **Checklisty** ([`checklists.tsx`](apps/mobile/app/checklists.tsx)): tytuł z rejestracją pojazdu, **pasek postępu** (odpowiedziane/wszystkie + %), CTA „Zatwierdź checklistę ✓".
+  - **Statystyki** ([`stats.tsx`](apps/mobile/app/stats.tsx)): KPI z czerwonymi wartościami + **wykres słupkowy litrów z 14 dni**.
+  - **Mój pojazd** ([`vehicle.tsx`](apps/mobile/app/vehicle.tsx)): rząd akcji z mockupu 15 — Rozpocznij Trip / Tankuj / **Zgłoś problem** (→ usterki).
+  - 🌐 **Landing web 2.0** ([`page.tsx`](apps/web/app/page.tsx)): hero + sekcja **„Co potrafi platforma"** (8 kart z opisami funkcji od właściciela: pulpity, trip, tankowanie D+AdBlue, checklisty, mapa TIR, raporty, flota) + **„W przygotowaniu"** (rozszerzenia kierowca/właściciel: POD z QR, rejestr wydatków, AETR, czat, scoring, portal klienta…) + pasek integracji (karty paliwowe, telematyka, księgowość, wielojęzyczność).
+  - Build iOS **1.40.0** z auto-submitem do TestFlight. **Bramki:** `pnpm check` ✓ (mobile+web tsc, 433 testy, biome).
 
 ## [1.138.0] — 📱 Mobile UI 2.0 — tab bar, Pulpit, Zlecenia i 6 nowych ekranów
 

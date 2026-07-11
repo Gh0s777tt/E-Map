@@ -179,7 +179,30 @@ export default function ChecklistsScreen() {
 
       {tpl && (
         <>
-          <Text style={styles.header}>📋 {tpl.name}</Text>
+          <Text style={styles.header}>
+            📋 {tpl.name}
+            {vehicleId ? ` — ${vehicles.find((v) => v.id === vehicleId)?.registration ?? ""}` : ""}
+          </Text>
+          {(() => {
+            // Postęp: pozycja „odpowiedziana" = yesno z decyzją lub multi z ≥1 wyborem.
+            const done = tpl.items.filter((it) => {
+              const v = answers[it.key]?.value;
+              return it.type === "yesno"
+                ? typeof v === "boolean"
+                : Array.isArray(v) && v.length > 0;
+            }).length;
+            const pct = tpl.items.length ? done / tpl.items.length : 0;
+            return (
+              <View style={styles.progressWrap}>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%` }]} />
+                </View>
+                <Text style={styles.progressText}>
+                  {done}/{tpl.items.length} · {Math.round(pct * 100)}%
+                </Text>
+              </View>
+            );
+          })()}
           {tpl.items.map((it) => {
             const a = answers[it.key];
             return (
@@ -266,7 +289,7 @@ export default function ChecklistsScreen() {
               onPress={submit}
               disabled={busy}
             >
-              <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zapisz checklistę"}</Text>
+              <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zatwierdź checklistę ✓"}</Text>
             </Pressable>
           )}
           <Pressable style={styles.cancelBtn} onPress={() => setTpl(null)}>
@@ -302,6 +325,22 @@ const styles = StyleSheet.create({
   label: { color: palette.smoke, fontSize: 12, marginTop: 8 },
   hint: { color: palette.smoke, fontSize: 13, lineHeight: 18 },
   header: { color: palette.offWhite, fontSize: 20, fontWeight: "800", marginBottom: 6 },
+  progressWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },
+  progressTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.graphite,
+    overflow: "hidden",
+  },
+  progressFill: { height: 8, borderRadius: 4, backgroundColor: palette.red },
+  progressText: {
+    color: palette.smoke,
+    fontSize: 12,
+    fontWeight: "700",
+    width: 84,
+    textAlign: "right",
+  },
   tplBtn: {
     backgroundColor: palette.nearBlack,
     borderColor: palette.graphite,
