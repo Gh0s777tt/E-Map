@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-284-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.137.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-285-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.138.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.138.0] — 📱 Mobile UI 2.0 — tab bar, Pulpit, Zlecenia i 6 nowych ekranów
+
+- `[#285]` 📱 **Przebudowa całego UI aplikacji kierowcy** wg zaakceptowanych mockupów (miks A+B, mobile **1.39.0**) — koniec „kolumny przycisków na środku":
+  - **Dolny tab bar** (expo-router Tabs): [`(tabs)/_layout.tsx`](<apps/mobile/app/(tabs)/_layout.tsx>) — Pulpit / Zlecenia / Mapa / Więcej.
+  - **Pulpit 2.0** ([`(tabs)/index.tsx`](<apps/mobile/app/(tabs)/index.tsx>)): powitanie z firmą i rolą + awatar, **karta aktywnego zlecenia** (trasa, ładunek, Nawiguj/Szczegóły), szybkie akcje (Paliwo/AdBlue/Trasa/CMR), „Dzisiaj" (checklisty do wypełnienia liczone z szablonów minus dzisiejsze wysłania + status outboxu). Fail-soft: każdy blok znosi offline.
+  - **Zlecenia 2.0** ([`(tabs)/orders.tsx`](<apps/mobile/app/(tabs)/orders.tsx>)): segmenty **Aktywne / Zaplanowane / Zakończone** z licznikami, karty trasa+status (chip), „Rozpocznij trasę"/„Dostarczone", zdjęcia CMR/POD. Stary adres push `/my-orders` → redirect.
+  - **Więcej** ([`(tabs)/more.tsx`](<apps/mobile/app/(tabs)/more.tsx>)): karta profilu (e-mail, firma, rola, online) + sekcje PRACA / POJAZD / KONTO — wiersze wg matrycy uprawnień (#276).
+  - **6 nowych ekranów** (parytet z webem, fala 2): [`work-time`](apps/mobile/app/work-time.tsx) (dni służby, jazda/inna praca w miesiącu), [`settlement`](apps/mobile/app/settlement.tsx) (stawki firmy #265 + szacunek miesiąca silnikiem `computeDriverSettlement`), [`vehicle`](apps/mobile/app/vehicle.tsx) (pojazd z aktywnego zlecenia + odliczanie do przeglądu/OC/leasingu), [`defects`](apps/mobile/app/defects.tsx) (zgłoszenie usterki: pojazd+część+waga+opis → panel mechanika, lista statusów), [`stats`](apps/mobile/app/stats.tsx) (tankowania 30 dni), [`settings`](apps/mobile/app/settings.tsx) (push, wersja, wyloguj).
+  - **Prymitywy UI** [`components/ui.tsx`](apps/mobile/components/ui.tsx) (Card/ListRow/Chip/Avatar/QuickAction/przyciski) + hook [`useProfile`](apps/mobile/lib/useProfile.ts) (e-mail, rola, nazwa firmy).
+  - Build iOS **1.39.0** z auto-submitem do TestFlight (auto-dystrybucja do grupy wewnętrznej).
+  - **Bramki:** mobile `tsc` ✓ · testy 25 ✓ · `pnpm check` ✓.
 
 ## [1.137.0] — 🐛 Mobile: koniec „fałszywego zalogowania" (brak env w buildzie EAS)
 

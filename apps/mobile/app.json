@@ -3,7 +3,7 @@
     "name": "E-Logistic",
     "slug": "e-logistic",
     "scheme": "elogistic",
-    "version": "1.38.0",
+    "version": "1.39.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ghostempire.elogistic",

@@ -37,18 +37,24 @@ function RootNav() {
       screenOptions={{
         headerStyle: { backgroundColor: palette.black },
         headerTintColor: palette.red,
+        headerTitleStyle: { color: palette.offWhite },
         contentStyle: { backgroundColor: palette.black },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "E-Logistic" }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ title: "Logowanie", headerShown: false }} />
-      <Stack.Screen name="my-orders" options={{ title: "Moje zlecenia" }} />
       <Stack.Screen name="fuel" options={{ title: "Tankowanie" }} />
       <Stack.Screen name="adblue" options={{ title: "AdBlue" }} />
       <Stack.Screen name="trip" options={{ title: "Trasa" }} />
-      <Stack.Screen name="map" options={{ title: "Mapa" }} />
       <Stack.Screen name="checklists" options={{ title: "Checklisty" }} />
       <Stack.Screen name="documents" options={{ title: "Dokumenty" }} />
+      <Stack.Screen name="work-time" options={{ title: "Czas pracy" }} />
+      <Stack.Screen name="settlement" options={{ title: "Moje rozliczenie" }} />
+      <Stack.Screen name="vehicle" options={{ title: "Mój pojazd" }} />
+      <Stack.Screen name="defects" options={{ title: "Usterki i szkody" }} />
+      <Stack.Screen name="stats" options={{ title: "Statystyki" }} />
+      <Stack.Screen name="settings" options={{ title: "Ustawienia" }} />
+      <Stack.Screen name="my-orders" options={{ headerShown: false }} />
     </Stack>
   );
 }
