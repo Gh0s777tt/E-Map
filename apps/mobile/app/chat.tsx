@@ -1,184 +1,256 @@
 /**
- * #290: Czat z dyspozytorem (mockup 14) — wspólny kanał firmy, realtime.
- * Moje dymki po prawej (czerwone), reszta po lewej z etykietą nadawcy.
+ * #291: Czat 2.0 — lista kanałów: Ogólny (cała firma) + nazwane wątki.
+ * Zarząd tworzy kanały (nazwa + członkowie z listy firmy), np. osobny
+ * kanał per kierowca. Kierowca widzi kanały, do których należy.
  */
 import {
-  type ChatMessage,
+  type ChatThread,
+  type CompanyMember,
+  createThread,
   getActiveMembership,
-  listMessages,
-  sendMessage,
-  subscribeMessages,
+  listCompanyMembers,
+  listThreads,
 } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
+  Modal,
   Pressable,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { useAuth } from "../components/AuthProvider";
+import { Card, ListRow, PrimaryButton, SectionTitle } from "../components/ui";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
-export default function ChatScreen() {
-  const { session } = useAuth();
-  const me = session?.user?.id;
-  const myLabel = session?.user?.email ?? "ja";
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [text, setText] = useState("");
-  const [companyId, setCompanyId] = useState<string | null>(null);
+export default function ChatListScreen() {
+  const router = useRouter();
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [manage, setManage] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  // Tworzenie kanału (zarząd)
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [members, setMembers] = useState<CompanyMember[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
-  const listRef = useRef<FlatList<ChatMessage>>(null);
 
-  useEffect(() => {
-    if (!supabaseConfigured) return;
-    let cleanup: (() => void) | undefined;
-    let alive = true;
-    (async () => {
-      try {
-        const sb = getSupabase();
-        const m = await getActiveMembership(sb);
-        if (!m || !alive) return;
-        setCompanyId(m.companyId);
-        setMessages(await listMessages(sb, m.companyId));
-        cleanup = subscribeMessages(sb, m.companyId, (msg) => {
-          setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-        });
-      } catch {
-        if (alive) setErr("Nie udało się wczytać czatu — sprawdź zasięg.");
-      }
-    })();
-    return () => {
-      alive = false;
-      cleanup?.();
-    };
-  }, []);
-
-  const send = useCallback(async () => {
-    const body = text.trim();
-    if (!body || !companyId || busy) return;
-    setBusy(true);
-    setErr(null);
+  const load = useCallback(async () => {
+    if (!supabaseConfigured) {
+      setLoading(false);
+      return;
+    }
     try {
-      const msg = await sendMessage(getSupabase(), companyId, body, myLabel);
-      setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-      setText("");
+      const sb = getSupabase();
+      const m = await getActiveMembership(sb);
+      if (!m) return;
+      setManage(m.role === "owner" || m.role === "dispatcher");
+      setThreads(await listThreads(sb, m.companyId));
+      setErr(null);
     } catch {
-      setErr("Nie wysłano — spróbuj ponownie przy zasięgu.");
+      setErr("Nie udało się wczytać kanałów — sprawdź zasięg.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  async function openCreate() {
+    setCreating(true);
+    setName("");
+    setSelected(new Set());
+    try {
+      setMembers((await listCompanyMembers(getSupabase())).filter((m) => m.status === "active"));
+    } catch {
+      setMembers([]);
+    }
+  }
+
+  async function submitCreate() {
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    try {
+      const sb = getSupabase();
+      const m = await getActiveMembership(sb);
+      if (!m) throw new Error("Brak firmy.");
+      const t = await createThread(sb, m.companyId, name.trim(), [...selected]);
+      setCreating(false);
+      setThreads((list) => [...list, t]);
+      router.push({ pathname: "/chat-thread", params: { id: t.id, name: t.name } });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Nie udało się utworzyć kanału.");
     } finally {
       setBusy(false);
     }
-  }, [text, companyId, busy, myLabel]);
+  }
 
   return (
-    <KeyboardAvoidingView
+    <ScrollView
       style={s.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={90}
+      contentContainerStyle={s.content}
+      refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
+      }
     >
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        contentContainerStyle={s.list}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        ListEmptyComponent={
-          <Text style={s.empty}>
-            {err ?? "Napisz pierwszą wiadomość — dyspozytor i właściciel widzą ten kanał."}
-          </Text>
-        }
-        renderItem={({ item }) => {
-          const mine = item.sender_id === me;
-          return (
-            <View style={[s.bubbleRow, mine && s.bubbleRowMine]}>
-              <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther]}>
-                {!mine && (
-                  <Text style={s.sender} numberOfLines={1}>
-                    {item.sender_label || "członek firmy"}
-                  </Text>
-                )}
-                <Text style={mine ? s.bodyMine : s.body}>{item.body}</Text>
-                <Text style={[s.time, mine && s.timeMine]}>{item.created_at.slice(11, 16)}</Text>
-              </View>
-            </View>
-          );
-        }}
-      />
-      {err && messages.length > 0 && <Text style={s.err}>{err}</Text>}
-      <View style={s.composer}>
-        <TextInput
-          style={s.input}
-          value={text}
-          onChangeText={setText}
-          placeholder="Wiadomość do dyspozytora…"
-          placeholderTextColor={palette.smoke}
-          multiline
+      {err && <Text style={s.err}>{err}</Text>}
+
+      <SectionTitle>Kanały</SectionTitle>
+      <Card style={{ paddingVertical: 4 }}>
+        <ListRow
+          glyph="📢"
+          title="Ogólny"
+          subtitle="cała firma — wszyscy członkowie"
+          onPress={() =>
+            router.push({ pathname: "/chat-thread", params: { id: "", name: "Ogólny" } })
+          }
+          last={threads.length === 0}
         />
-        <Pressable
-          style={[s.send, (!text.trim() || busy) && { opacity: 0.5 }]}
-          onPress={send}
-          disabled={!text.trim() || busy}
-        >
-          <Text style={s.sendText}>➤</Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+        {threads.map((t, i) => (
+          <ListRow
+            key={t.id}
+            glyph="💬"
+            title={t.name}
+            subtitle="kanał prywatny"
+            onPress={() =>
+              router.push({ pathname: "/chat-thread", params: { id: t.id, name: t.name } })
+            }
+            last={i === threads.length - 1}
+          />
+        ))}
+      </Card>
+
+      {manage && (
+        <View style={{ marginTop: 14 }}>
+          <PrimaryButton label="➕ Nowy kanał" onPress={openCreate} />
+          <Text style={s.hint}>
+            Utwórz np. osobny kanał dla każdego kierowcy — widzi go tylko on i zarząd.
+          </Text>
+        </View>
+      )}
+
+      <Modal visible={creating} transparent animationType="slide">
+        <View style={s.backdrop}>
+          <View style={s.sheet}>
+            <Text style={s.sheetTitle}>Nowy kanał</Text>
+            <TextInput
+              style={s.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Nazwa kanału (np. Jan — trasa DE)"
+              placeholderTextColor={palette.smoke}
+            />
+            <Text style={s.sheetLabel}>Członkowie</Text>
+            <ScrollView style={{ maxHeight: 260 }}>
+              {members.map((m) => {
+                const on = selected.has(m.user_id);
+                return (
+                  <Pressable
+                    key={m.user_id}
+                    style={s.memberRow}
+                    onPress={() =>
+                      setSelected((set) => {
+                        const next = new Set(set);
+                        if (on) next.delete(m.user_id);
+                        else next.add(m.user_id);
+                        return next;
+                      })
+                    }
+                  >
+                    <View style={[s.check, on && s.checkOn]}>
+                      {on && <Text style={s.checkTick}>✓</Text>}
+                    </View>
+                    <Text style={s.memberText} numberOfLines={1}>
+                      {m.email} · {m.role}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              {members.length === 0 && (
+                <Text style={s.hint}>Nie udało się pobrać członków (zasięg?).</Text>
+              )}
+            </ScrollView>
+            <View style={s.sheetRow}>
+              <Pressable style={s.cancel} onPress={() => setCreating(false)}>
+                <Text style={s.cancelText}>Anuluj</Text>
+              </Pressable>
+              <Pressable
+                style={[s.create, (!name.trim() || busy) && { opacity: 0.5 }]}
+                onPress={submitCreate}
+                disabled={!name.trim() || busy}
+              >
+                <Text style={s.createText}>{busy ? "Tworzę…" : "Utwórz"}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.black },
-  list: { padding: 16, gap: 10, flexGrow: 1 },
-  empty: { color: palette.smoke, textAlign: "center", marginTop: 40, lineHeight: 20 },
-  err: { color: palette.red, fontSize: 12, textAlign: "center", marginBottom: 4 },
-  bubbleRow: { flexDirection: "row", justifyContent: "flex-start" },
-  bubbleRowMine: { justifyContent: "flex-end" },
-  bubble: { maxWidth: "82%", borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9, gap: 2 },
-  bubbleOther: {
+  content: { padding: 16, paddingBottom: 32 },
+  err: { color: palette.red, fontSize: 13, marginBottom: 8 },
+  hint: { color: palette.smoke, fontSize: 12, marginTop: 8, textAlign: "center", lineHeight: 17 },
+  backdrop: { flex: 1, backgroundColor: "#000000cc", justifyContent: "flex-end" },
+  sheet: {
     backgroundColor: palette.nearBlack,
-    borderColor: palette.graphite,
-    borderWidth: 1,
-    borderBottomLeftRadius: 6,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    gap: 10,
   },
-  bubbleMine: { backgroundColor: palette.red, borderBottomRightRadius: 6 },
-  sender: { color: palette.red, fontSize: 11, fontWeight: "700" },
-  body: { color: palette.offWhite, fontSize: 15, lineHeight: 20 },
-  bodyMine: { color: palette.white, fontSize: 15, lineHeight: 20 },
-  time: { color: palette.smoke, fontSize: 10, alignSelf: "flex-end" },
-  timeMine: { color: "#ffffffaa" },
-  composer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 8,
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: palette.graphite,
-    backgroundColor: "#111111",
-  },
+  sheetTitle: { color: palette.offWhite, fontSize: 20, fontWeight: "800" },
+  sheetLabel: { color: palette.smoke, fontSize: 13, fontWeight: "600" },
   input: {
-    flex: 1,
-    backgroundColor: palette.nearBlack,
+    backgroundColor: palette.black,
     borderColor: palette.graphite,
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     color: palette.offWhite,
-    fontSize: 15,
-    maxHeight: 110,
+    fontSize: 16,
   },
-  send: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: palette.red,
+  memberRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9 },
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: palette.graphite,
     alignItems: "center",
     justifyContent: "center",
   },
-  sendText: { color: palette.white, fontSize: 18, fontWeight: "800" },
+  checkOn: { backgroundColor: palette.red, borderColor: palette.red },
+  checkTick: { color: palette.white, fontWeight: "800" },
+  memberText: { color: palette.offWhite, fontSize: 14, flex: 1 },
+  sheetRow: { flexDirection: "row", gap: 10, marginTop: 6 },
+  cancel: {
+    flex: 1,
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  cancelText: { color: palette.offWhite, fontWeight: "700" },
+  create: {
+    flex: 1,
+    backgroundColor: palette.red,
+    borderRadius: 999,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  createText: { color: palette.white, fontWeight: "700" },
 });

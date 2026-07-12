@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-290-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.143.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-291-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.144.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.144.0] — 💬 Czat 2.0: kanały, push i zdjęcia · wydatki offline · Nawiguj
+
+- `[#291]` 💬 **Czat 2.0** (prośba właściciela, mobile **1.45.0**):
+  - **Wiele kanałów**: obok Ogólnego (cała firma) zarząd tworzy **nazwane kanały z wybranymi członkami** — np. osobny per kierowca. Kierowca widzi tylko swoje. Migracja [`0067`](supabase/migrations/0067_chat_threads.sql) (na żywej bazie): `chat_threads` + `chat_members` + `messages.thread_id/photo_path`, RLS z helperami SECURITY DEFINER (`is_thread_member`/`thread_company`).
+  - **Edycja kanału**: zmiana nazwy i dodawanie/usuwanie członków — mobile (⚙︎ w rozmowie) i web (panel Ustawienia kanału).
+  - **📷 Zdjęcia w czacie**: aparat (mobile) / plik (web) → Storage, podpisane URL-e w dymkach.
+  - **🔔 Push o wiadomości**: endpoint [`/api/chat/notify`](apps/web/app/api/chat/notify/route.ts) (Bearer token, rate-limit) → Expo Push do członków kanału (kanał ogólny → cała firma, bez nadawcy); klienci wysyłają fire-and-forget po udanym INSERT.
+  - Mobile: lista kanałów [`chat.tsx`](apps/mobile/app/chat.tsx) + rozmowa [`chat-thread.tsx`](apps/mobile/app/chat-thread.tsx); web: sidebar kanałów w [`/chat`](<apps/web/app/(app)/chat/page.tsx>).
+- `[#291]` 🧾 **Wydatki działają offline** — kind `expense` w outboxie (bez zdjęcia; `companyId` dopinany przy synchronizacji), pulpit pokazuje je w „Ostatnich aktywnościach".
+- `[#291]` 🧭 **„Nawiguj" otwiera prawdziwą nawigację** (Apple Maps / geo:) z adresem rozładunku aktywnego zlecenia; fallback: mapa TIR w aplikacji.
+- Build iOS **1.45.0** z auto-submitem. **Bramki:** mobile+web `tsc` ✓ · `pnpm check` ✓.
 
 ## [1.143.0] — 💬 Czat kierowca ↔ dyspozytor (na żywo)
 

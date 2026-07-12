@@ -15,8 +15,18 @@ import { type AppModule, type FuelLogInput, visibleModules } from "@e-logistic/c
 import { palette } from "@e-logistic/ui";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Linking,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Avatar, Card, GhostButton, PrimaryButton, SectionTitle } from "../../components/ui";
+import { navigationUrl } from "../../lib/chatNotify";
 import { listOutbox, type OutboxItem } from "../../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
@@ -29,12 +39,14 @@ const KIND_LABEL: Record<OutboxItem["kind"], string> = {
   adblue: "AdBlue",
   trip: "Trasa",
   checklist: "Checklista",
+  expense: "Wydatek",
 };
 const KIND_GLYPH: Record<OutboxItem["kind"], string> = {
   fuel: "⛽",
   adblue: "💧",
   trip: "🚚",
   checklist: "✅",
+  expense: "🧾",
 };
 
 function activitySub(it: OutboxItem): string {
@@ -167,7 +179,18 @@ export default function Dashboard() {
                   .join(" · ") || "Szczegóły w zakładce Zlecenia"}
               </Text>
               <View style={s.btnRow}>
-                <PrimaryButton label="🧭 Nawiguj" onPress={() => router.push("/map")} />
+                <PrimaryButton
+                  label="🧭 Nawiguj"
+                  onPress={() => {
+                    if (active?.destination) {
+                      Linking.openURL(
+                        navigationUrl(active.destination, Platform.OS === "ios" ? "ios" : "other"),
+                      ).catch(() => router.push("/map"));
+                    } else {
+                      router.push("/map");
+                    }
+                  }}
+                />
                 <GhostButton label="Szczegóły" onPress={() => router.push("/orders")} />
               </View>
             </>

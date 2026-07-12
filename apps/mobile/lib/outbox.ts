@@ -1,7 +1,9 @@
 import {
   type ChecklistSubmissionInput,
+  type DriverExpenseInput,
   getActiveMembership,
   insertChecklistSubmission,
+  insertDriverExpense,
   insertFuelLog,
   insertTripEvent,
 } from "@e-logistic/api";
@@ -16,12 +18,12 @@ import { getSupabase, supabaseConfigured } from "./supabase";
  */
 const KEY = "el-outbox";
 
-export type OutboxKind = "fuel" | "adblue" | "trip" | "checklist";
+export type OutboxKind = "fuel" | "adblue" | "trip" | "checklist" | "expense";
 
 export interface OutboxItem {
   id: string;
   kind: OutboxKind;
-  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput;
+  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput | DriverExpenseInput;
   status: "queued" | "synced" | "error";
   createdAt: string;
   error?: string;
@@ -51,7 +53,7 @@ export async function removeOutbox(itemId: string): Promise<void> {
 /** Dodaje wpis do outboxu (zawsze lokalnie) i próbuje od razu zsynchronizować. */
 export async function enqueue(
   kind: OutboxKind,
-  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput,
+  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput | DriverExpenseInput,
   createdAt: string,
 ): Promise<OutboxItem> {
   const item: OutboxItem = { id: newId(), kind, input, status: "queued", createdAt };
@@ -80,7 +82,13 @@ export async function trySync(itemId: string): Promise<void> {
     if (!membership) throw new Error("Brak firmy — wpis czeka w kolejce.");
     const ctx = { id: item.id, companyId: membership.companyId, driverId: user.id };
 
-    if (item.kind === "checklist") {
+    if (item.kind === "expense") {
+      // #291: wydatek dodany offline — companyId dopinamy przy synchronizacji.
+      await insertDriverExpense(sb, {
+        ...(item.input as DriverExpenseInput),
+        companyId: membership.companyId,
+      });
+    } else if (item.kind === "checklist") {
       // #273: checklisty — trigger w bazie dopina driver_id po auth.uid().
       await insertChecklistSubmission(
         sb,

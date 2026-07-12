@@ -29,6 +29,7 @@ import {
 } from "react-native";
 import { Card, PrimaryButton, SectionTitle } from "../components/ui";
 import { VehiclePicker } from "../components/VehiclePicker";
+import { enqueue } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
@@ -102,32 +103,39 @@ export default function ExpensesScreen() {
   async function submit() {
     setMsg(null);
     const value = Number(amount.replace(",", "."));
-    if (!companyId) {
-      setMsg("Brak firmy — sprawdź zasięg.");
-      return;
-    }
     if (!Number.isFinite(value) || value <= 0) {
       setMsg("Podaj kwotę większą od zera.");
       return;
     }
     setBusy(true);
+    const input = {
+      companyId: companyId ?? "",
+      vehicleId,
+      category,
+      amount: Math.round(value * 100) / 100,
+      currency,
+      note: note.trim() || null,
+      photoPath,
+    };
     try {
-      await insertDriverExpense(getSupabase(), {
-        companyId,
-        vehicleId,
-        category,
-        amount: Math.round(value * 100) / 100,
-        currency,
-        note: note.trim() || null,
-        photoPath,
-      });
+      if (!companyId) throw new Error("offline");
+      await insertDriverExpense(getSupabase(), input);
       setAmount("");
       setNote("");
       setPhotoPath(null);
       setMsg("✅ Wydatek dodany — firma zobaczy go w panelu.");
       load();
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Nie udało się dodać wydatku.");
+    } catch {
+      // #291: offline — wydatek trafia do outboxu (zdjęcie wymaga zasięgu).
+      await enqueue("expense", { ...input, photoPath: null }, new Date().toISOString());
+      setAmount("");
+      setNote("");
+      setPhotoPath(null);
+      setMsg(
+        photoPath
+          ? "📥 Zapisano offline (bez zdjęcia) — wyśle się przy zasięgu."
+          : "📥 Zapisano offline — wyśle się automatycznie przy zasięgu.",
+      );
     } finally {
       setBusy(false);
     }

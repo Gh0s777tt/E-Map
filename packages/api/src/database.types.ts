@@ -156,6 +156,48 @@ export interface Database {
         };
         Relationships: [];
       };
+      chat_members: {
+        Row: {
+          thread_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          thread_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          thread_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      chat_threads: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          created_by?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          created_by?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       checklist_submissions: {
         Row: {
           id: string;
@@ -1121,6 +1163,8 @@ export interface Database {
           sender_label: string;
           body: string;
           created_at: string;
+          thread_id: string | null;
+          photo_path: string | null;
         };
         Insert: {
           id?: string;
@@ -1129,6 +1173,8 @@ export interface Database {
           sender_label?: string;
           body: string;
           created_at?: string;
+          thread_id?: string | null;
+          photo_path?: string | null;
         };
         Update: {
           id?: string;
@@ -1137,6 +1183,8 @@ export interface Database {
           sender_label?: string;
           body?: string;
           created_at?: string;
+          thread_id?: string | null;
+          photo_path?: string | null;
         };
         Relationships: [];
       };
@@ -2009,6 +2057,7 @@ export interface Database {
       is_assigned_to_vehicle: { Args: { p_vehicle: string | null }; Returns: boolean };
       is_developer: { Args: Record<PropertyKey, never>; Returns: boolean };
       is_member_of: { Args: { p_company: string | null }; Returns: boolean };
+      is_thread_member: { Args: { p_thread: string | null }; Returns: boolean };
       list_drivers: { Args: { p_company: string | null }; Returns: Json };
       list_fuel_cards_for_user: {
         Args: Record<PropertyKey, never>;
@@ -2063,6 +2112,7 @@ export interface Database {
         };
         Returns: string;
       };
+      thread_company: { Args: { p_thread: string | null }; Returns: string };
     };
     Enums: {
       fuel_card_provider:
