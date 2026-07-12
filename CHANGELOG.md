@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-292-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.145.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-293-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.146.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.146.0] — 🚀 Kreator startu firmy (onboarding w 3 krokach)
+
+- `[#293]` 🚀 **Nowy właściciel prowadzony za rękę** — [`CompanyBanner`](apps/web/components/CompanyBanner.tsx) rozbudowany z pojedynczego „utwórz firmę" w **kreator 3 kroków** z paskiem postępu na pulpicie:
+  1. **Firma** (bootstrap_company) → 2. **Pierwszy pojazd** (rejestracja + model + rok; walidacja `vehicleSchema`, reszta danych później w Pojazdach) → 3. **Zaproszenie kierowcy** (create_invite → link `/join?token=…` z przyciskiem Kopiuj).
+  - Krok wyliczany z realnych danych (brak firmy / 0 pojazdów / 0 kierowców w zespole) — kreator znika po ukończeniu konfiguracji i nie pokazuje się kierowcom.
+  - Web-only (wdrożenie Vercel, bez builda mobile). **Bramki:** web `tsc` ✓ · `pnpm check` ✓.
 
 ## [1.145.0] — 🚨 Alerty właściciela + raport tygodniowy (cron → push na telefon)
 
