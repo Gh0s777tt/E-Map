@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectAmount, detectCurrency, parseReceiptText } from "./receipt";
+import { detectAmount, detectCurrency, detectLiters, parseReceiptText } from "./receipt";
 
 const PARAGON_PL = `ORLEN S.A.
 Stacja 4123 Konin
@@ -51,8 +51,15 @@ describe("parseReceiptText (#298 — OCR paragonów)", () => {
   });
 
   it("pusty/nieczytelny tekst → null-e (fail-soft)", () => {
-    expect(parseReceiptText("")).toEqual({ amount: null, currency: null });
-    expect(parseReceiptText("###???")).toEqual({ amount: null, currency: null });
+    expect(parseReceiptText("")).toEqual({ amount: null, currency: null, liters: null });
+    expect(parseReceiptText("###???")).toEqual({ amount: null, currency: null, liters: null });
+  });
+
+  it("litry (#299): jednostka l/L, cena jednostkowa i suma nie mylą detekcji", () => {
+    expect(detectLiters(PARAGON_PL)).toBe(64.71); // „ON B7 64,71 l" — nie 386,03 (PLN) ani 6,12 (zł/l)
+    expect(detectLiters(QUITTUNG_DE)).toBe(82.4); // „82,40 L x 1.689 EUR"
+    expect(detectLiters(UCTENKA_CZ)).toBe(55.2); // „Nafta 55,2 l"
+    expect(detectLiters("SUMA 386,03 PLN\nGotówka 400,00")).toBeNull(); // brak jednostki
   });
 
   it("waluta po symbolu: € i zł", () => {

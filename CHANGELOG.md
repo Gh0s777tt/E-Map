@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-298-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.151.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-299-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.152.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.152.0] — ⛽✨ OCR w formularzu paliwa — litry same się wpisują
+
+- `[#299]` 📷 **„Skanuj paragon" przy tankowaniu** (mobile **1.49.0**) — nowy przycisk w formularzu Diesel/AdBlue: zdjęcie paragonu ze stacji → OCR na urządzeniu (ML Kit) → **litry wskakują w pole** („ON B7 64,71 l" → 64.71). Zdjęcie nigdzie nie jest wysyłane; nieczytelny paragon = zwykły wpis ręczny; wpisanych litrów nie nadpisuje ([LiquidForm](apps/mobile/components/LiquidForm.tsx)).
+- `[#299]` 🧠 **`detectLiters` w parserze paragonów** ([`receipt.ts`](packages/core/src/receipt.ts)) — liczba przy jednostce `l/L/ltr/litr…` w zakresie 1–2000 l; cena jednostkowa (`6,12 zł/l`, `1.689 EUR`) i suma (`386,03 PLN`) nie mylą detekcji. **8 testów** ([receipt.test.ts](packages/core/src/receipt.test.ts)).
+- `[#299]` 🐛 **Przecinek dziesiętny w formularzu paliwa** — `64,71` wpisane z klawiatury EU (lub z OCR) nie wywala już walidacji (wcześniej `Number("64,71")` = NaN); dotyczy litrów i licznika.
+- Roadmapa Faza 4: **OCR paragonów dostarczony w całości** (wydatki #298 + litry paliwa #299).
+- Build iOS **1.49.0**. **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.151.0] — 🧾✨ OCR paragonów — kwota i waluta same wskakują do wydatku
 

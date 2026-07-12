@@ -1,5 +1,11 @@
-import { type FuelLogInput, firstZodError, fuelLogSchema } from "@e-logistic/core";
+import {
+  type FuelLogInput,
+  firstZodError,
+  fuelLogSchema,
+  parseReceiptText,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
+import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { success, warn } from "../lib/haptics";
@@ -61,6 +67,35 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     setMsg("Wczytano dane z ostatniego wpisu — uzupełnij licznik i litry.");
   }
 
+  /** #299: skan paragonu stacji — OCR na urządzeniu (ML Kit) uzupełnia litry.
+   *  Fail-soft: nieczytelne zdjęcie/brak modułu = zwykły przepływ ręczny;
+   *  ręcznie wpisanych litrów nie nadpisuje. Zdjęcie nigdzie nie jest wysyłane. */
+  async function scanReceipt() {
+    setMsg(null);
+    try {
+      const res = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+      const asset = res.assets?.[0];
+      if (res.canceled || !asset?.uri) return;
+      const TextRecognition = (await import("@react-native-ml-kit/text-recognition")).default;
+      const parsed = parseReceiptText((await TextRecognition.recognize(asset.uri)).text);
+      if (parsed.liters != null && !liters.trim()) {
+        setLiters(String(parsed.liters));
+        success();
+        setMsg(`✨ Odczytano z paragonu: ${parsed.liters} l — sprawdź i uzupełnij licznik.`);
+      } else {
+        warn();
+        setMsg(
+          parsed.liters != null
+            ? `Odczytano ${parsed.liters} l, ale pole litrów jest już wypełnione — nie nadpisuję.`
+            : "Nie udało się odczytać litrów — wpisz ręcznie.",
+        );
+      }
+    } catch {
+      warn();
+      setMsg("Skan niedostępny na tym urządzeniu — wpisz litry ręcznie.");
+    }
+  }
+
   async function submit() {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
@@ -71,8 +106,9 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     const parsed = fuelLogSchema.safeParse({
       vehicleId,
       station: { country },
-      odometerKm: Number(odometer),
-      liters: Number(liters),
+      // przecinek dziesiętny (klawiatura EU / prefill z OCR) traktujemy jak kropkę
+      odometerKm: Number(odometer.replace(",", ".")),
+      liters: Number(liters.replace(",", ".")),
       paymentMethod: payment,
       isFull,
     });
@@ -137,6 +173,11 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         <Text style={styles.repeatText}>
           {items.length > 0 ? "↺ Powtórz ostatni" : "↺ Powtórz ostatni — po pierwszym wpisie"}
         </Text>
+      </Pressable>
+
+      {/* #299: OCR — aparat czyta litry z paragonu (obok pola ręcznego) */}
+      <Pressable style={styles.repeatBtn} onPress={scanReceipt}>
+        <Text style={styles.repeatText}>📷 Skanuj paragon (litry same się wpiszą)</Text>
       </Pressable>
 
       <TextInput

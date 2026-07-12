@@ -9,6 +9,8 @@ export interface ReceiptParse {
   amount: number | null;
   /** Waluta ISO (PLN/EUR/GBP/CZK/…) lub null. */
   currency: string | null;
+  /** #299: zatankowane litry (z paragonu stacji) lub null. */
+  liters: number | null;
 }
 
 /** Słowa-klucze sumy na paragonach PL/EN/DE/CZ/FR — linia z nimi ma pierwszeństwo. */
@@ -98,8 +100,31 @@ export function detectAmount(text: string): number | null {
   return Math.max(...pool);
 }
 
+/** #299: litry z paragonu — liczba z przecinkiem/kropką tuż przed jednostką
+ *  `l` / `L` / `ltr` / `litr…` (np. „ON B7 64,71 l", „Diesel 82,40 L").
+ *  „zł"/„PLN" nie łapią się (jednostka musi zaczynać się od litery l). */
+const LITERS_RE = /(\d{1,4})[,.](\d{1,3})\s?(?:l|L)(?:tr|itr\w*)?\b/g;
+
+export function detectLiters(text: string): number | null {
+  const found: number[] = [];
+  for (const m of text.matchAll(LITERS_RE)) {
+    const whole = m[1];
+    const frac = m[2];
+    if (whole === undefined || frac === undefined) continue;
+    const v = Number(`${whole}.${frac}`);
+    // sensowny zakres tankowania TIR: 1–2000 l (odsiewa ceny jednostkowe typu 1,689)
+    if (v >= 1 && v <= 2000) found.push(v);
+  }
+  if (found.length === 0) return null;
+  return Math.max(...found);
+}
+
 /** Pełny parse tekstu z OCR paragonu. */
 export function parseReceiptText(text: string): ReceiptParse {
-  if (!text.trim()) return { amount: null, currency: null };
-  return { amount: detectAmount(text), currency: detectCurrency(text) };
+  if (!text.trim()) return { amount: null, currency: null, liters: null };
+  return {
+    amount: detectAmount(text),
+    currency: detectCurrency(text),
+    liters: detectLiters(text),
+  };
 }
