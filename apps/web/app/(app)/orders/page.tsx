@@ -150,6 +150,8 @@ export default function OrdersPage() {
   const [cmrOrder, setCmrOrder] = useState<Order | null>(null);
   const [podOrder, setPodOrder] = useState<Order | null>(null);
   const [canManage, setCanManage] = useState(false);
+  // #297: zaznaczanie wielu zleceń → pasek akcji zbiorczych (status hurtem)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
@@ -409,6 +411,38 @@ export default function OrdersPage() {
       await load();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** #297: hurtowa zmiana statusu — optymistycznie, z cofnięciem nieudanych. */
+  async function bulkChangeStatus(s: OrderStatus) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const prevById = new Map(orders.map((o) => [o.id, o.status]));
+    setOrders((list) => list.map((o) => (selected.has(o.id) ? { ...o, status: s } : o)));
+    setSelected(new Set());
+    const results = await Promise.allSettled(
+      ids.map((id) => setOrderStatus(getBrowserSupabase(), id, s)),
+    );
+    const failed = ids.filter((_, i) => results[i]?.status === "rejected");
+    if (failed.length > 0) {
+      setOrders((list) =>
+        list.map((o) =>
+          failed.includes(o.id) ? { ...o, status: prevById.get(o.id) ?? o.status } : o,
+        ),
+      );
+      toast(`Zmieniono ${ids.length - failed.length}/${ids.length} — reszta bez zmian.`, "error");
+    } else {
+      toast(`Status zmieniony dla ${ids.length} zleceń.`, "success");
     }
   }
 
@@ -841,6 +875,15 @@ export default function OrdersPage() {
           {filtered.map((o) => (
             <div key={o.id} style={styles.card}>
               <div style={styles.cardHead}>
+                {canManage && (
+                  <input
+                    type="checkbox"
+                    checked={selected.has(o.id)}
+                    onChange={() => toggleSelect(o.id)}
+                    aria-label={`Zaznacz zlecenie ${o.reference_no || o.id}`}
+                    style={styles.selectBox}
+                  />
+                )}
                 <strong>{o.reference_no || "(bez numeru)"}</strong>
                 <Badge color={STATUS_COLOR[o.status]}>{orderStatusLabel(t, o.status)}</Badge>
                 <span style={{ flex: 1 }} />
@@ -926,6 +969,33 @@ export default function OrdersPage() {
               <CargoPhotos orderId={o.id} />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* #297: pływający pasek akcji zbiorczych */}
+      {canManage && selected.size > 0 && (
+        <div style={styles.bulkBar}>
+          <strong>{selected.size} zazn.</strong>
+          <select
+            style={styles.statusSel}
+            value=""
+            onChange={(e) => bulkChangeStatus(e.target.value as OrderStatus)}
+          >
+            <option value="" disabled>
+              Zmień status…
+            </option>
+            {ORDER_STATUSES.map((st) => (
+              <option key={st} value={st}>
+                {orderStatusLabel(t, st)}
+              </option>
+            ))}
+          </select>
+          <Button variant="ghost" onClick={() => setSelected(new Set(filtered.map((o) => o.id)))}>
+            Wszystkie ({filtered.length})
+          </Button>
+          <Button variant="ghost" onClick={() => setSelected(new Set())}>
+            Wyczyść
+          </Button>
         </div>
       )}
     </div>
@@ -1049,6 +1119,22 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 8,
   },
   cardHead: { display: "flex", gap: 10, alignItems: "center" },
+  selectBox: { width: 16, height: 16, accentColor: palette.red, cursor: "pointer" },
+  bulkBar: {
+    position: "fixed",
+    bottom: 20,
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 60,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "10px 16px",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
+  },
   cardBody: { display: "flex", gap: 14, flexWrap: "wrap", fontSize: 14 },
   costLine: {
     fontSize: 13,

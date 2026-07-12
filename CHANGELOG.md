@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-296-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.149.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-297-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.150.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.150.0] — ✨ UI/UX fala 4: akcje zbiorcze (zlecenia + wydatki)
+
+- `[#297]` ☑️ **Zlecenia hurtem** — zarząd zaznacza checkboxami wiele zleceń (także „Wszystkie" z aktywnego filtra); pływający pasek na dole zmienia **status całej partii naraz**. Optymistyczna aktualizacja z cofnięciem nieudanych i raportem `zmieniono X/Y` ([orders](<apps/web/app/(app)/orders/page.tsx>)).
+- `[#297]` ☑️ **Wydatki hurtem** — checkboxy na zgłoszeniach „do rozliczenia" + pasek **Zatwierdź/Odrzuć (n)**; toast z **„Cofnij"** przywraca całą udaną partię do rozliczenia jednym kliknięciem ([expenses](<apps/web/app/(app)/expenses/page.tsx>)).
+- Web-only (wdrożenie Vercel, bez builda mobile). **Bramki:** `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.149.0] — ✨ UI/UX fala 3: tabele pro, linkowane encje, personalizacja pulpitu
 
