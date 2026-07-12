@@ -14,6 +14,7 @@ import {
   listDriverExpenses,
   uploadExpensePhotoBinary,
 } from "@e-logistic/api";
+import { parseReceiptText } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { decode } from "base64-arraybuffer";
 import * as ImagePicker from "expo-image-picker";
@@ -77,6 +78,28 @@ export default function ExpensesScreen() {
     load();
   }, [load]);
 
+  /** #298: OCR paragonu na urządzeniu (ML Kit) — fail-soft: brak modułu/nieczytelne
+   *  zdjęcie po prostu nie uzupełnia pól. Kwoty nie nadpisuje, jeśli już wpisana. */
+  async function ocrPrefill(imageUri: string): Promise<string | null> {
+    try {
+      const TextRecognition = (await import("@react-native-ml-kit/text-recognition")).default;
+      const result = await TextRecognition.recognize(imageUri);
+      const parsed = parseReceiptText(result.text);
+      const filled: string[] = [];
+      if (parsed.amount != null && !amount.trim()) {
+        setAmount(parsed.amount.toFixed(2).replace(".", ","));
+        filled.push(`kwota ${parsed.amount.toFixed(2)}`);
+      }
+      if (parsed.currency && (CURRENCIES as readonly string[]).includes(parsed.currency)) {
+        setCurrency(parsed.currency as (typeof CURRENCIES)[number]);
+        filled.push(parsed.currency);
+      }
+      return filled.length > 0 ? `✨ Odczytano z paragonu: ${filled.join(" ")}` : null;
+    } catch {
+      return null; // OCR niedostępny (np. Expo Go) — bez wpływu na przepływ
+    }
+  }
+
   async function attachPhoto() {
     if (!companyId) {
       setMsg("Poczekaj na wczytanie firmy (wymaga zasięgu).");
@@ -88,11 +111,12 @@ export default function ExpensesScreen() {
       const res = await ImagePicker.launchCameraAsync({ quality: 0.6, base64: true });
       const asset = res.assets?.[0];
       if (res.canceled || !asset?.base64) return;
+      const ocrMsg = await ocrPrefill(asset.uri);
       const path = await uploadExpensePhotoBinary(getSupabase(), companyId, decode(asset.base64), {
         mime: asset.mimeType ?? "image/jpeg",
       });
       setPhotoPath(path);
-      setMsg("📷 Paragon dołączony.");
+      setMsg(ocrMsg ? `📷 Paragon dołączony · ${ocrMsg}` : "📷 Paragon dołączony.");
     } catch {
       setMsg("Nie udało się wgrać zdjęcia — spróbuj przy lepszym zasięgu.");
     } finally {

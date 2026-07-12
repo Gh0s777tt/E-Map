@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-297-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.150.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-298-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.151.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.151.0] — 🧾✨ OCR paragonów — kwota i waluta same wskakują do wydatku
+
+- `[#298]` 📸 **OCR na urządzeniu** (mobile **1.48.0**) — po zrobieniu zdjęcia paragonu aplikacja rozpoznaje tekst lokalnie (Google **ML Kit**, `@react-native-ml-kit/text-recognition` — bez wysyłania zdjęcia do zewnętrznych API) i **sama uzupełnia kwotę i walutę** w formularzu wydatku ([expenses.tsx](apps/mobile/app/expenses.tsx)). Fail-soft: nieczytelny paragon/brak modułu = zwykły przepływ ręczny; wpisanej ręcznie kwoty nigdy nie nadpisuje.
+- `[#298]` 🧠 **Parser paragonów w `packages/core`** ([`receipt.ts`](packages/core/src/receipt.ts)) — czysty TS współdzielony web↔mobile: kwota „do zapłaty" z linii **SUMA/RAZEM/TOTAL/GESAMT/CELKEM…** (fallback: największa kwota groszowa), formaty `12,34` · `12.34` · `1 234,56` · `1.234,56`, waluty PLN/EUR/GBP/CZK/CHF/… po kodzie i symbolu (zł/€/£/Kč). **7 testów jednostkowych** ([receipt.test.ts](packages/core/src/receipt.test.ts)) — w tym paragon Orlen (SUMA wygrywa z gotówką), Shell DE i Benzina CZ.
+- Roadmapa: OCR paragonów z Fazy 4 — dostarczone dla wydatków (formularz paliwa — następny krok).
+- Build iOS **1.48.0** (nowy moduł natywny). **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.150.0] — ✨ UI/UX fala 4: akcje zbiorcze (zlecenia + wydatki)
 
