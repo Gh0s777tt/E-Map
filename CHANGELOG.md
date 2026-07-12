@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-294-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.147.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-295-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.148.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.148.0] — ✨ UI/UX fala 2: swipe i FAB, Cofnij w toastach, skeletony i puste stany
+
+- `[#295]` 📱 **Swipe na zleceniach** (mobile **1.47.0**) — przesunięcie karty w lewo odsłania szybką akcję („▶️ W trasę" / „✅ Dostarczone") z haptycznym potwierdzeniem; przycisk na karcie zostaje jako druga droga. `ReanimatedSwipeable` + `GestureHandlerRootView` w korzeniu ([orders](<apps/mobile/app/(tabs)/orders.tsx>), [_layout](apps/mobile/app/_layout.tsx)).
+- `[#295]` ➕ **FAB szybkich akcji na pulpicie** — pływający „＋" w prawym dolnym rogu rozwija: Tankowanie / AdBlue / Wydatek / Usterka. Kierowca na stacji dodaje wpis jednym dotknięciem ([`Fab.tsx`](apps/mobile/components/Fab.tsx)).
+- `[#295]` 💀 **Skeleton loading w aplikacji** — pulsujące szkielety zamiast pustki przy pierwszym ładowaniu listy zleceń (prymityw `Skeleton` w [`ui.tsx`](apps/mobile/components/ui.tsx); web miał je już w `ListStatus`).
+- `[#295]` ↩️ **„Cofnij" w toastach (web)** — [`ToastProvider`](apps/web/components/Toast.tsx) przyjmuje akcję (toast z akcją żyje ~6.5 s); pierwsze wdrożenie w [Rejestrze wydatków](<apps/web/app/(app)/expenses/page.tsx>): zatwierdzenie/odrzucenie da się cofnąć jednym kliknięciem. Test wariantu z akcją w [`Toast.test.ts`](apps/web/components/Toast.test.ts).
+- `[#295]` 🗂️ **Dopracowane puste stany (web)** — [`ListStatus`](apps/web/components/ListStatus.tsx) renderuje kartę z ikoną SVG i opcjonalnym przyciskiem akcji zamiast surowego tekstu; wszystkie ~20 stron list dostaje nowy wygląd automatycznie (zlecenia/pojazdy/wydatki z dopasowanymi ikonami).
+- **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.147.0] — ✨ UI/UX fala 1: ikony SVG, ulubione, pasek offline i haptyka
 

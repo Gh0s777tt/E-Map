@@ -4,8 +4,8 @@
  * (+ #294: lekka haptyka przy dotknięciach, żeby apka czuła się natywnie).
  */
 import { palette } from "@e-logistic/ui";
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { type ReactNode, useEffect, useRef } from "react";
+import { Animated, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { tap } from "../lib/haptics";
 
 /** Owija onPress lekkim kliknięciem haptycznym. */
@@ -50,6 +50,26 @@ export function Avatar({ initial, size = 52 }: { initial: string; size?: number 
     >
       <Text style={[ui.avatarText, { fontSize: size * 0.45 }]}>{initial}</Text>
     </View>
+  );
+}
+
+/** #295: pulsujący szkielet ładowania (zamiast spinnera) — kształt przyszłej treści. */
+export function Skeleton({ height = 44, style }: { height?: number; style?: ViewStyle }) {
+  const opacity = useRef(new Animated.Value(0.35)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.7, duration: 650, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.35, duration: 650, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return (
+    <Animated.View
+      style={[{ height, borderRadius: 16, backgroundColor: palette.graphite, opacity }, style]}
+    />
   );
 }
 

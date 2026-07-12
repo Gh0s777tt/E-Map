@@ -2,6 +2,7 @@ import { palette } from "@e-logistic/ui";
 import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../components/AuthProvider";
 import { guardRedirect, notificationTarget } from "../lib/navigation";
 
@@ -64,8 +65,11 @@ function RootNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNav />
-    </AuthProvider>
+    // #295: korzeń gestów — wymagany przez swipe na kartach zleceń (RNGH)
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <RootNav />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

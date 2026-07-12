@@ -831,7 +831,8 @@ export default function OrdersPage() {
         loading={loading}
         error={loadErr}
         empty={orders.length === 0}
-        emptyText="Brak zleceń."
+        emptyText="Brak zleceń — dodaj pierwsze formularzem powyżej."
+        emptyIcon="package"
         onRetry={load}
       />
       {!loading && !loadErr && filtered.length > 0 && (

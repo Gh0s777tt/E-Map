@@ -25,6 +25,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Fab } from "../../components/Fab";
 import { Avatar, Card, GhostButton, PrimaryButton, SectionTitle } from "../../components/ui";
 import { navigationUrl } from "../../lib/chatNotify";
 import { listOutbox, type OutboxItem } from "../../lib/outbox";
@@ -127,144 +128,158 @@ export default function Dashboard() {
   const pendingSync = outbox.filter((i) => i.status !== "synced").length;
 
   return (
-    <ScrollView
-      style={s.screen}
-      contentContainerStyle={s.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={palette.red}
-        />
-      }
-    >
-      {/* Nagłówek „Witaj," (mockup 01) */}
-      <View style={s.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.hello}>Witaj,</Text>
-          <Text style={s.who} numberOfLines={1}>
-            {name}
-            {myReg ? ` · ${myReg}` : ""}
-          </Text>
-          <Text style={s.sub} numberOfLines={1}>
-            {[profile.companyName, roleLabel(profile.role)].filter(Boolean).join(" · ") ||
-              "E-Logistic"}
-          </Text>
-        </View>
-        <Avatar initial={initialOf(profile.email)} />
-      </View>
-
-      {/* Bieżące zlecenie */}
-      {show("orders") && (
-        <Card style={s.orderCard}>
-          <View style={s.redStripe} />
-          <Text style={s.orderLabel}>BIEŻĄCE ZLECENIE</Text>
-          {active ? (
-            <>
-              <Text style={s.orderTitle} numberOfLines={2}>
-                {active.origin || "?"} → {active.destination || "?"}
-              </Text>
-              <Text style={s.orderMeta} numberOfLines={2}>
-                {[
-                  active.reference_no,
-                  active.cargo,
-                  active.weight_kg != null ? `${active.weight_kg} kg` : null,
-                  active.unload_date ? `rozładunek ${active.unload_date}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "Szczegóły w zakładce Zlecenia"}
-              </Text>
-              <View style={s.btnRow}>
-                <PrimaryButton
-                  label="🧭 Nawiguj"
-                  onPress={() => {
-                    if (active?.destination) {
-                      Linking.openURL(
-                        navigationUrl(active.destination, Platform.OS === "ios" ? "ios" : "other"),
-                      ).catch(() => router.push("/map"));
-                    } else {
-                      router.push("/map");
-                    }
-                  }}
-                />
-                <GhostButton label="Szczegóły" onPress={() => router.push("/orders")} />
-              </View>
-            </>
-          ) : (
-            <Text style={s.orderMeta}>
-              Brak aktywnego zlecenia. Gdy spedytor coś przydzieli, dostaniesz push — a karta pojawi
-              się tutaj.
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={s.screen}
+        contentContainerStyle={s.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await load();
+              setRefreshing(false);
+            }}
+            tintColor={palette.red}
+          />
+        }
+      >
+        {/* Nagłówek „Witaj," (mockup 01) */}
+        <View style={s.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.hello}>Witaj,</Text>
+            <Text style={s.who} numberOfLines={1}>
+              {name}
+              {myReg ? ` · ${myReg}` : ""}
             </Text>
-          )}
-        </Card>
-      )}
+            <Text style={s.sub} numberOfLines={1}>
+              {[profile.companyName, roleLabel(profile.role)].filter(Boolean).join(" · ") ||
+                "E-Logistic"}
+            </Text>
+          </View>
+          <Avatar initial={initialOf(profile.email)} />
+        </View>
 
-      {/* Rząd akcji: Rozpocznij Trip / Tankuj / Checklist (mockup 01) */}
-      {show("forms") && (
-        <View style={s.actionRow}>
-          <Pressable style={s.actionPrimary} onPress={() => router.push("/trip")}>
-            <Text style={s.actionPrimaryText}>Rozpocznij Trip</Text>
-          </Pressable>
-          <Pressable style={s.actionGhost} onPress={() => router.push("/fuel")}>
-            <Text style={s.actionGhostText}>Tankuj</Text>
-          </Pressable>
-          {show("checklists") && (
-            <Pressable style={s.actionGhost} onPress={() => router.push("/checklists")}>
-              <Text style={s.actionGhostText}>Checklist</Text>
+        {/* Bieżące zlecenie */}
+        {show("orders") && (
+          <Card style={s.orderCard}>
+            <View style={s.redStripe} />
+            <Text style={s.orderLabel}>BIEŻĄCE ZLECENIE</Text>
+            {active ? (
+              <>
+                <Text style={s.orderTitle} numberOfLines={2}>
+                  {active.origin || "?"} → {active.destination || "?"}
+                </Text>
+                <Text style={s.orderMeta} numberOfLines={2}>
+                  {[
+                    active.reference_no,
+                    active.cargo,
+                    active.weight_kg != null ? `${active.weight_kg} kg` : null,
+                    active.unload_date ? `rozładunek ${active.unload_date}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Szczegóły w zakładce Zlecenia"}
+                </Text>
+                <View style={s.btnRow}>
+                  <PrimaryButton
+                    label="🧭 Nawiguj"
+                    onPress={() => {
+                      if (active?.destination) {
+                        Linking.openURL(
+                          navigationUrl(
+                            active.destination,
+                            Platform.OS === "ios" ? "ios" : "other",
+                          ),
+                        ).catch(() => router.push("/map"));
+                      } else {
+                        router.push("/map");
+                      }
+                    }}
+                  />
+                  <GhostButton label="Szczegóły" onPress={() => router.push("/orders")} />
+                </View>
+              </>
+            ) : (
+              <Text style={s.orderMeta}>
+                Brak aktywnego zlecenia. Gdy spedytor coś przydzieli, dostaniesz push — a karta
+                pojawi się tutaj.
+              </Text>
+            )}
+          </Card>
+        )}
+
+        {/* Rząd akcji: Rozpocznij Trip / Tankuj / Checklist (mockup 01) */}
+        {show("forms") && (
+          <View style={s.actionRow}>
+            <Pressable style={s.actionPrimary} onPress={() => router.push("/trip")}>
+              <Text style={s.actionPrimaryText}>Rozpocznij Trip</Text>
             </Pressable>
-          )}
-        </View>
-      )}
-
-      {/* KPI dnia */}
-      <SectionTitle>Dzisiaj</SectionTitle>
-      <View style={s.kpiRow}>
-        <View style={s.kpi}>
-          <Text style={s.kpiLabel}>Paliwo dziś</Text>
-          <Text style={s.kpiValue}>
-            {fuelToday} <Text style={s.kpiUnit}>l</Text>
-          </Text>
-        </View>
-        {show("checklists") && (
-          <View style={s.kpi}>
-            <Text style={s.kpiLabel}>Checklisty</Text>
-            <Text style={[s.kpiValue, (checklistsDue ?? 0) > 0 && { color: palette.warning }]}>
-              {checklistsDue ?? "—"}
-            </Text>
+            <Pressable style={s.actionGhost} onPress={() => router.push("/fuel")}>
+              <Text style={s.actionGhostText}>Tankuj</Text>
+            </Pressable>
+            {show("checklists") && (
+              <Pressable style={s.actionGhost} onPress={() => router.push("/checklists")}>
+                <Text style={s.actionGhostText}>Checklist</Text>
+              </Pressable>
+            )}
           </View>
         )}
-        <View style={s.kpi}>
-          <Text style={s.kpiLabel}>Sync</Text>
-          <Text style={[s.kpiValue, pendingSync === 0 && { color: palette.success }]}>
-            {pendingSync === 0 ? "✓" : pendingSync}
-          </Text>
-        </View>
-      </View>
 
-      {/* Ostatnie aktywności — najnowszy wpis wyróżniony (mockup 01) */}
-      <SectionTitle>Ostatnie aktywności</SectionTitle>
-      {outbox.length === 0 && (
-        <Text style={s.empty}>
-          Jeszcze nic tu nie ma — pierwszy zapisany formularz pojawi się na tej liście.
-        </Text>
-      )}
-      {outbox.slice(0, 3).map((it, i) => (
-        <View key={it.id} style={[s.activity, i === 0 && s.activityHot]}>
-          <Text style={s.activityGlyph}>{KIND_GLYPH[it.kind]}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.activityTitle}>{KIND_LABEL[it.kind]}</Text>
-            <Text style={s.activitySub} numberOfLines={1}>
-              {activitySub(it)}
+        {/* KPI dnia */}
+        <SectionTitle>Dzisiaj</SectionTitle>
+        <View style={s.kpiRow}>
+          <View style={s.kpi}>
+            <Text style={s.kpiLabel}>Paliwo dziś</Text>
+            <Text style={s.kpiValue}>
+              {fuelToday} <Text style={s.kpiUnit}>l</Text>
             </Text>
           </View>
-          <Text style={s.activityStatus}>{it.status === "synced" ? "✓" : "⏳"}</Text>
+          {show("checklists") && (
+            <View style={s.kpi}>
+              <Text style={s.kpiLabel}>Checklisty</Text>
+              <Text style={[s.kpiValue, (checklistsDue ?? 0) > 0 && { color: palette.warning }]}>
+                {checklistsDue ?? "—"}
+              </Text>
+            </View>
+          )}
+          <View style={s.kpi}>
+            <Text style={s.kpiLabel}>Sync</Text>
+            <Text style={[s.kpiValue, pendingSync === 0 && { color: palette.success }]}>
+              {pendingSync === 0 ? "✓" : pendingSync}
+            </Text>
+          </View>
         </View>
-      ))}
-    </ScrollView>
+
+        {/* Ostatnie aktywności — najnowszy wpis wyróżniony (mockup 01) */}
+        <SectionTitle>Ostatnie aktywności</SectionTitle>
+        {outbox.length === 0 && (
+          <Text style={s.empty}>
+            Jeszcze nic tu nie ma — pierwszy zapisany formularz pojawi się na tej liście.
+          </Text>
+        )}
+        {outbox.slice(0, 3).map((it, i) => (
+          <View key={it.id} style={[s.activity, i === 0 && s.activityHot]}>
+            <Text style={s.activityGlyph}>{KIND_GLYPH[it.kind]}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.activityTitle}>{KIND_LABEL[it.kind]}</Text>
+              <Text style={s.activitySub} numberOfLines={1}>
+                {activitySub(it)}
+              </Text>
+            </View>
+            <Text style={s.activityStatus}>{it.status === "synced" ? "✓" : "⏳"}</Text>
+          </View>
+        ))}
+      </ScrollView>
+      {/* #295: FAB — szybkie dodawanie bez szukania w menu */}
+      <Fab
+        actions={[
+          { icon: "fuel", label: "Tankowanie", onPress: () => router.push("/fuel") },
+          { icon: "droplet", label: "AdBlue", onPress: () => router.push("/adblue") },
+          { icon: "receipt", label: "Wydatek", onPress: () => router.push("/expenses") },
+          { icon: "wrench", label: "Usterka", onPress: () => router.push("/defects") },
+        ]}
+      />
+    </View>
   );
 }
 

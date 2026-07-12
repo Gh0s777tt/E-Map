@@ -749,6 +749,7 @@ export default function VehiclesPage() {
         error={loadErr}
         empty={dbVehicles.length === 0}
         emptyText="Brak pojazdów — dodaj powyżej."
+        emptyIcon="truck"
         onRetry={loadVehicles}
       />
       {!loading && !loadErr && dbVehicles.length > 0 && (

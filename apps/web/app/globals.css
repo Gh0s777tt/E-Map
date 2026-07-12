@@ -476,6 +476,22 @@ body {
 .el-toast-info {
   border-left-color: var(--el-border-strong);
 }
+/* #295: przycisk akcji w toaście (np. „Cofnij") */
+.el-toast-action {
+  background: transparent;
+  border: 1px solid var(--el-red);
+  color: var(--el-red);
+  border-radius: 6px;
+  padding: 3px 10px;
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.el-toast-action:hover {
+  background: var(--el-red);
+  color: #fff;
+}
 
 /* ── Karta klikalna — delikatne uniesienie przy hover (mikrointerakcja) ── */
 .el-card {

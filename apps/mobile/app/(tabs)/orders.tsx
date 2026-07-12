@@ -8,9 +8,10 @@ import { palette } from "@e-logistic/ui";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { CargoPhotosMobile } from "../../components/CargoPhotosMobile";
 import { TrackingQrButton } from "../../components/TrackingQr";
-import { Card, ScreenTitle } from "../../components/ui";
+import { Card, ScreenTitle, Skeleton } from "../../components/ui";
 import { success, warn } from "../../lib/haptics";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
@@ -124,6 +125,13 @@ export default function OrdersScreen() {
 
       {err && <Text style={s.err}>{err}</Text>}
       {msg && <Text style={s.msg}>{msg}</Text>}
+      {loading && orders.length === 0 && (
+        <View style={{ gap: 12 }}>
+          <Skeleton height={140} />
+          <Skeleton height={140} style={{ opacity: 0.6 }} />
+          <Skeleton height={140} style={{ opacity: 0.35 }} />
+        </View>
+      )}
       {!loading && !err && visible.length === 0 && (
         <Text style={s.note}>
           {segment === "active"
@@ -134,49 +142,73 @@ export default function OrdersScreen() {
         </Text>
       )}
 
-      {visible.map((o) => (
-        <Card key={o.id} style={s.orderCard}>
-          <View style={s.cardHead}>
-            <Text style={s.route} numberOfLines={1}>
-              {o.origin || "?"} → {o.destination || "?"}
-            </Text>
-            <View style={[s.badge, { backgroundColor: STATUS_COLOR[o.status] }]}>
-              <Text style={s.badgeText}>{STATUS_LABEL[o.status]}</Text>
+      {visible.map((o) => {
+        // #295: swipe w lewo = szybka zmiana statusu (obok przycisku na karcie)
+        const next =
+          o.status === "new" || o.status === "assigned"
+            ? ({ to: "in_progress", label: "▶️ W trasę" } as const)
+            : o.status === "in_progress"
+              ? ({ to: "delivered", label: "✅ Dostarczone" } as const)
+              : null;
+        const card = (
+          <Card style={s.orderCard}>
+            <View style={s.cardHead}>
+              <Text style={s.route} numberOfLines={1}>
+                {o.origin || "?"} → {o.destination || "?"}
+              </Text>
+              <View style={[s.badge, { backgroundColor: STATUS_COLOR[o.status] }]}>
+                <Text style={s.badgeText}>{STATUS_LABEL[o.status]}</Text>
+              </View>
             </View>
-          </View>
-          <Text style={s.meta} numberOfLines={2}>
-            {[
-              o.reference_no,
-              o.cargo,
-              o.weight_kg != null ? `${o.weight_kg} kg` : null,
-              o.vehicle_id ? `🚚 ${regOf(o.vehicle_id)}` : null,
-              o.load_date ? `zał. ${o.load_date}` : null,
-              o.unload_date ? `rozł. ${o.unload_date}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ") || "—"}
-          </Text>
+            <Text style={s.meta} numberOfLines={2}>
+              {[
+                o.reference_no,
+                o.cargo,
+                o.weight_kg != null ? `${o.weight_kg} kg` : null,
+                o.vehicle_id ? `🚚 ${regOf(o.vehicle_id)}` : null,
+                o.load_date ? `zał. ${o.load_date}` : null,
+                o.unload_date ? `rozł. ${o.unload_date}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            </Text>
 
-          {(o.status === "new" || o.status === "assigned") && (
-            <Pressable style={s.btn} onPress={() => advance(o, "in_progress")}>
-              <Text style={s.btnText}>▶️ Rozpocznij trasę</Text>
-            </Pressable>
-          )}
-          {o.status === "in_progress" && (
-            <Pressable style={s.btn} onPress={() => advance(o, "delivered")}>
-              <Text style={s.btnText}>✅ Dostarczone</Text>
-            </Pressable>
-          )}
+            {next && (
+              <Pressable style={s.btn} onPress={() => advance(o, next.to)}>
+                <Text style={s.btnText}>
+                  {next.to === "in_progress" ? "▶️ Rozpocznij trasę" : "✅ Dostarczone"}
+                </Text>
+              </Pressable>
+            )}
 
-          {segment !== "done" && <CargoPhotosMobile orderId={o.id} />}
-          {(o.status === "in_progress" || o.status === "delivered") && (
-            <TrackingQrButton
-              orderId={o.id}
-              label={`${o.origin || "?"} → ${o.destination || "?"}`}
-            />
-          )}
-        </Card>
-      ))}
+            {segment !== "done" && <CargoPhotosMobile orderId={o.id} />}
+            {(o.status === "in_progress" || o.status === "delivered") && (
+              <TrackingQrButton
+                orderId={o.id}
+                label={`${o.origin || "?"} → ${o.destination || "?"}`}
+              />
+            )}
+          </Card>
+        );
+        if (!next) return <View key={o.id}>{card}</View>;
+        return (
+          // klucz zawiera status → po zmianie remount domyka odsłonięty swipe
+          <ReanimatedSwipeable
+            key={`${o.id}-${o.status}`}
+            overshootRight={false}
+            renderRightActions={() => (
+              <Pressable style={s.swipeAction} onPress={() => advance(o, next.to)}>
+                <Text style={s.swipeActionText}>{next.label}</Text>
+              </Pressable>
+            )}
+          >
+            {card}
+          </ReanimatedSwipeable>
+        );
+      })}
+      {visible.length > 0 && segment !== "done" && (
+        <Text style={s.note}>Podpowiedź: przesuń kartę w lewo, aby szybko zmienić status.</Text>
+      )}
     </ScrollView>
   );
 }
@@ -212,4 +244,13 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
   btnText: { color: palette.white, fontWeight: "700", fontSize: 15 },
+  swipeAction: {
+    backgroundColor: palette.red,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    marginLeft: 8,
+  },
+  swipeActionText: { color: palette.white, fontWeight: "800", fontSize: 15 },
 });

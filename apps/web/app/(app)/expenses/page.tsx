@@ -57,7 +57,21 @@ export default function ExpensesPage() {
     setRows((list) => list.map((x) => (x.id === row.id ? { ...x, status } : x)));
     try {
       await setDriverExpenseStatus(getBrowserSupabase(), row.id, status);
-      toast(status === "approved" ? "Wydatek zatwierdzony." : "Wydatek odrzucony.", "success");
+      // #295: decyzja odwracalna z toasta — „Cofnij" przywraca „do rozliczenia".
+      toast(status === "approved" ? "Wydatek zatwierdzony." : "Wydatek odrzucony.", "success", {
+        label: "Cofnij",
+        onClick: () => {
+          void (async () => {
+            try {
+              await setDriverExpenseStatus(getBrowserSupabase(), row.id, prev);
+              setRows((list) => list.map((x) => (x.id === row.id ? { ...x, status: prev } : x)));
+              toast("Przywrócono do rozliczenia.", "info");
+            } catch {
+              toast("Nie udało się cofnąć decyzji.", "error");
+            }
+          })();
+        },
+      });
     } catch (e) {
       setRows((list) => list.map((x) => (x.id === row.id ? { ...x, status: prev } : x)));
       toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
@@ -112,6 +126,7 @@ export default function ExpensesPage() {
         error={error}
         empty={!loading && visible.length === 0}
         emptyText="Brak wydatków w tym widoku."
+        emptyIcon="receipt"
         onRetry={load}
       />
 

@@ -40,4 +40,26 @@ describe("ToastProvider", () => {
     render(provider("x"));
     expect(document.querySelector(".el-toasts")?.getAttribute("aria-live")).toBe("polite");
   });
+
+  it("akcja „Cofnij” (#295): żyje dłużej, klik wywołuje callback i zamyka toast", () => {
+    const onClick = vi.fn();
+    function TriggerAction() {
+      const toast = useToast();
+      return h(
+        "button",
+        { type: "button", onClick: () => toast("Odrzucono", "info", { label: "Cofnij", onClick }) },
+        "fire",
+      );
+    }
+    // biome-ignore lint/correctness/noChildrenProp: createElement w teście — children w props (wymóg tsc)
+    render(h(ToastProvider, { children: h(TriggerAction) }));
+    fireEvent.click(screen.getByText("fire"));
+    act(() => {
+      vi.advanceTimersByTime(3600); // po standardowych 3.5 s wciąż widoczny
+    });
+    expect(screen.queryByText("Cofnij")).not.toBeNull();
+    fireEvent.click(screen.getByText("Cofnij"));
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Odrzucono")).toBeNull();
+  });
 });
