@@ -28,6 +28,7 @@ import {
 import { Fab } from "../../components/Fab";
 import { Avatar, Card, GhostButton, PrimaryButton, SectionTitle } from "../../components/ui";
 import { navigationUrl } from "../../lib/chatNotify";
+import { useT } from "../../lib/i18n";
 import { listOutbox, type OutboxItem } from "../../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
@@ -35,13 +36,14 @@ import { initialOf, roleLabel, useProfile } from "../../lib/useProfile";
 
 const ACTIVE: Order["status"][] = ["in_progress", "assigned", "new"];
 
-const KIND_LABEL: Record<OutboxItem["kind"], string> = {
-  fuel: "Tankowanie",
-  adblue: "AdBlue",
-  trip: "Trasa",
-  checklist: "Checklista",
-  expense: "Wydatek",
-};
+// #300: etykiety rodzajów wpisow przez katalog i18n (PL/EN/DE/UK)
+const KIND_KEY = {
+  fuel: "m.kind.fuel",
+  adblue: "m.kind.adblue",
+  trip: "m.kind.trip",
+  checklist: "m.kind.checklist",
+  expense: "m.kind.expense",
+} as const;
 const KIND_GLYPH: Record<OutboxItem["kind"], string> = {
   fuel: "⛽",
   adblue: "💧",
@@ -65,6 +67,7 @@ function activitySub(it: OutboxItem): string {
 
 export default function Dashboard() {
   const router = useRouter();
+  const t = useT();
   const profile = useProfile();
   const { vehicles } = useFleet();
   const [mods, setMods] = useState<AppModule[] | null>(null);
@@ -114,7 +117,7 @@ export default function Dashboard() {
   );
 
   const show = (m: AppModule) => mods === null || mods.includes(m);
-  const name = profile.email ? profile.email.split("@")[0] : "kierowco";
+  const name = profile.email ? profile.email.split("@")[0] : t("m.home.driverFallback");
   const myReg = active?.vehicle_id
     ? (vehicles.find((v) => v.id === active.vehicle_id)?.registration ?? null)
     : (vehicles[0]?.registration ?? null);
@@ -147,7 +150,7 @@ export default function Dashboard() {
         {/* Nagłówek „Witaj," (mockup 01) */}
         <View style={s.header}>
           <View style={{ flex: 1 }}>
-            <Text style={s.hello}>Witaj,</Text>
+            <Text style={s.hello}>{t("m.home.hello")}</Text>
             <Text style={s.who} numberOfLines={1}>
               {name}
               {myReg ? ` · ${myReg}` : ""}
@@ -164,7 +167,7 @@ export default function Dashboard() {
         {show("orders") && (
           <Card style={s.orderCard}>
             <View style={s.redStripe} />
-            <Text style={s.orderLabel}>BIEŻĄCE ZLECENIE</Text>
+            <Text style={s.orderLabel}>{t("m.home.currentOrder")}</Text>
             {active ? (
               <>
                 <Text style={s.orderTitle} numberOfLines={2}>
@@ -178,11 +181,11 @@ export default function Dashboard() {
                     active.unload_date ? `rozładunek ${active.unload_date}` : null,
                   ]
                     .filter(Boolean)
-                    .join(" · ") || "Szczegóły w zakładce Zlecenia"}
+                    .join(" · ") || t("m.home.orderDetailsIn")}
                 </Text>
                 <View style={s.btnRow}>
                   <PrimaryButton
-                    label="🧭 Nawiguj"
+                    label={`🧭 ${t("m.home.navigate")}`}
                     onPress={() => {
                       if (active?.destination) {
                         Linking.openURL(
@@ -196,14 +199,11 @@ export default function Dashboard() {
                       }
                     }}
                   />
-                  <GhostButton label="Szczegóły" onPress={() => router.push("/orders")} />
+                  <GhostButton label={t("m.home.details")} onPress={() => router.push("/orders")} />
                 </View>
               </>
             ) : (
-              <Text style={s.orderMeta}>
-                Brak aktywnego zlecenia. Gdy spedytor coś przydzieli, dostaniesz push — a karta
-                pojawi się tutaj.
-              </Text>
+              <Text style={s.orderMeta}>{t("m.home.noOrder")}</Text>
             )}
           </Card>
         )}
@@ -212,38 +212,38 @@ export default function Dashboard() {
         {show("forms") && (
           <View style={s.actionRow}>
             <Pressable style={s.actionPrimary} onPress={() => router.push("/trip")}>
-              <Text style={s.actionPrimaryText}>Rozpocznij Trip</Text>
+              <Text style={s.actionPrimaryText}>{t("m.home.startTrip")}</Text>
             </Pressable>
             <Pressable style={s.actionGhost} onPress={() => router.push("/fuel")}>
-              <Text style={s.actionGhostText}>Tankuj</Text>
+              <Text style={s.actionGhostText}>{t("m.home.fuelAction")}</Text>
             </Pressable>
             {show("checklists") && (
               <Pressable style={s.actionGhost} onPress={() => router.push("/checklists")}>
-                <Text style={s.actionGhostText}>Checklist</Text>
+                <Text style={s.actionGhostText}>{t("m.home.checklistAction")}</Text>
               </Pressable>
             )}
           </View>
         )}
 
         {/* KPI dnia */}
-        <SectionTitle>Dzisiaj</SectionTitle>
+        <SectionTitle>{t("m.home.today")}</SectionTitle>
         <View style={s.kpiRow}>
           <View style={s.kpi}>
-            <Text style={s.kpiLabel}>Paliwo dziś</Text>
+            <Text style={s.kpiLabel}>{t("m.home.fuelToday")}</Text>
             <Text style={s.kpiValue}>
               {fuelToday} <Text style={s.kpiUnit}>l</Text>
             </Text>
           </View>
           {show("checklists") && (
             <View style={s.kpi}>
-              <Text style={s.kpiLabel}>Checklisty</Text>
+              <Text style={s.kpiLabel}>{t("m.home.checklists")}</Text>
               <Text style={[s.kpiValue, (checklistsDue ?? 0) > 0 && { color: palette.warning }]}>
                 {checklistsDue ?? "—"}
               </Text>
             </View>
           )}
           <View style={s.kpi}>
-            <Text style={s.kpiLabel}>Sync</Text>
+            <Text style={s.kpiLabel}>{t("m.home.sync")}</Text>
             <Text style={[s.kpiValue, pendingSync === 0 && { color: palette.success }]}>
               {pendingSync === 0 ? "✓" : pendingSync}
             </Text>
@@ -251,17 +251,13 @@ export default function Dashboard() {
         </View>
 
         {/* Ostatnie aktywności — najnowszy wpis wyróżniony (mockup 01) */}
-        <SectionTitle>Ostatnie aktywności</SectionTitle>
-        {outbox.length === 0 && (
-          <Text style={s.empty}>
-            Jeszcze nic tu nie ma — pierwszy zapisany formularz pojawi się na tej liście.
-          </Text>
-        )}
+        <SectionTitle>{t("m.home.activities")}</SectionTitle>
+        {outbox.length === 0 && <Text style={s.empty}>{t("m.home.activitiesEmpty")}</Text>}
         {outbox.slice(0, 3).map((it, i) => (
           <View key={it.id} style={[s.activity, i === 0 && s.activityHot]}>
             <Text style={s.activityGlyph}>{KIND_GLYPH[it.kind]}</Text>
             <View style={{ flex: 1 }}>
-              <Text style={s.activityTitle}>{KIND_LABEL[it.kind]}</Text>
+              <Text style={s.activityTitle}>{t(KIND_KEY[it.kind])}</Text>
               <Text style={s.activitySub} numberOfLines={1}>
                 {activitySub(it)}
               </Text>
@@ -273,10 +269,10 @@ export default function Dashboard() {
       {/* #295: FAB — szybkie dodawanie bez szukania w menu */}
       <Fab
         actions={[
-          { icon: "fuel", label: "Tankowanie", onPress: () => router.push("/fuel") },
-          { icon: "droplet", label: "AdBlue", onPress: () => router.push("/adblue") },
-          { icon: "receipt", label: "Wydatek", onPress: () => router.push("/expenses") },
-          { icon: "wrench", label: "Usterka", onPress: () => router.push("/defects") },
+          { icon: "fuel", label: t("m.kind.fuel"), onPress: () => router.push("/fuel") },
+          { icon: "droplet", label: t("m.kind.adblue"), onPress: () => router.push("/adblue") },
+          { icon: "receipt", label: t("m.kind.expense"), onPress: () => router.push("/expenses") },
+          { icon: "wrench", label: t("m.fab.defect"), onPress: () => router.push("/defects") },
         ]}
       />
     </View>

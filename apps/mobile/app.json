@@ -3,7 +3,7 @@
     "name": "E-Logistic",
     "slug": "e-logistic",
     "scheme": "elogistic",
-    "version": "1.49.0",
+    "version": "1.50.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -63,7 +63,8 @@
         }
       ],
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

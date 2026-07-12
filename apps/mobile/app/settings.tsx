@@ -1,14 +1,25 @@
-/** #285: Ustawienia — konto, powiadomienia push, wersja aplikacji, wylogowanie. */
+/** #285: Ustawienia — konto, powiadomienia push, wersja aplikacji, wylogowanie.
+ *  #300: wybór języka aplikacji (Systemowy / PL / EN / DE / UK). */
+import { MOBILE_LOCALES, type MobileLocale } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Constants from "expo-constants";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
 import { Card, GhostButton, PrimaryButton, SectionTitle } from "../components/ui";
+import { type LocalePref, useLocale } from "../lib/i18n";
 import { registerForPush } from "../lib/push";
+
+const LOCALE_LABEL: Record<MobileLocale, string> = {
+  pl: "Polski",
+  en: "English",
+  de: "Deutsch",
+  uk: "Українська",
+};
 
 export default function SettingsScreen() {
   const { session, signOut } = useAuth();
+  const { pref, setPref, t } = useLocale();
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const version = Constants.expoConfig?.version ?? "—";
 
@@ -52,6 +63,27 @@ export default function SettingsScreen() {
         {pushMsg && <Text style={s.msg}>{pushMsg}</Text>}
       </Card>
 
+      <SectionTitle>{t("m.settings.language")}</SectionTitle>
+      <Card>
+        <View style={s.langRow}>
+          {(["auto", ...MOBILE_LOCALES] as LocalePref[]).map((p) => {
+            const on = pref === p;
+            return (
+              <Pressable
+                key={p}
+                style={[s.lang, on && s.langOn]}
+                onPress={() => setPref(p)}
+                accessibilityState={{ selected: on }}
+              >
+                <Text style={[s.langText, on && s.langTextOn]}>
+                  {p === "auto" ? t("m.settings.languageAuto") : LOCALE_LABEL[p]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
+
       <SectionTitle>Aplikacja</SectionTitle>
       <Card style={{ gap: 8 }}>
         <View style={s.kv}>
@@ -79,4 +111,15 @@ const s = StyleSheet.create({
   v: { color: palette.offWhite, fontSize: 14, fontWeight: "600", flexShrink: 1 },
   hint: { color: palette.smoke, fontSize: 13, lineHeight: 19 },
   msg: { color: palette.smoke, fontSize: 13 },
+  langRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  lang: {
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  langOn: { backgroundColor: palette.red, borderColor: palette.red },
+  langText: { color: palette.smoke, fontSize: 14, fontWeight: "600" },
+  langTextOn: { color: palette.white, fontWeight: "800" },
 });

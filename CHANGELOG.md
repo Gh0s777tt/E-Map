@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-299-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.152.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-300-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.153.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.153.0] — 🌍 Aplikacja mówi po angielsku, niemiecku i ukraińsku (i18n fala 1)
+
+- `[#300]` 🌍 **Cztery języki w aplikacji kierowcy** (mobile **1.50.0**) — nowy katalog [`packages/i18n/src/mobile.ts`](packages/i18n/src/mobile.ts) (PL/EN/DE/UK, osobny od webowego PL/EN) z własnym **testem parytetu** ([mobileParity.test.ts](packages/i18n/src/mobileParity.test.ts)) i parametrami `{n}` w treściach.
+- `[#300]` 📱 **Język telefonu wykrywany automatycznie** (`expo-localization`): telefon po niemiecku → apka po niemiecku; nieznany język → angielski. Ręczny wybór w **Ustawieniach** (Systemowy / Polski / English / Deutsch / Українська) — pamiętany na urządzeniu ([`lib/i18n.tsx`](apps/mobile/lib/i18n.tsx), [settings](apps/mobile/app/settings.tsx)).
+- `[#300]` 🧩 **Fala 1 przetłumaczona**: dolne zakładki, tytuły wszystkich ekranów, cały **Pulpit** (bieżące zlecenie, akcje, KPI dnia, ostatnie aktywności), pasek „do wysłania" i FAB. Formularze, zlecenia i czat — fala 2.
+- Build iOS **1.50.0** (nowy moduł natywny expo-localization). **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (parytet 4 języków) (`pnpm check`).
 
 ## [1.152.0] — ⛽✨ OCR w formularzu paliwa — litry same się wpisują
 

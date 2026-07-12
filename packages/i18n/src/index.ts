@@ -22,3 +22,13 @@ export function t(locale: Locale, key: MessageKey): string {
 export function createTranslator(locale: Locale): (key: MessageKey) => string {
   return (key) => t(locale, key);
 }
+
+// #300: katalog aplikacji kierowcy (PL/EN/DE/UK) — osobny od webowego.
+export {
+  DEFAULT_MOBILE_LOCALE,
+  MOBILE_LOCALES,
+  type MobileLocale,
+  type MobileMessageKey,
+  mobileMessages,
+  tMobile,
+} from "./mobile";

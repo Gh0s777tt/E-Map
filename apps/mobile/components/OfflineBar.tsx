@@ -9,10 +9,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { success, tap } from "../lib/haptics";
+import { useT } from "../lib/i18n";
 import { flushQueued, pendingCount, subscribeOutbox } from "../lib/outbox";
 import { Icon } from "./Icon";
 
 export function OfflineBar() {
+  const t = useT();
   const insets = useSafeAreaInsets();
   const [pending, setPending] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -44,21 +46,15 @@ export function OfflineBar() {
     }
   }
 
-  const few =
-    pending % 10 >= 2 && pending % 10 <= 4 && !(pending % 100 >= 12 && pending % 100 <= 14);
-  const label =
-    pending === 1
-      ? "1 wpis czeka na wysyłkę"
-      : few
-        ? `${pending} wpisy czekają na wysyłkę`
-        : `${pending} wpisów czeka na wysyłkę`;
   return (
     <Pressable
       style={({ pressed }) => [s.bar, { paddingTop: insets.top + 7 }, pressed && { opacity: 0.8 }]}
       onPress={retry}
     >
       <Icon name="cloudOff" size={15} color={palette.white} strokeWidth={2.2} />
-      <Text style={s.text}>{busy ? "Wysyłam…" : `${label} — dotknij, aby ponowić`}</Text>
+      <Text style={s.text}>
+        {busy ? t("m.offline.sending") : t("m.offline.pending", { n: pending })}
+      </Text>
       <Icon name="refresh" size={14} color={palette.white} strokeWidth={2.2} />
     </Pressable>
   );

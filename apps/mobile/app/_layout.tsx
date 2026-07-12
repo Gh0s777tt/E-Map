@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "../components/AuthProvider";
+import { LocaleProvider, useT } from "../lib/i18n";
 import { guardRedirect, notificationTarget } from "../lib/navigation";
 
 /** Tap w powiadomienie push → przejście do ekranu wskazanego w `data.url`. */
@@ -33,6 +34,7 @@ function useProtectedRoute() {
 function RootNav() {
   useProtectedRoute();
   useNotificationTap();
+  const t = useT(); // #300: tytuły ekranów w języku użytkownika
   return (
     <Stack
       screenOptions={{
@@ -43,21 +45,21 @@ function RootNav() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ title: "Logowanie", headerShown: false }} />
-      <Stack.Screen name="fuel" options={{ title: "Tankowanie" }} />
-      <Stack.Screen name="adblue" options={{ title: "AdBlue" }} />
-      <Stack.Screen name="trip" options={{ title: "Trasa" }} />
-      <Stack.Screen name="checklists" options={{ title: "Checklisty" }} />
-      <Stack.Screen name="documents" options={{ title: "Dokumenty" }} />
-      <Stack.Screen name="chat" options={{ title: "Czat" }} />
-      <Stack.Screen name="chat-thread" options={{ title: "Rozmowa" }} />
-      <Stack.Screen name="expenses" options={{ title: "Rejestr wydatków" }} />
-      <Stack.Screen name="work-time" options={{ title: "Czas pracy" }} />
-      <Stack.Screen name="settlement" options={{ title: "Moje rozliczenie" }} />
-      <Stack.Screen name="vehicle" options={{ title: "Mój pojazd" }} />
-      <Stack.Screen name="defects" options={{ title: "Usterki i szkody" }} />
-      <Stack.Screen name="stats" options={{ title: "Statystyki" }} />
-      <Stack.Screen name="settings" options={{ title: "Ustawienia" }} />
+      <Stack.Screen name="login" options={{ title: t("m.screen.login"), headerShown: false }} />
+      <Stack.Screen name="fuel" options={{ title: t("m.screen.fuel") }} />
+      <Stack.Screen name="adblue" options={{ title: t("m.screen.adblue") }} />
+      <Stack.Screen name="trip" options={{ title: t("m.screen.trip") }} />
+      <Stack.Screen name="checklists" options={{ title: t("m.screen.checklists") }} />
+      <Stack.Screen name="documents" options={{ title: t("m.screen.documents") }} />
+      <Stack.Screen name="chat" options={{ title: t("m.screen.chat") }} />
+      <Stack.Screen name="chat-thread" options={{ title: t("m.screen.chatThread") }} />
+      <Stack.Screen name="expenses" options={{ title: t("m.screen.expenses") }} />
+      <Stack.Screen name="work-time" options={{ title: t("m.screen.workTime") }} />
+      <Stack.Screen name="settlement" options={{ title: t("m.screen.settlement") }} />
+      <Stack.Screen name="vehicle" options={{ title: t("m.screen.vehicle") }} />
+      <Stack.Screen name="defects" options={{ title: t("m.screen.defects") }} />
+      <Stack.Screen name="stats" options={{ title: t("m.screen.stats") }} />
+      <Stack.Screen name="settings" options={{ title: t("m.screen.settings") }} />
       <Stack.Screen name="my-orders" options={{ headerShown: false }} />
     </Stack>
   );
@@ -67,9 +69,11 @@ export default function RootLayout() {
   return (
     // #295: korzeń gestów — wymagany przez swipe na kartach zleceń (RNGH)
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <RootNav />
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <RootNav />
+        </AuthProvider>
+      </LocaleProvider>
     </GestureHandlerRootView>
   );
 }
