@@ -1,6 +1,8 @@
-import { listPushSubscriptionsForDelivery } from "@e-logistic/api";
+import { listExpoPushTokensForUsers, listPushSubscriptionsForDelivery } from "@e-logistic/api";
 import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import { NextResponse } from "next/server";
+import { generateOperationalAlerts, generateWeeklyReports } from "@/lib/alerts";
+import { sendExpoPush } from "@/lib/expoPush";
 import { pushConfigured, sendPushTo } from "@/lib/push";
 
 export const runtime = "nodejs";
@@ -18,11 +20,12 @@ export async function GET(request: Request) {
   if (auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Brak autoryzacji." }, { status: 401 });
   }
-  if (!pushConfigured()) {
-    return NextResponse.json({ error: "Push nieskonfigurowany (VAPID)." }, { status: 503 });
-  }
-
   const admin = createSupabaseAdminClient();
+
+  // #292: najpierw wygeneruj alerty (idempotentne dedup_key), potem dosyłka push.
+  const generated = await generateOperationalAlerts(admin).catch(() => -1);
+  const isMonday = new Date().getUTCDay() === 1;
+  const weekly = isMonday ? await generateWeeklyReports(admin).catch(() => -1) : 0;
   const since = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const { data: notifs, error } = await admin
     .from("notifications")
@@ -45,14 +48,20 @@ export async function GET(request: Request) {
 
   let sent = 0;
   let removed = 0;
+  let expoSent = 0;
   for (const [userId, info] of byUser) {
-    const subs = await listPushSubscriptionsForDelivery(admin, { userIds: [userId] });
     const title = info.count > 1 ? `E-Logistic: ${info.count} nowych powiadomień` : info.title;
     const body = info.count > 1 ? `Najnowsze: ${info.title}` : (info.body ?? "");
-    const r = await sendPushTo(subs, { title, body, url: "/dashboard", tag: "elog-notif" });
-    sent += r.sent;
-    removed += r.removed;
+    if (pushConfigured()) {
+      const subs = await listPushSubscriptionsForDelivery(admin, { userIds: [userId] });
+      const r = await sendPushTo(subs, { title, body, url: "/dashboard", tag: "elog-notif" });
+      sent += r.sent;
+      removed += r.removed;
+    }
+    // #292: kanał Expo — właściciel/kierowcy z aplikacją dostają alerty na telefon.
+    const tokens = await listExpoPushTokensForUsers(admin, [userId]).catch(() => []);
+    expoSent += (await sendExpoPush(tokens, { title, body, data: { url: "/" } })).sent;
   }
 
-  return NextResponse.json({ users: byUser.size, sent, removed });
+  return NextResponse.json({ users: byUser.size, generated, weekly, sent, expoSent, removed });
 }

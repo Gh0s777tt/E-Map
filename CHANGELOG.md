@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-291-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.144.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-292-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.145.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.145.0] — 🚨 Alerty właściciela + raport tygodniowy (cron → push na telefon)
+
+- `[#292]` 🚨 **Serwerowy silnik alertów** ([`lib/alerts.ts`](apps/web/lib/alerts.ts), uruchamiany codziennym cronem 7:00 w [`/api/cron/notify`](apps/web/app/api/cron/notify/route.ts); idempotentnie przez `dedup_key` z migracji 0017):
+  - ⏰ **Opóźnione dostawy** — zlecenie przypisane/w trasie po planowanej dacie rozładunku → warning do zarządu (raz dziennie per zlecenie).
+  - 🚛 **AETR** — wczorajsza jazda > 9 h (warning) / > 10 h (alert) z ewidencji czasu pracy, z nazwiskiem kierowcy.
+  - 🟡 **Terminy pojazdów** — przegląd / OC / leasing w ≤30 dni (🔴 po terminie); nowy alert przy zmianie daty.
+  - 📊 **Raport tygodniowy** (poniedziałki): dostawy zakończone, litry i koszt paliwa, zgłoszenia wydatków — jako powiadomienie dla zarządu.
+  - 📲 **Dosyłka także przez Expo Push** — alerty docierają na telefon właściciela (obok istniejącego Web Push/VAPID; web push przestał być warunkiem działania crona).
+  - Bez builda mobile (zmiany serwerowe; wdrożenie przez Vercel). `CRON_SECRET` zweryfikowany na produkcji (401). **Bramki:** web `tsc` ✓ · `pnpm check` ✓.
 
 ## [1.144.0] — 💬 Czat 2.0: kanały, push i zdjęcia · wydatki offline · Nawiguj
 
