@@ -69,6 +69,9 @@ export const pl = {
   "nav.group.forms": "Formularze",
   "nav.group.fleet": "Flota",
   "nav.group.finance": "Finanse",
+  "nav.group.pinned": "Ulubione",
+  "nav.pin": "Przypnij do ulubionych",
+  "nav.unpin": "Odepnij z ulubionych",
 
   "dashboard.title": "Pulpit",
   "dashboard.subtitle": "E-Logistic · formularze, mapa i statystyki — offline-first + Supabase.",

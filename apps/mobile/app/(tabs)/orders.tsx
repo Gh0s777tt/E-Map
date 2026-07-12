@@ -11,6 +11,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import { CargoPhotosMobile } from "../../components/CargoPhotosMobile";
 import { TrackingQrButton } from "../../components/TrackingQr";
 import { Card, ScreenTitle } from "../../components/ui";
+import { success, warn } from "../../lib/haptics";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
 
@@ -77,8 +78,10 @@ export default function OrdersScreen() {
     setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status } : x)));
     try {
       await setOrderStatus(getSupabase(), o.id, status);
+      success();
       setMsg(`✅ Status: ${STATUS_LABEL[status]}`);
     } catch (e) {
+      warn();
       setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status: prev } : x)));
       setMsg(e instanceof Error ? e.message : "Błąd zmiany statusu.");
     }

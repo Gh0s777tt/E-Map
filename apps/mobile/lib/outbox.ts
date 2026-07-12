@@ -37,8 +37,25 @@ async function read(): Promise<OutboxItem[]> {
   }
 }
 
+// #294: nasłuch zmian outboxu (globalny pasek "czeka na wysyłkę" nad tab barem).
+const listeners = new Set<() => void>();
+
+/** Subskrypcja każdej zmiany outboxu; zwraca funkcję wypisującą. */
+export function subscribeOutbox(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+/** Liczba wpisów, które nie dotarły jeszcze do Supabase (queued + error). */
+export async function pendingCount(): Promise<number> {
+  return (await read()).filter((i) => i.status !== "synced").length;
+}
+
 async function write(items: OutboxItem[]): Promise<void> {
   await AsyncStorage.setItem(KEY, JSON.stringify(items));
+  for (const fn of listeners) fn();
 }
 
 export async function listOutbox(kind?: OutboxKind): Promise<OutboxItem[]> {

@@ -2,6 +2,7 @@ import { type FuelLogInput, firstZodError, fuelLogSchema } from "@e-logistic/cor
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { success, warn } from "../lib/haptics";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { useFleet } from "../lib/useFleet";
 import { usePermission } from "../lib/usePermission";
@@ -76,12 +77,14 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       isFull,
     });
     if (!parsed.success) {
+      warn();
       setMsg(firstZodError(parsed.error));
       return;
     }
     setBusy(true);
     try {
       const item = await enqueue(kind, parsed.data, new Date().toISOString());
+      success();
       setMsg(
         item.status === "synced"
           ? "✅ Zapisano i zsynchronizowano."

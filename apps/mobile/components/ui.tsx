@@ -1,10 +1,21 @@
 /**
  * Prymitywy UI 2.0 aplikacji kierowcy (#285) — spójne karty, wiersze list,
- * chipy statusów i nagłówki w motywie red/black. Zero logiki — tylko wygląd.
+ * chipy statusów i nagłówki w motywie red/black. Zero logiki — tylko wygląd
+ * (+ #294: lekka haptyka przy dotknięciach, żeby apka czuła się natywnie).
  */
 import { palette } from "@e-logistic/ui";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { tap } from "../lib/haptics";
+
+/** Owija onPress lekkim kliknięciem haptycznym. */
+function withTap(onPress?: () => void): (() => void) | undefined {
+  if (!onPress) return undefined;
+  return () => {
+    tap();
+    onPress();
+  };
+}
 
 /** Karta-kontener (ciemna, zaokrąglona, z obrysem). */
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
@@ -65,7 +76,7 @@ export interface ListRowProps {
 /** Wiersz listy sekcyjnej (ikona w kwadracie, tytuł, podtekst, badge, chevron). */
 export function ListRow({ glyph, title, subtitle, badge, onPress, danger, last }: ListRowProps) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [pressed && ui.rowPressed]}>
+    <Pressable onPress={withTap(onPress)} style={({ pressed }) => [pressed && ui.rowPressed]}>
       <View style={ui.row}>
         <View style={[ui.rowIcon, danger && { backgroundColor: palette.graphite }]}>
           <Text style={ui.rowGlyph}>{glyph}</Text>
@@ -103,7 +114,10 @@ export function QuickAction({
   onPress?: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [ui.quick, pressed && ui.rowPressed]}>
+    <Pressable
+      onPress={withTap(onPress)}
+      style={({ pressed }) => [ui.quick, pressed && ui.rowPressed]}
+    >
       <Text style={ui.quickGlyph}>{glyph}</Text>
       <Text style={ui.quickLabel}>{label}</Text>
     </Pressable>
@@ -122,7 +136,7 @@ export function PrimaryButton({
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={withTap(onPress)}
       disabled={disabled}
       style={({ pressed }) => [ui.primaryBtn, (pressed || disabled) && { opacity: 0.7 }]}
     >
@@ -134,7 +148,10 @@ export function PrimaryButton({
 /** Przycisk drugorzędny (obrys). */
 export function GhostButton({ label, onPress }: { label: string; onPress?: () => void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [ui.ghostBtn, pressed && ui.rowPressed]}>
+    <Pressable
+      onPress={withTap(onPress)}
+      style={({ pressed }) => [ui.ghostBtn, pressed && ui.rowPressed]}
+    >
       <Text style={ui.ghostBtnText}>{label}</Text>
     </Pressable>
   );

@@ -76,6 +76,44 @@ body {
   text-decoration: none;
   padding: 9px 12px;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.app-navlabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* #294: wiersz nawigacji = link + pinezka (widoczna po najechaniu / gdy przypięta) */
+.app-navrow {
+  display: flex;
+  align-items: center;
+}
+.app-navpin {
+  background: transparent;
+  border: none;
+  color: var(--el-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  line-height: 0;
+}
+.app-navrow:hover .app-navpin,
+.app-navpin:focus-visible {
+  opacity: 1;
+}
+.app-navpin-on {
+  opacity: 1;
+  color: var(--el-red);
+}
+.app-navpin:hover {
+  color: var(--el-red);
+  background: var(--el-surface-hover);
 }
 .app-navlink:hover {
   background: var(--el-surface-hover);

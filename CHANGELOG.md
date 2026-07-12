@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-293-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.146.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-294-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.147.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.147.0] — ✨ UI/UX fala 1: ikony SVG, ulubione, pasek offline i haptyka
+
+- `[#294]` ✨ **Jeden zestaw ikon SVG dla web i mobile** — koniec z emoji renderowanymi różnie na każdej platformie. Nowy moduł [`packages/ui/src/icons.ts`](packages/ui/src/icons.ts) (43 ikony w stylu lucide: obrys 2px, 24×24) + renderery: web [`Icon.tsx`](apps/web/components/Icon.tsx) (`<svg>`, kolor z `currentColor`) i mobile [`Icon.tsx`](apps/mobile/components/Icon.tsx) (react-native-svg).
+  - 🖥️ **Sidebar panelu z ikonami** — każda pozycja nawigacji ma ikonę ([layout](<apps/web/app/(app)/layout.tsx>), [`SidebarNav`](apps/web/components/SidebarNav.tsx)); ikony też w palecie **⌘K** ([`GlobalSearch`](apps/web/components/GlobalSearch.tsx): akcje, nawigacja, pojazdy/kierowcy/zlecenia/faktury) i w jej przycisku.
+  - 📱 **Tab bar aplikacji z ikonami SVG** (Pulpit/Zlecenia/Mapa/Więcej — [`(tabs)/_layout.tsx`](<apps/mobile/app/(tabs)/_layout.tsx>)).
+- `[#294]` ⭐ **Ulubione w sidebarze** — pinezka przy każdej pozycji (widoczna po najechaniu) przypina ją do sekcji „Ulubione" na górze nawigacji; zapamiętywane per przeglądarka (localStorage), i18n PL/EN ([`SidebarNav`](apps/web/components/SidebarNav.tsx)).
+- `[#294]` 📡 **Globalny pasek outboxu w aplikacji** (mobile **1.46.0**) — czerwona belka nad zakładkami, gdy wpisy (tankowanie/wydatek/trip/checklista) czekają na wysyłkę: licznik + „dotknij, aby ponowić" (flush całej kolejki). Kierowca zawsze wie, że dane offline nie zginęły ([`OfflineBar`](apps/mobile/components/OfflineBar.tsx); [`outbox.ts`](apps/mobile/lib/outbox.ts) dostał subskrypcję zmian i `pendingCount`).
+- `[#294]` 📳 **Haptyka w całej aplikacji** (`expo-haptics`, [`lib/haptics.ts`](apps/mobile/lib/haptics.ts)): lekkie kliknięcie na przyciskach/kaflach/wierszach ([`ui.tsx`](apps/mobile/components/ui.tsx)), potwierdzenie przy wysłaniu formularza i zmianie statusu zlecenia, ostrzeżenie przy błędzie walidacji/wysyłki — apka czuje się natywnie.
+- **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ · parytet i18n ✓ (`pnpm check`).
 
 ## [1.146.0] — 🚀 Kreator startu firmy (onboarding w 3 krokach)
 

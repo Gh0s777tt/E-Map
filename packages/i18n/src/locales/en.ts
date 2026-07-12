@@ -71,6 +71,9 @@ export const en: Record<MessageKey, string> = {
   "nav.group.forms": "Forms",
   "nav.group.fleet": "Fleet",
   "nav.group.finance": "Finance",
+  "nav.group.pinned": "Favorites",
+  "nav.pin": "Pin to favorites",
+  "nav.unpin": "Unpin from favorites",
 
   "dashboard.title": "Dashboard",
   "dashboard.subtitle": "E-Logistic · forms, map and statistics — offline-first + Supabase.",

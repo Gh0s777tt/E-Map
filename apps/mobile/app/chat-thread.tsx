@@ -37,6 +37,7 @@ import {
 } from "react-native";
 import { useAuth } from "../components/AuthProvider";
 import { notifyChat } from "../lib/chatNotify";
+import { tap, warn } from "../lib/haptics";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 /** Zdjęcie w dymku — pobiera podpisany URL raz i cache'uje w stanie. */
@@ -106,10 +107,12 @@ export default function ChatThreadScreen() {
     setErr(null);
     try {
       const msg = await sendMessage(getSupabase(), companyId, body, myLabel, { threadId });
+      tap();
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
       setText("");
       notifyChat(threadId, body);
     } catch {
+      warn();
       setErr("Nie wysłano — spróbuj ponownie przy zasięgu.");
     } finally {
       setBusy(false);

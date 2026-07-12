@@ -2,17 +2,18 @@
 
 import { listDrivers, listInvoices, listOrders, listVehicles } from "@e-logistic/api";
 import { type OrderStatus, type SearchItem, searchEntities } from "@e-logistic/core";
-import { cssPalette as palette } from "@e-logistic/ui";
+import { type IconName, cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/Icon";
 import { useT } from "@/components/LocaleProvider";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { toggleTheme } from "@/lib/theme";
 
-/** Pozycja palety = wynik (`SearchItem`) + ikona; `run` = akcja zamiast nawigacji. */
-type Hit = SearchItem & { icon: string; run?: () => void };
+/** Pozycja palety = wynik (`SearchItem`) + ikona SVG; `run` = akcja zamiast nawigacji. */
+type Hit = SearchItem & { icon: IconName; run?: () => void };
 
 const MAX = 20;
 
@@ -21,7 +22,11 @@ const MAX = 20;
  * do pojazdu/kierowcy/zlecenia/faktury. Akcje i nawigacja dostępne od razu; indeks
  * encji pobierany leniwie przy pierwszym otwarciu. Filtr po stronie klienta.
  */
-export function GlobalSearch({ navItems }: { navItems: { href: string; label: string }[] }) {
+export function GlobalSearch({
+  navItems,
+}: {
+  navItems: { href: string; label: string; icon?: IconName }[];
+}) {
   const router = useRouter();
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -34,7 +39,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
   const staticItems = useMemo<Hit[]>(() => {
     const actions: Hit[] = [
       {
-        icon: "🎨",
+        icon: "sun",
         type: t("cmd.action"),
         id: "theme",
         title: t("cmd.theme"),
@@ -42,7 +47,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
         run: toggleTheme,
       },
       {
-        icon: "🖨️",
+        icon: "printer",
         type: t("cmd.action"),
         id: "print",
         title: t("cmd.print"),
@@ -51,7 +56,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
       },
     ];
     const nav: Hit[] = navItems.map((n) => ({
-      icon: "→",
+      icon: n.icon ?? "chevronRight",
       type: t("cmd.nav"),
       id: n.href,
       title: n.label,
@@ -105,7 +110,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
           vin: string | null;
         }[]) {
           hits.push({
-            icon: "🚚",
+            icon: "truck",
             type: t("search.type.vehicle"),
             id: v.id,
             title: v.registration,
@@ -119,7 +124,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
         const ds = await listDrivers(sb, m.companyId);
         for (const d of ds) {
           hits.push({
-            icon: "👤",
+            icon: "user",
             type: t("search.type.driver"),
             id: d.id,
             title: `${d.last_name} ${d.first_name}`.trim() || t("search.type.driver"),
@@ -132,7 +137,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
         const os = await listOrders(sb, m.companyId);
         for (const o of os) {
           hits.push({
-            icon: "📦",
+            icon: "package",
             type: t("search.type.order"),
             id: o.id,
             title: o.reference_no || t("common.noNumber"),
@@ -146,7 +151,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
         const inv = await listInvoices(sb, m.companyId);
         for (const i of inv) {
           hits.push({
-            icon: "🧾",
+            icon: "fileText",
             type: t("search.type.invoice"),
             id: i.id,
             title: i.number,
@@ -204,7 +209,7 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
         onClick={() => setOpen(true)}
         aria-label={t("search.aria")}
       >
-        🔍 {t("search.trigger")}
+        <Icon name="search" size={14} /> {t("search.trigger")}
         <span className="app-search-kbd">Ctrl K</span>
       </button>
 
@@ -238,7 +243,9 @@ export function GlobalSearch({ navItems }: { navItems: { href: string; label: st
                     onMouseEnter={() => setSel(i)}
                     onClick={() => go(h)}
                   >
-                    <span style={{ width: 24 }}>{h.icon}</span>
+                    <span style={{ width: 24, display: "inline-flex", color: palette.smoke }}>
+                      <Icon name={h.icon} size={16} />
+                    </span>
                     <span style={{ color: palette.smoke, minWidth: 70, fontSize: 12 }}>
                       {h.type}
                     </span>
