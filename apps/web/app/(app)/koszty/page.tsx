@@ -440,6 +440,7 @@ export default function CostsPage() {
       />
       {!loading && !loadErr && costs.length > 0 && (
         <DataTable
+          urlKey="k"
           rows={costs}
           rowKey={(c) => c.id}
           searchText={(c) => [regOf(c.vehicle_id), catLabel(c.category), c.description].join(" ")}

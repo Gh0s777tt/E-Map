@@ -31,6 +31,7 @@ import {
   round2,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";
@@ -857,7 +858,16 @@ export default function OrdersPage() {
                 )}
                 {o.cargo && <span style={styles.dim}>📦 {o.cargo}</span>}
                 {o.weight_kg != null && <span style={styles.dim}>{o.weight_kg} kg</span>}
-                {o.vehicle_id && <span style={styles.dim}>🚚 {regOf(o.vehicle_id)}</span>}
+                {o.vehicle_id && (
+                  /* #296: encje połączone — pojazd w zleceniu klikalny */
+                  <Link
+                    href={`/vehicles/${o.vehicle_id}`}
+                    style={{ ...styles.dim, textDecoration: "underline dotted" }}
+                    title="Otwórz kartę pojazdu"
+                  >
+                    🚚 {regOf(o.vehicle_id)}
+                  </Link>
+                )}
                 {o.assigned_to && <span style={styles.dim}>👤 {emailOf(o.assigned_to)}</span>}
                 {o.load_date && <span style={styles.dim}>zał. {o.load_date}</span>}
               </div>

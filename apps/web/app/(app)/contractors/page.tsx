@@ -314,6 +314,7 @@ export default function ContractorsPage() {
       />
       {!loading && !loadErr && contractors.length > 0 && (
         <DataTable
+          urlKey="c"
           rows={contractors}
           rowKey={(c) => c.id}
           searchText={(c) => [c.name, c.tax_id, c.address, c.country].filter(Boolean).join(" ")}

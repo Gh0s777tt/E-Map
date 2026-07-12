@@ -73,6 +73,13 @@ export const pl = {
   "nav.pin": "Przypnij do ulubionych",
   "nav.unpin": "Odepnij z ulubionych",
 
+  "dashboard.customize": "Dostosuj",
+  "dashboard.customize.title": "Widoczne sekcje",
+  "dashboard.sec.kpi": "Wskaźniki (KPI)",
+  "dashboard.sec.trend": "Trend przychodów",
+  "dashboard.sec.onboarding": "Pierwsze kroki",
+  "dashboard.sec.attention": "Wymaga uwagi",
+  "dashboard.sec.shortcuts": "Skróty",
   "dashboard.title": "Pulpit",
   "dashboard.subtitle": "E-Logistic · formularze, mapa i statystyki — offline-first + Supabase.",
   "dashboard.tag.form": "FORMULARZ",

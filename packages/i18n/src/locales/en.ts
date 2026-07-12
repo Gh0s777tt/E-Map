@@ -75,6 +75,13 @@ export const en: Record<MessageKey, string> = {
   "nav.pin": "Pin to favorites",
   "nav.unpin": "Unpin from favorites",
 
+  "dashboard.customize": "Customize",
+  "dashboard.customize.title": "Visible sections",
+  "dashboard.sec.kpi": "KPIs",
+  "dashboard.sec.trend": "Revenue trend",
+  "dashboard.sec.onboarding": "Getting started",
+  "dashboard.sec.attention": "Needs attention",
+  "dashboard.sec.shortcuts": "Shortcuts",
   "dashboard.title": "Dashboard",
   "dashboard.subtitle": "E-Logistic · forms, map and statistics — offline-first + Supabase.",
   "dashboard.tag.form": "FORM",

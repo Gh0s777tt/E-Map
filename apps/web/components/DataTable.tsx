@@ -1,7 +1,7 @@
 "use client";
 
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { filterRows, type SortDir, sortRows } from "@/lib/dataTable";
 
@@ -23,19 +23,49 @@ type Props<T> = {
   searchText?: (row: T) => string;
   /** Klucz kolumny startowo sortowanej. */
   initialSort?: { key: string; dir: SortDir };
+  /** #296: prefiks parametrów URL — filtr/sortowanie zapisywane w adresie
+   *  (`?<urlKey>q=…&<urlKey>s=…`), więc widok da się wysłać linkiem. */
+  urlKey?: string;
 };
 
 /**
  * Lekka, generyczna tabela danych: sortowanie kliknięciem nagłówka, filtr tekstowy,
- * licznik wyników. Motyw red/black przez tokeny `--el-*` (reaguje na tryb jasny).
- * Logika sort/filtr w `lib/dataTable` (testowana). Bez zależności zewnętrznych.
+ * licznik wyników, przyklejony nagłówek (#296). Motyw red/black przez tokeny
+ * `--el-*` (reaguje na tryb jasny). Logika sort/filtr w `lib/dataTable`
+ * (testowana). Bez zależności zewnętrznych.
  */
-export function DataTable<T>({ columns, rows, rowKey, searchText, initialSort }: Props<T>) {
+export function DataTable<T>({ columns, rows, rowKey, searchText, initialSort, urlKey }: Props<T>) {
   const t = useT();
   const inputId = useId();
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(initialSort?.key ?? null);
   const [sortDir, setSortDir] = useState<SortDir>(initialSort?.dir ?? "asc");
+
+  // Stan z URL czytamy po montażu (bez ryzyka rozjazdu SSR/klient).
+  useEffect(() => {
+    if (!urlKey) return;
+    const p = new URLSearchParams(window.location.search);
+    const q = p.get(`${urlKey}q`);
+    const s = p.get(`${urlKey}s`);
+    const d = p.get(`${urlKey}d`);
+    if (q) setQuery(q);
+    if (s) setSortKey(s);
+    if (d === "asc" || d === "desc") setSortDir(d);
+  }, [urlKey]);
+
+  // Zapis do URL przez replaceState — bez nawigacji i bez wpisów w historii.
+  useEffect(() => {
+    if (!urlKey) return;
+    const url = new URL(window.location.href);
+    const set = (k: string, v: string | null) => {
+      if (v) url.searchParams.set(k, v);
+      else url.searchParams.delete(k);
+    };
+    set(`${urlKey}q`, query || null);
+    set(`${urlKey}s`, sortKey !== (initialSort?.key ?? null) ? sortKey : null);
+    set(`${urlKey}d`, sortDir !== (initialSort?.dir ?? "asc") ? sortDir : null);
+    window.history.replaceState(null, "", url.toString());
+  }, [urlKey, query, sortKey, sortDir, initialSort]);
 
   const view = useMemo(() => {
     const filtered = searchText ? filterRows(rows, query, searchText) : rows;
@@ -155,6 +185,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: `1px solid ${palette.graphite}`,
     whiteSpace: "nowrap",
     userSelect: "none",
+    // #296: nagłówek przyklejony przy przewijaniu długich tabel
+    position: "sticky",
+    top: 0,
+    background: palette.black,
+    zIndex: 1,
   },
   arrow: { fontSize: 10 },
   tr: { borderBottom: `1px solid ${palette.graphite}` },

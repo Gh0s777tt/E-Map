@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-295-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.148.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-296-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.149.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.149.0] — ✨ UI/UX fala 3: tabele pro, linkowane encje, personalizacja pulpitu
+
+- `[#296]` 📋 **Tabele „pro"** — [`DataTable`](apps/web/components/DataTable.tsx): **przyklejony nagłówek** przy przewijaniu długich list oraz **filtr i sortowanie zapisywane w URL** (prop `urlKey`, `history.replaceState` — przefiltrowany widok można wysłać linkiem koledze). Wpięte w [Koszty](<apps/web/app/(app)/koszty/page.tsx>) i [Kontrahentów](<apps/web/app/(app)/contractors/page.tsx>).
+- `[#296]` 🔗 **Encje połączone linkami** — w karcie zlecenia rejestracja pojazdu (🚚) jest klikalna i prowadzi wprost do karty pojazdu ([orders](<apps/web/app/(app)/orders/page.tsx>) → `/vehicles/[id]`); dopełnia istniejący skok do faktury (🧾).
+- `[#296]` 🎛️ **Personalizacja pulpitu** — przycisk „Dostosuj" nad sekcjami: KPI / Trend przychodów / Pierwsze kroki / Wymaga uwagi / Skróty można ukryć checkboxem; preferencje per przeglądarka (localStorage), i18n PL/EN. Sekcje dalej renderują się na serwerze (RSC) — klient tylko przełącza widoczność ([`DashboardSections`](apps/web/components/DashboardSections.tsx), [dashboard](<apps/web/app/(app)/dashboard/page.tsx>)).
+- Web-only (wdrożenie Vercel, bez builda mobile — aplikacja dostała swoje fale w #294/#295). **Bramki:** `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.148.0] — ✨ UI/UX fala 2: swipe i FAB, Cofnij w toastach, skeletony i puste stany
 
