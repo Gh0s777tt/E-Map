@@ -13,7 +13,8 @@ import {
   setDriverExpenseStatus,
 } from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
@@ -28,31 +29,30 @@ const STATUS_META: Record<DriverExpense["status"], { label: string; color: strin
 
 export default function ExpensesPage() {
   const toast = useToast();
-  const [rows, setRows] = useState<DriverExpense[]>([]);
-  const [manage, setManage] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | DriverExpense["status"]>("all");
   // #297: zaznaczanie zgłoszeń „do rozliczenia" → hurtowe Zatwierdź/Odrzuć
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      setManage(m?.role === "owner" || m?.role === "dispatcher");
-      setRows(await listDriverExpenses(sb, { limit: 300 }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się pobrać wydatków.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
+  // #310: TanStack Query — cache + refetch zamiast ręcznych useState/useEffect.
+  const membership = useQuery({
+    queryKey: ["membership"],
+    queryFn: () => getCachedMembership(getBrowserSupabase()),
+  });
+  const manage = membership.data?.role === "owner" || membership.data?.role === "dispatcher";
+  const expensesQuery = useQuery({
+    queryKey: ["driver-expenses"],
+    queryFn: () => listDriverExpenses(getBrowserSupabase(), { limit: 300 }),
+  });
+  const rows = expensesQuery.data ?? [];
+  const loading = expensesQuery.isPending;
+  const error = expensesQuery.error
+    ? (expensesQuery.error.message ?? "Nie udało się pobrać wydatków.")
+    : null;
+  const load = () => void expensesQuery.refetch();
+  /** Optymistyczna aktualizacja cache (ten sam kształt co dawne setRows). */
+  const setRows = (up: (list: DriverExpense[]) => DriverExpense[]) =>
+    qc.setQueryData<DriverExpense[]>(["driver-expenses"], (old) => up(old ?? []));
 
   async function decide(row: DriverExpense, status: "approved" | "rejected") {
     const prev = row.status;

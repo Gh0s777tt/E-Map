@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-309-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.162.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-310-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.163.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.163.0] — ⚡ TanStack Query w panelu (stack docelowy — fala 1)
+
+- `[#310]` ⚡ **@tanstack/react-query wpięty do panelu** — [`QueryProvider`](apps/web/components/QueryProvider.tsx) w layoucie `(app)` (konserwatywne domyślne: staleTime 30 s, bez refetchu na fokusie, 1 retry). Domyka pozycję „🔜 TanStack Query" ze stacku docelowego w CLAUDE.md.
+- `[#310]` 🔄 **Rejestr wydatków na useQuery** (strona pilotażowa): dane i membership z cache (`["driver-expenses"]`, `["membership"]`), optymistyczne aktualizacje i „Cofnij" przez `setQueryData` — mniej stanu ręcznego (znikły 4 useState + useEffect), zachowane 1:1 zachowanie (akcje zbiorcze, undo, filtry) ([expenses](<apps/web/app/(app)/expenses/page.tsx>)). Kolejne strony migrowane falami.
+- Web-only (Vercel). **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.162.0] — 🔁 Automatyczny objazd przy nowych utrudnieniach (Faza 4)
 
