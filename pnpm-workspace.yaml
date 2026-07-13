@@ -9,6 +9,7 @@ nodeLinker: hoisted
 
 # Skrypty buildów natywnych zależności dozwolone jawnie (pnpm 11).
 allowBuilds:
+  '@sentry/cli': set this to true or false
   sharp: true
 
 # Overrides bezpieczeństwa (audyt #216): postcss (XSS via next), xmldom (XML injection/DoS via expo

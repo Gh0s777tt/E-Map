@@ -1,6 +1,6 @@
 {
   "name": "@e-logistic/web",
-  "version": "1.158.0",
+  "version": "1.159.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "@e-logistic/i18n": "workspace:*",
     "@e-logistic/maps": "workspace:*",
     "@e-logistic/ui": "workspace:*",
+    "@sentry/nextjs": "^10.65.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.2",
     "@upstash/ratelimit": "2.0.8",

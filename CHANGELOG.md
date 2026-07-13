@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-305-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.158.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-306-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.159.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.159.0] — 🩺 Sentry (monitoring błędów) + odświeżenie dokumentacji
+
+- `[#306]` 🩺 **Sentry web + mobile** — panel: `@sentry/nextjs` przez hooki instrumentacji ([instrumentation.ts](apps/web/instrumentation.ts), [instrumentation-client.ts](apps/web/instrumentation-client.ts) — serwer, klient i błędy requestów); aplikacja: `@sentry/react-native` w [root layoucie](apps/mobile/app/_layout.tsx) (`Sentry.wrap`). **Wszystko bramkowane DSN-em** — bez `NEXT_PUBLIC_SENTRY_DSN`/`EXPO_PUBLIC_SENTRY_DSN` w env kod jest no-opem, zero narzutu. Szablon w [.env.example](.env.example); po założeniu projektu na sentry.io wystarczy wkleić DSN (Vercel + eas.json).
+- `[#306]` 📚 **Nagłówki ARCHITECTURE/DATA-MODEL** dociągnięte do v1.158/#305 (69 migracji) — docs-check bez ostrzeżeń.
+- **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.158.0] — 🌍 i18n fala 5: czat w 4 językach — APLIKACJA W 100% PRZETŁUMACZONA
 

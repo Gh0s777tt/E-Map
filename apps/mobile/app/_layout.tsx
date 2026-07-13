@@ -1,4 +1,5 @@
 import { palette } from "@e-logistic/ui";
+import * as Sentry from "@sentry/react-native";
 import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
@@ -65,7 +66,13 @@ function RootNav() {
   );
 }
 
-export default function RootLayout() {
+// #306: Sentry — crash reporty z telefonów kierowców. Bez EXPO_PUBLIC_SENTRY_DSN: no-op.
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({ dsn: SENTRY_DSN, tracesSampleRate: 0.1 });
+}
+
+function RootLayout() {
   return (
     // #295: korzeń gestów — wymagany przez swipe na kartach zleceń (RNGH)
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -77,3 +84,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default SENTRY_DSN ? Sentry.wrap(RootLayout) : RootLayout;
