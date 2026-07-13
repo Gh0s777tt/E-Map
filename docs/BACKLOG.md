@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.172.0 · #319 · 2026-07-13 -->
+<!-- SYNC: po v1.173.0 · #320 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -90,7 +90,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 **Nawigacja i parytet:**
 - [ ] Menu „3 kreski" (szuflada) z kompletem zakładek; stały dostęp: Formularze, Karty paliwowe, Czat, Checklisty.
-- [ ] **Audyt parytetu web↔mobile** — spis wszystkich zakładek web i dodanie brakujących w aplikacji (100% funkcji).
+- [x] ~~**Audyt parytetu web↔mobile** — spis wszystkich zakładek web i dodanie brakujących w aplikacji~~ (#320 — pełna tabela w [MOBILE-PLAN](MOBILE-PLAN.md) + Diety/Wypłaty/Ceny paliw w aplikacji; web-only z uzasadnieniem)
+- [ ] Parytet — dokończenie ⏳ z tabeli: harmonogram terminów (scalone per auto), status floty, faktury (odczyt) w aplikacji.
 
 **Profil i dane kierowcy:**
 - [x] ~~Samodzielna edycja: e-mail / telefon / hasło + avatar~~ (#318)

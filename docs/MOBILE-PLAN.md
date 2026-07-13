@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.62.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.172.0 (#319) · 2026-07-13 · **iOS w recenzji Apple** (ASC App ID 6789726653) · **Android w testach wewnętrznych Google Play** (com.ghostempire.elogistic)
+> Stan: **v1.63.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.173.0 (#320) · 2026-07-13 · **iOS w recenzji Apple** (ASC App ID 6789726653) · **Android w testach wewnętrznych Google Play** (com.ghostempire.elogistic)
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.
@@ -19,6 +19,44 @@ Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realn
 | Mapa / POI | 🚧 | `app/map.tsx` (M3 fala 1, #253) — routing na mapie: fala 2 |
 
 > Odpowiada to ukończeniu faz **M1, M2, M4**. Pozostaje **M3** (mapa) i opcjonalnie **M5** (PowerSync).
+
+## Audyt parytetu web↔mobile (#320 · 2026-07-13)
+
+Spis WSZYSTKICH zakładek panelu web i ich odpowiedników w aplikacji.
+Legenda: ✅ pełny odpowiednik · 👁 widok odczytu (edycja na webie) · 🖥 świadomie web-only (uzasadnienie) · ⏳ zaplanowane.
+
+| Zakładka web | Mobile | Uwagi |
+|:--|:--:|:--|
+| `dashboard` | ✅ | Start: karta kierowcy (wariant A) + pulpit właściciela (W1) |
+| `orders` / `my-orders` | ✅ | `app/orders.tsx`, `app/my-orders.tsx` (statusy, POD, zdjęcia) |
+| `forms` (paliwo/AdBlue/trip) | ✅ | hub `(tabs)/forms` + `fuel/adblue/trip` (offline outbox, OCR) |
+| `cards` | ✅ | `(tabs)/cards` — karty + PIN (30 s) |
+| `chat` | ✅ | `(tabs)/chat` + `chat-thread` (realtime, zdjęcia, push) |
+| `checklists` | ✅ | `(tabs)/checklists` |
+| `expenses` | ✅ | `app/expenses.tsx` (offline + OCR paragonów) |
+| `work-time` | ✅ | `app/work-time.tsx` |
+| `documents` | ✅ | `app/documents.tsx` |
+| `damages`/`reports` (usterki) | ✅ | `app/defects.tsx` |
+| `map` | ✅ | `app/map.tsx` (POI, raporty; routing = fala 2) |
+| `stats` | ✅ | `app/stats.tsx` |
+| `settlements` | ✅ | `app/settlement.tsx` (szacunek silnikiem core) |
+| `per-diem` | 👁 | **#320** `app/per-diem.tsx` — kierowca widzi swoje diety; wpisy dodaje biuro |
+| `payouts` | 👁 | **#320** `app/payouts.tsx` — saldo per waluta + historia; wpisy dodaje biuro |
+| `fuel-prices` | ✅ | **#320** `app/fuel-prices.tsx` — ranking cen diesla EU (€/L) |
+| `vehicles` | 👁 | `app/vehicle.tsx` — przypisany pojazd; zarządzanie flotą na webie |
+| `settings` | 👁 | `app/settings.tsx` + `app/profile.tsx` (język, avatar, e-mail/hasło) |
+| `schedule` / `service` | ⏳ | harmonogram terminów — alerty scalone per auto są na pulpicie właściciela (W1); pełny ekran: następna fala |
+| `fleet-status` | ⏳ | KPI floty częściowo w pulpicie W1; pełny ekran: następna fala |
+| `invoices` | ⏳ | faktury (owner) — widok odczytu: następna fala |
+| `drivers` (kartoteka) | 🖥 | szyfrowane PII + duży formularz HR — praca biurowa; kierowca ma swój profil w aplikacji |
+| `team` | 🖥 | role/uprawnienia członków — zarządzanie na webie |
+| `contractors` | 🖥 | baza kontrahentów + import CSV — praca biurowa |
+| `koszty` | 🖥 | koszty pojazdów + import CSV — praca biurowa |
+| `monthly` | 🖥 | zestawienie miesięczne (duże tabele) — analityka biurowa |
+| `wyjazdy` | 🖥 | rozliczenie wyjazdów (buildJourneys) — analityka biurowa |
+| `scoring` | 🖥 | ranking kierowców — narzędzie zarządcze (web) |
+| `audit` | 🖥 | log audytowy compliance — web |
+| `dev` | 🖥 | narzędzia deweloperskie — web |
 
 ## Faza M1 — Warstwa danych + sesja ✅ ZREALIZOWANE
 - `@react-native-async-storage/async-storage` + `react-native-url-polyfill` + `@e-logistic/api`.

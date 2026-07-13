@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-319-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.172.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-320-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.173.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.173.0] — 🔍 Audyt parytetu web↔mobile + Diety, Wypłaty i Ceny paliw w aplikacji
+
+- `[#320]` 🔍 **Audyt parytetu web↔mobile** — pełna tabela wszystkich 30+ zakładek panelu w [MOBILE-PLAN](docs/MOBILE-PLAN.md): co ma pełny odpowiednik w aplikacji, co jest widokiem odczytu, co świadomie zostaje web-only (z uzasadnieniem) i co czeka na następną falę (harmonogram, status floty, faktury).
+- `[#320]` 🧳 **Diety w aplikacji** (mobile **1.63.0**, [per-diem](apps/mobile/app/per-diem.tsx)) — kierowca widzi **swoje** podróże per diem (właściciel: całą firmę) z sumami per waluta; kwoty liczy ten sam silnik `computePerDiem` co panel web.
+- `[#320]` 💰 **Wypłaty w aplikacji** ([payouts](apps/mobile/app/payouts.tsx)) — saldo rozliczeń per waluta (należność − zaliczki − potrącenia − wypłaty, silnik `settleDriverPayouts`) + historia pozycji z kolorowymi typami.
+- `[#320]` 🛢 **Ceny diesla w Europie** ([fuel-prices](apps/mobile/app/fuel-prices.tsx)) — ranking krajów wg €/L z tego samego źródła co web (`/api/fuel-eu`); kierowca w trasie widzi, gdzie zatankować taniej.
+- `[#320]` 🍔 Nowe pozycje w szufladzie (Diety/Wypłaty za modułem `settlements`, Ceny paliw dla wszystkich) + **24 klucze i18n ×4 języki**.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.172.0] — 🪪 Kartoteka kierowcy: paszport, dowód i uprawnienia z numerem oraz datą
 
