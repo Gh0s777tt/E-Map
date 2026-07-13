@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-314-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.167.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-315-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.168.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.168.0] — 📊 Pulpit właściciela — wariant W1 (liczby najpierw)
+
+- `[#315]` 📊 **Pulpit właściciela/spedytora na Starcie aplikacji** (mobile **1.60.0**, [OwnerDashboard](apps/mobile/components/OwnerDashboard.tsx)) — po zalogowaniu od razu: liczniki floty **w trasie / przerwa / serwis** (z zleceń in_progress i usterek „high"), **przychód bieżącego miesiąca** z faktur oraz **alerty terminów scalone per pojazd** (1 wiersz = 1 auto: OC, przegląd, leasing, karty paliwowe; czerwony pasek przy ≤7 dniach; okno 30 dni) — dokładnie wg wybranego mockupu W1, skaluje się przy 30–50 autach.
+- `[#315]` 🌍 +13 kluczy `m.owner.*` ×4 języki. Kierowca dalej widzi kartę A; rola steruje widokiem Startu.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.167.0] — 🧭 Nowy UI aplikacji: nawigacja N1 + karta kierowcy A (wybór właściciela)
 

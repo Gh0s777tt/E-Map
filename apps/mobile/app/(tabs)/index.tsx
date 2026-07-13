@@ -27,6 +27,7 @@ import {
   View,
 } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
+import { OwnerDashboard, useOwnerDashboard } from "../../components/OwnerDashboard";
 import { Avatar } from "../../components/ui";
 import { navigationUrl } from "../../lib/chatNotify";
 import { useT } from "../../lib/i18n";
@@ -67,6 +68,8 @@ export default function StartScreen() {
   const profile = useProfile();
   const { vehicles } = useFleet();
   const { data: card, reload: reloadCard } = useDriverCard();
+  const isManager = profile.role === "owner" || profile.role === "dispatcher";
+  const { data: owner, reload: reloadOwner } = useOwnerDashboard(profile.companyId);
   const [mods, setMods] = useState<AppModule[] | null>(null);
   const [active, setActive] = useState<Order | null>(null);
   const [checklistsDue, setChecklistsDue] = useState<number | null>(null);
@@ -78,6 +81,7 @@ export default function StartScreen() {
       .then((items) => setOutbox([...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))))
       .catch(() => {});
     reloadCard().catch(() => {});
+    reloadOwner().catch(() => {});
     if (!supabaseConfigured) return;
     const sb = getSupabase();
     getActiveMembership(sb)
@@ -105,7 +109,7 @@ export default function StartScreen() {
         setActive(found);
       })
       .catch(() => {});
-  }, [reloadCard]);
+  }, [reloadCard, reloadOwner]);
 
   useFocusEffect(
     useCallback(() => {
@@ -171,33 +175,37 @@ export default function StartScreen() {
               </Text>
             </View>
           </View>
-          <View style={s.statGrid}>
-            <View style={s.stat}>
-              <Text style={s.statValue}>
-                {fmt(card.kmMonth)} <Text style={s.statUnit}>km</Text>
-              </Text>
-              <Text style={s.statLabel}>{t("m.card.kmMonth")}</Text>
+          {!isManager && (
+            <View style={s.statGrid}>
+              <View style={s.stat}>
+                <Text style={s.statValue}>
+                  {fmt(card.kmMonth)} <Text style={s.statUnit}>km</Text>
+                </Text>
+                <Text style={s.statLabel}>{t("m.card.kmMonth")}</Text>
+              </View>
+              <View style={s.stat}>
+                <Text style={s.statValue}>
+                  {fmt(card.avgConsumption, 1)} <Text style={s.statUnit}>l/100</Text>
+                </Text>
+                <Text style={s.statLabel}>{t("m.card.avgCons")}</Text>
+              </View>
+              <View style={s.stat}>
+                <Text style={s.statValue}>
+                  {fmt(card.dieselMonth)} <Text style={s.statUnit}>l</Text>
+                </Text>
+                <Text style={s.statLabel}>{t("m.card.dieselMonth")}</Text>
+              </View>
+              <View style={s.stat}>
+                <Text style={s.statValue}>
+                  {fmt(card.adblueMonth)} <Text style={s.statUnit}>l</Text>
+                </Text>
+                <Text style={s.statLabel}>{t("m.card.adblueMonth")}</Text>
+              </View>
             </View>
-            <View style={s.stat}>
-              <Text style={s.statValue}>
-                {fmt(card.avgConsumption, 1)} <Text style={s.statUnit}>l/100</Text>
-              </Text>
-              <Text style={s.statLabel}>{t("m.card.avgCons")}</Text>
-            </View>
-            <View style={s.stat}>
-              <Text style={s.statValue}>
-                {fmt(card.dieselMonth)} <Text style={s.statUnit}>l</Text>
-              </Text>
-              <Text style={s.statLabel}>{t("m.card.dieselMonth")}</Text>
-            </View>
-            <View style={s.stat}>
-              <Text style={s.statValue}>
-                {fmt(card.adblueMonth)} <Text style={s.statUnit}>l</Text>
-              </Text>
-              <Text style={s.statLabel}>{t("m.card.adblueMonth")}</Text>
-            </View>
-          </View>
+          )}
         </View>
+
+        {isManager && <OwnerDashboard data={owner} />}
 
         {/* Na dziś */}
         <Text style={s.section}>{t("m.card.today")}</Text>
