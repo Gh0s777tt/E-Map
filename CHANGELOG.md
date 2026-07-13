@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-325-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.178.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-326-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.179.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.179.0] — 🧾 KSeF, fala 1: e-faktura FA(3) jako XML z każdej faktury
+
+- `[#326]` 🧾 **Generator XML FA(3)** ([ksef.ts](packages/core/src/ksef.ts) w `@e-logistic/core`) — czysty builder e-faktury w strukturze KSeF 2.0: nagłówek FA(3), Podmiot1/2 (NIP normalizowany z formatów „PL 526-10-40-828", nabywca bez NIP → `BrakID`), agregaty netto/VAT per stawka (P_13/P_14: 23→1, 8→2, 5→3, 0%→6_1), suma P_15, pozycje FaWiersz, termin płatności; pełne escapowanie XML. **+9 testów** jednostkowych.
+- `[#326]` ⬇️ **Przycisk „XML KSeF" w widoku faktury** — obok „Drukuj/PDF"; pobiera gotowy plik `<numer>_ksef_fa3.xml` (pozycje z faktury albo wiersz zbiorczy z sum) do wysyłki w KSeF lub importu w systemie księgowym.
+- `[#326]` 📋 Backlog: **KSeF fala 2** — wysyłka online przez API (sesja + token firmy, numer KSeF + UPO przy fakturze); wymaga danych uwierzytelniających od właściciela. Przed produkcyjną wysyłką plik warto przepuścić przez walidator KSeF (XSD MF).
+- **Bramki:** `pnpm check` exit 0 ✓ · testy core ✓.
 
 ## [1.178.0] — 🚚 Link śledzenia z ETA — klient widzi auto w drodze i szacowany przyjazd
 

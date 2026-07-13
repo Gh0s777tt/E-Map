@@ -24,6 +24,7 @@ export * from "./fuelTrend";
 export * from "./ids";
 export * from "./invoice";
 export * from "./journeys";
+export * from "./ksef";
 export * from "./money";
 export * from "./orderCost";
 export * from "./orderFilter";

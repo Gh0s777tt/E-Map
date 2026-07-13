@@ -16,6 +16,7 @@ import {
   upsertContractor,
 } from "@e-logistic/api";
 import {
+  buildKsefFaXml,
   formatMoney,
   invoicePaymentStatus,
   monthlyVatRegister,
@@ -518,6 +519,38 @@ function InvoiceDoc({
       setItems([]);
     }
   }, [inv.id]);
+  // #326: eksport e-faktury FA(3) do pliku XML (KSeF / import księgowy).
+  function downloadKsefXml() {
+    const xml = buildKsefFaXml({
+      number: inv.number,
+      issueDate: inv.issue_date,
+      currency: inv.currency,
+      seller: {
+        name: inv.seller_name ?? "",
+        taxId: inv.seller_tax_id,
+        address: inv.seller_address,
+      },
+      buyer: { name: inv.buyer_name ?? "", taxId: inv.buyer_tax_id, address: inv.buyer_address },
+      lines: items.map((it) => ({
+        description: it.description,
+        quantity: it.quantity,
+        unitPriceNet: it.unit_price,
+        net: it.net,
+        vatRate: it.vat_rate,
+      })),
+      net: inv.net,
+      vatAmount: inv.vat_amount,
+      gross: inv.gross,
+      dueDate: inv.due_date,
+    });
+    const blob = new Blob([xml], { type: "application/xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${inv.number.replace(/[^\w.-]+/g, "_")}_ksef_fa3.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   useEffect(() => {
     reload();
@@ -595,6 +628,9 @@ function InvoiceDoc({
             {fakBusy ? "Eksport…" : "📤 Fakturownia"}
           </Button>
         )}
+        <Button variant="ghost" onClick={downloadKsefXml}>
+          ⬇️ XML KSeF
+        </Button>
         <Button onClick={() => window.print()}>🖨️ Drukuj / PDF</Button>
       </div>
 

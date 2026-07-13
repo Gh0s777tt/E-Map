@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.178.0 · #325 · 2026-07-13 -->
+<!-- SYNC: po v1.179.0 · #326 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -145,7 +145,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] Rozważyć **Sentry** (obserwowalność), **PowerSync** (jeśli outbox okaże się niewystarczający), **shadcn/ui**.
 
 ## 🔵 P5 — Produkt / rozwój (szerzej w raporcie audytu)
-- [ ] **KSeF** (obowiązkowy w PL) — nadbudowa na silniku faktur + Fakturowni.
+- [x] ~~**KSeF fala 1** — XML FA(3) z faktury (przycisk „⬇️ XML KSeF")~~ (#326)
+- [ ] **KSeF fala 2** — wysyłka online przez API KSeF 2.0 (sesja, token/certyfikat firmy — wymaga danych od właściciela) + zapis numeru KSeF i UPO przy fakturze.
 - [ ] **i18n ×14** — dziś PL/EN (infrastruktura parytetu gotowa); priorytet UA/DE.
 - [ ] OCR paragonów · asystent AI spedytora · telematyka GPS live · portal klienta · link śledzenia ETA · tachograf `.ddd`.
 
