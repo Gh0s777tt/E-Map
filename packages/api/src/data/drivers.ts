@@ -110,3 +110,15 @@ export async function linkDriverUser(
   });
   if (error) throw error;
 }
+
+/** #314: własne imię i nazwisko kierowcy (RPC — deszyfrowany wiersz user_id = auth.uid()). */
+export async function getMyDriverIdentity(
+  client: SupabaseClient,
+): Promise<{ firstName: string; lastName: string } | null> {
+  const { data, error } = await client.rpc("my_driver_identity");
+  if (error) throw error;
+  const row = rpcJson<{ first_name?: string; last_name?: string }>(data ?? {});
+  const firstName = (row.first_name ?? "").trim();
+  const lastName = (row.last_name ?? "").trim();
+  return firstName || lastName ? { firstName, lastName } : null;
+}

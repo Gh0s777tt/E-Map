@@ -7,6 +7,8 @@ export interface ActiveMembership {
   role: Role;
   modules: string[] | null;
   permissions: MemberPermissions | null;
+  /** Data dołączenia do firmy (staż) — ISO. */
+  createdAt: string | null;
 }
 
 /** Aktywne członkostwo zalogowanego użytkownika (null gdy brak sesji lub firmy). */
@@ -20,7 +22,7 @@ export async function getActiveMembership(
 
   const { data, error } = await client
     .from("memberships")
-    .select("company_id, role, modules, permissions")
+    .select("company_id, role, modules, permissions, created_at")
     .eq("user_id", user.id)
     .eq("status", "active")
     .limit(1)
@@ -32,6 +34,7 @@ export async function getActiveMembership(
     role: data.role as Role,
     modules: (data.modules as string[] | null) ?? null,
     permissions: (data.permissions as MemberPermissions | null) ?? null,
+    createdAt: (data.created_at as string | null) ?? null,
   };
 }
 

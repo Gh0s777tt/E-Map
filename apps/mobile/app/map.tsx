@@ -22,8 +22,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { EUROPE_CENTER, EUROPE_ZOOM, mapStyle } from "../../lib/mapStyle";
-import { getSupabase, supabaseConfigured } from "../../lib/supabase";
+import { EUROPE_CENTER, EUROPE_ZOOM, mapStyle } from "../lib/mapStyle";
+import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 const t = createTranslator("pl");
 

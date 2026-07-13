@@ -48,11 +48,11 @@ function RootNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ title: t("m.screen.login"), headerShown: false }} />
       <Stack.Screen name="fuel" options={{ title: t("m.screen.fuel") }} />
+      <Stack.Screen name="orders" options={{ title: t("m.tab.orders") }} />
+      <Stack.Screen name="map" options={{ title: t("m.tab.map") }} />
       <Stack.Screen name="adblue" options={{ title: t("m.screen.adblue") }} />
       <Stack.Screen name="trip" options={{ title: t("m.screen.trip") }} />
-      <Stack.Screen name="checklists" options={{ title: t("m.screen.checklists") }} />
       <Stack.Screen name="documents" options={{ title: t("m.screen.documents") }} />
-      <Stack.Screen name="chat" options={{ title: t("m.screen.chat") }} />
       <Stack.Screen name="chat-thread" options={{ title: t("m.screen.chatThread") }} />
       <Stack.Screen name="expenses" options={{ title: t("m.screen.expenses") }} />
       <Stack.Screen name="work-time" options={{ title: t("m.screen.workTime") }} />

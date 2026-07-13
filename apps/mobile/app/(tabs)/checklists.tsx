@@ -16,11 +16,11 @@ import * as ImagePicker from "expo-image-picker";
 import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { VehiclePicker } from "../components/VehiclePicker";
-import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
-import { getSupabase, supabaseConfigured } from "../lib/supabase";
-import { useFleet } from "../lib/useFleet";
-import { usePermission } from "../lib/usePermission";
+import { VehiclePicker } from "../../components/VehiclePicker";
+import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../../lib/outbox";
+import { getSupabase, supabaseConfigured } from "../../lib/supabase";
+import { useFleet } from "../../lib/useFleet";
+import { usePermission } from "../../lib/usePermission";
 
 /**
  * #273: checklisty kierowcy (np. „Wjazd do UK", „Tachograf") — offline-first:

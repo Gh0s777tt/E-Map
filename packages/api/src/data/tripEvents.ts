@@ -86,3 +86,19 @@ export async function listTripEvents(
   if (error) throw error;
   return data ?? [];
 }
+
+/** #314: zdarzenia Trip zalogowanego kierowcy (RLS ogranicza do własnych wpisów). */
+export async function listMyTripEvents(
+  client: SupabaseClient,
+  opts?: { from?: string; limit?: number },
+) {
+  let query = client
+    .from("trip_events")
+    .select("id, action, odometer_km, created_at, country, location")
+    .order("created_at", { ascending: false });
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  query = query.limit(opts?.limit ?? 200);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}

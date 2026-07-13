@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-313-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.166.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-314-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.167.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.167.0] — 🧭 Nowy UI aplikacji: nawigacja N1 + karta kierowcy A (wybór właściciela)
+
+- `[#314]` 🧭 **Nawigacja N1 (hybryda)** (mobile **1.59.0**) — dolny dok z najczęstszymi akcjami kierowcy: **Start / Formularze / Karty / Czat / Checklisty**, a w nagłówku „3 kreski" otwierające szufladę ([SideMenu](apps/mobile/components/SideMenu.tsx)) z kompletem zakładek w grupach Praca / Narzędzia / Konto (Zlecenia, Mapa, Wydatki, Czas pracy, Dokumenty, Usterki, Pojazd, Rozliczenia, Statystyki, Ustawienia — parytet z web). Zlecenia i Mapa dostępne też bezpośrednio (`/orders`, `/map`).
+- `[#314]` 🪪 **Karta kierowcy — wariant A „Kokpit"** ([Start](<apps/mobile/app/(tabs)/index.tsx>)): „Witaj, Imię Nazwisko" (z kartoteki przez nowe RPC [my_driver_identity](supabase/migrations/0070_my_driver_identity.sql) — kierowca czyta wyłącznie własną, odszyfrowaną tożsamość; bez e-maila na ekranie), staż w firmie, statystyki miesiąca z formularzy: **km z Trip** (rozpiętość licznika), **litry ON i AdBlue**, **średnie spalanie**; sekcja „Na dziś" (checklisty do zrobienia, bieżące zlecenie + Prowadź) i ostatnie aktywności.
+- `[#314]` 💳 **Karty paliwowe w doku** ([cards](<apps/mobile/app/(tabs)/cards.tsx>)) — karty pojazdu kierowcy z maskowanym numerem, ważnością (kolor przy ≤30/≤14 dniach) i PIN-em przez audytowane RPC (auto-ukrycie po 30 s); ⛽️ **hub Formularzy** ([forms](<apps/mobile/app/(tabs)/forms.tsx>)) — Tankowanie/AdBlue/Trasa/Wydatek/Usterka jednym tapnięciem.
+- `[#314]` 🔌 API: `getMyDriverIdentity`, `listMyTripEvents`, `ActiveMembership.createdAt` (staż); +33 klucze i18n ×4 języki.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.166.0] — 🧾 Karta sklepu Google Play + strona usuwania konta + fix triggera powiadomień
 

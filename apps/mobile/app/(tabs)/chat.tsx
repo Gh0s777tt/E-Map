@@ -24,9 +24,9 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Card, ListRow, PrimaryButton, SectionTitle } from "../components/ui";
-import { useT } from "../lib/i18n";
-import { getSupabase, supabaseConfigured } from "../lib/supabase";
+import { Card, ListRow, PrimaryButton, SectionTitle } from "../../components/ui";
+import { useT } from "../../lib/i18n";
+import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 
 export default function ChatListScreen() {
   const router = useRouter();

@@ -2123,6 +2123,7 @@ export interface Database {
         }[];
       };
       list_invites: { Args: { p_company: string | null }; Returns: Json };
+      my_driver_identity: { Args: Record<PropertyKey, never>; Returns: Json };
       notify_company: {
         Args: {
           p_company: string | null;

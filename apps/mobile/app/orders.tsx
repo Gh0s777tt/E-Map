@@ -10,14 +10,14 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
-import { CargoPhotosMobile } from "../../components/CargoPhotosMobile";
-import { TrackingQrButton } from "../../components/TrackingQr";
-import { Card, ScreenTitle, Skeleton } from "../../components/ui";
-import { success, warn } from "../../lib/haptics";
-import { useT } from "../../lib/i18n";
-import { startOrderActivity, stopOrderActivity } from "../../lib/liveActivity";
-import { getSupabase, supabaseConfigured } from "../../lib/supabase";
-import { useFleet } from "../../lib/useFleet";
+import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
+import { TrackingQrButton } from "../components/TrackingQr";
+import { Card, ScreenTitle, Skeleton } from "../components/ui";
+import { success, warn } from "../lib/haptics";
+import { useT } from "../lib/i18n";
+import { startOrderActivity, stopOrderActivity } from "../lib/liveActivity";
+import { getSupabase, supabaseConfigured } from "../lib/supabase";
+import { useFleet } from "../lib/useFleet";
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
   new: palette.smoke,
