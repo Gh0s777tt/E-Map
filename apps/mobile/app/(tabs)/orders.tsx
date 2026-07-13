@@ -15,6 +15,7 @@ import { TrackingQrButton } from "../../components/TrackingQr";
 import { Card, ScreenTitle, Skeleton } from "../../components/ui";
 import { success, warn } from "../../lib/haptics";
 import { useT } from "../../lib/i18n";
+import { startOrderActivity, stopOrderActivity } from "../../lib/liveActivity";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
 
@@ -84,6 +85,17 @@ export default function OrdersScreen() {
       await setOrderStatus(getSupabase(), o.id, status);
       success();
       setMsg(t("m.orders.statusSet", { s: t(STATUS_KEY[status]) }));
+      // #312: Live Activity na ekranie blokady — start w trasie, stop po dostawie
+      const route = `${o.origin || "?"} → ${o.destination || "?"}`;
+      if (status === "in_progress") {
+        void startOrderActivity(o.id, route, t("m.live.inTransit"), o.unload_date);
+      } else if (status === "delivered" || status === "cancelled") {
+        void stopOrderActivity(
+          o.id,
+          route,
+          t(status === "delivered" ? "m.live.delivered" : "m.orders.cancelled"),
+        );
+      }
     } catch (e) {
       warn();
       setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status: prev } : x)));

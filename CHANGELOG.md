@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-311-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.164.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-312-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.165.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.165.0] — 🏝️ Live Activity na iOS + automatyczna publikacja w Google Play
+
+- `[#312]` 🏝️ **Live Activity (iOS 16.2+)** (mobile **1.58.0**, `expo-live-activity`) — start trasy w zleceniach pokazuje na ekranie blokady i w Dynamic Island kartę „skąd → dokąd" z odliczaniem do dnia rozładunku (motyw czerń/czerwień, tap otwiera Zlecenia). Dostawa/anulowanie domyka aktywność — także po restarcie aplikacji (mapa aktywności w AsyncStorage) ([lib/liveActivity.ts](apps/mobile/lib/liveActivity.ts), [orders](<apps/mobile/app/(tabs)/orders.tsx>)); nowe klucze `m.live.*` ×4 języki.
+- `[#312]` 🤖 **Android opublikowany w Google Play (testy wewnętrzne)** — pierwszy AAB **1.57.0** wysłany na ścieżkę internal. Pełna automatyzacja: konto usługi `play-publisher` (GCP e-logistic-502222, uprawnienia „Wersje" w Play Console), włączone Android Developer API, klucz w gitignorowanym `credentials/`, `submit.production.android` w [eas.json](apps/mobile/eas.json) — od teraz `eas build --auto-submit` działa dla obu platform.
+- `[#312]` 📚 Nagłówki ARCHITECTURE/DATA-MODEL dociągnięte (70 migracji), MOBILE-PLAN ze stanem sklepów.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓ · secret-scan staged ✓.
 
 ## [1.164.0] — 🔁 PowerSync — prawdziwy offline-sync (fala 1, stack docelowy M5)
 

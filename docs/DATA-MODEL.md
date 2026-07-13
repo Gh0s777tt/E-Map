@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.158.0** (#305 — 69 migracji; ostatnie: 0064 driver_expenses, 0065 order_tracking, 0066-0067 czat) · 2026-07-13
+> Status: **wdrożone** · stan kodu **v1.165.0** (#312 — 70 migracji; ostatnie: 0066-0067 czat, 0068 parking_reviews) · 2026-07-13
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
