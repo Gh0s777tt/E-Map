@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-327-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.180.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-328-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.181.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.181.0] — 💾 Tacho PRO 1/4: import odczytu karty kierowcy (.ddd)
+
+- `[#328]` 💾 **Parser plików .ddd** ([ddd.ts](packages/core/src/ddd.ts), **+7 testów** → 324) — czyta odczyt karty kierowcy (Gen1 i Gen2, bloki TLV wg zał. 1B/1C): posiadacza z `EF_Identification` i dzienne rejestry aktywności z `EF_Driver_Activity_Data` (bufor cykliczny, wpisy ActivityChangeInfo). Tolerancyjny: uszkodzone rekordy pomija, zawsze zwraca co się dało odczytać.
+- `[#328]` 📥 **Import na stronie /tacho** — wgrywasz plik, w przeglądarce (nic nie wychodzi na serwer) liczą się dni: jazda / inna praca / dyspozycja / odpoczynek / km + **naruszenia 561** (jazda ciągła >4 h 30 z obsługą przerwy dzielonej 15+30, dobowa >10 h); przycisk **„Dopisz dni do ewidencji czasu pracy"** uzupełnia /work-time jednym kliknięciem (nazwisko z karty).
+- **Bramki:** `pnpm check` exit 0 ✓ · testy core ✓.
 
 ## [1.180.0] — 🕓 Tacho 2.0: poradnik z realnych zdjęć, rozporządzenie 561/2006 i Licznik 561
 

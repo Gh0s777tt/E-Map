@@ -8,10 +8,19 @@
  * • Wpis manualny krok po kroku (własne opracowanie).
  * Uzupełnia automat czasu pracy (/work-time, #277).
  */
-import { aetrStatus, formatTachoMin } from "@e-logistic/core";
+import { insertWorkTimeEntry } from "@e-logistic/api";
+import {
+  aetrStatus,
+  type DddParseResult,
+  formatTachoMin,
+  parseDddDriverCard,
+  round2,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useState } from "react";
 import { Button, PageHeader } from "@/components/ui";
+import { getCachedMembership } from "@/lib/membership";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const PDF = "/tacho/rozporzadzenie-561-2006.pdf";
 
@@ -74,6 +83,153 @@ const MANUAL_STEPS = [
   "Na końcu zatwierdź akceptację (TAK). Uwaga: po zatwierdzeniu wpisu nie można go już poprawić.",
   "Ustaw kraj rozpoczęcia pracy (MENU → wpisz kierowca 1 → kraj rozpocz.). Nie ruszaj, dopóki symbol karty nie zapisze się w całości — ruszenie przerywa wpis.",
 ];
+
+const VIOLATION_LABEL: Record<string, string> = {
+  "continuous-driving-over-4h30": "jazda ciągła > 4 h 30",
+  "daily-driving-over-10h": "jazda dobowa > 10 h",
+};
+
+/** #328: import odczytu karty kierowcy (.ddd) — parser w przeglądarce. */
+function DddImportSection() {
+  const [result, setResult] = useState<DddParseResult | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [driver, setDriver] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMsg(null);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const parsed = parseDddDriverCard(bytes);
+    setResult(parsed);
+    setFileName(file.name);
+    if (parsed.holderName) setDriver(parsed.holderName);
+    if (parsed.days.length === 0)
+      setMsg(
+        "Nie znaleziono rejestrów aktywności — czy to odczyt KARTY kierowcy (nie tachografu)?",
+      );
+  }
+
+  async function importDays() {
+    if (!result || busy) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) throw new Error("Brak aktywnej firmy.");
+      let n = 0;
+      for (const d of result.days) {
+        if (d.totals.driving === 0 && d.totals.work === 0) continue;
+        await insertWorkTimeEntry(
+          sb,
+          {
+            driverName: driver.trim() || result.holderName || null,
+            workDate: d.date,
+            driving: round2(d.totals.driving / 60),
+            otherWork: round2(d.totals.work / 60),
+            rest: round2(d.totals.rest / 60),
+            note: `import .ddd (${d.distanceKm} km)`,
+          },
+          m.companyId,
+        );
+        n++;
+      }
+      setMsg(`✅ Dopisano ${n} dni do ewidencji czasu pracy.`);
+    } catch (e) {
+      setMsg(`⚠️ ${e instanceof Error ? e.message : "Import nieudany."}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const violationsTotal = result?.days.reduce((a, d) => a + d.violations.length, 0) ?? 0;
+
+  return (
+    <>
+      <h3 style={st.h3}>📥 Odczyt karty kierowcy (.ddd)</h3>
+      <p style={{ color: palette.smoke, fontSize: 13.5, maxWidth: 760, lineHeight: 1.55 }}>
+        Wgraj plik pobrania karty kierowcy (np. z czytnika lub programu do sczytywania) — dni,
+        minuty jazdy/pracy/odpoczynku i naruszenia 561 policzą się same, bez ręcznego wpisywania.
+        Plik jest analizowany w przeglądarce i nigdzie nie jest wysyłany.
+      </p>
+      <input
+        type="file"
+        accept=".ddd,.esm,.tgd,.c1b"
+        onChange={onFile}
+        style={{ margin: "6px 0 12px", color: palette.smoke, fontSize: 13 }}
+      />
+      {result && (
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ fontSize: 13.5 }}>
+            <strong>{fileName}</strong>
+            {result.holderName ? ` · ${result.holderName}` : ""}
+            {result.generation ? ` · Gen${result.generation}` : ""} · {result.days.length} dni ·{" "}
+            <span style={{ color: violationsTotal ? "#ef4444" : "#22c55e", fontWeight: 700 }}>
+              {violationsTotal ? `${violationsTotal} naruszeń` : "bez naruszeń"}
+            </span>
+          </div>
+          {result.days.length > 0 && (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
+                <thead>
+                  <tr>
+                    {[
+                      "Data",
+                      "Jazda",
+                      "Inna praca",
+                      "Dyspozycja",
+                      "Odpoczynek",
+                      "km",
+                      "Naruszenia",
+                    ].map((h) => (
+                      <th key={h} style={st.th}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.days.map((d) => (
+                    <tr key={d.date}>
+                      <td style={st.td}>{d.date}</td>
+                      <td style={st.td}>{formatTachoMin(d.totals.driving)}</td>
+                      <td style={st.td}>{formatTachoMin(d.totals.work)}</td>
+                      <td style={st.td}>{formatTachoMin(d.totals.availability)}</td>
+                      <td style={st.td}>{formatTachoMin(d.totals.rest)}</td>
+                      <td style={st.td}>{d.distanceKm}</td>
+                      <td style={{ ...st.td, color: d.violations.length ? "#ef4444" : "#22c55e" }}>
+                        {d.violations.length
+                          ? d.violations.map((v) => VIOLATION_LABEL[v] ?? v).join(", ")
+                          : "OK"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {result.days.length > 0 && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                value={driver}
+                onChange={(e) => setDriver(e.target.value)}
+                placeholder="Kierowca (do ewidencji)"
+                style={st.input}
+              />
+              <Button onClick={importDays} disabled={busy}>
+                {busy ? "Import…" : "➕ Dopisz dni do ewidencji czasu pracy"}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      {msg && <p style={{ fontSize: 13.5 }}>{msg}</p>}
+    </>
+  );
+}
 
 function Num({
   label,
@@ -177,6 +333,8 @@ export default function TachoPage() {
           Pełny skonsolidowany tekst — także do pokazania na kontroli.
         </span>
       </div>
+
+      <DddImportSection />
 
       <h3 style={st.h3}>🧮 Licznik 561</h3>
       <div style={st.calc}>
@@ -299,4 +457,21 @@ const st: Record<string, React.CSSProperties> = {
   img: { width: "100%", display: "block" },
   cap: { padding: "10px 12px", fontSize: 13, color: palette.smoke, lineHeight: 1.5 },
   steps: { paddingLeft: 22, fontSize: 14, maxWidth: 760 },
+  th: {
+    textAlign: "left",
+    padding: "6px 10px",
+    borderBottom: `1px solid ${palette.graphite}`,
+    color: palette.smoke,
+    fontWeight: 600,
+  },
+  td: { padding: "6px 10px", borderBottom: `1px solid ${palette.graphite}` },
+  input: {
+    background: "transparent",
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 10,
+    padding: "9px 12px",
+    color: "inherit",
+    fontSize: 13.5,
+    minWidth: 220,
+  },
 };
