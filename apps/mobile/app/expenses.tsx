@@ -7,7 +7,6 @@ import {
   type DriverExpense,
   deleteDriverExpense,
   EXPENSE_CATEGORIES,
-  EXPENSE_CATEGORY_LABELS,
   type ExpenseCategory,
   getActiveMembership,
   insertDriverExpense,
@@ -39,6 +38,15 @@ const STATUS_META = {
   submitted: { key: "m.exp.submitted", color: palette.warning },
   approved: { key: "m.exp.approved", color: palette.success },
   rejected: { key: "m.exp.rejected", color: palette.red },
+} as const;
+
+// #307: kategorie przez katalog i18n (PL/EN/DE/UK) zamiast polskich etykiet z api
+const CATEGORY_KEY = {
+  toll: "m.cat.toll",
+  parking: "m.cat.parking",
+  repair: "m.cat.repair",
+  wash: "m.cat.wash",
+  other: "m.cat.other",
 } as const;
 
 const CURRENCIES = ["PLN", "EUR", "GBP", "CZK"] as const;
@@ -188,9 +196,7 @@ export default function ExpensesScreen() {
             onPress={() => setCategory(c)}
             style={[s.chip, category === c && s.chipOn]}
           >
-            <Text style={[s.chipText, category === c && s.chipTextOn]}>
-              {EXPENSE_CATEGORY_LABELS[c]}
-            </Text>
+            <Text style={[s.chipText, category === c && s.chipTextOn]}>{t(CATEGORY_KEY[c])}</Text>
           </Pressable>
         ))}
       </View>
@@ -264,7 +270,7 @@ export default function ExpensesScreen() {
               <Text style={[s.entryStatus, { color: st.color }]}>{t(st.key)}</Text>
             </View>
             <Text style={s.entryMeta}>
-              {EXPENSE_CATEGORY_LABELS[e.category]} · {e.expense_date}
+              {t(CATEGORY_KEY[e.category])} · {e.expense_date}
               {e.photo_path ? " · 📷" : ""}
               {e.note ? ` · ${e.note}` : ""}
             </Text>

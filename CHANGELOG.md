@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-306-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.159.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-307-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.160.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.160.0] — 🌍 Słowniki w 4 językach (kategorie wydatków)
+
+- `[#307]` 🌍 **Kategorie wydatków przez i18n** (mobile **1.56.0**) — Opłaty drogowe/Parking/Naprawa/Myjnia/Inne tłumaczone w locie (PL/EN/DE/UK) zamiast polskich etykiet z warstwy api; chipy formularza i lista ostatnich wpisów ([expenses](apps/mobile/app/expenses.tsx), `m.cat.*` w [mobile.ts](packages/i18n/src/mobile.ts)).
+- `[#307]` 🔧 Naprawiony `pnpm check` po instalacji Sentry — jawna decyzja `allowBuilds['@sentry/cli']: false` w [pnpm-workspace.yaml](pnpm-workspace.yaml) (postinstall sentry-cli zbędny bez uploadu sourcemap).
+- Build iOS **1.56.0** (zawiera też #306 Sentry no-op). **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.159.0] — 🩺 Sentry (monitoring błędów) + odświeżenie dokumentacji
 
