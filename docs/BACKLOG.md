@@ -73,6 +73,34 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 >
 > **Od #224:** **dekompozycja `map/page.tsx` — etap 1** (QA wizualne w trybie offline preview): 4 prezentacyjne komponenty → `mapPanels.tsx` (`RouteSummary`/`StopsEditor`/`SavedPlacesChips`/`FuelPricesPanel`), page.tsx 1452→1343 l. (−109), zachowanie bez zmian. **Wszystkie ustalenia audytu/QA domknięte** (dekompozycja rozpoczęta, dalsze etapy opcjonalne).
 
+## 🔥 P0 — Feedback właściciela (2026-07-13, do wdrożenia falami)
+
+**Naprawy:**
+- [ ] **Karty paliwowe: pole daty ważności nie działa** (klik nie otwiera pickera, brak echa wpisywania) — naprawić na web.
+- [ ] **Pojazdy: brak pola „data ważności licencji"** (licencja transportowa) — dodać do formularza + schematu.
+- [ ] **Formularze mobile: brak miejscowości** (jest tylko kraj) — dodać pole miejscowości w Paliwo/AdBlue/Trasa.
+
+**Powiadomienia terminów (konfigurowalne wyprzedzenie: 1 dzień / 1–3 tyg. / miesiąc):**
+- [ ] ważność kart paliwowych · [ ] licencja pojazdu · [ ] OC · [ ] przegląd — ustawienie per firma/per typ.
+- [ ] **Harmonogram: alerty scalone per pojazd** (1 wiersz = 1 auto, rozwinięcie po kliknięciu) — przy 30–50 autach lista musi się skalować.
+
+**Karta kierowcy / właściciela (start aplikacji):** *(warianty A/B/C i W1/W2 — artefakt „warianty-ui-v1", czeka na wybór)*
+- [ ] Kierowca: „Witaj, Imię Nazwisko" (bez e-maila), staż w firmie, km z Trip, litry ON+AdBlue, śr. spalanie z formularzy.
+- [ ] Właściciel: liczba pojazdów w trasie/przerwa/serwis + statystyki zysków.
+
+**Nawigacja i parytet:**
+- [ ] Menu „3 kreski" (szuflada) z kompletem zakładek; stały dostęp: Formularze, Karty paliwowe, Czat, Checklisty.
+- [ ] **Audyt parytetu web↔mobile** — spis wszystkich zakładek web i dodanie brakujących w aplikacji (100% funkcji).
+
+**Profil i dane kierowcy:**
+- [ ] Samodzielna edycja: e-mail / telefon / hasło + **avatar** (upload, Storage).
+- [ ] Zakładka kierowcy: **ważność paszportu i dowodu**; uprawnienia (np. UDT) z polem **nr dokumentu + data ważności**.
+
+**Pozostałe:**
+- [ ] **Trip: zdarzenie „przeładunek"** — rejestracja auta źródłowego i docelowego + lokalizacja, waga, km.
+- [ ] **Kreator startu pomijalny** („Pomiń" — firmy transport-only nie tworzą zleceń).
+- [ ] **Duże ekrany**: layout 3-kolumnowy (iPad/macOS „Designed for iPad"); **Microsoft Store** — panel web jako MSIX/WebView2.
+
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).
 - [x] **Command palette 2.0** — Ctrl/⌘+K: akcje + nawigacja + encje, jeden filtr (#206).
