@@ -74,6 +74,13 @@ const GROUPS: Group[] = [
       { glyph: "🗓", labelKey: "m.screen.schedule", href: "/schedule", managerOnly: true },
       { glyph: "🚦", labelKey: "m.screen.fleetStatus", href: "/fleet-status", managerOnly: true },
       { glyph: "🧾", labelKey: "m.screen.invoices", href: "/invoices", managerOnly: true },
+      {
+        glyph: "🚛",
+        labelKey: "m.screen.manageVehicles",
+        href: "/manage-vehicles",
+        managerOnly: true,
+      },
+      { glyph: "💳", labelKey: "m.screen.manageCards", href: "/manage-cards", managerOnly: true },
     ],
   },
 ];

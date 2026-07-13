@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-341-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.186.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-342-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.187.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.187.0] — 🛠 Parytet zarządzania, fala 2: pojazdy i karty paliwowe z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie.
+
+- `[#342]` 🚛 **CRUD pojazdów w aplikacji** ([manage-vehicles](apps/mobile/app/manage-vehicles.tsx)) — dodawanie, edycja i usuwanie pojazdów oraz terminów (przegląd/OC/leasing/licencja), z wyborem typu i walidacją `vehicleSchema` (ta sama co web). Wspólna warstwa `@e-logistic/api` (`insertVehicle`/`updateVehicle`/`deleteVehicle`).
+- `[#342]` 💳 **CRUD kart paliwowych w aplikacji** ([manage-cards](apps/mobile/app/manage-cards.tsx)) — dostawca, numer, ważność, rabat, przypisanie do pojazdu i **ustawienie PIN** (szyfrowany, nigdy plaintext). Walidacja `fuelCardSchema`.
+- `[#342]` 🍔 Nowe pozycje w grupie „Zarządzanie" szuflady (tylko owner/dyspozytor) + **33 klucze i18n ×4 języki**.
+- Kolejne fale programu: edytor checklist na telefonie, zlecenia (edycja/przypisanie), kartoteka kierowców, faktury, kontrahenci, koszty, zespół/uprawnienia.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.186.0] — 📋 Checklisty per kierowca, Tacho na Starcie, biometria i rozbudowa mapy
 
