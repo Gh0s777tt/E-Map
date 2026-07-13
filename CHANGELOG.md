@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-320-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.173.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-321-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.174.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.174.0] — 🗓 Parytet domknięty: Harmonogram (scalony per auto), Status floty i Faktury w aplikacji
+
+- `[#321]` 🗓 **Harmonogram terminów w aplikacji** (mobile **1.64.0**, [schedule](apps/mobile/app/schedule.tsx)) — przeglądy/OC/leasing/licencja pojazdów, badania i dokumenty kierowców (w tym paszport/dowód z #319) oraz serwis wg przebiegu, **scalone per pojazd/kierowca** (postulat P0: przy 30–50 autach lista per-termin to bałagan): wiersz = jedno auto z najpilniejszym terminem, rozwinięcie po dotknięciu pokazuje wszystkie, kolor = pilność.
+- `[#321]` 🚦 **Status floty** ([fleet-status](apps/mobile/app/fleet-status.tsx)) — KPI „w trasie / zaplanowany / wolny" + lista pojazdów z aktywnym zleceniem i ostatnim zdarzeniem Trip; ten sam silnik `buildFleetStatus` co panel web.
+- `[#321]` 🧾 **Faktury (odczyt)** ([invoices](apps/mobile/app/invoices.tsx)) — suma brutto bieżącego miesiąca per waluta + lista ze stanem opłacona/nieopłacona/po terminie/anulowana; wystawianie pozostaje na webie.
+- `[#321]` 🍔 Nowa grupa **„Zarządzanie"** w szufladzie (tylko owner/dyspozytor — gating po roli obok modułów) + **36 kluczy i18n ×4 języki**; tabela parytetu w [MOBILE-PLAN](docs/MOBILE-PLAN.md) zaktualizowana — **0 pozycji ⏳**.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.173.0] — 🔍 Audyt parytetu web↔mobile + Diety, Wypłaty i Ceny paliw w aplikacji
 

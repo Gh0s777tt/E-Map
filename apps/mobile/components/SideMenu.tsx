@@ -32,6 +32,8 @@ interface Item {
   labelKey: MobileMessageKey;
   href: string;
   module?: AppModule;
+  /** #321: pozycje zarządcze — tylko owner/dyspozytor. */
+  managerOnly?: boolean;
 }
 interface Group {
   titleKey: MobileMessageKey;
@@ -66,6 +68,14 @@ const GROUPS: Group[] = [
       { glyph: "📊", labelKey: "m.screen.stats", href: "/stats", module: "stats" },
     ],
   },
+  {
+    titleKey: "m.drawer.manage",
+    items: [
+      { glyph: "🗓", labelKey: "m.screen.schedule", href: "/schedule", managerOnly: true },
+      { glyph: "🚦", labelKey: "m.screen.fleetStatus", href: "/fleet-status", managerOnly: true },
+      { glyph: "🧾", labelKey: "m.screen.invoices", href: "/invoices", managerOnly: true },
+    ],
+  },
 ];
 
 export function SideMenu() {
@@ -95,7 +105,9 @@ export function SideMenu() {
     }).start();
   }, [open, panelW, slide]);
 
-  const show = (m?: AppModule) => !m || mods === null || mods.includes(m);
+  const isManager = profile.role === "owner" || profile.role === "dispatcher";
+  const show = (i: Item) =>
+    (!i.managerOnly || isManager) && (!i.module || mods === null || mods.includes(i.module));
   const go = (href: string) => {
     closeDrawer();
     router.push(href as never);
@@ -123,17 +135,15 @@ export function SideMenu() {
           </View>
         </View>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 12 }}>
-          {GROUPS.map((g) => (
+          {GROUPS.filter((g) => g.items.some(show)).map((g) => (
             <View key={g.titleKey}>
               <Text style={s.group}>{t(g.titleKey)}</Text>
-              {g.items
-                .filter((i) => show(i.module))
-                .map((i) => (
-                  <Pressable key={i.href} style={s.item} onPress={() => go(i.href)}>
-                    <Text style={s.itemGlyph}>{i.glyph}</Text>
-                    <Text style={s.itemText}>{t(i.labelKey)}</Text>
-                  </Pressable>
-                ))}
+              {g.items.filter(show).map((i) => (
+                <Pressable key={i.href} style={s.item} onPress={() => go(i.href)}>
+                  <Text style={s.itemGlyph}>{i.glyph}</Text>
+                  <Text style={s.itemText}>{t(i.labelKey)}</Text>
+                </Pressable>
+              ))}
             </View>
           ))}
           <Text style={s.group}>{t("m.drawer.account")}</Text>
