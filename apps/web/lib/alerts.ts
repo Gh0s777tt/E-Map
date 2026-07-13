@@ -136,13 +136,41 @@ function isoWeek(d: Date): string {
 }
 
 /** Raport tygodniowy (wywoływać w poniedziałki): podsumowanie minionego tygodnia. */
-export async function generateWeeklyReports(admin: Admin): Promise<number> {
+/** #301: dane raportu per firma — do wysyłki e-mailem z PDF-em. */
+export interface WeeklyCompanyReport {
+  companyId: string;
+  companyName: string;
+  emails: string[];
+  fromDate: string;
+  toDate: string;
+  delivered: number;
+  liters: number;
+  fuelCost: number;
+  expenses: number;
+}
+
+export async function generateWeeklyReports(
+  admin: Admin,
+): Promise<{ inserted: number; reports: WeeklyCompanyReport[] }> {
   const managers = await managersByCompany(admin);
   const to = new Date();
   const from = new Date(Date.now() - 7 * 86_400_000);
   const fromIso = from.toISOString();
   const week = isoWeek(from);
   const rows: AlertRow[] = [];
+  const reports: WeeklyCompanyReport[] = [];
+
+  // Nazwy firm + e-maile zarządu (auth.admin) — do stopki maila i adresatów.
+  const { data: companies } = await admin.from("companies").select("id, name");
+  const companyName = new Map((companies ?? []).map((c) => [c.id as string, c.name as string]));
+  const emailOf = async (userId: string): Promise<string | null> => {
+    try {
+      const { data } = await admin.auth.admin.getUserById(userId);
+      return data.user?.email ?? null;
+    } catch {
+      return null;
+    }
+  };
 
   for (const [companyId, userIds] of managers) {
     const [orders, fuel, expenses] = await Promise.all([
@@ -185,6 +213,19 @@ export async function generateWeeklyReports(admin: Admin): Promise<number> {
         dedup_key: `weekly-${companyId}-${week}`,
       });
     }
+
+    const emails = (await Promise.all(userIds.map(emailOf))).filter((e): e is string => Boolean(e));
+    reports.push({
+      companyId,
+      companyName: companyName.get(companyId) ?? "Firma",
+      emails,
+      fromDate: fromIso.slice(0, 10),
+      toDate: to.toISOString().slice(0, 10),
+      delivered: orders.count ?? 0,
+      liters,
+      fuelCost,
+      expenses: expSubmitted,
+    });
   }
-  return insertAlerts(admin, rows);
+  return { inserted: await insertAlerts(admin, rows), reports };
 }

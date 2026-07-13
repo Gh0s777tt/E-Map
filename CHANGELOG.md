@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-300-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.153.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-301-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.154.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.154.0] — 📬 Raport tygodniowy jako PDF na e-mail właściciela
+
+- `[#301]` 📬 **Poniedziałkowy cron wysyła raport e-mailem** — obok powiadomienia in-app/push zarząd każdej firmy dostaje maila (Resend) z **załącznikiem PDF** w motywie marki: czarna belka z logo, czerwone akcenty, podsumowanie tygodnia (dostawy, litry i koszt paliwa, zgłoszenia wydatków) ([cron/notify](apps/web/app/api/cron/notify/route.ts)).
+- `[#301]` 🧾 **Generator PDF w serverless** — [`weeklyPdf.ts`](apps/web/lib/weeklyPdf.ts) na `pdf-lib` (czysty JS, A4); diakrytyki transliterowane (fonty standardowe PDF nie znają ą/ę/ł). Wysyłka: [`email.ts`](apps/web/lib/email.ts) — czysty fetch do API Resend, bez SDK.
+- `[#301]` 🗂️ [`generateWeeklyReports`](apps/web/lib/alerts.ts) zwraca teraz dane per firma (nazwa + e-maile zarządu z `auth.admin`) — powiadomienia i mail liczą statystyki jednym przebiegiem.
+- Konfiguracja: `RESEND_API_KEY` ustawiony w Vercel (Production); szablon w [.env.example](.env.example). ⚠️ Bez zweryfikowanej domeny Resend dostarcza tylko na adres właściciela konta Resend — po podpięciu domeny wystarczy ustawić `EMAIL_FROM`. **Test wysyłki wykonany** (mail dostarczony).
+- Web-only (Vercel). **Bramki:** `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.153.0] — 🌍 Aplikacja mówi po angielsku, niemiecku i ukraińsku (i18n fala 1)
 

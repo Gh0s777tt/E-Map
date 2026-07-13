@@ -1,6 +1,6 @@
 {
   "name": "@e-logistic/web",
-  "version": "1.153.0",
+  "version": "1.154.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,6 +24,7 @@
     "exceljs": "^4.4.0",
     "maplibre-gl": "5.24.0",
     "next": "16.2.9",
+    "pdf-lib": "^1.17.1",
     "qrcode": "1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",

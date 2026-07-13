@@ -2,8 +2,10 @@ import { listExpoPushTokensForUsers, listPushSubscriptionsForDelivery } from "@e
 import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import { NextResponse } from "next/server";
 import { generateOperationalAlerts, generateWeeklyReports } from "@/lib/alerts";
+import { emailConfigured, sendEmail } from "@/lib/email";
 import { sendExpoPush } from "@/lib/expoPush";
 import { pushConfigured, sendPushTo } from "@/lib/push";
+import { weeklyReportPdf } from "@/lib/weeklyPdf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +27,32 @@ export async function GET(request: Request) {
   // #292: najpierw wygeneruj alerty (idempotentne dedup_key), potem dosyłka push.
   const generated = await generateOperationalAlerts(admin).catch(() => -1);
   const isMonday = new Date().getUTCDay() === 1;
-  const weekly = isMonday ? await generateWeeklyReports(admin).catch(() => -1) : 0;
+  const weeklyResult = isMonday
+    ? await generateWeeklyReports(admin).catch(() => null)
+    : { inserted: 0, reports: [] };
+  const weekly = weeklyResult ? weeklyResult.inserted : -1;
+
+  // #301: poniedziałkowy raport tygodniowy jako PDF na e-maile zarządu (Resend).
+  let emailed = 0;
+  const emailErrors: string[] = [];
+  if (isMonday && emailConfigured() && weeklyResult) {
+    for (const r of weeklyResult.reports) {
+      if (r.emails.length === 0) continue;
+      try {
+        const pdf = await weeklyReportPdf(r);
+        const res = await sendEmail({
+          to: r.emails,
+          subject: `📊 E-Logistic — raport tygodniowy ${r.fromDate}–${r.toDate} (${r.companyName})`,
+          html: `<p>W załączniku raport tygodniowy firmy <strong>${r.companyName}</strong> za okres ${r.fromDate}–${r.toDate}.</p><p>Dostawy: <strong>${r.delivered}</strong> · Paliwo: <strong>${Math.round(r.liters)} l</strong> · Wydatki kierowców: <strong>${r.expenses}</strong></p><p>Szczegóły: <a href="https://e-logistic-one.vercel.app/reports">panel E-Logistic</a>.</p>`,
+          attachments: [{ filename: `e-logistic-raport-${r.fromDate}.pdf`, content: pdf }],
+        });
+        if (res.ok) emailed++;
+        else emailErrors.push(`${r.companyName}: ${res.error}`);
+      } catch (e) {
+        emailErrors.push(e instanceof Error ? e.message : "pdf/email error");
+      }
+    }
+  }
   const since = new Date(Date.now() - 25 * 3600 * 1000).toISOString();
   const { data: notifs, error } = await admin
     .from("notifications")
@@ -63,5 +90,14 @@ export async function GET(request: Request) {
     expoSent += (await sendExpoPush(tokens, { title, body, data: { url: "/" } })).sent;
   }
 
-  return NextResponse.json({ users: byUser.size, generated, weekly, sent, expoSent, removed });
+  return NextResponse.json({
+    users: byUser.size,
+    generated,
+    weekly,
+    sent,
+    expoSent,
+    removed,
+    emailed,
+    emailErrors,
+  });
 }
