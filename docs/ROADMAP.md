@@ -1,6 +1,6 @@
 # 🗺️ Roadmapa — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.161.0 (#308) · 2026-07-13
+> Status: **w realizacji** · stan na v1.162.0 (#309) · 2026-07-13
 > Zasada: każda faza = działający przyrost. Część zarobkowa (Faza 1) **nie wymaga drogich API map**.
 >
 > **Stan dostarczenia** (autorytatywnie: [CHANGELOG](../CHANGELOG.md)):
@@ -83,7 +83,7 @@ statystyki i zysk per pojazd; rozliczenia pokryte testami jednostkowymi.
 
 - [x] Widok satelitarny / 3D (web).
 - [ ] Asystent pasa / widok skrzyżowań (Navigation SDK).
-- [~] Reroute z ruchem na żywo (warstwa ruchu HERE ✅; automatyczny reroute — nie).
+- [x] Reroute z ruchem na żywo — warstwa ruchu HERE ✅ + automatyczny objazd przy nowych utrudnieniach (#309).
 - [~] **macOS**: panel jako **PWA** dostarczony (#279 — manifest+ikony, instalacja z Chrome/Safari); apka kierowcy trafi na Mac App Store razem z iOS (Apple Silicon). Tauri — tylko gdy PWA nie wystarczy.
 - [~] OCR paragonów — ✅ wydatki (#298) + litry paliwa (#299, ML Kit on-device); pełne i18n ×14 — pozostaje.
 - [x] Rozszerzone logowanie: passkey + **2FA wymuszane** (Samsung — świadomie pominięty).

@@ -45,6 +45,7 @@ import {
 import { cssPalette, palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -104,7 +105,14 @@ export default function MapPage() {
   const [reportMode, setReportMode] = useState(false);
   const [reportType, setReportType] = useState<ReportType>("accident");
   const [reportMsg, setReportMsg] = useState<string | null>(null);
+  const toast = useToast();
   const [disruptions, setDisruptions] = useState<(Report & { distanceKm: number })[]>([]);
+  // #309: automatyczne przeliczenie trasy, gdy realtime przyniesie NOWE utrudnienie na trasie
+  const [autoReroute, setAutoReroute] = useState(true);
+  const autoRerouteRef = useRef(true);
+  const knownDisruptionIdsRef = useRef<Set<string>>(new Set());
+  const planRef = useRef<(() => void) | null>(null);
+  const rerouteBusyRef = useRef(false);
   const [trafficOn, setTrafficOn] = useState(false);
   const [trafficMsg, setTrafficMsg] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -220,8 +228,19 @@ export default function MapPage() {
       setDisruptions([]);
       return;
     }
-    setDisruptions(itemsNearRoute(reportsRef.current, geo, DISRUPTION_RADIUS_KM));
-  }, []);
+    const near = itemsNearRoute(reportsRef.current, geo, DISRUPTION_RADIUS_KM);
+    setDisruptions(near);
+    // #309: auto-reroute — reaguj tylko na utrudnienia, których wcześniej nie było
+    const fresh = near.filter((d) => !knownDisruptionIdsRef.current.has(d.id));
+    for (const d of near) knownDisruptionIdsRef.current.add(d.id);
+    if (fresh.length > 0 && autoRerouteRef.current && !rerouteBusyRef.current && planRef.current) {
+      rerouteBusyRef.current = true;
+      toast(`🚧 Nowe utrudnienie na trasie (${fresh.length}) — przeliczam objazd…`, "info");
+      Promise.resolve(planRef.current()).finally(() => {
+        rerouteBusyRef.current = false;
+      });
+    }
+  }, [toast]);
 
   // Warstwa natężenia ruchu (HERE Traffic) — kolorowe odcinki wg jamFactor.
   const drawTraffic = useCallback((flows: TrafficFlow[]) => {
@@ -959,6 +978,10 @@ export default function MapPage() {
     }
   }
 
+  // #309: recomputeDisruptions (starszy useCallback) woła plan() przez ref
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  planRef.current = () => void plan();
+
   async function plan(override?: { lat: number; lng: number }[]): Promise<RouteResponse | null> {
     setBusy(true);
     try {
@@ -984,6 +1007,10 @@ export default function MapPage() {
       const r = (await res.json()) as RouteResponse;
       setResult(r);
       routeGeoRef.current = r.geometry;
+      // #309: znane utrudnienia liczymy od nowej trasy (bez ponownego reroute po własnym przeliczeniu)
+      knownDisruptionIdsRef.current = new Set(
+        itemsNearRoute(reportsRef.current, r.geometry, DISRUPTION_RADIUS_KM).map((d) => d.id),
+      );
       drawRoute(r.geometry);
       recomputeDisruptions();
       const map = mapRef.current;
@@ -1276,6 +1303,17 @@ export default function MapPage() {
               )}
             </>
           )}
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={autoReroute}
+              onChange={(e) => {
+                setAutoReroute(e.target.checked);
+                autoRerouteRef.current = e.target.checked;
+              }}
+            />{" "}
+            🔁 Auto-objazd przy nowych utrudnieniach
+          </label>
           <label className={styles.check}>
             <input
               type="checkbox"

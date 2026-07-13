@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-308-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.161.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-309-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.162.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.162.0] — 🔁 Automatyczny objazd przy nowych utrudnieniach (Faza 4)
+
+- `[#309]` 🔁 **Auto-reroute** — gdy przy aktywnej trasie pojawi się w realtime NOWE zgłoszenie społecznościowe (wypadek/korek/zamknięcie w promieniu trasy), mapa pokazuje toast „🚧 Nowe utrudnienie — przeliczam objazd…" i **sama przelicza trasę** z tym samym profilem TIR i omijaniami. Reaguje wyłącznie na świeże utrudnienia (znane id pamiętane od ostatniego przeliczenia — bez pętli reroute), przełączane checkboxem „🔁 Auto-objazd" (domyślnie włączone) ([mapa](<apps/web/app/(app)/map/page.tsx>)).
+- Roadmapa Faza 4: „Reroute z ruchem na żywo" — **automatyczny objazd dostarczony** (dotąd była tylko warstwa ruchu HERE).
+- Web-only (Vercel). **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.161.0] — ⭐ Oceny i udogodnienia parkingów TIR (Faza 3 roadmapy)
 
