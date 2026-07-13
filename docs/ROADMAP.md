@@ -1,6 +1,6 @@
 # 🗺️ Roadmapa — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.160.0 (#307) · 2026-07-13
+> Status: **w realizacji** · stan na v1.161.0 (#308) · 2026-07-13
 > Zasada: każda faza = działający przyrost. Część zarobkowa (Faza 1) **nie wymaga drogich API map**.
 >
 > **Stan dostarczenia** (autorytatywnie: [CHANGELOG](../CHANGELOG.md)):
@@ -69,7 +69,7 @@ statystyki i zysk per pojazd; rozliczenia pokryte testami jednostkowymi.
 
 - [x] Zgłoszenia realtime (wypadek/policja/waga/korek/zamknięcie) + wygasanie/głosy.
 - [x] **Crowd-ceny paliw** z `fuel_logs` + ceny diesla EU → warstwa cen na mapie.
-- [ ] Oceny i udogodnienia parkingów (miejsca TIR, prysznic, WC, woda, kompresor, restauracja).
+- [~] Oceny i udogodnienia parkingów — ✅ web (#308: gwiazdki 1-5 + 🚿🚻🍽🛡 w dymku POI); mobile — kolejna fala.
 - [~] Akceptacja kart paliwowych na stacjach (filtr stacji wg kart ✅; warstwa SNAP/Travis — nie).
 - [x] Przypomnienia: przegląd/OC/leasing pojazdu + dokumenty + badania kierowców.
 

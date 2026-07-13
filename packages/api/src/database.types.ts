@@ -1335,6 +1335,57 @@ export interface Database {
         };
         Relationships: [];
       };
+      parking_reviews: {
+        Row: {
+          id: string;
+          user_id: string;
+          poi_id: string;
+          poi_name: string | null;
+          lat: number | null;
+          lng: number | null;
+          rating: number;
+          has_shower: boolean;
+          has_wc: boolean;
+          has_food: boolean;
+          security: boolean;
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          poi_id: string;
+          poi_name?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+          rating: number;
+          has_shower?: boolean;
+          has_wc?: boolean;
+          has_food?: boolean;
+          security?: boolean;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          poi_id?: string;
+          poi_name?: string | null;
+          lat?: number | null;
+          lng?: number | null;
+          rating?: number;
+          has_shower?: boolean;
+          has_wc?: boolean;
+          has_food?: boolean;
+          security?: boolean;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       passkeys: {
         Row: {
           id: string;

@@ -10,8 +10,10 @@ import {
   listActiveMapReports,
   listDrivers,
   listSavedPlaces,
+  parkingSummaries,
   type SavedPlace,
   sendDriverRoute,
+  upsertParkingReview,
 } from "@e-logistic/api";
 import {
   FUEL_CARD_PROVIDER_LABELS,
@@ -447,7 +449,7 @@ export default function MapPage() {
       map.on("click", "pois-layer", (e) => {
         const f = e.features?.[0];
         if (f?.geometry.type !== "Point") return;
-        const props = f.properties as { name?: string; type?: string } | null;
+        const props = f.properties as { id?: string; name?: string; type?: string } | null;
         const [lng, lat] = f.geometry.coordinates as [number, number];
         const kindLabel = POI_LABEL[props?.type ?? ""] ?? "Punkt";
         const name = props?.name || kindLabel;
@@ -457,9 +459,75 @@ export default function MapPage() {
           .setHTML(
             `<strong>${name}</strong><br/>${kindLabel}<br/>📍 <code>${coords}</code>` +
               `<br/><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noreferrer">Nawiguj ↗</a>` +
-              `<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ Dodaj jako przystanek</button>`,
+              `<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ Dodaj jako przystanek</button>` +
+              (props?.type === "parking" && props?.id
+                ? `<div data-rating style="margin-top:8px;border-top:1px solid #444;padding-top:6px;min-width:220px">⏳ Oceny parkingu…</div>`
+                : ""),
           )
           .addTo(map as MlMap);
+        // #308: oceny i udogodnienia parkingu (dane społecznościowe)
+        if (props?.type === "parking" && props?.id) {
+          const poiId = String(props.id);
+          void (async () => {
+            const box = popup.getElement()?.querySelector("[data-rating]") as HTMLElement | null;
+            if (!box) return;
+            const sb = getBrowserSupabase();
+            const render = async () => {
+              const sum = (await parkingSummaries(sb, [poiId]).catch(() => new Map())).get(poiId);
+              const head = sum
+                ? `★ <strong>${sum.avg}</strong>/5 (${sum.count}) · 🚿${sum.shower} 🚻${sum.wc} 🍽${sum.food} 🛡${sum.security}`
+                : "Brak ocen — bądź pierwszy!";
+              box.innerHTML =
+                `<div>${head}</div>` +
+                `<div style="margin-top:4px">${[1, 2, 3, 4, 5]
+                  .map(
+                    (n) =>
+                      `<button type="button" data-star="${n}" style="cursor:pointer;background:none;border:none;font-size:16px;padding:1px">☆</button>`,
+                  )
+                  .join("")}</div>` +
+                `<label style="font-size:11px;margin-right:6px"><input type="checkbox" data-am="shower"/>🚿</label>` +
+                `<label style="font-size:11px;margin-right:6px"><input type="checkbox" data-am="wc"/>🚻</label>` +
+                `<label style="font-size:11px;margin-right:6px"><input type="checkbox" data-am="food"/>🍽</label>` +
+                `<label style="font-size:11px"><input type="checkbox" data-am="security"/>🛡</label>` +
+                `<button type="button" data-save-review style="display:block;margin-top:6px;cursor:pointer">💾 Zapisz ocenę</button>`;
+              let rating = 0;
+              const stars = [...box.querySelectorAll<HTMLButtonElement>("[data-star]")];
+              for (const btn of stars) {
+                btn.addEventListener("click", () => {
+                  rating = Number(btn.dataset.star);
+                  for (const b of stars)
+                    b.textContent = Number(b.dataset.star) <= rating ? "★" : "☆";
+                });
+              }
+              box.querySelector("[data-save-review]")?.addEventListener("click", async () => {
+                if (!rating) return;
+                const am = (k: string) =>
+                  (box.querySelector(`[data-am="${k}"]`) as HTMLInputElement | null)?.checked ??
+                  false;
+                try {
+                  await upsertParkingReview(sb, {
+                    poiId,
+                    poiName: name,
+                    lat,
+                    lng,
+                    rating,
+                    hasShower: am("shower"),
+                    hasWc: am("wc"),
+                    hasFood: am("food"),
+                    security: am("security"),
+                  });
+                  await render();
+                } catch {
+                  box.insertAdjacentHTML(
+                    "beforeend",
+                    `<div style="color:#e50914">Nie zapisano — zaloguj się.</div>`,
+                  );
+                }
+              });
+            };
+            await render();
+          })();
+        }
         popup
           .getElement()
           ?.querySelector("[data-add-stop]")

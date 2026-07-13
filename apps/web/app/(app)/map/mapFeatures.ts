@@ -22,7 +22,7 @@ export function poiFeatures(pois: Poi[]) {
     type: "FeatureCollection" as const,
     features: pois.map((p) => ({
       type: "Feature" as const,
-      properties: { name: p.name ?? "", type: p.type },
+      properties: { id: p.id, name: p.name ?? "", type: p.type },
       geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] as [number, number] },
     })),
   };

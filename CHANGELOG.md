@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-307-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.160.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-308-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.161.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.161.0] — ⭐ Oceny i udogodnienia parkingów TIR (Faza 3 roadmapy)
+
+- `[#308]` ⭐ **Kierowcy oceniają parkingi na mapie** — klik w parking (POI OSM) pokazuje w dymku średnią ocenę i liczniki udogodnień (🚿 prysznic · 🚻 WC · 🍽 jedzenie · 🛡 ochrona), a poniżej formularz: gwiazdki 1–5 + checkboxy + „Zapisz ocenę". Jedna ocena na użytkownika i parking (kolejny zapis nadpisuje) ([mapa](<apps/web/app/(app)/map/page.tsx>)).
+- `[#308]` 🗄️ Migracja [0068_parking_reviews](supabase/migrations/0068_parking_reviews.sql) (nałożona na żywą bazę): tabela społecznościowa z RLS — odczyt dla zalogowanych, zapis/edycja wyłącznie własnych ocen; indeks po `poi_id`; warstwa danych [`parkingReviews.ts`](packages/api/src/data/parkingReviews.ts) (lista, upsert, agregaty).
+- Roadmapa Faza 3: „Oceny i udogodnienia parkingów" — **web dostarczone**; wyświetlanie ocen na mapie mobile — kolejna fala.
+- Web-only (Vercel). **Bramki:** `pnpm check` exit 0 ✓ (w tym audyt RLS).
 
 ## [1.160.0] — 🌍 Słowniki w 4 językach (kategorie wydatków)
 
