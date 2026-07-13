@@ -1,15 +1,19 @@
 /** #285: Ustawienia — konto, powiadomienia push, wersja aplikacji, wylogowanie.
  *  #300: wybór języka aplikacji (Systemowy / PL / EN / DE / UK). */
+import { deleteMyPosition } from "@e-logistic/api";
 import { MOBILE_LOCALES, type MobileLocale } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Constants from "expo-constants";
+import * as Location from "expo-location";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
 import { Card, GhostButton, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { type LocalePref, useLocale } from "../lib/i18n";
+import { getSharePosition, reportPositionOnce, setSharePosition } from "../lib/positionShare";
 import { type PowerSyncStatusInfo, powersyncConfigured, powersyncStatus } from "../lib/powersync";
 import { registerForPush } from "../lib/push";
+import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 const LOCALE_LABEL: Record<MobileLocale, string> = {
   pl: "Polski",
@@ -35,6 +39,32 @@ export default function SettingsScreen() {
     return () => clearInterval(id);
   }, []);
   const version = Constants.expoConfig?.version ?? "—";
+
+  // #324: udostępnianie pozycji firmie (dobrowolne; wyłączenie kasuje wiersz)
+  const [sharePos, setSharePos] = useState(false);
+  const [posMsg, setPosMsg] = useState<string | null>(null);
+  useEffect(() => {
+    getSharePosition().then(setSharePos);
+  }, []);
+  async function toggleShare() {
+    setPosMsg(null);
+    if (sharePos) {
+      await setSharePosition(false);
+      setSharePos(false);
+      if (supabaseConfigured) await deleteMyPosition(getSupabase()).catch(() => {});
+      setPosMsg(t("m.settings.sharePosRemoved"));
+      return;
+    }
+    const perm = await Location.requestForegroundPermissionsAsync();
+    if (!perm.granted) {
+      setPosMsg(t("m.settings.sharePosDenied"));
+      return;
+    }
+    await setSharePosition(true);
+    setSharePos(true);
+    reportPositionOnce().catch(() => {});
+    setPosMsg(t("m.settings.sharePosEnabled"));
+  }
 
   async function enablePush() {
     setPushMsg(null);
@@ -74,6 +104,22 @@ export default function SettingsScreen() {
         </Text>
         <PrimaryButton label="🔔 Włącz / odśwież powiadomienia" onPress={enablePush} />
         {pushMsg && <Text style={s.msg}>{pushMsg}</Text>}
+      </Card>
+
+      <SectionTitle>{t("m.settings.position")}</SectionTitle>
+      <Card style={{ gap: 10 }}>
+        <Text style={s.hint}>{t("m.settings.sharePosHint")}</Text>
+        <Pressable
+          style={[s.lang, sharePos && s.langOn, { alignSelf: "flex-start" }]}
+          onPress={toggleShare}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: sharePos }}
+        >
+          <Text style={[s.langText, sharePos && s.langTextOn]}>
+            {sharePos ? `✓ ${t("m.settings.sharePosOn")}` : `○ ${t("m.settings.sharePosOff")}`}
+          </Text>
+        </Pressable>
+        {posMsg && <Text style={s.msg}>{posMsg}</Text>}
       </Card>
 
       <SectionTitle>{t("m.settings.language")}</SectionTitle>

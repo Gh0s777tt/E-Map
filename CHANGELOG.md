@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-323-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.176.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-324-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.177.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.177.0] — 📡 Telematyka, fala 1: auta na żywo na mapie firmy
+
+- `[#324]` 📡 **Pozycje kierowców live** — kierowca **dobrowolnie** włącza „Udostępniaj pozycję" w Ustawieniach aplikacji (mobile **1.67.0**, zgoda systemowa na lokalizację); apka wysyła pozycję co 2 min, gdy jest otwarta ([positionShare](apps/mobile/lib/positionShare.ts) — bez śledzenia w tle), a wyłączenie **usuwa** wiersz. Jedna aktualna pozycja per kierowca (migracja [0075](supabase/migrations/0075_driver_positions.sql), nałożona na żywo; RLS: kierowca pisze swój wiersz, członkowie firmy czytają).
+- `[#324]` 🗺 **Warstwa aut na mapie web** — mapa firmy pokazuje 🚛 z odświeżaniem co 30 s; kolor = świeżość pozycji (zielony ≤5 min, pomarańczowy ≤30 min, szary starsze), etykieta z czasem i prędkością.
+- `[#324]` 🔌 Warstwa danych [positions.ts](packages/api/src/data/positions.ts) w `@e-logistic/api` (upsert/delete/list) wspólna dla web i mobile + **7 kluczy i18n ×4 języki**.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓ · migracja nałożona + `gen:types` ✓.
 
 ## [1.176.0] — ⭐ Oceny parkingów TIR na mapie w aplikacji
 

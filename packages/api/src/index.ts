@@ -30,6 +30,7 @@ export * from "./data/orders";
 export * from "./data/orderTracking";
 export * from "./data/parkingReviews";
 export * from "./data/perDiemTrips";
+export * from "./data/positions";
 export * from "./data/profile";
 export * from "./data/push";
 export * from "./data/rates";

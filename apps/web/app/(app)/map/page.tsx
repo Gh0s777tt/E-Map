@@ -3,11 +3,13 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import {
+  type DriverPosition,
   type DriverRow,
   deleteSavedPlace,
   insertMapReport,
   insertSavedPlace,
   listActiveMapReports,
+  listDriverPositions,
   listDrivers,
   listSavedPlaces,
   parkingSummaries,
@@ -195,6 +197,80 @@ export default function MapPage() {
       // nieprawidłowy link
     }
   }, []);
+
+  // #324: auta live — aktualne pozycje kierowców, którzy włączyli udostępnianie
+  // w aplikacji (driver_positions, upsert per kierowca). Kolor = świeżość.
+  const drawTrucks = useCallback((rows: DriverPosition[]) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const now = Date.now();
+    const data = {
+      type: "FeatureCollection" as const,
+      features: rows.map((r) => {
+        const ageMin = Math.round((now - new Date(r.updated_at).getTime()) / 60_000);
+        return {
+          type: "Feature" as const,
+          properties: {
+            color: ageMin <= 5 ? "#22c55e" : ageMin <= 30 ? "#f59e0b" : "#6b7280",
+            label: `🚛 ${ageMin < 1 ? "teraz" : `${ageMin} min temu`}${r.speed_kmh != null ? ` · ${r.speed_kmh} km/h` : ""}`,
+          },
+          geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] },
+        };
+      }),
+    };
+    const existing = map.getSource("trucks");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+      return;
+    }
+    map.addSource("trucks", { type: "geojson", data });
+    map.addLayer({
+      id: "trucks-layer",
+      type: "circle",
+      source: "trucks",
+      paint: {
+        "circle-radius": 8,
+        "circle-color": ["get", "color"],
+        "circle-stroke-width": 2.5,
+        "circle-stroke-color": palette.white,
+      },
+    } as import("maplibre-gl").AddLayerObject);
+    try {
+      map.addLayer({
+        id: "trucks-labels",
+        type: "symbol",
+        source: "trucks",
+        layout: {
+          "text-field": ["get", "label"],
+          "text-size": 11,
+          "text-offset": [0, 1.4],
+          "text-anchor": "top",
+        },
+        paint: { "text-color": "#ffffff", "text-halo-color": "#0a0a0a", "text-halo-width": 1.2 },
+      } as import("maplibre-gl").AddLayerObject);
+    } catch {
+      // styl bez glyphów (fallback OSM) — same kropki wystarczą
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const rows = await listDriverPositions(getBrowserSupabase(), companyId);
+        if (alive) drawTrucks(rows);
+      } catch {
+        // brak uprawnień/sieci — warstwa po prostu nie powstanie
+      }
+    };
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [companyId, drawTrucks]);
 
   // ── Rysowanie warstw (tylko add/update źródła — handlery rejestrowane raz) ──
   const drawReports = useCallback(() => {

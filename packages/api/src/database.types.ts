@@ -591,6 +591,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      driver_positions: {
+        Row: {
+          user_id: string;
+          company_id: string;
+          lat: number;
+          lng: number;
+          speed_kmh: number | null;
+          heading: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          company_id: string;
+          lat: number;
+          lng: number;
+          speed_kmh?: number | null;
+          heading?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          company_id?: string;
+          lat?: number;
+          lng?: number;
+          speed_kmh?: number | null;
+          heading?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       driver_profiles: {
         Row: {
           user_id: string;

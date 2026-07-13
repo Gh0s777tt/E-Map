@@ -11,6 +11,7 @@ import { OfflineBar } from "../../components/OfflineBar";
 import { SideMenu } from "../../components/SideMenu";
 import { DrawerProvider } from "../../lib/drawer";
 import { useT } from "../../lib/i18n";
+import { usePositionReporter } from "../../lib/positionShare";
 
 function icon(name: IconName) {
   return ({ color }: { color: ColorValue }) => <Icon name={name} size={23} color={color} />;
@@ -18,6 +19,7 @@ function icon(name: IconName) {
 
 export default function TabsLayout() {
   const t = useT();
+  usePositionReporter(); // #324: raport pozycji (tylko gdy kierowca włączył w Ustawieniach)
   return (
     <DrawerProvider>
       <View style={{ flex: 1, backgroundColor: palette.black }}>
