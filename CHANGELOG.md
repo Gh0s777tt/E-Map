@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-328-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.181.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-331-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.182.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.182.0] — 🚦 Tacho PRO 2–4/4: Licznik LIVE z powiadomieniami, skan wyświetlacza OCR, planer odpoczynku tygodniowego
+
+- `[#329]` 🚦 **Licznik LIVE** (mobile **1.69.0**, [tachoLive.ts](apps/mobile/lib/tachoLive.ts)) — kierowca przełącza czynność jak w tachografie (🚛 jazda / ☕ przerwa / 🔧 inna praca / 🛏 odpoczynek), a aplikacja liczy NA ŻYWO jazdę ciągłą (z przerwą dzieloną 15+30), dobową i tygodniową oraz planuje **lokalne powiadomienia**: „za 30 min wymagana przerwa" i „przerwa TERAZ" — działa offline, segmenty w AsyncStorage.
+- `[#330]` 📷 **Skan wyświetlacza tacho (OCR)** — zdjęcie ekranu VDO → ML Kit na urządzeniu odczytuje liczniki „XXhYY" (parser [parseTachoTimes](packages/core/src/weeklyRest.ts) w core), a odczytane wartości przypisujesz jednym dotknięciem do pól kalkulatora 561.
+- `[#331]` 🛏 **Planer odpoczynku tygodniowego** ([weeklyRest.ts](packages/core/src/weeklyRest.ts), **+6 testów** → 330) — z końca ostatniego odpoczynku liczy najpóźniejszy start następnego (144 h, z alarmem po terminie), warianty **45 h / 24 h** z rekompensatą 21 h i terminem jej oddania (koniec 3. tygodnia) oraz regułę „po skróconym musi być regularny" — w aplikacji i na stronie /tacho.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n (32 klucze ×4) ✓ · testy core ✓.
 
 ## [1.181.0] — 💾 Tacho PRO 1/4: import odczytu karty kierowcy (.ddd)
 

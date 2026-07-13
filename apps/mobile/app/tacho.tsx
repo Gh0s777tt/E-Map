@@ -1,19 +1,38 @@
 /**
- * #327: Tacho 2.0 — centrum wiedzy i licznik 561 w aplikacji:
- * • Licznik 561 (jak licznik VDO): interaktywny kalkulator przerw i limitów
- *   jazdy z silnika `aetrStatus` (@e-logistic/core),
- * • Poradnik „co pokazuje tachograf" — realne zdjęcia wyświetlacza VDO
- *   (postój i jazda) z opisami,
- * • Wpis manualny krok po kroku (własne opracowanie),
- * • Rozporządzenie (WE) 561/2006 — pełny PDF zawsze pod ręką.
+ * #327–#331: Tacho PRO — centrum tachografowe kierowcy:
+ * • #329 Licznik LIVE: przełączasz czynność jak w tacho, aplikacja liczy
+ *   jazdę ciągłą/dobową/tygodniową i wysyła LOKALNE powiadomienia o przerwie,
+ * • #327 Licznik 561 (kalkulator ręczny) + #330 skan wyświetlacza OCR,
+ * • #331 Planer odpoczynku tygodniowego (144 h, warianty 45/24 h),
+ * • poradnik z realnych zdjęć VDO, wpis manualny, rozporządzenie 561/2006.
  */
-import { aetrStatus, formatTachoMin } from "@e-logistic/core";
+import { aetrStatus, formatTachoMin, parseTachoTimes, planWeeklyRest } from "@e-logistic/core";
 import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
-import { useState } from "react";
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Card, SectionTitle, wide } from "../components/ui";
+import * as ImagePicker from "expo-image-picker";
+import { useEffect, useState } from "react";
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { Card, Chip, SectionTitle, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
+import {
+  cancelBreakAlerts,
+  type LiveActivity,
+  type LiveSegment,
+  liveStatus,
+  loadLiveSegments,
+  resetLive,
+  scheduleBreakAlerts,
+  setLiveActivity,
+} from "../lib/tachoLive";
 
 const BASE = "https://e-logistic-one.vercel.app/tacho";
 const PDF_URL = `${BASE}/rozporzadzenie-561-2006.pdf`;
@@ -36,7 +55,6 @@ const STOP_SHOTS: Shot[] = [
   { file: "postoj-limity-doby.jpg", aspect: 1200 / 606, captionKey: "m.tacho.capStopDay" },
   { file: "postoj-do-odpoczynku.jpg", aspect: 1200 / 577, captionKey: "m.tacho.capStopRest" },
 ];
-
 const MANUAL_STEPS: MobileMessageKey[] = [
   "m.tacho.manualStep1",
   "m.tacho.manualStep2",
@@ -46,6 +64,21 @@ const MANUAL_STEPS: MobileMessageKey[] = [
   "m.tacho.manualStep6",
   "m.tacho.manualStep7",
 ];
+
+const LIVE_ACTIVITIES: { key: LiveActivity; glyph: string; labelKey: MobileMessageKey }[] = [
+  { key: "driving", glyph: "🚛", labelKey: "m.tacho.actDriving" },
+  { key: "break", glyph: "☕", labelKey: "m.tacho.actBreak" },
+  { key: "work", glyph: "🔧", labelKey: "m.tacho.actWork" },
+  { key: "rest", glyph: "🛏", labelKey: "m.tacho.actRest" },
+];
+
+const colorFor = (min: number) => (min <= 0 ? "#ef4444" : min <= 30 ? "#f59e0b" : "#22c55e");
+
+const fmtDT = (ms: number) => {
+  const d = new Date(ms);
+  const p = (n: number) => n.toString().padStart(2, "0");
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
 /** Wiersz kalkulatora: etykieta + wartość + przyciski −/+. */
 function Stepper({
@@ -85,6 +118,34 @@ function Stepper({
 
 export default function TachoScreen() {
   const t = useT();
+
+  // ── #329: LIVE ────────────────────────────────────────────────────
+  const [segments, setSegments] = useState<LiveSegment[]>([]);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    loadLiveSegments().then(setSegments);
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const current = segments[segments.length - 1] ?? null;
+  const live = segments.length > 0 ? liveStatus(segments, now) : null;
+
+  async function switchActivity(a: LiveActivity) {
+    const segs = await setLiveActivity(a);
+    setSegments([...segs]);
+    setNow(Date.now());
+    if (a === "driving") {
+      const st = liveStatus(segs, Date.now());
+      await scheduleBreakAlerts(st.toBreakMin, {
+        warn: t("m.tacho.notifWarn"),
+        now: t("m.tacho.notifNow"),
+      });
+    } else {
+      await cancelBreakAlerts();
+    }
+  }
+
+  // ── #327: kalkulator ręczny ───────────────────────────────────────
   const [continuous, setContinuous] = useState(0);
   const [breakTaken, setBreakTaken] = useState(0);
   const [daily, setDaily] = useState(0);
@@ -103,7 +164,36 @@ export default function TachoScreen() {
     reducedRestsUsed: redUsed,
   });
 
-  const colorFor = (min: number) => (min <= 0 ? "#ef4444" : min <= 30 ? "#f59e0b" : "#22c55e");
+  // ── #330: OCR wyświetlacza ────────────────────────────────────────
+  const [detected, setDetected] = useState<number[]>([]);
+  const [scanMsg, setScanMsg] = useState<string | null>(null);
+  async function scanDisplay() {
+    setScanMsg(null);
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return;
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (res.canceled) return;
+    const uri = res.assets[0]?.uri;
+    if (!uri) return;
+    try {
+      const TextRecognition = (await import("@react-native-ml-kit/text-recognition")).default;
+      const text = (await TextRecognition.recognize(uri)).text;
+      const times = parseTachoTimes(text);
+      setDetected(times);
+      if (times.length === 0) setScanMsg(t("m.tacho.scanNone"));
+    } catch {
+      setScanMsg(t("m.tacho.scanNone"));
+    }
+  }
+
+  // ── #331: planer odpoczynku tygodniowego ──────────────────────────
+  const [pDate, setPDate] = useState("");
+  const [pTime, setPTime] = useState("06:00");
+  const [pType, setPType] = useState<"regular" | "reduced">("regular");
+  const endMs = Date.parse(`${pDate.trim()}T${pTime.trim() || "00:00"}:00`);
+  const plan = Number.isFinite(endMs)
+    ? planWeeklyRest({ lastWeeklyRestEndMs: endMs, lastType: pType }, now)
+    : null;
 
   const results: { label: string; value: string; color: string }[] = [
     {
@@ -149,6 +239,8 @@ export default function TachoScreen() {
       </Card>
     ));
 
+  const currentMin = current ? Math.max(0, Math.round((now - current.start) / 60_000)) : 0;
+
   return (
     <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
       {/* Rozporządzenie — zawsze na wierzchu */}
@@ -157,9 +249,89 @@ export default function TachoScreen() {
       </Pressable>
       <Text style={s.hint}>{t("m.tacho.regulationHint")}</Text>
 
-      {/* Licznik 561 */}
+      {/* #329: Licznik LIVE */}
+      <SectionTitle>{t("m.tacho.live")}</SectionTitle>
+      <Card style={{ gap: 10 }}>
+        <View style={s.liveRow}>
+          {LIVE_ACTIVITIES.map((a) => {
+            const on = current?.activity === a.key;
+            return (
+              <Pressable
+                key={a.key}
+                style={[s.liveBtn, on && s.liveBtnOn]}
+                onPress={() => switchActivity(a.key)}
+              >
+                <Text style={s.liveGlyph}>{a.glyph}</Text>
+                <Text style={[s.liveLabel, on && { color: palette.white }]}>{t(a.labelKey)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {live && current ? (
+          <>
+            <Text style={s.liveNow}>
+              {LIVE_ACTIVITIES.find((a) => a.key === current.activity)?.glyph}{" "}
+              {formatTachoMin(currentMin)}
+            </Text>
+            <View style={s.liveStats}>
+              <Chip
+                label={`${t("m.tacho.toBreak")}: ${formatTachoMin(live.toBreakMin)}`}
+                color={colorFor(live.toBreakMin)}
+              />
+              <Chip
+                label={`${t("m.tacho.dailyLeft")}: ${formatTachoMin(live.dailyRemainingMin)}`}
+                color={colorFor(live.dailyRemainingMin)}
+              />
+              <Chip
+                label={`${t("m.tacho.weekLeft")}: ${formatTachoMin(live.weeklyRemainingMin)}`}
+                color={colorFor(live.weeklyRemainingMin)}
+              />
+            </View>
+            <Pressable
+              onPress={async () => {
+                await resetLive();
+                setSegments([]);
+              }}
+            >
+              <Text style={s.liveReset}>✕ {t("m.tacho.liveReset")}</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={s.hint}>{t("m.tacho.liveOff")}</Text>
+        )}
+        <Text style={s.hint}>{t("m.tacho.liveHint")}</Text>
+      </Card>
+
+      {/* #327: Licznik 561 (ręczny) + #330 OCR */}
       <SectionTitle>{t("m.tacho.counter")}</SectionTitle>
       <Card style={{ gap: 4 }}>
+        <Pressable style={s.scanBtn} onPress={scanDisplay}>
+          <Text style={s.scanBtnText}>📷 {t("m.tacho.scan")}</Text>
+        </Pressable>
+        <Text style={s.hint}>{t("m.tacho.scanHint")}</Text>
+        {scanMsg && <Text style={s.hint}>{scanMsg}</Text>}
+        {detected.length > 0 && (
+          <View style={{ gap: 6, paddingVertical: 4 }}>
+            <Text style={s.detectedTitle}>{t("m.tacho.scanDetected")}:</Text>
+            {detected.map((v) => (
+              <View key={v} style={s.detectedRow}>
+                <Text style={s.detectedValue}>{formatTachoMin(v)}</Text>
+                <Pressable style={s.assignBtn} onPress={() => setContinuous(Math.min(360, v))}>
+                  <Text style={s.assignText}>{t("m.tacho.assignContinuous")}</Text>
+                </Pressable>
+                <Pressable style={s.assignBtn} onPress={() => setDaily(Math.min(660, v))}>
+                  <Text style={s.assignText}>{t("m.tacho.assignDaily")}</Text>
+                </Pressable>
+                <Pressable style={s.assignBtn} onPress={() => setWeekly(Math.min(3600, v))}>
+                  <Text style={s.assignText}>{t("m.tacho.assignWeekly")}</Text>
+                </Pressable>
+                <Pressable style={s.assignBtn} onPress={() => setPrevWeek(Math.min(3600, v))}>
+                  <Text style={s.assignText}>{t("m.tacho.assignPrev")}</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
         <Stepper
           label={t("m.tacho.inContinuous")}
           value={continuous}
@@ -228,6 +400,78 @@ export default function TachoScreen() {
       </View>
       <Text style={s.hint}>{t("m.tacho.counterHint")}</Text>
 
+      {/* #331: Planer odpoczynku tygodniowego */}
+      <SectionTitle>{t("m.tacho.planner")}</SectionTitle>
+      <Card style={{ gap: 10 }}>
+        <Text style={s.hint}>{t("m.tacho.plannerHint")}</Text>
+        <Text style={s.detectedTitle}>{t("m.tacho.plannerEnd")}</Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TextInput
+            style={[s.input, { flex: 1.4 }]}
+            value={pDate}
+            onChangeText={setPDate}
+            placeholder="2026-07-12"
+            placeholderTextColor={palette.smoke}
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={[s.input, { flex: 1 }]}
+            value={pTime}
+            onChangeText={setPTime}
+            placeholder="06:00"
+            placeholderTextColor={palette.smoke}
+            autoCapitalize="none"
+          />
+        </View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {(["regular", "reduced"] as const).map((k) => (
+            <Pressable
+              key={k}
+              style={[s.typeBtn, pType === k && s.typeBtnOn]}
+              onPress={() => setPType(k)}
+            >
+              <Text style={[s.typeText, pType === k && { color: palette.white }]}>
+                {k === "regular" ? t("m.tacho.plannerRegular") : t("m.tacho.plannerReduced")}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {plan && (
+          <View style={{ gap: 6 }}>
+            <Text
+              style={[
+                s.planLine,
+                {
+                  color:
+                    plan.hoursUntilLatestStart < 0
+                      ? "#ef4444"
+                      : colorFor(plan.hoursUntilLatestStart * 60),
+                },
+              ]}
+            >
+              ⏳ {t("m.tacho.latestStart")}: {fmtDT(plan.latestStartMs)}{" "}
+              {plan.hoursUntilLatestStart >= 0
+                ? `(${t("m.tacho.hoursLeft")} ${plan.hoursUntilLatestStart.toFixed(0)} h)`
+                : ""}
+            </Text>
+            {plan.hoursUntilLatestStart < 0 && (
+              <Text style={s.alert}>{t("m.tacho.overdueRest")}</Text>
+            )}
+            {plan.mustBeRegular && <Text style={s.planWarn}>⚠️ {t("m.tacho.mustRegular")}</Text>}
+            <Text style={s.planLine}>
+              🛏 {t("m.tacho.optRegular")}: {fmtDT(plan.regularEndMs)}
+            </Text>
+            {plan.reducedEndMs != null && (
+              <Text style={s.planLine}>
+                💤 {t("m.tacho.optReduced")}: {fmtDT(plan.reducedEndMs)}
+                {plan.compensationDeadlineMs != null &&
+                  ` (${t("m.tacho.compensation")} ${fmtDT(plan.compensationDeadlineMs)})`}
+              </Text>
+            )}
+          </View>
+        )}
+      </Card>
+
       {/* Poradnik: zdjęcia */}
       <SectionTitle>{t("m.tacho.guide")}</SectionTitle>
       <Text style={s.subTitle}>🚛 {t("m.tacho.guideDriving")}</Text>
@@ -262,6 +506,41 @@ const s = StyleSheet.create({
   hint: { color: palette.smoke, fontSize: 12.5, lineHeight: 18 },
   subTitle: { color: palette.offWhite, fontSize: 14, fontWeight: "800", marginTop: 4 },
   caption: { color: palette.smoke, fontSize: 12.5, lineHeight: 18 },
+  liveRow: { flexDirection: "row", gap: 8 },
+  liveBtn: {
+    flex: 1,
+    alignItems: "center",
+    gap: 3,
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    borderRadius: 12,
+    paddingVertical: 10,
+  },
+  liveBtnOn: { backgroundColor: palette.red, borderColor: palette.red },
+  liveGlyph: { fontSize: 18 },
+  liveLabel: { color: palette.smoke, fontSize: 11, fontWeight: "700" },
+  liveNow: { color: palette.offWhite, fontSize: 22, fontWeight: "800", textAlign: "center" },
+  liveStats: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center" },
+  liveReset: { color: palette.smoke, fontSize: 12.5, textAlign: "center", paddingVertical: 2 },
+  scanBtn: {
+    borderWidth: 1,
+    borderColor: palette.red,
+    borderRadius: 10,
+    paddingVertical: 9,
+    alignItems: "center",
+  },
+  scanBtnText: { color: palette.red, fontWeight: "800", fontSize: 13.5 },
+  detectedTitle: { color: palette.offWhite, fontSize: 13, fontWeight: "700" },
+  detectedRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  detectedValue: { color: palette.offWhite, fontSize: 14, fontWeight: "800", minWidth: 52 },
+  assignBtn: {
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  assignText: { color: palette.smoke, fontSize: 11.5, fontWeight: "700" },
   stepRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 5 },
   stepLabel: { color: palette.offWhite, fontSize: 13, flex: 1 },
   stepBtn: {
@@ -287,12 +566,27 @@ const s = StyleSheet.create({
   resultValue: { fontSize: 20, fontWeight: "800" },
   resultLabel: { color: palette.smoke, fontSize: 11.5, marginTop: 3, textAlign: "center" },
   stepItem: { flexDirection: "row", gap: 10 },
-  stepNo: {
-    color: palette.red,
-    fontWeight: "800",
-    fontSize: 14,
-    width: 18,
-    textAlign: "center",
-  },
+  stepNo: { color: palette.red, fontWeight: "800", fontSize: 14, width: 18, textAlign: "center" },
   stepText: { color: palette.offWhite, fontSize: 13.5, lineHeight: 19, flex: 1 },
+  input: {
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: palette.offWhite,
+    fontSize: 14,
+    backgroundColor: palette.nearBlack,
+  },
+  typeBtn: {
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  typeBtnOn: { backgroundColor: palette.red, borderColor: palette.red },
+  typeText: { color: palette.smoke, fontSize: 12.5, fontWeight: "700" },
+  planLine: { color: palette.offWhite, fontSize: 13.5, lineHeight: 19 },
+  planWarn: { color: "#f59e0b", fontSize: 13, fontWeight: "700" },
 });

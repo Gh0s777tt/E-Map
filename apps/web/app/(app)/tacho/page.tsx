@@ -14,6 +14,7 @@ import {
   type DddParseResult,
   formatTachoMin,
   parseDddDriverCard,
+  planWeeklyRest,
   round2,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
@@ -88,6 +89,70 @@ const VIOLATION_LABEL: Record<string, string> = {
   "continuous-driving-over-4h30": "jazda ciągła > 4 h 30",
   "daily-driving-over-10h": "jazda dobowa > 10 h",
 };
+
+/** #331: planer odpoczynku tygodniowego (144 h, warianty 45/24 h). */
+function WeeklyRestPlanner() {
+  const [end, setEnd] = useState("");
+  const [type, setType] = useState<"regular" | "reduced">("regular");
+  const endMs = Date.parse(end);
+  const plan = Number.isFinite(endMs)
+    ? planWeeklyRest({ lastWeeklyRestEndMs: endMs, lastType: type }, Date.now())
+    : null;
+  const fmt = (ms: number) =>
+    new Date(ms).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
+  return (
+    <>
+      <h3 style={st.h3}>🛏 Planer odpoczynku tygodniowego</h3>
+      <p style={{ color: palette.smoke, fontSize: 13.5, maxWidth: 760, lineHeight: 1.55 }}>
+        Podaj koniec ostatniego odpoczynku tygodniowego — policzymy najpóźniejszy start następnego
+        (144 h) i warianty 45 h / 24 h z rekompensatą.
+      </p>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          type="datetime-local"
+          value={end}
+          onChange={(e) => setEnd(e.target.value)}
+          style={st.input}
+        />
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as "regular" | "reduced")}
+          style={st.input}
+        >
+          <option value="regular">poprzedni: 45 h (regularny)</option>
+          <option value="reduced">poprzedni: 24 h (skrócony)</option>
+        </select>
+      </div>
+      {plan && (
+        <div style={{ display: "grid", gap: 6, marginTop: 12, fontSize: 14 }}>
+          <div
+            style={{
+              color: plan.hoursUntilLatestStart < 0 ? "#ef4444" : "#22c55e",
+              fontWeight: 700,
+            }}
+          >
+            ⏳ Najpóźniejszy start: {fmt(plan.latestStartMs)}
+            {plan.hoursUntilLatestStart >= 0
+              ? ` (pozostało ${plan.hoursUntilLatestStart.toFixed(0)} h)`
+              : " — TERMIN MINĄŁ, odpoczynek powinien już trwać!"}
+          </div>
+          {plan.mustBeRegular && (
+            <div style={{ color: "#f59e0b", fontWeight: 700 }}>
+              ⚠️ Poprzedni był skrócony — ten musi być regularny (45 h).
+            </div>
+          )}
+          <div>🛏 Wariant 45 h — koniec: {fmt(plan.regularEndMs)}</div>
+          {plan.reducedEndMs != null && plan.compensationDeadlineMs != null && (
+            <div>
+              💤 Wariant 24 h — koniec: {fmt(plan.reducedEndMs)} (rekompensata 21 h do{" "}
+              {fmt(plan.compensationDeadlineMs)})
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
 
 /** #328: import odczytu karty kierowcy (.ddd) — parser w przeglądarce. */
 function DddImportSection() {
@@ -402,6 +467,8 @@ export default function TachoPage() {
       <p style={{ color: palette.smoke, fontSize: 13 }}>
         Pomoc orientacyjna na wzór licznika VDO — wiążący jest zapis tachografu i karty kierowcy.
       </p>
+
+      <WeeklyRestPlanner />
 
       <h3 style={st.h3}>🚛 Co pokazuje tachograf — podczas jazdy</h3>
       {gallery(DRIVING_SHOTS)}
