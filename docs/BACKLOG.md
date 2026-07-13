@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.175.0 · #322 · 2026-07-13 -->
+<!-- SYNC: po v1.176.0 · #323 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -85,11 +85,11 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [x] ~~Harmonogram: alerty scalone per pojazd~~ (#315 — pulpit W1 w aplikacji; strona harmonogramu web następna) (1 wiersz = 1 auto, rozwinięcie po kliknięciu) — przy 30–50 autach lista musi się skalować.
 
 **Karta kierowcy / właściciela (start aplikacji):** *(warianty A/B/C i W1/W2 — artefakt „warianty-ui-v1", czeka na wybór)*
-- [ ] Kierowca: „Witaj, Imię Nazwisko" (bez e-maila), staż w firmie, km z Trip, litry ON+AdBlue, śr. spalanie z formularzy.
-- [ ] Właściciel: liczba pojazdów w trasie/przerwa/serwis + statystyki zysków.
+- [x] ~~Kierowca: „Witaj, Imię Nazwisko", staż, km z Trip, litry ON+AdBlue, śr. spalanie~~ (#314 — karta kierowcy wariant A)
+- [x] ~~Właściciel: liczba pojazdów w trasie/przerwa/serwis + statystyki zysków~~ (#315 — pulpit W1; #321 — pełny ekran Status floty)
 
 **Nawigacja i parytet:**
-- [ ] Menu „3 kreski" (szuflada) z kompletem zakładek; stały dostęp: Formularze, Karty paliwowe, Czat, Checklisty.
+- [x] ~~Menu „3 kreski" (szuflada) z kompletem zakładek; stały dostęp: Formularze, Karty, Czat, Checklisty~~ (#314 — układ N1: dok 5 pozycji + szuflada)
 - [x] ~~**Audyt parytetu web↔mobile** — spis wszystkich zakładek web i dodanie brakujących w aplikacji~~ (#320 — pełna tabela w [MOBILE-PLAN](MOBILE-PLAN.md) + Diety/Wypłaty/Ceny paliw w aplikacji; web-only z uzasadnieniem)
 - [x] ~~Parytet — dokończenie: harmonogram terminów (scalone per auto), status floty, faktury (odczyt) w aplikacji~~ (#321)
 
@@ -127,8 +127,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 ## 🟠 P2 — Mobile do publikacji
 - [~] **Mapa (faza M3)** — fala 1 dostarczona (#253): `@maplibre/maplibre-react-native` v11, ekran `app/map.tsx` (render + lokalizacja + POI z `@e-logistic/maps`). Fala 2: routing TIR na mapie; wymaga QA na urządzeniu (dev build — natywny moduł, nie Expo Go).
-- [ ] **`eas.projectId`** (`eas init`) — wymagany do push.
-- [ ] Finalna grafika (ikony/splash), **QA na urządzeniu**, `eas build`/`submit`.
+- [x] ~~**`eas.projectId`** (`eas init`)~~ (zrobione — push i buildy EAS działają produkcyjnie)
+- [x] ~~Finalna grafika, QA, `eas build`/`submit`~~ (#255 grafika · #306+ buildy · obie platformy w sklepach: TestFlight + testy wewnętrzne Play)
 
 ## 🟡 P3 — Jakość / spójność
 - [x] **Duplikacja:** `setupMessage` (#196) + `zodFieldErrors`/`firstZodError` (#201) wyekstrahowane do `core` — koniec kopiowanej walidacji/obsługi błędów web↔mobile.

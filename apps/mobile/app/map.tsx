@@ -22,6 +22,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { ParkingReviewCard } from "../components/ParkingReviewCard";
 import { EUROPE_CENTER, EUROPE_ZOOM, mapStyle } from "../lib/mapStyle";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
@@ -198,14 +199,14 @@ export default function MapScreen() {
       )}
 
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-      {selected ? (
+      {/* #323: parking → karta z ocenami społeczności; stacja → prosty pasek. */}
+      {selected && selected.type !== "fuel_station" ? (
+        <ParkingReviewCard poi={selected} onClose={() => setSelected(null)} />
+      ) : selected ? (
         <View style={styles.infoBar}>
-          <Text style={styles.infoIcon}>{selected.type === "fuel_station" ? "⛽" : "🅿️"}</Text>
+          <Text style={styles.infoIcon}>⛽</Text>
           <Text style={styles.infoText} numberOfLines={2}>
-            {selected.name ||
-              (selected.type === "fuel_station"
-                ? t("mobileMap.poiFuel")
-                : t("mobileMap.poiParking"))}
+            {selected.name || t("mobileMap.poiFuel")}
           </Text>
           <Pressable onPress={() => setSelected(null)} hitSlop={8}>
             <Text style={styles.infoClose}>✕</Text>

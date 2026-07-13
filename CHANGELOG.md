@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-322-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.175.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-323-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.176.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.176.0] — ⭐ Oceny parkingów TIR na mapie w aplikacji
+
+- `[#323]` ⭐ **Oceny parkingów na mapie mobile** (mobile **1.66.0**, [ParkingReviewCard](apps/mobile/components/ParkingReviewCard.tsx)) — dotknięcie parkingu 🅿️ pokazuje kartę ze średnią ★ i liczbą ocen, potwierdzonymi udogodnieniami (🚿 prysznic · 🚻 WC · 🍽 jedzenie · 🛡 ochrona) i najnowszymi komentarzami; formularz **1–5★ + udogodnienia + komentarz** zapisuje przez `upsertParkingReview` (jedna ocena na użytkownika i parking, #308) — te same dane społecznościowe co mapa w panelu web. Stacje paliw zachowują prosty pasek info. **+11 kluczy i18n ×4 języki.**
+- `[#323]` 🧹 **Porządki w backlogu** — odhaczone dostarczone pozycje (karta kierowcy #314, pulpit właściciela #315/#321, szuflada #314, `eas.projectId`, grafika/QA/buildy — obie platformy w sklepach).
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.175.0] — 🖥 Duże ekrany (iPad/macOS) + panel gotowy do Microsoft Store
 
