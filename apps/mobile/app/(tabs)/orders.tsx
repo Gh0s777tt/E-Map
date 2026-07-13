@@ -4,6 +4,7 @@
  */
 import { listMyOrders, type Order, setOrderStatus } from "@e-logistic/api";
 import type { OrderStatus } from "@e-logistic/core";
+import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
@@ -13,6 +14,7 @@ import { CargoPhotosMobile } from "../../components/CargoPhotosMobile";
 import { TrackingQrButton } from "../../components/TrackingQr";
 import { Card, ScreenTitle, Skeleton } from "../../components/ui";
 import { success, warn } from "../../lib/haptics";
+import { useT } from "../../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
 
@@ -24,23 +26,24 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   invoiced: "#a855f7",
   cancelled: palette.red,
 };
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  new: "Nowe",
-  assigned: "Przypisane",
-  in_progress: "W trasie",
-  delivered: "Dostarczone",
-  invoiced: "Zafakturowane",
-  cancelled: "Anulowane",
-};
+const STATUS_KEY = {
+  new: "m.orders.new",
+  assigned: "m.orders.assigned",
+  in_progress: "m.orders.inProgress",
+  delivered: "m.orders.delivered",
+  invoiced: "m.orders.invoiced",
+  cancelled: "m.orders.cancelled",
+} as const;
 
 type Segment = "active" | "planned" | "done";
-const SEGMENTS: { key: Segment; label: string; statuses: OrderStatus[] }[] = [
-  { key: "active", label: "Aktywne", statuses: ["in_progress"] },
-  { key: "planned", label: "Zaplanowane", statuses: ["new", "assigned"] },
-  { key: "done", label: "Zakończone", statuses: ["delivered", "invoiced", "cancelled"] },
+const SEGMENTS: { key: Segment; labelKey: MobileMessageKey; statuses: OrderStatus[] }[] = [
+  { key: "active", labelKey: "m.orders.segActive", statuses: ["in_progress"] },
+  { key: "planned", labelKey: "m.orders.segPlanned", statuses: ["new", "assigned"] },
+  { key: "done", labelKey: "m.orders.segDone", statuses: ["delivered", "invoiced", "cancelled"] },
 ];
 
 export default function OrdersScreen() {
+  const t = useT();
   const { vehicles } = useFleet();
   const [orders, setOrders] = useState<Order[]>([]);
   const [segment, setSegment] = useState<Segment>("active");
@@ -61,11 +64,11 @@ export default function OrdersScreen() {
     try {
       setOrders(await listMyOrders(getSupabase()));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać zleceń.");
+      setErr(e instanceof Error ? e.message : t("m.orders.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,11 +83,11 @@ export default function OrdersScreen() {
     try {
       await setOrderStatus(getSupabase(), o.id, status);
       success();
-      setMsg(`✅ Status: ${STATUS_LABEL[status]}`);
+      setMsg(t("m.orders.statusSet", { s: t(STATUS_KEY[status]) }));
     } catch (e) {
       warn();
       setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status: prev } : x)));
-      setMsg(e instanceof Error ? e.message : "Błąd zmiany statusu.");
+      setMsg(e instanceof Error ? e.message : t("m.orders.statusError"));
     }
   }
 
@@ -103,7 +106,7 @@ export default function OrdersScreen() {
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }
     >
-      <ScreenTitle>Zlecenia</ScreenTitle>
+      <ScreenTitle>{t("m.tab.orders")}</ScreenTitle>
 
       <View style={s.segments}>
         {SEGMENTS.map((sgm) => {
@@ -115,7 +118,7 @@ export default function OrdersScreen() {
               style={[s.segment, on && s.segmentOn]}
             >
               <Text style={[s.segmentText, on && s.segmentTextOn]}>
-                {sgm.label}
+                {t(sgm.labelKey)}
                 {counts[sgm.key] ? ` (${counts[sgm.key]})` : ""}
               </Text>
             </Pressable>
@@ -135,10 +138,10 @@ export default function OrdersScreen() {
       {!loading && !err && visible.length === 0 && (
         <Text style={s.note}>
           {segment === "active"
-            ? "Nic w trasie. Zacznij zlecenie z zakładki Zaplanowane."
+            ? t("m.orders.emptyActive")
             : segment === "planned"
-              ? "Brak zaplanowanych zleceń — spedytor jeszcze nic nie przydzielił."
-              : "Brak zakończonych zleceń."}
+              ? t("m.orders.emptyPlanned")
+              : t("m.orders.emptyDone")}
         </Text>
       )}
 
@@ -146,9 +149,9 @@ export default function OrdersScreen() {
         // #295: swipe w lewo = szybka zmiana statusu (obok przycisku na karcie)
         const next =
           o.status === "new" || o.status === "assigned"
-            ? ({ to: "in_progress", label: "▶️ W trasę" } as const)
+            ? ({ to: "in_progress", label: t("m.orders.swipeStart") } as const)
             : o.status === "in_progress"
-              ? ({ to: "delivered", label: "✅ Dostarczone" } as const)
+              ? ({ to: "delivered", label: t("m.orders.markDelivered") } as const)
               : null;
         const card = (
           <Card style={s.orderCard}>
@@ -157,7 +160,7 @@ export default function OrdersScreen() {
                 {o.origin || "?"} → {o.destination || "?"}
               </Text>
               <View style={[s.badge, { backgroundColor: STATUS_COLOR[o.status] }]}>
-                <Text style={s.badgeText}>{STATUS_LABEL[o.status]}</Text>
+                <Text style={s.badgeText}>{t(STATUS_KEY[o.status])}</Text>
               </View>
             </View>
             <Text style={s.meta} numberOfLines={2}>
@@ -176,7 +179,7 @@ export default function OrdersScreen() {
             {next && (
               <Pressable style={s.btn} onPress={() => advance(o, next.to)}>
                 <Text style={s.btnText}>
-                  {next.to === "in_progress" ? "▶️ Rozpocznij trasę" : "✅ Dostarczone"}
+                  {next.to === "in_progress" ? t("m.orders.start") : t("m.orders.markDelivered")}
                 </Text>
               </Pressable>
             )}
@@ -207,7 +210,7 @@ export default function OrdersScreen() {
         );
       })}
       {visible.length > 0 && segment !== "done" && (
-        <Text style={s.note}>Podpowiedź: przesuń kartę w lewo, aby szybko zmienić status.</Text>
+        <Text style={s.note}>{t("m.orders.swipeHint")}</Text>
       )}
     </ScrollView>
   );

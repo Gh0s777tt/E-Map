@@ -9,6 +9,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { success, warn } from "../lib/haptics";
+import { useT } from "../lib/i18n";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { useFleet } from "../lib/useFleet";
 import { usePermission } from "../lib/usePermission";
@@ -27,6 +28,7 @@ const STATUS_ICON: Record<OutboxItem["status"], string> = {
  */
 export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   const [kind, setKind] = useState<"fuel" | "adblue">(initialKind);
+  const t = useT();
   const { vehicles, loading } = useFleet();
   const perm = usePermission("forms"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   function repeatLast() {
     const last = items[0];
     if (!last) {
-      setMsg("Brak wcześniejszych wpisów.");
+      setMsg(t("m.fuel.repeatNone"));
       return;
     }
     const input = last.input as FuelLogInput;
@@ -64,7 +66,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       setPayment(input.paymentMethod);
     }
     setIsFull(input.isFull !== false);
-    setMsg("Wczytano dane z ostatniego wpisu — uzupełnij licznik i litry.");
+    setMsg(t("m.fuel.repeatLoaded"));
   }
 
   /** #299: skan paragonu stacji — OCR na urządzeniu (ML Kit) uzupełnia litry.
@@ -81,18 +83,18 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       if (parsed.liters != null && !liters.trim()) {
         setLiters(String(parsed.liters));
         success();
-        setMsg(`✨ Odczytano z paragonu: ${parsed.liters} l — sprawdź i uzupełnij licznik.`);
+        setMsg(t("m.fuel.scanOk", { l: parsed.liters }));
       } else {
         warn();
         setMsg(
           parsed.liters != null
-            ? `Odczytano ${parsed.liters} l, ale pole litrów jest już wypełnione — nie nadpisuję.`
-            : "Nie udało się odczytać litrów — wpisz ręcznie.",
+            ? t("m.fuel.scanFilled", { l: parsed.liters })
+            : t("m.fuel.scanFail"),
         );
       }
     } catch {
       warn();
-      setMsg("Skan niedostępny na tym urządzeniu — wpisz litry ręcznie.");
+      setMsg(t("m.fuel.scanUnavailable"));
     }
   }
 
@@ -100,7 +102,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
     if (!vehicleId) {
-      setMsg("Wybierz pojazd.");
+      setMsg(t("m.fuel.pickVehicle"));
       return;
     }
     const parsed = fuelLogSchema.safeParse({
@@ -121,11 +123,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     try {
       const item = await enqueue(kind, parsed.data, new Date().toISOString());
       success();
-      setMsg(
-        item.status === "synced"
-          ? "✅ Zapisano i zsynchronizowano."
-          : "📥 Zapisano lokalnie — synchronizacja w tle.",
-      );
+      setMsg(item.status === "synced" ? t("m.fuel.savedSynced") : t("m.fuel.savedLocal"));
       setOdometer("");
       setLiters("");
       await refresh();
@@ -157,7 +155,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         ))}
       </View>
 
-      <Text style={styles.label}>Pojazd</Text>
+      <Text style={styles.label}>{t("m.fuel.vehicle")}</Text>
       <VehiclePicker
         vehicles={vehicles}
         loading={loading}
@@ -171,13 +169,13 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         disabled={items.length === 0}
       >
         <Text style={styles.repeatText}>
-          {items.length > 0 ? "↺ Powtórz ostatni" : "↺ Powtórz ostatni — po pierwszym wpisie"}
+          {items.length > 0 ? t("m.fuel.repeatLast") : t("m.fuel.repeatFirst")}
         </Text>
       </Pressable>
 
       {/* #299: OCR — aparat czyta litry z paragonu (obok pola ręcznego) */}
       <Pressable style={styles.repeatBtn} onPress={scanReceipt}>
-        <Text style={styles.repeatText}>📷 Skanuj paragon (litry same się wpiszą)</Text>
+        <Text style={styles.repeatText}>📷 {t("m.fuel.scan")}</Text>
       </Pressable>
 
       <TextInput
@@ -185,7 +183,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         value={liters}
         onChangeText={setLiters}
         keyboardType="numeric"
-        placeholder="Ilość litrów"
+        placeholder={t("m.fuel.liters")}
         placeholderTextColor={palette.smoke}
       />
       <TextInput
@@ -193,23 +191,23 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         value={odometer}
         onChangeText={setOdometer}
         keyboardType="numeric"
-        placeholder="Stan licznika (km)"
+        placeholder={t("m.fuel.odometer")}
         placeholderTextColor={palette.smoke}
       />
 
       <Text style={styles.label}>
-        Lokalizacja <Text style={styles.accent}>▾</Text>
+        {t("m.fuel.location")} <Text style={styles.accent}>▾</Text>
       </Text>
       <TextInput
         style={styles.input}
         value={country}
         onChangeText={setCountry}
-        placeholder="Kraj stacji, np. DE"
+        placeholder={t("m.fuel.country")}
         placeholderTextColor={palette.smoke}
         autoCapitalize="characters"
       />
 
-      <Text style={styles.label}>Płatność</Text>
+      <Text style={styles.label}>{t("m.fuel.payment")}</Text>
       <View style={styles.row}>
         {(["cash", "card"] as const).map((m) => (
           <Pressable
@@ -218,7 +216,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
             onPress={() => setPayment(m)}
           >
             <Text style={payment === m ? styles.chipTextActive : styles.chipText}>
-              {m === "card" ? "💳 Karta flotowa" : "💵 Gotówka"}
+              {m === "card" ? t("m.fuel.card") : t("m.fuel.cash")}
             </Text>
           </Pressable>
         ))}
@@ -229,18 +227,20 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
           {isFull && <Text style={styles.checkboxTick}>✓</Text>}
         </View>
         <Text style={styles.fullLabel}>
-          {kind === "fuel"
-            ? "Zatankowano do pełna (liczenie spalania)"
-            : "Dolano do pełna (liczenie zużycia AdBlue)"}
+          {kind === "fuel" ? t("m.fuel.fullFuel") : t("m.fuel.fullAdblue")}
         </Text>
       </Pressable>
 
       {perm === "view" ? (
-        <Text style={styles.viewOnly}>👁 Masz uprawnienia tylko do podglądu formularzy.</Text>
+        <Text style={styles.viewOnly}>{t("m.fuel.viewOnly")}</Text>
       ) : (
         <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
           <Text style={styles.btnText}>
-            {busy ? "Zapisuję…" : kind === "fuel" ? "Zapisz Tankowanie" : "Zapisz AdBlue"}
+            {busy
+              ? t("m.fuel.saving")
+              : kind === "fuel"
+                ? t("m.fuel.saveFuel")
+                : t("m.fuel.saveAdblue")}
           </Text>
         </Pressable>
       )}
@@ -249,8 +249,9 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       {items.length > 0 && (
         <View style={styles.history}>
           <Text style={styles.historyHead}>
-            Historia ostatnich {Math.min(items.length, 3)}{" "}
-            {kind === "fuel" ? "tankowań" : "wpisów AdBlue"}
+            {t(kind === "fuel" ? "m.fuel.historyFuel" : "m.fuel.historyAdblue", {
+              n: Math.min(items.length, 3),
+            })}
           </Text>
           {items.slice(0, 3).map((it, i, arr) => {
             const input = it.input as FuelLogInput;
@@ -268,7 +269,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
           })}
           {items.some((it) => it.status === "error") && (
             <Text style={styles.histError}>
-              ⚠️ {items.find((it) => it.status === "error")?.error ?? "Błąd synchronizacji"}
+              ⚠️ {items.find((it) => it.status === "error")?.error ?? t("m.fuel.syncError")}
             </Text>
           )}
         </View>

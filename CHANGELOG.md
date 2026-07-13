@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-301-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.154.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-302-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.155.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.155.0] — 🌍 i18n fala 2: formularz paliwa i zlecenia w 4 językach
+
+- `[#302]` 🌍 **Formularz Paliwo/AdBlue po EN/DE/UK** (mobile **1.51.0**) — wszystkie etykiety, komunikaty OCR, „Powtórz ostatni", płatność, „do pełna", przyciski zapisu i historia wpisów przez katalog mobilny; parametry `{l}`/`{n}` w treściach ([LiquidForm](apps/mobile/components/LiquidForm.tsx)).
+- `[#302]` 🌍 **Lista zleceń po EN/DE/UK** — segmenty, statusy (Nowe→W trasie→Dostarczone…), puste stany, przyciski i akcja swipe, podpowiedź gestu ([orders](<apps/mobile/app/(tabs)/orders.tsx>)).
+- `[#302]` ➕ ~50 nowych kluczy ×4 języki w [`mobile.ts`](packages/i18n/src/mobile.ts) — parytet pilnowany testem. Pozostały fale 3: Więcej, czat, wydatki, logowanie.
+- Build iOS **1.51.0**. **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.154.0] — 📬 Raport tygodniowy jako PDF na e-mail właściciela
 
