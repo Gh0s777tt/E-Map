@@ -144,6 +144,22 @@ const pl = {
   "m.exp.recent": "Ostatnie wydatki",
   "m.exp.empty": "Brak wydatków — dodaj pierwszy powyżej.",
   "m.exp.delete": "Usuń",
+  "m.login.oauthDisabled":
+    "Ten sposób logowania nie jest jeszcze włączony przez administratora firmy.",
+  "m.login.missing": "Podaj e-mail i hasło.",
+  "m.login.failed": "Nie udało się zalogować.",
+  "m.login.appleFailed": "Logowanie Apple nie powiodło się.",
+  "m.login.cancelled": "Logowanie przerwane — brak kodu autoryzacji.",
+  "m.login.oauthFailed": "Logowanie nie powiodło się.",
+  "m.login.email": "E-mail",
+  "m.login.password": "Hasło",
+  "m.login.signIn": "Zaloguj się",
+  "m.login.or": "albo",
+  "m.login.viaApple": " Zaloguj się przez Apple",
+  "m.login.viaGoogle": "🟢 Zaloguj się przez Google",
+  "m.login.viaMicrosoft": "🟦 Zaloguj się przez Microsoft",
+  "m.login.passkeyNote":
+    "🔑 Passkey i 2FA skonfigurujesz w panelu web — logowanie hasłem i kontami działa niezależnie.",
 } as const;
 
 export type MobileMessageKey = keyof typeof pl;
@@ -287,6 +303,21 @@ const en: Record<MobileMessageKey, string> = {
   "m.exp.recent": "Recent expenses",
   "m.exp.empty": "No expenses — add your first above.",
   "m.exp.delete": "Delete",
+  "m.login.oauthDisabled": "This sign-in method isn't enabled by your company admin yet.",
+  "m.login.missing": "Enter your e-mail and password.",
+  "m.login.failed": "Sign-in failed.",
+  "m.login.appleFailed": "Apple sign-in failed.",
+  "m.login.cancelled": "Sign-in interrupted — no authorization code.",
+  "m.login.oauthFailed": "Sign-in failed.",
+  "m.login.email": "E-mail",
+  "m.login.password": "Password",
+  "m.login.signIn": "Sign in",
+  "m.login.or": "or",
+  "m.login.viaApple": " Sign in with Apple",
+  "m.login.viaGoogle": "🟢 Sign in with Google",
+  "m.login.viaMicrosoft": "🟦 Sign in with Microsoft",
+  "m.login.passkeyNote":
+    "🔑 Set up passkeys and 2FA in the web panel — password and account sign-in work independently.",
 };
 
 const de: Record<MobileMessageKey, string> = {
@@ -430,6 +461,21 @@ const de: Record<MobileMessageKey, string> = {
   "m.exp.recent": "Letzte Ausgaben",
   "m.exp.empty": "Keine Ausgaben — füge oben die erste hinzu.",
   "m.exp.delete": "Löschen",
+  "m.login.oauthDisabled": "Diese Anmeldemethode wurde vom Firmenadmin noch nicht aktiviert.",
+  "m.login.missing": "E-Mail und Passwort eingeben.",
+  "m.login.failed": "Anmeldung fehlgeschlagen.",
+  "m.login.appleFailed": "Apple-Anmeldung fehlgeschlagen.",
+  "m.login.cancelled": "Anmeldung abgebrochen — kein Autorisierungscode.",
+  "m.login.oauthFailed": "Anmeldung fehlgeschlagen.",
+  "m.login.email": "E-Mail",
+  "m.login.password": "Passwort",
+  "m.login.signIn": "Anmelden",
+  "m.login.or": "oder",
+  "m.login.viaApple": " Mit Apple anmelden",
+  "m.login.viaGoogle": "🟢 Mit Google anmelden",
+  "m.login.viaMicrosoft": "🟦 Mit Microsoft anmelden",
+  "m.login.passkeyNote":
+    "🔑 Passkeys und 2FA richtest du im Web-Panel ein — Passwort- und Konto-Anmeldung funktionieren unabhängig.",
 };
 
 const uk: Record<MobileMessageKey, string> = {
@@ -571,6 +617,21 @@ const uk: Record<MobileMessageKey, string> = {
   "m.exp.recent": "Останні витрати",
   "m.exp.empty": "Немає витрат — додайте першу вище.",
   "m.exp.delete": "Видалити",
+  "m.login.oauthDisabled": "Цей спосіб входу ще не увімкнено адміністратором фірми.",
+  "m.login.missing": "Введіть e-mail і пароль.",
+  "m.login.failed": "Не вдалося увійти.",
+  "m.login.appleFailed": "Вхід через Apple не вдався.",
+  "m.login.cancelled": "Вхід перервано — немає коду авторизації.",
+  "m.login.oauthFailed": "Вхід не вдався.",
+  "m.login.email": "E-mail",
+  "m.login.password": "Пароль",
+  "m.login.signIn": "Увійти",
+  "m.login.or": "або",
+  "m.login.viaApple": " Увійти через Apple",
+  "m.login.viaGoogle": "🟢 Увійти через Google",
+  "m.login.viaMicrosoft": "🟦 Увійти через Microsoft",
+  "m.login.passkeyNote":
+    "🔑 Passkey і 2FA налаштуєте в веб-панелі — вхід паролем і акаунтами працює незалежно.",
 };
 
 export const MOBILE_LOCALES = ["pl", "en", "de", "uk"] as const;

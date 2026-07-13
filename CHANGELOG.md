@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-303-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.156.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-304-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.157.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.157.0] — 🌍 i18n fala 4: ekran logowania w 4 językach
+
+- `[#304]` 🌍 **Logowanie po EN/DE/UK** (mobile **1.53.0**) — pola, przycisk, separator „albo", przyciski Apple/Google/Microsoft, notka o passkey oraz wszystkie komunikaty błędów (w tym „dostawca wyłączony przez administratora") ([login](apps/mobile/app/login.tsx); +14 kluczy ×4 w [mobile.ts](packages/i18n/src/mobile.ts), parytet testowany).
+- ⚠️ **Build iOS wstrzymany** — wyczerpany miesięczny limit darmowych buildów EAS (reset 1 sierpnia). Fale 3–4 i18n (Więcej, wydatki, logowanie) trafią do TestFlight pierwszym buildem po resecie/upgrade planu; w TestFlight aktualnie **1.51.0**. Do przetłumaczenia został czat (fala 5).
+- **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.156.0] — 🌍 i18n fala 3: menu Więcej i rejestr wydatków w 4 językach
 

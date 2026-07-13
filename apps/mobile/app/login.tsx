@@ -18,20 +18,24 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const REDIRECT = "elogistic://auth";
 
+let DISABLED_TEXT = "Ten sposób logowania nie jest jeszcze włączony przez administratora firmy.";
 function friendlyOAuthError(message: string): string {
   if (/not enabled|disabled|unsupported provider/i.test(message)) {
-    return "Ten sposób logowania nie jest jeszcze włączony przez administratora firmy.";
+    return DISABLED_TEXT;
   }
   return message;
 }
 
 export default function Login() {
+  const t = useT();
+  DISABLED_TEXT = t("m.login.oauthDisabled");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<null | "password" | "apple" | "google" | "azure">(null);
@@ -49,7 +53,7 @@ export default function Login() {
   async function signIn() {
     setError(null);
     if (!email.trim() || !password) {
-      setError("Podaj e-mail i hasło.");
+      setError(t("m.login.missing"));
       return;
     }
     setBusy("password");
@@ -61,7 +65,7 @@ export default function Login() {
       if (e) setError(e.message);
       // Sukces → AuthProvider wykryje sesję i przekieruje na pulpit.
     } catch {
-      setError("Nie udało się zalogować.");
+      setError(t("m.login.failed"));
     } finally {
       setBusy(null);
     }
@@ -88,7 +92,7 @@ export default function Login() {
       // ERR_REQUEST_CANCELED = użytkownik zamknął arkusz — bez komunikatu.
       const msg = e instanceof Error ? e.message : "";
       if (!/canceled|cancelled/i.test(msg)) {
-        setError(friendlyOAuthError(msg || "Logowanie Apple nie powiodło się."));
+        setError(friendlyOAuthError(msg || t("m.login.appleFailed")));
       }
     } finally {
       setBusy(null);
@@ -118,13 +122,13 @@ export default function Login() {
       if (res.type !== "success" || !res.url) return; // anulowane
       const code = new URL(res.url).searchParams.get("code");
       if (!code) {
-        setError("Logowanie przerwane — brak kodu autoryzacji.");
+        setError(t("m.login.cancelled"));
         return;
       }
       const { error: ex } = await sb.auth.exchangeCodeForSession(code);
       if (ex) setError(friendlyOAuthError(ex.message));
     } catch (e) {
-      setError(friendlyOAuthError(e instanceof Error ? e.message : "Logowanie nie powiodło się."));
+      setError(friendlyOAuthError(e instanceof Error ? e.message : t("m.login.oauthFailed")));
     } finally {
       setBusy(null);
     }
@@ -147,7 +151,7 @@ export default function Login() {
         <View style={styles.form}>
           <TextInput
             style={styles.input}
-            placeholder="E-mail"
+            placeholder={t("m.login.email")}
             placeholderTextColor={palette.smoke}
             autoCapitalize="none"
             keyboardType="email-address"
@@ -157,7 +161,7 @@ export default function Login() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Hasło"
+            placeholder={t("m.login.password")}
             placeholderTextColor={palette.smoke}
             secureTextEntry
             value={password}
@@ -172,13 +176,13 @@ export default function Login() {
             {busy === "password" ? (
               <ActivityIndicator color={palette.white} />
             ) : (
-              <Text style={styles.ctaText}>Zaloguj się</Text>
+              <Text style={styles.ctaText}>{t("m.login.signIn")}</Text>
             )}
           </Pressable>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>albo</Text>
+            <Text style={styles.dividerText}>{t("m.login.or")}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -191,7 +195,7 @@ export default function Login() {
               {busy === "apple" ? (
                 <ActivityIndicator color={palette.black} />
               ) : (
-                <Text style={styles.providerAppleText}> Zaloguj się przez Apple</Text>
+                <Text style={styles.providerAppleText}>{t("m.login.viaApple")}</Text>
               )}
             </Pressable>
           )}
@@ -203,7 +207,7 @@ export default function Login() {
             {busy === "google" ? (
               <ActivityIndicator color={palette.white} />
             ) : (
-              <Text style={styles.providerText}>🟢 Zaloguj się przez Google</Text>
+              <Text style={styles.providerText}>{t("m.login.viaGoogle")}</Text>
             )}
           </Pressable>
           <Pressable
@@ -214,14 +218,11 @@ export default function Login() {
             {busy === "azure" ? (
               <ActivityIndicator color={palette.white} />
             ) : (
-              <Text style={styles.providerText}>🟦 Zaloguj się przez Microsoft</Text>
+              <Text style={styles.providerText}>{t("m.login.viaMicrosoft")}</Text>
             )}
           </Pressable>
 
-          <Text style={styles.passkeyNote}>
-            🔑 Passkey i 2FA skonfigurujesz w panelu web — logowanie hasłem i kontami działa
-            niezależnie.
-          </Text>
+          <Text style={styles.passkeyNote}>{t("m.login.passkeyNote")}</Text>
         </View>
       )}
     </ScrollView>
