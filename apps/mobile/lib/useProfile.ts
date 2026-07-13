@@ -13,6 +13,9 @@ export interface Profile {
   role: Role | null;
   companyId: string | null;
   companyName: string | null;
+  /** #318: zdjęcie profilowe i telefon kontaktowy z user_metadata. */
+  avatarUrl: string | null;
+  phone: string | null;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -29,7 +32,10 @@ export function roleLabel(role: Role | null): string {
 export function useProfile(): Profile {
   const { session } = useAuth();
   const email = session?.user?.email ?? null;
-  const [rest, setRest] = useState<Omit<Profile, "email">>({
+  const meta = (session?.user?.user_metadata ?? {}) as Record<string, unknown>;
+  const avatarUrl = typeof meta.avatar_url === "string" ? meta.avatar_url : null;
+  const phone = typeof meta.phone_contact === "string" ? meta.phone_contact : null;
+  const [rest, setRest] = useState<Omit<Profile, "email" | "avatarUrl" | "phone">>({
     role: null,
     companyId: null,
     companyName: null,
@@ -55,7 +61,7 @@ export function useProfile(): Profile {
     };
   }, [session]);
 
-  return { email, ...rest };
+  return { email, avatarUrl, phone, ...rest };
 }
 
 /** Inicjał do awatara ("j" z jan@…). */

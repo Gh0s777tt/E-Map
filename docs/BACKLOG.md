@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.170.0 · #317 · 2026-07-13 -->
+<!-- SYNC: po v1.171.0 · #318 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -93,7 +93,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] **Audyt parytetu web↔mobile** — spis wszystkich zakładek web i dodanie brakujących w aplikacji (100% funkcji).
 
 **Profil i dane kierowcy:**
-- [ ] Samodzielna edycja: e-mail / telefon / hasło + **avatar** (upload, Storage).
+- [x] ~~Samodzielna edycja: e-mail / telefon / hasło + avatar~~ (#318)
 - [ ] Zakładka kierowcy: **ważność paszportu i dowodu**; uprawnienia (np. UDT) z polem **nr dokumentu + data ważności**.
 
 **Pozostałe:**

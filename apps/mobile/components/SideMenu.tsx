@@ -108,7 +108,7 @@ export function SideMenu() {
         ]}
       >
         <View style={s.user}>
-          <Avatar initial={initialOf(profile.email)} size={40} />
+          <Avatar initial={initialOf(profile.email)} size={40} uri={profile.avatarUrl} />
           <View style={{ flex: 1 }}>
             <Text style={s.userName} numberOfLines={1}>
               {profile.email ?? "—"}
@@ -134,6 +134,10 @@ export function SideMenu() {
             </View>
           ))}
           <Text style={s.group}>{t("m.drawer.account")}</Text>
+          <Pressable style={s.item} onPress={() => go("/profile")}>
+            <Text style={s.itemGlyph}>👤</Text>
+            <Text style={s.itemText}>{t("m.profile.title")}</Text>
+          </Pressable>
           <Pressable style={s.item} onPress={() => go("/settings")}>
             <Text style={s.itemGlyph}>⚙️</Text>
             <Text style={s.itemText}>{t("m.screen.settings")}</Text>

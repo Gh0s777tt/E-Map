@@ -1,5 +1,6 @@
 /** #314 (N1): nagłówek aplikacji — „3 kreski" (szuflada), logo, avatar. */
 import { palette } from "@e-logistic/ui";
+import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDrawer } from "../lib/drawer";
@@ -10,6 +11,7 @@ export function AppHeader({ subtitle }: { subtitle?: string | null }) {
   const { openDrawer } = useDrawer();
   const profile = useProfile();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   return (
     <View style={[s.bar, { paddingTop: insets.top + 6 }]}>
       <Pressable
@@ -33,7 +35,9 @@ export function AppHeader({ subtitle }: { subtitle?: string | null }) {
           </Text>
         ) : null}
       </View>
-      <Avatar initial={initialOf(profile.email)} size={30} />
+      <Pressable onPress={() => router.push("/profile")} hitSlop={8} accessibilityLabel="Profil">
+        <Avatar initial={initialOf(profile.email)} size={30} uri={profile.avatarUrl} />
+      </Pressable>
     </View>
   );
 }

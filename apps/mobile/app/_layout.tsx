@@ -61,6 +61,7 @@ function RootNav() {
       <Stack.Screen name="defects" options={{ title: t("m.screen.defects") }} />
       <Stack.Screen name="stats" options={{ title: t("m.screen.stats") }} />
       <Stack.Screen name="settings" options={{ title: t("m.screen.settings") }} />
+      <Stack.Screen name="profile" options={{ title: t("m.profile.title") }} />
       <Stack.Screen name="my-orders" options={{ headerShown: false }} />
     </Stack>
   );

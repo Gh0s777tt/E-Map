@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-317-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.170.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-318-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.171.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.171.0] — 👤 Mój profil: avatar, telefon, e-mail i hasło w rękach kierowcy
+
+- `[#318]` 👤 **Ekran „Mój profil"** (mobile **1.62.0**, [profile](apps/mobile/app/profile.tsx), wejście z szuflady i z avatara w nagłówku): **avatar** (wybór z galerii, kadrowanie 1:1, upload do nowego publicznego bucketu [avatars](supabase/migrations/0073_avatars_bucket.sql) — zapis wyłącznie we własnym folderze `{uid}/…`, URL w `user_metadata`), **telefon kontaktowy**, **zmiana e-maila** (link potwierdzający Supabase na nowy adres) i **zmiana hasła** (min. 8 znaków, powtórzenie).
+- `[#318]` 🖼 `Avatar` w UI aplikacji renderuje zdjęcie wszędzie (nagłówek, szuflada) z fallbackiem na inicjał; warstwa [profile.ts](packages/api/src/data/profile.ts) w `@e-logistic/api` wspólna dla web i mobile; +21 kluczy ×4 języki.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.170.0] — 🔧 Feedback właściciela, fala 2: przeładunek w Trasie, miejscowość w Trip, pomijalny kreator
 

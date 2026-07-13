@@ -5,7 +5,7 @@
  */
 import { palette } from "@e-logistic/ui";
 import { type ReactNode, useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Animated, Image, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { tap } from "../lib/haptics";
 
 /** Owija onPress lekkim kliknięciem haptycznym. */
@@ -42,7 +42,25 @@ export function Chip({ label, color }: { label: string; color: string }) {
 }
 
 /** Okrągły awatar z inicjałem. */
-export function Avatar({ initial, size = 52 }: { initial: string; size?: number }) {
+export function Avatar({
+  initial,
+  size = 52,
+  uri,
+}: {
+  initial: string;
+  size?: number;
+  /** #318: zdjęcie profilowe — gdy brak/pusty, fallback na inicjał. */
+  uri?: string | null;
+}) {
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={[ui.avatar, { width: size, height: size, borderRadius: size / 2 }]}
+        accessibilityLabel="Awatar"
+      />
+    );
+  }
   return (
     <View
       style={[ui.avatar, { width: size, height: size, borderRadius: size / 2 }]}
