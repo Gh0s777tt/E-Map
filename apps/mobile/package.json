@@ -1,6 +1,6 @@
 {
   "name": "@e-logistic/mobile",
-  "version": "1.56.0",
+  "version": "1.57.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -18,7 +18,9 @@
     "@e-logistic/maps": "workspace:*",
     "@e-logistic/ui": "workspace:*",
     "@expo/metro-runtime": "~56.0.16",
+    "@journeyapps/react-native-quick-sqlite": "^2.5.2",
     "@maplibre/maplibre-react-native": "^11.3.6",
+    "@powersync/react-native": "^1.35.9",
     "@react-native-async-storage/async-storage": "^2.1.0",
     "@react-native-ml-kit/text-recognition": "^2.0.0",
     "@sentry/react-native": "~7.11.0",

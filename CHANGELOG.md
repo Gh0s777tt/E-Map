@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-310-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.163.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-311-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.164.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.164.0] — 🔁 PowerSync — prawdziwy offline-sync (fala 1, stack docelowy M5)
+
+- `[#311]` ☁️ **Instancja PowerSync Cloud skonfigurowana end-to-end** (projekt „E-Logistic", Prod EU): dedykowana rola replikacyjna `powersync_role` (BYPASSRLS, SELECT; hasło wygenerowane, nie jest żadnym hasłem właściciela), publikacja `powersync` (fuel_logs/adblue_logs/orders/driver_expenses), SSL verify-full z CA Supabase, **4 Sync Streams per kierowca** (`auth.user_id()`; izolacja danych na poziomie strumieni), auth tokenami Supabase. Walidacja strumieni: ✓ bez ostrzeżeń.
+- `[#311]` 📱 **SDK w aplikacji** (mobile **1.57.0**, `@powersync/react-native` + quick-sqlite): lokalna baza SQLite z lustrzanym schematem, connector z tokenem sesji ([lib/powersync.ts](apps/mobile/lib/powersync.ts)). **Fala 1 = odczyt/hydracja + status**; zapisy nadal outboxem (upload celowo no-op — zero ryzyka podwójnych zapisów). Bez env `EXPO_PUBLIC_POWERSYNC_URL` całość jest wyłączona.
+- `[#311]` ⚙️ **Ustawienia → „Synchronizacja offline"**: status połączenia, czas ostatniej synchronizacji i licznik wierszy lokalnie (odświeżanie co 5 s).
+- Kolejne fale: ekrany czytające z lokalnego SQLite (listy działają bez zasięgu od razu) i migracja zapisów z outboxu na kolejkę CRUD PowerSync.
+- Build iOS **1.57.0** (nowy moduł natywny quick-sqlite). **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.163.0] — ⚡ TanStack Query w panelu (stack docelowy — fala 1)
 

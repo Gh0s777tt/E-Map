@@ -3,11 +3,12 @@
 import { MOBILE_LOCALES, type MobileLocale } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Constants from "expo-constants";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
 import { Card, GhostButton, PrimaryButton, SectionTitle } from "../components/ui";
 import { type LocalePref, useLocale } from "../lib/i18n";
+import { type PowerSyncStatusInfo, powersyncConfigured, powersyncStatus } from "../lib/powersync";
 import { registerForPush } from "../lib/push";
 
 const LOCALE_LABEL: Record<MobileLocale, string> = {
@@ -21,6 +22,18 @@ export default function SettingsScreen() {
   const { session, signOut } = useAuth();
   const { pref, setPref, t } = useLocale();
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  // #311: status PowerSync (offline sync) — tylko gdy skonfigurowany
+  const [ps, setPs] = useState<PowerSyncStatusInfo | null>(null);
+  useEffect(() => {
+    if (!powersyncConfigured()) return;
+    const tick = () =>
+      powersyncStatus()
+        .then(setPs)
+        .catch(() => {});
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => clearInterval(id);
+  }, []);
   const version = Constants.expoConfig?.version ?? "—";
 
   async function enablePush() {
@@ -83,6 +96,30 @@ export default function SettingsScreen() {
           })}
         </View>
       </Card>
+
+      {powersyncConfigured() && (
+        <>
+          <SectionTitle>Synchronizacja offline</SectionTitle>
+          <Card style={{ gap: 8 }}>
+            <View style={s.kv}>
+              <Text style={s.k}>PowerSync</Text>
+              <Text style={[s.v, { color: ps?.connected ? palette.success : palette.warning }]}>
+                {ps ? (ps.connected ? "● połączony" : "○ łączenie…") : "—"}
+              </Text>
+            </View>
+            <View style={s.kv}>
+              <Text style={s.k}>Ostatnia synchronizacja</Text>
+              <Text style={s.v}>
+                {ps?.lastSyncedAt ? ps.lastSyncedAt.slice(0, 16).replace("T", " ") : "—"}
+              </Text>
+            </View>
+            <View style={s.kv}>
+              <Text style={s.k}>Wiersze lokalnie</Text>
+              <Text style={s.v}>{ps?.rows ?? "—"}</Text>
+            </View>
+          </Card>
+        </>
+      )}
 
       <SectionTitle>Aplikacja</SectionTitle>
       <Card style={{ gap: 8 }}>
