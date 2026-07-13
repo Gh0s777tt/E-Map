@@ -60,6 +60,7 @@ function RootNav() {
       <Stack.Screen name="per-diem" options={{ title: t("m.screen.perDiem") }} />
       <Stack.Screen name="payouts" options={{ title: t("m.screen.payouts") }} />
       <Stack.Screen name="fuel-prices" options={{ title: t("m.screen.fuelPrices") }} />
+      <Stack.Screen name="tacho" options={{ title: t("m.screen.tacho") }} />
       <Stack.Screen name="schedule" options={{ title: t("m.screen.schedule") }} />
       <Stack.Screen name="fleet-status" options={{ title: t("m.screen.fleetStatus") }} />
       <Stack.Screen name="invoices" options={{ title: t("m.screen.invoices") }} />

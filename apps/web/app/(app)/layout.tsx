@@ -101,6 +101,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(has("documents") ? [item("/documents", t("nav.documents"), "folder")] : []),
         ...(has("reports") ? [item("/reports", t("nav.reports"), "fileText")] : []),
         ...(has("checklists") ? [item("/checklists", t("nav.checklists"), "clipboard")] : []),
+        item("/tacho", t("nav.tacho"), "clock"),
       ],
     },
     {

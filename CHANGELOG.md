@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-326-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.179.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-327-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.180.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.180.0] — 🕓 Tacho 2.0: poradnik z realnych zdjęć, rozporządzenie 561/2006 i Licznik 561
+
+- `[#327]` 📜 **Rozporządzenie (WE) 561/2006 zawsze pod ręką** — pełny skonsolidowany tekst PL jako PDF w aplikacji i panelu (przycisk na górze zakładki Tacho; plik w `public/tacho/`) — do wglądu w każdej chwili, także na kontroli.
+- `[#327]` 📸 **Poradnik „co pokazuje tachograf"** — 9 realnych zdjęć wyświetlacza VDO (3 z jazdy, 6 z postoju) wyciętych z materiałów właściciela, wykadrowanych do obszaru wyświetlacza, wyostrzonych i opisanych: ekran główny, czas UTC, licznik do przerwy, cykl 4 h 30, kredyty 9 h/10 h, limity doby i tygodnia, odpoczynki.
+- `[#327]` 🧮 **Licznik 561** ([aetr.ts](packages/core/src/aetr.ts), **+9 testów**) — interaktywny kalkulator jak licznik VDO: do przerwy (45/30 po 15), pozostała jazda w dobie (9 h / 10 h z kredytem ×2), tydzień 56 h, dwutydzień 90 h, skrócone odpoczynki 9 h ×3, z kolorową sygnalizacją i alertami przekroczeń — w aplikacji ([tacho](apps/mobile/app/tacho.tsx)) i panelu ([/tacho](apps/web/app/(app)/tacho/page.tsx)).
+- `[#327]` ✍️ **Wpis manualny krok po kroku** — własne opracowanie 7 kroków (karta → wpis TAK → aktywności → kraj rozpoczęcia) w PL/EN/DE/UK; **+42 klucze i18n ×4**. Zakładka „Tacho" w szufladzie aplikacji i sidebarze panelu, uzupełnia automat czasu pracy z checklisty (#277).
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓ · testy core ✓.
 
 ## [1.179.0] — 🧾 KSeF, fala 1: e-faktura FA(3) jako XML z każdej faktury
 

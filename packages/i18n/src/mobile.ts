@@ -155,6 +155,65 @@ const pl = {
   "m.card.tenure": "staż",
   "m.card.years": "lata",
   "m.card.months": "mies.",
+  "m.screen.tacho": "Tacho",
+  "m.tacho.counter": "Licznik 561",
+  "m.tacho.counterHint":
+    "Pomoc orientacyjna na wzór licznika VDO — wiążący jest zapis tachografu i karty kierowcy.",
+  "m.tacho.inContinuous": "Jazda ciągła od przerwy",
+  "m.tacho.inBreakTaken": "Wykorzystana część przerwy",
+  "m.tacho.inDaily": "Jazda w tej dobie",
+  "m.tacho.inWeekly": "Jazda w tym tygodniu",
+  "m.tacho.inPrevWeek": "Jazda w zeszłym tygodniu",
+  "m.tacho.inExtUsed": "Wykorzystane jazdy 10 h",
+  "m.tacho.inRedUsed": "Wykorzystane odpoczynki 9 h",
+  "m.tacho.toBreak": "Do przerwy",
+  "m.tacho.reqBreak": "Wymagana przerwa",
+  "m.tacho.dailyLeft": "Dziś zostało (9 h)",
+  "m.tacho.dailyLeftExt": "Z wydłużeniem (10 h)",
+  "m.tacho.weekLeft": "Tydzień (56 h)",
+  "m.tacho.twoWeekLeft": "Dwa tygodnie (90 h)",
+  "m.tacho.extLeft": "Jazdy 10 h",
+  "m.tacho.redLeft": "Odpoczynki 9 h",
+  "m.tacho.alert": "⚠️ Przekroczony limit — wymagana przerwa/odpoczynek!",
+  "m.tacho.guide": "Co pokazuje tachograf",
+  "m.tacho.guideDriving": "Podczas jazdy",
+  "m.tacho.guideStop": "Podczas postoju",
+  "m.tacho.capJazdaMain":
+    "Ekran główny w trasie: aktualna godzina, prędkość, czynność rejestrowana (jazda) i przebieg pojazdu.",
+  "m.tacho.capJazdaBreak":
+    "Licznik w trasie: u góry czas jazdy pozostały do następnej wymaganej przerwy, u dołu minimalna wymagana przerwa (45 min albo 30, jeśli wcześniej była 15).",
+  "m.tacho.capJazdaCycle":
+    "Cykl 4 h 30: po lewej wykorzystany czas jazdy (kierowca 1 i 2), po prawej odpoczynek wykonany w bieżącym cyklu.",
+  "m.tacho.capStopMain":
+    "Ekran główny na postoju: godzina, prędkość 0 km/h, aktualna czynność (odpoczynek) i przebieg pojazdu.",
+  "m.tacho.capStopUtc":
+    "Czas UTC — tachograf rejestruje wszystko w UTC: w Polsce latem to −2 h, zimą −1 h względem czasu lokalnego.",
+  "m.tacho.capStopCredits":
+    "Kredyty tygodnia: pozostałe skrócone odpoczynki dobowe 9 h (max 3) i wydłużone czasy jazdy do 10 h (max 2).",
+  "m.tacho.capStopWeek":
+    "Limity tygodnia: pozostały czas jazdy w tygodniu (56 h; w dwóch tygodniach 90 h), czas pozostały do rozpoczęcia odpoczynku tygodniowego (max 144 h od poprzedniego) i czas do jego wykonania.",
+  "m.tacho.capStopDay":
+    "Limity doby: pozostały czas jazdy i pracy w bieżącej dobie oraz czas do wykonania minimalnego odpoczynku dobowego (11 h regularny / 9 h skrócony, 3× między tygodniowymi).",
+  "m.tacho.capStopRest":
+    "Odpoczynek: pozostały czas do wykonania minimalnego wymaganego odpoczynku i czas jazdy, jaki będzie do dyspozycji po jego zakończeniu.",
+  "m.tacho.manual": "Wpis manualny — krok po kroku",
+  "m.tacho.manualStep1":
+    "Zatrzymaj pojazd i włącz zapłon. Włóż kartę chipem do góry — tachograf przywita Cię i pokaże datę ostatniego wyjęcia karty.",
+  "m.tacho.manualStep2":
+    "Na pytanie o wpis manualny wybierz strzałkami TAK i zatwierdź OK. (NIE = okres bez karty pozostanie nieudokumentowany.)",
+  "m.tacho.manualStep3":
+    "Górny wiersz to moment wyjęcia karty, dolny edytujesz Ty. Strzałkami wybierz rodzaj czynności: młotki = inna praca, łóżko = odpoczynek, ukośnik = dyspozycja, ? = okres nieznany.",
+  "m.tacho.manualStep4":
+    "Ustaw kolejno dzień, miesiąc, rok, godzinę i minutę końca danej czynności — OK po każdym polu. Możesz dodać wiele okresów, aż do chwili obecnej.",
+  "m.tacho.manualStep5":
+    "Dojazd do pojazdu poza bazą i powrót zapisuj jako dyspozycję, odpoczynek w domu jako łóżko.",
+  "m.tacho.manualStep6":
+    "Na końcu zatwierdź akceptację (TAK). Uwaga: po zatwierdzeniu wpisu nie można go już poprawić.",
+  "m.tacho.manualStep7":
+    "Ustaw kraj rozpoczęcia pracy (MENU → wpisz kierowca 1 → kraj rozpocz.). Nie ruszaj, dopóki symbol karty nie zapisze się w całości — ruszenie przerywa wpis.",
+  "m.tacho.regulation": "Rozporządzenie 561/2006 (PDF)",
+  "m.tacho.regulationHint":
+    "Pełny skonsolidowany tekst przepisów o czasie jazdy i odpoczynkach — zawsze pod ręką, także do pokazania na kontroli.",
   "m.settings.position": "Pozycja",
   "m.settings.sharePosHint":
     "Gdy włączysz, dyspozytor widzi Twoje auto na mapie firmy (aktualizacja co 2 min, tylko gdy aplikacja jest otwarta). Wyłączysz w każdej chwili — pozycja jest wtedy usuwana.",
@@ -504,6 +563,65 @@ const en: Record<MobileMessageKey, string> = {
   "m.card.tenure": "tenure",
   "m.card.years": "yrs",
   "m.card.months": "mo",
+  "m.screen.tacho": "Tacho",
+  "m.tacho.counter": "561 counter",
+  "m.tacho.counterHint":
+    "An indicative helper modelled on the VDO counter — the tachograph and driver card records are binding.",
+  "m.tacho.inContinuous": "Continuous driving since break",
+  "m.tacho.inBreakTaken": "Break part already taken",
+  "m.tacho.inDaily": "Driving today",
+  "m.tacho.inWeekly": "Driving this week",
+  "m.tacho.inPrevWeek": "Driving last week",
+  "m.tacho.inExtUsed": "10 h drives used",
+  "m.tacho.inRedUsed": "9 h rests used",
+  "m.tacho.toBreak": "Until break",
+  "m.tacho.reqBreak": "Required break",
+  "m.tacho.dailyLeft": "Left today (9 h)",
+  "m.tacho.dailyLeftExt": "With extension (10 h)",
+  "m.tacho.weekLeft": "Week (56 h)",
+  "m.tacho.twoWeekLeft": "Two weeks (90 h)",
+  "m.tacho.extLeft": "10 h drives",
+  "m.tacho.redLeft": "9 h rests",
+  "m.tacho.alert": "⚠️ Limit exceeded — break/rest required!",
+  "m.tacho.guide": "What the tachograph shows",
+  "m.tacho.guideDriving": "While driving",
+  "m.tacho.guideStop": "While parked",
+  "m.tacho.capJazdaMain":
+    "Main screen on route: current time, speed, recorded activity (driving) and vehicle odometer.",
+  "m.tacho.capJazdaBreak":
+    "On-route counter: top — driving time left until the next required break; bottom — minimum required break (45 min, or 30 if 15 was taken earlier).",
+  "m.tacho.capJazdaCycle":
+    "4 h 30 cycle: left — driving time used (driver 1 and 2), right — rest taken within the current cycle.",
+  "m.tacho.capStopMain":
+    "Main screen while parked: time, 0 km/h, current activity (rest) and odometer.",
+  "m.tacho.capStopUtc":
+    "UTC time — the tachograph records in UTC: in Poland −2 h in summer, −1 h in winter vs local time.",
+  "m.tacho.capStopCredits":
+    "Weekly credits: remaining reduced daily rests of 9 h (max 3) and extended driving times to 10 h (max 2).",
+  "m.tacho.capStopWeek":
+    "Weekly limits: driving time left this week (56 h; 90 h per two weeks), time left until the weekly rest must start (max 144 h) and time to complete it.",
+  "m.tacho.capStopDay":
+    "Daily limits: driving and working time left today plus time to complete the minimum daily rest (11 h regular / 9 h reduced, 3× between weekly rests).",
+  "m.tacho.capStopRest":
+    "Rest: time left to complete the minimum required rest and the driving time available after it ends.",
+  "m.tacho.manual": "Manual entry — step by step",
+  "m.tacho.manualStep1":
+    "Stop the vehicle and switch on the ignition. Insert the card chip up — the tachograph greets you and shows the last card withdrawal date.",
+  "m.tacho.manualStep2":
+    "When asked about a manual entry choose YES with the arrows and confirm with OK. (NO = the cardless period stays undocumented.)",
+  "m.tacho.manualStep3":
+    "The top row is the card withdrawal moment; you edit the bottom one. Pick the activity: hammers = other work, bed = rest, slash = availability, ? = unknown period.",
+  "m.tacho.manualStep4":
+    "Set day, month, year, hour and minute of each activity end — OK after every field. You can add several periods up to now.",
+  "m.tacho.manualStep5":
+    "Record travel to a vehicle away from base and the way back as availability; rest at home as bed.",
+  "m.tacho.manualStep6":
+    "Finally confirm acceptance (YES). Note: once accepted, the entry cannot be corrected.",
+  "m.tacho.manualStep7":
+    "Set the shift start country (MENU → entry driver 1 → begin country). Do not move until the card symbol is fully saved — driving aborts the entry.",
+  "m.tacho.regulation": "Regulation 561/2006 (PDF)",
+  "m.tacho.regulationHint":
+    "The full consolidated text on driving times and rests — always at hand, also for roadside checks.",
   "m.settings.position": "Location",
   "m.settings.sharePosHint":
     "When enabled, the dispatcher sees your truck on the company map (updated every 2 min, only while the app is open). Turn it off anytime — your position is then deleted.",
@@ -854,6 +972,65 @@ const de: Record<MobileMessageKey, string> = {
   "m.card.tenure": "Betriebszugehörigkeit",
   "m.card.years": "J.",
   "m.card.months": "Mon.",
+  "m.screen.tacho": "Tacho",
+  "m.tacho.counter": "561-Zähler",
+  "m.tacho.counterHint":
+    "Orientierungshilfe nach dem Vorbild des VDO-Zählers — verbindlich sind Tachograph und Fahrerkarte.",
+  "m.tacho.inContinuous": "Lenkzeit seit der Pause",
+  "m.tacho.inBreakTaken": "Bereits genommener Pausenteil",
+  "m.tacho.inDaily": "Lenkzeit heute",
+  "m.tacho.inWeekly": "Lenkzeit diese Woche",
+  "m.tacho.inPrevWeek": "Lenkzeit letzte Woche",
+  "m.tacho.inExtUsed": "Genutzte 10-h-Fahrten",
+  "m.tacho.inRedUsed": "Genutzte 9-h-Ruhen",
+  "m.tacho.toBreak": "Bis zur Pause",
+  "m.tacho.reqBreak": "Erforderliche Pause",
+  "m.tacho.dailyLeft": "Heute übrig (9 h)",
+  "m.tacho.dailyLeftExt": "Mit Verlängerung (10 h)",
+  "m.tacho.weekLeft": "Woche (56 h)",
+  "m.tacho.twoWeekLeft": "Zwei Wochen (90 h)",
+  "m.tacho.extLeft": "10-h-Fahrten",
+  "m.tacho.redLeft": "9-h-Ruhen",
+  "m.tacho.alert": "⚠️ Limit überschritten — Pause/Ruhezeit erforderlich!",
+  "m.tacho.guide": "Was der Tachograph zeigt",
+  "m.tacho.guideDriving": "Während der Fahrt",
+  "m.tacho.guideStop": "Im Stand",
+  "m.tacho.capJazdaMain":
+    "Hauptbildschirm unterwegs: Uhrzeit, Geschwindigkeit, erfasste Tätigkeit (Fahrt) und Kilometerstand.",
+  "m.tacho.capJazdaBreak":
+    "Zähler unterwegs: oben verbleibende Lenkzeit bis zur nächsten Pflichtpause, unten die minimale Pause (45 min bzw. 30 nach vorheriger 15).",
+  "m.tacho.capJazdaCycle":
+    "4-h-30-Zyklus: links genutzte Lenkzeit (Fahrer 1 und 2), rechts die im laufenden Zyklus genommene Ruhe.",
+  "m.tacho.capStopMain":
+    "Hauptbildschirm im Stand: Uhrzeit, 0 km/h, aktuelle Tätigkeit (Ruhe) und Kilometerstand.",
+  "m.tacho.capStopUtc":
+    "UTC-Zeit — der Tachograph zeichnet in UTC auf: in Polen im Sommer −2 h, im Winter −1 h zur Ortszeit.",
+  "m.tacho.capStopCredits":
+    "Wochen-Guthaben: verbleibende reduzierte Tagesruhen 9 h (max. 3) und verlängerte Lenkzeiten bis 10 h (max. 2).",
+  "m.tacho.capStopWeek":
+    "Wochenlimits: verbleibende Lenkzeit der Woche (56 h; 90 h je Doppelwoche), Zeit bis zum Beginn der Wochenruhe (max. 144 h) und Zeit bis zu deren Abschluss.",
+  "m.tacho.capStopDay":
+    "Tageslimits: verbleibende Lenk- und Arbeitszeit heute sowie Zeit bis zur minimalen Tagesruhe (11 h regulär / 9 h reduziert, 3× zwischen Wochenruhen).",
+  "m.tacho.capStopRest":
+    "Ruhe: verbleibende Zeit bis zur minimalen Ruhe und die danach verfügbare Lenkzeit.",
+  "m.tacho.manual": "Manueller Nachtrag — Schritt für Schritt",
+  "m.tacho.manualStep1":
+    "Fahrzeug anhalten, Zündung einschalten. Karte mit dem Chip nach oben einführen — der Tachograph begrüßt dich und zeigt die letzte Kartenentnahme.",
+  "m.tacho.manualStep2":
+    "Bei der Frage nach dem Nachtrag mit den Pfeilen JA wählen und mit OK bestätigen. (NEIN = der Zeitraum ohne Karte bleibt undokumentiert.)",
+  "m.tacho.manualStep3":
+    "Die obere Zeile ist die Kartenentnahme, die untere bearbeitest du. Tätigkeit wählen: Hämmer = andere Arbeit, Bett = Ruhe, Schrägstrich = Bereitschaft, ? = unbekannt.",
+  "m.tacho.manualStep4":
+    "Tag, Monat, Jahr, Stunde und Minute des Endes jeder Tätigkeit einstellen — nach jedem Feld OK. Mehrere Zeiträume bis jetzt möglich.",
+  "m.tacho.manualStep5":
+    "Anfahrt zum Fahrzeug außerhalb der Basis und Rückweg als Bereitschaft erfassen, Ruhe zu Hause als Bett.",
+  "m.tacho.manualStep6":
+    "Zum Schluss die Annahme bestätigen (JA). Achtung: Nach der Bestätigung ist keine Korrektur mehr möglich.",
+  "m.tacho.manualStep7":
+    "Beginnland setzen (MENÜ → Eingabe Fahrer 1 → Land Beginn). Nicht losfahren, bis das Kartensymbol vollständig gespeichert ist — Fahren bricht den Nachtrag ab.",
+  "m.tacho.regulation": "Verordnung 561/2006 (PDF)",
+  "m.tacho.regulationHint":
+    "Der vollständige konsolidierte Text zu Lenk- und Ruhezeiten — immer griffbereit, auch bei Kontrollen.",
   "m.settings.position": "Standort",
   "m.settings.sharePosHint":
     "Wenn aktiviert, sieht der Disponent deinen LKW auf der Firmenkarte (Aktualisierung alle 2 Min., nur bei geöffneter App). Jederzeit abschaltbar — die Position wird dann gelöscht.",
@@ -1201,6 +1378,65 @@ const uk: Record<MobileMessageKey, string> = {
   "m.card.tenure": "стаж",
   "m.card.years": "р.",
   "m.card.months": "міс.",
+  "m.screen.tacho": "Тахо",
+  "m.tacho.counter": "Лічильник 561",
+  "m.tacho.counterHint":
+    "Орієнтовна допомога на кшталт лічильника VDO — обовʼязковим є запис тахографа та картки водія.",
+  "m.tacho.inContinuous": "Безперервне керування від перерви",
+  "m.tacho.inBreakTaken": "Використана частина перерви",
+  "m.tacho.inDaily": "Керування сьогодні",
+  "m.tacho.inWeekly": "Керування цього тижня",
+  "m.tacho.inPrevWeek": "Керування минулого тижня",
+  "m.tacho.inExtUsed": "Використані поїздки 10 год",
+  "m.tacho.inRedUsed": "Використані відпочинки 9 год",
+  "m.tacho.toBreak": "До перерви",
+  "m.tacho.reqBreak": "Потрібна перерва",
+  "m.tacho.dailyLeft": "Сьогодні лишилося (9 год)",
+  "m.tacho.dailyLeftExt": "З подовженням (10 год)",
+  "m.tacho.weekLeft": "Тиждень (56 год)",
+  "m.tacho.twoWeekLeft": "Два тижні (90 год)",
+  "m.tacho.extLeft": "Поїздки 10 год",
+  "m.tacho.redLeft": "Відпочинки 9 год",
+  "m.tacho.alert": "⚠️ Ліміт перевищено — потрібна перерва/відпочинок!",
+  "m.tacho.guide": "Що показує тахограф",
+  "m.tacho.guideDriving": "Під час руху",
+  "m.tacho.guideStop": "На стоянці",
+  "m.tacho.capJazdaMain":
+    "Головний екран у дорозі: поточний час, швидкість, реєстрована діяльність (керування) і пробіг.",
+  "m.tacho.capJazdaBreak":
+    "Лічильник у дорозі: угорі — час керування до наступної обовʼязкової перерви, унизу — мінімальна перерва (45 хв або 30 після попередніх 15).",
+  "m.tacho.capJazdaCycle":
+    "Цикл 4 год 30: ліворуч використаний час керування (водій 1 і 2), праворуч — відпочинок у поточному циклі.",
+  "m.tacho.capStopMain":
+    "Головний екран на стоянці: час, 0 км/год, поточна діяльність (відпочинок) і пробіг.",
+  "m.tacho.capStopUtc":
+    "Час UTC — тахограф реєструє в UTC: у Польщі влітку −2 год, узимку −1 год від місцевого часу.",
+  "m.tacho.capStopCredits":
+    "Тижневі кредити: залишок скорочених добових відпочинків 9 год (макс. 3) і подовжених керувань до 10 год (макс. 2).",
+  "m.tacho.capStopWeek":
+    "Тижневі ліміти: залишок керування за тиждень (56 год; 90 год за два тижні), час до початку тижневого відпочинку (макс. 144 год) і час на його виконання.",
+  "m.tacho.capStopDay":
+    "Добові ліміти: залишок керування та роботи сьогодні, а також час до мінімального добового відпочинку (11 год звичайний / 9 год скорочений, 3× між тижневими).",
+  "m.tacho.capStopRest":
+    "Відпочинок: час до виконання мінімального відпочинку та керування, доступне після нього.",
+  "m.tacho.manual": "Ручний запис — крок за кроком",
+  "m.tacho.manualStep1":
+    "Зупини авто та ввімкни запалювання. Встав картку чипом догори — тахограф привітає та покаже дату останнього виймання картки.",
+  "m.tacho.manualStep2":
+    "На запит ручного запису обери стрілками ТАК і підтверди OK. (НІ = період без картки залишиться незадокументованим.)",
+  "m.tacho.manualStep3":
+    "Верхній рядок — момент виймання картки, нижній редагуєш ти. Обери діяльність: молотки = інша робота, ліжко = відпочинок, скісна риска = готовність, ? = невідомий період.",
+  "m.tacho.manualStep4":
+    "Постав день, місяць, рік, годину та хвилину завершення кожної діяльності — OK після кожного поля. Можна додати кілька періодів аж дотепер.",
+  "m.tacho.manualStep5":
+    "Доїзд до авто поза базою і повернення записуй як готовність, відпочинок удома — як ліжко.",
+  "m.tacho.manualStep6":
+    "Наприкінці підтверди прийняття (ТАК). Увага: після підтвердження запис виправити неможливо.",
+  "m.tacho.manualStep7":
+    "Вкажи країну початку роботи (MENU → запис водій 1 → країна початку). Не рушай, поки символ картки не збережеться повністю — рух перериває запис.",
+  "m.tacho.regulation": "Регламент 561/2006 (PDF)",
+  "m.tacho.regulationHint":
+    "Повний консолідований текст про час керування та відпочинки — завжди під рукою, зокрема для контролю.",
   "m.settings.position": "Позиція",
   "m.settings.sharePosHint":
     "Коли ввімкнено, диспетчер бачить вашу вантажівку на мапі фірми (оновлення кожні 2 хв, лише коли застосунок відкрито). Можна вимкнути будь-коли — позиція видаляється.",
