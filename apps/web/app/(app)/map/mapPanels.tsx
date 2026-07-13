@@ -1,5 +1,10 @@
 import type { SavedPlace } from "@e-logistic/api";
-import { formatDuration, SAVED_PLACE_CATEGORIES, type SavedPlaceCategory } from "@e-logistic/core";
+import {
+  estimateRouteFuel,
+  formatDuration,
+  SAVED_PLACE_CATEGORIES,
+  type SavedPlaceCategory,
+} from "@e-logistic/core";
 import type { FuelStationPrice, GeoHit } from "@e-logistic/maps";
 import { cssPalette } from "@e-logistic/ui";
 import { DISRUPTION_RADIUS_KM, REPORT_COLOR, REPORT_LABEL, SAVED_CAT_ICON } from "./mapTheme";
@@ -37,6 +42,16 @@ export function RouteSummary({
           v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
         />
         <Row k="Paliwo (szac.)" v={`${fuelTotal} ${result.currency}`} />
+        {(() => {
+          // #337 Eco: litry i emisja CO₂ dla trasy (spalanie modelowe 30 l/100 km).
+          const eco = estimateRouteFuel({ distanceKm: result.distanceKm, fuelPricePerL: 0 });
+          return (
+            <>
+              <Row k="Zużycie (szac.)" v={`${eco.fuelLiters} l · ~30 l/100`} />
+              <Row k="🌿 Emisja CO₂ (szac.)" v={`${eco.co2Kg} kg`} />
+            </>
+          );
+        })()}
         <div style={{ height: 1, background: cssPalette.graphite, margin: "2px 0" }} />
         <Row k="Razem (myto+paliwo)" v={`${grandTotal} ${result.currency}`} />
         {result.segments.length > 0 && (

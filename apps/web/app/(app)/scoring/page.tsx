@@ -12,6 +12,7 @@ import {
   listCompanyMembers,
   listOrders,
 } from "@e-logistic/api";
+import { computeDriverGamification } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
@@ -26,7 +27,20 @@ interface Score {
   onTimePct: number | null;
   checklists: number;
   stars: number;
+  level: number;
+  rank: string;
+  points: number;
 }
+
+// #334: nazwy rang (klucz silnika gamifikacji → etykieta PL).
+const RANK_LABEL: Record<string, string> = {
+  rookie: "Nowicjusz",
+  driver: "Kierowca",
+  pro: "Zawodowiec",
+  veteran: "Weteran",
+  master: "Mistrz",
+  legend: "Legenda",
+};
 
 function stars(n: number): string {
   const full = Math.round(Math.max(0, Math.min(5, n)));
@@ -80,6 +94,17 @@ export default function ScoringPage() {
         const cScore = Math.min(1, myChecklists / 20);
         const vScore = finished.length / maxDelivered;
         const base = (onTimePct ?? 0.7) * 0.6 + cScore * 0.3 + vScore * 0.1;
+        // #334: profil gamifikacji z tych samych statystyk (bez km/spalania tutaj).
+        const g = computeDriverGamification({
+          deliveries: finished.length,
+          onTimePct,
+          checklists: myChecklists,
+          km: 0,
+          avgConsumption: null,
+          tenureMonths: 0,
+          defectsReported: 0,
+          activeStreakDays: 0,
+        });
         return {
           userId: d.user_id,
           label: d.email,
@@ -87,10 +112,13 @@ export default function ScoringPage() {
           onTimePct,
           checklists: myChecklists,
           stars: 1 + base * 4,
+          level: g.level,
+          rank: g.rankKey,
+          points: g.points,
         };
       });
 
-      scored.sort((a, b) => b.stars - a.stars);
+      scored.sort((a, b) => b.points - a.points || b.stars - a.stars);
       setRows(scored);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się policzyć rankingu.");
@@ -106,7 +134,7 @@ export default function ScoringPage() {
     <div>
       <PageHeader
         title="Scoring kierowców"
-        subtitle="Ranking z ostatnich 90 dni: terminowość dostaw, checklisty i aktywność"
+        subtitle="Ranking z ostatnich 90 dni: poziomy i punkty, terminowość dostaw, checklisty i aktywność"
       />
 
       <ListStatus
@@ -122,7 +150,16 @@ export default function ScoringPage() {
           <table style={s.table}>
             <thead>
               <tr>
-                {["#", "Kierowca", "Dostawy", "Terminowość", "Checklisty", "Ocena"].map((h) => (
+                {[
+                  "#",
+                  "Kierowca",
+                  "Poziom",
+                  "Punkty",
+                  "Dostawy",
+                  "Terminowość",
+                  "Checklisty",
+                  "Ocena",
+                ].map((h) => (
                   <th key={h} style={s.th}>
                     {h}
                   </th>
@@ -136,6 +173,14 @@ export default function ScoringPage() {
                   <td style={{ ...s.td, fontWeight: 600 }}>
                     {i === 0 ? "🏆 " : ""}
                     {r.label}
+                  </td>
+                  <td style={s.td}>
+                    <span style={s.rankPill}>
+                      {r.level} · {RANK_LABEL[r.rank] ?? r.rank}
+                    </span>
+                  </td>
+                  <td style={{ ...s.td, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                    {r.points}
                   </td>
                   <td style={s.td}>{r.delivered}</td>
                   <td style={s.td}>
@@ -175,5 +220,14 @@ const s: Record<string, React.CSSProperties> = {
   },
   td: { padding: "12px", borderBottom: `1px solid ${palette.graphite}` },
   topRow: { background: "rgba(229, 9, 20, 0.08)" },
+  rankPill: {
+    display: "inline-block",
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "2px 10px",
+    fontSize: 12.5,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
   note: { color: palette.smoke, fontSize: 12.5, marginTop: 16, lineHeight: 1.6 },
 };

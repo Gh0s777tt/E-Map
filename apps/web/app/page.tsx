@@ -77,6 +77,11 @@ const CORE_FEATURES: { glyph: string; title: string; desc: string }[] = [
     desc: "Cała aplikacja — pulpit, zlecenia, formularze, wydatki, ustawienia, logowanie i czat — po polsku, angielsku, niemiecku i ukraińsku. Automatyczne wykrywanie języka telefonu i ręczny wybór.",
   },
   {
+    glyph: "🏆",
+    title: "Gamifikacja i analityka floty",
+    desc: "Kierowcy zdobywają poziomy, punkty i odznaki (dostawy, punktualność, km, eko-jazda). Właściciel dostaje insighty: trend i prognozę kosztu paliwa, pojazdy odstające spalaniem i szacunek oszczędności — z realnych danych.",
+  },
+  {
     glyph: "🖥️",
     title: "Telefon, macOS, iPad i Windows",
     desc: "Aplikacja iOS/Android z pracą offline, ta sama apka na Makach z Apple Silicon i iPadzie (layout na duże ekrany), a panel właściciela jako PWA na macOS/Windows — gotowy do Microsoft Store.",
@@ -93,10 +98,6 @@ const DRIVER_ROADMAP: { title: string; desc: string }[] = [
     desc: "najbardziej ekonomiczna trasa pod kątem spalania (dziś: routing TIR + auto-objazd)",
   },
   {
-    title: "Gamifikacja",
-    desc: "punkty, odznaki i wyzwania za spalanie i terminowość — obok istniejącego scoringu",
-  },
-  {
     title: "Asystent pasa i widok skrzyżowań",
     desc: "premium nawigacja (Navigation SDK) — reroute z ruchem live i widok 3D już działają",
   },
@@ -104,8 +105,8 @@ const DRIVER_ROADMAP: { title: string; desc: string }[] = [
 
 const OWNER_ROADMAP: { title: string; desc: string }[] = [
   {
-    title: "Analityka + AI",
-    desc: "prognoza kosztów paliwa, wykrywanie nieefektywności, sugestie tras",
+    title: "Asystent AI spedytora",
+    desc: "sugestie tras i decyzji — nadbudowa nad działającą już analityką (trend, prognoza, oszczędności)",
   },
   {
     title: "KSeF — wysyłka online",

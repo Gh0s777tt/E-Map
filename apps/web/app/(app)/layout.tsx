@@ -107,6 +107,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     {
       title: t("nav.group.finance"),
       items: [
+        ...(manage ? [item("/analytics", t("nav.analytics"), "chart")] : []),
         ...(manage ? [item("/invoices", t("nav.invoices"), "fileText")] : []),
         ...(manage ? [item("/contractors", t("nav.contractors"), "building")] : []),
         ...(has("settlements") ? [item("/settlements", t("nav.settlements"), "banknote")] : []),

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-333-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.184.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-337-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.185.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.185.0] — 🏆 Gamifikacja kierowców, analityka floty i eco-routing (backlog kod-only)
+
+Fala „zrób wszystko, co nie wymaga danych/kont właściciela" — trzy funkcje z roadmapy dostarczone w całości z poziomu kodu, na wspólnych, przetestowanych silnikach w `@e-logistic/core`.
+
+- `[#334]` 🏆 **Gamifikacja kierowców** ([gamification.ts](packages/core/src/gamification.ts), **+6 testów**) — punkty, poziomy i rangi (Nowicjusz→Legenda) oraz **8 odznak** brąz/srebro/złoto (dostawy, punktualność, checklisty, km, staż, opiekun auta, seria, eko) liczone z realnych statystyk. Karta na ekranie Start w aplikacji (mobile **1.72.0**, [GamificationCard](apps/mobile/components/GamificationCard.tsx)) + poziomy/punkty w webowym rankingu [/scoring](apps/web/app/(app)/scoring/page.tsx). +21 kluczy i18n ×4.
+- `[#335]` 📊 **Analityka floty** ([insights.ts](packages/core/src/insights.ts), **+9 testów**) — nowa strona [/analytics](apps/web/app/(app)/analytics/page.tsx) (owner): **trend i prognoza kosztu paliwa** (regresja liniowa), **pojazdy odstające spalaniem** względem mediany floty z szacowanym dodatkowym kosztem i **sumą możliwych oszczędności**. Bez zewnętrznego AI — liczone z tankowań.
+- `[#337]` 🌿 **Eco-routing** ([ecoRoute.ts](packages/core/src/ecoRoute.ts), **+9 testów**) — silnik szacunku paliwa, kosztu i **emisji CO₂** oraz wyboru wariantu najtańszego (paliwo+myto) z porównaniem do najszybszego. Na mapie ([RouteSummary](apps/web/app/(app)/map/mapPanels.tsx)) doszła estymacja zużycia (l) i **CO₂ (kg)** dla wytyczonej trasy.
+- **Świadomie odłożone (wymaga QA na urządzeniu):** głosowe wypełnianie formularzy (natywny mikrofon/STT) i własne animacje `react-native-reanimated` — nie wypycham nieprzetestowanego natywnego kodu bez Twojego telefonu.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓ · **344 testy core** ✓.
 
 ## [1.184.0] — 🧹 Usunięcie brandingu GH0ST EMPIRE + odświeżenie strony głównej
 

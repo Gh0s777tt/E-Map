@@ -27,6 +27,7 @@ import {
   View,
 } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
+import { GamificationCard } from "../../components/GamificationCard";
 import { OwnerDashboard, useOwnerDashboard } from "../../components/OwnerDashboard";
 import { Avatar, wide } from "../../components/ui";
 import { navigationUrl } from "../../lib/chatNotify";
@@ -35,6 +36,7 @@ import { listOutbox, type OutboxItem } from "../../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { tenureLabel, useDriverCard } from "../../lib/useDriverCard";
 import { useFleet } from "../../lib/useFleet";
+import { useGamification } from "../../lib/useGamification";
 import { initialOf, roleLabel, useProfile } from "../../lib/useProfile";
 
 const ACTIVE: Order["status"][] = ["in_progress", "assigned", "new"];
@@ -70,6 +72,7 @@ export default function StartScreen() {
   const { data: card, reload: reloadCard } = useDriverCard();
   const isManager = profile.role === "owner" || profile.role === "dispatcher";
   const { data: owner, reload: reloadOwner } = useOwnerDashboard(profile.companyId);
+  const { data: game, reload: reloadGame } = useGamification();
   const [mods, setMods] = useState<AppModule[] | null>(null);
   const [active, setActive] = useState<Order | null>(null);
   const [checklistsDue, setChecklistsDue] = useState<number | null>(null);
@@ -82,6 +85,7 @@ export default function StartScreen() {
       .catch(() => {});
     reloadCard().catch(() => {});
     reloadOwner().catch(() => {});
+    reloadGame().catch(() => {});
     if (!supabaseConfigured) return;
     const sb = getSupabase();
     getActiveMembership(sb)
@@ -109,7 +113,7 @@ export default function StartScreen() {
         setActive(found);
       })
       .catch(() => {});
-  }, [reloadCard, reloadOwner]);
+  }, [reloadCard, reloadOwner, reloadGame]);
 
   useFocusEffect(
     useCallback(() => {
@@ -206,6 +210,7 @@ export default function StartScreen() {
         </View>
 
         {isManager && <OwnerDashboard data={owner} />}
+        {!isManager && game && <GamificationCard data={game} />}
 
         {/* Na dziś */}
         <Text style={s.section}>{t("m.card.today")}</Text>

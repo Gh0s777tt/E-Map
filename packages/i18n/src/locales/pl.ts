@@ -46,6 +46,7 @@ export const pl = {
   "nav.contractors": "Kontrahenci",
   "nav.monthly": "Zestawienie msc.",
   "nav.perDiem": "Diety kierowcy",
+  "nav.analytics": "Analityka",
   "nav.tacho": "Tacho",
   "nav.workTime": "Czas pracy",
   "nav.chat": "Czat firmowy",
