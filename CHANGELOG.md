@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-321-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.174.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-322-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.175.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.175.0] — 🖥 Duże ekrany (iPad/macOS) + panel gotowy do Microsoft Store
+
+- `[#322]` 📐 **Layout na duże ekrany w aplikacji** (mobile **1.65.0**) — na iPadzie i macOS („Designed for iPad", `supportsTablet` był już włączony) treść list i formularzy nie rozciąga się na pełną szerokość: wspólny styl `wide` (centrowanie do 760 pt) na **19 ekranach** + hook [useBreakpoint](apps/mobile/lib/useBreakpoint.ts) (768/1024 pt) pod dalsze układy wielokolumnowe.
+- `[#322]` 🪟 **Panel gotowy do Microsoft Store** — manifest PWA uzupełniony o pola wymagane przez PWABuilder (`id`, `scope`, `lang`, `categories`, `orientation`), service worker rejestruje się **przy każdym wejściu** ([layout](apps/web/app/layout.tsx)), nie dopiero po włączeniu push; pełna procedura publikacji (PWABuilder → MSIX → Partner Center) w [MICROSOFT-STORE](docs/MICROSOFT-STORE.md). Bloker po stronie właściciela: konto Partner Center (~19 USD) + rezerwacja nazwy.
+- `[#322]` ✅ To była **ostatnia pozycja z listy feedbacku P0** — wszystkie punkty dostarczone (#316–#322).
+- **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.174.0] — 🗓 Parytet domknięty: Harmonogram (scalony per auto), Status floty i Faktury w aplikacji
 

@@ -10,7 +10,7 @@ import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Card, Chip } from "../components/ui";
+import { Card, Chip, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
@@ -106,7 +106,7 @@ export default function FleetStatusScreen() {
   return (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, wide]}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

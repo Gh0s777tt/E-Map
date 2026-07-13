@@ -6,7 +6,7 @@ import { listFuelLogs } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Card, SectionTitle } from "../components/ui";
+import { Card, SectionTitle, wide } from "../components/ui";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
@@ -68,7 +68,7 @@ export default function StatsScreen() {
   return (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, wide]}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

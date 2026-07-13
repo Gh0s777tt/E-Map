@@ -9,7 +9,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
-import { Skeleton } from "../../components/ui";
+import { Skeleton, wide } from "../../components/ui";
 import { warn } from "../../lib/haptics";
 import { useT } from "../../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
@@ -97,7 +97,7 @@ export default function FuelCardsScreen() {
     <View style={s.screen}>
       <AppHeader subtitle={t("m.nav.cards")} />
       <ScrollView
-        contentContainerStyle={s.content}
+        contentContainerStyle={[s.content, wide]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

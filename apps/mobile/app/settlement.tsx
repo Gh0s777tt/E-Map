@@ -11,7 +11,7 @@ import {
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Card, SectionTitle } from "../components/ui";
+import { Card, SectionTitle, wide } from "../components/ui";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 const zl = (n: number) => `${n.toFixed(2).replace(".", ",")} zł`;
@@ -55,7 +55,7 @@ export default function SettlementScreen() {
   return (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, wide]}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

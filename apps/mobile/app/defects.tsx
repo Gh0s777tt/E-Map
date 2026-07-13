@@ -15,7 +15,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Card, PrimaryButton, SectionTitle } from "../components/ui";
+import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
@@ -112,7 +112,7 @@ export default function DefectsScreen() {
   return (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, wide]}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

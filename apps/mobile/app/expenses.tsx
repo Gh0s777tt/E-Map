@@ -27,7 +27,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Card, PrimaryButton, SectionTitle } from "../components/ui";
+import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { useT } from "../lib/i18n";
 import { enqueue } from "../lib/outbox";
@@ -183,7 +183,7 @@ export default function ExpensesScreen() {
   return (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, wide]}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

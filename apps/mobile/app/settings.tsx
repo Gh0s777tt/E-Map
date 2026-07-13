@@ -6,7 +6,7 @@ import Constants from "expo-constants";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
-import { Card, GhostButton, PrimaryButton, SectionTitle } from "../components/ui";
+import { Card, GhostButton, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { type LocalePref, useLocale } from "../lib/i18n";
 import { type PowerSyncStatusInfo, powersyncConfigured, powersyncStatus } from "../lib/powersync";
 import { registerForPush } from "../lib/push";
@@ -52,7 +52,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content}>
+    <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
       <SectionTitle>Konto</SectionTitle>
       <Card style={{ gap: 8 }}>
         <View style={s.kv}>

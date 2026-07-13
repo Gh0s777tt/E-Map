@@ -24,7 +24,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Card, ListRow, PrimaryButton, SectionTitle } from "../../components/ui";
+import { Card, ListRow, PrimaryButton, SectionTitle, wide } from "../../components/ui";
 import { useT } from "../../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 
@@ -98,7 +98,7 @@ export default function ChatListScreen() {
   return (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, wide]}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

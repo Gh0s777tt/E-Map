@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.174.0 · #321 · 2026-07-13 -->
+<!-- SYNC: po v1.175.0 · #322 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -100,7 +100,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 **Pozostałe:**
 - [x] ~~Trip: zdarzenie „przeładunek"~~ (#317) — rejestracja auta źródłowego i docelowego + lokalizacja, waga, km.
 - [x] ~~Kreator startu pomijalny~~ (#317) („Pomiń" — firmy transport-only nie tworzą zleceń).
-- [ ] **Duże ekrany**: layout 3-kolumnowy (iPad/macOS „Designed for iPad"); **Microsoft Store** — panel web jako MSIX/WebView2.
+- [x] ~~**Duże ekrany** (iPad/macOS) + **Microsoft Store**~~ (#322 — treść centrowana do 760 pt na 19 ekranach + hook `useBreakpoint`; PWA komplet pod PWABuilder, procedura w [MICROSOFT-STORE](MICROSOFT-STORE.md); bloker: konto Partner Center — właściciel)
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)
 - [x] **Tryb jasny** (light mode) + przełącznik — `cssPalette` + `Theme` dark/light, toggle w sidebarze, anty-FOUC (#205).

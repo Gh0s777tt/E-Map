@@ -12,7 +12,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "r
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
 import { TrackingQrButton } from "../components/TrackingQr";
-import { Card, ScreenTitle, Skeleton } from "../components/ui";
+import { Card, ScreenTitle, Skeleton, wide } from "../components/ui";
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import { startOrderActivity, stopOrderActivity } from "../lib/liveActivity";
@@ -113,7 +113,7 @@ export default function OrdersScreen() {
   return (
     <ScrollView
       style={s.screen}
-      contentContainerStyle={s.content}
+      contentContainerStyle={[s.content, wide]}
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

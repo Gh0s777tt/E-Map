@@ -7,6 +7,7 @@ import { palette } from "@e-logistic/ui";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
+import { wide } from "../../components/ui";
 import { useT } from "../../lib/i18n";
 
 export default function FormsHub() {
@@ -41,7 +42,7 @@ export default function FormsHub() {
   return (
     <View style={s.screen}>
       <AppHeader subtitle={t("m.nav.forms")} />
-      <ScrollView contentContainerStyle={s.content}>
+      <ScrollView contentContainerStyle={[s.content, wide]}>
         <Text style={s.hint}>{t("m.forms.hint")}</Text>
         <View style={s.grid}>
           {tiles.map((tile) => (

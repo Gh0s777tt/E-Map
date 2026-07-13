@@ -8,6 +8,12 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { Animated, Image, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { tap } from "../lib/haptics";
 
+/**
+ * #322: duże ekrany (iPad / macOS „Designed for iPad") — treść list i
+ * formularzy nie rozciąga się na pełną szerokość, tylko centruje do 760 pt.
+ */
+export const wide: ViewStyle = { width: "100%", maxWidth: 760, alignSelf: "center" };
+
 /** Owija onPress lekkim kliknięciem haptycznym. */
 function withTap(onPress?: () => void): (() => void) | undefined {
   if (!onPress) return undefined;

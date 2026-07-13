@@ -28,6 +28,10 @@ export const viewport = {
  */
 const NO_FLASH = `(function(){try{var t=localStorage.getItem("el-theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.dataset.theme=t}catch(e){}})()`;
 
+// #322: rejestracja service workera przy każdym wejściu (nie tylko po włączeniu
+// push) — warunek instalowalności PWA i punktacji PWABuilder (Microsoft Store).
+const REGISTER_SW = `if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" data-theme="dark" suppressHydrationWarning>
@@ -36,6 +40,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style>{`:root[data-theme="dark"]{${themeToCssVars(darkTheme)}}:root[data-theme="light"]{${themeToCssVars(lightTheme)}}`}</style>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: zaufany statyczny skrypt anty-FOUC (bez danych użytkownika) */}
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: zaufany statyczny skrypt rejestracji SW (bez danych użytkownika) */}
+        <script dangerouslySetInnerHTML={{ __html: REGISTER_SW }} />
       </head>
       <body>{children}</body>
     </html>

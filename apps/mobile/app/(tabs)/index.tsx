@@ -28,7 +28,7 @@ import {
 } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
 import { OwnerDashboard, useOwnerDashboard } from "../../components/OwnerDashboard";
-import { Avatar } from "../../components/ui";
+import { Avatar, wide } from "../../components/ui";
 import { navigationUrl } from "../../lib/chatNotify";
 import { useT } from "../../lib/i18n";
 import { listOutbox, type OutboxItem } from "../../lib/outbox";
@@ -147,7 +147,7 @@ export default function StartScreen() {
       <AppHeader />
       <ScrollView
         style={s.screen}
-        contentContainerStyle={s.content}
+        contentContainerStyle={[s.content, wide]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

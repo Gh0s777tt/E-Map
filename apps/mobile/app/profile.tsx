@@ -10,7 +10,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
-import { Avatar, Card, PrimaryButton, SectionTitle } from "../components/ui";
+import { Avatar, Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
@@ -80,7 +80,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={s.content}>
+    <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
       <Card style={s.head}>
         <Pressable onPress={pickAvatar} accessibilityLabel={t("m.profile.changeAvatar")}>
           <Avatar initial={initialOf(profile.email)} size={72} uri={shownAvatar} />
