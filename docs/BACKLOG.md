@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.171.0 · #318 · 2026-07-13 -->
+<!-- SYNC: po v1.172.0 · #319 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -94,7 +94,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 **Profil i dane kierowcy:**
 - [x] ~~Samodzielna edycja: e-mail / telefon / hasło + avatar~~ (#318)
-- [ ] Zakładka kierowcy: **ważność paszportu i dowodu**; uprawnienia (np. UDT) z polem **nr dokumentu + data ważności**.
+- [x] ~~Zakładka kierowcy: ważność paszportu/dowodu; uprawnienia z nr dokumentu + datą~~ (#319)
 
 **Pozostałe:**
 - [x] ~~Trip: zdarzenie „przeładunek"~~ (#317) — rejestracja auta źródłowego i docelowego + lokalizacja, waga, km.

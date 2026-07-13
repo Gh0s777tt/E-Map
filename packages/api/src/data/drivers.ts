@@ -17,6 +17,9 @@ export interface DriverRow {
   medical_expiry: string | null;
   psychotech_expiry: string | null;
   adr_expiry: string | null;
+  passport_expiry: string | null;
+  id_card_expiry: string | null;
+  qualification_details: { name: string; doc_number?: string | null; expiry?: string | null }[];
   user_id: string | null;
 }
 
@@ -51,6 +54,13 @@ async function saveDriverIdentity(
     p_medical_expiry: input.medicalExpiry ?? null,
     p_adr_expiry: input.adrExpiry ?? null,
     p_psychotech_expiry: input.psychotechExpiry ?? null,
+    p_passport_expiry: input.passportExpiry ?? null,
+    p_id_card_expiry: input.idCardExpiry ?? null,
+    p_qual_details: (input.qualificationDetails ?? []).map((q) => ({
+      name: q.name,
+      doc_number: q.docNumber ?? null,
+      expiry: q.expiry ?? null,
+    })) as unknown as import("../client").Json,
   });
   if (error) throw error;
   return data as string;

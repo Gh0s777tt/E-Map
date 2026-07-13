@@ -108,6 +108,18 @@ export const driverSchema = z.object({
   medicalExpiry: isoDate.optional(),
   psychotechExpiry: isoDate.optional(),
   adrExpiry: isoDate.optional(),
+  passportExpiry: isoDate.optional(),
+  idCardExpiry: isoDate.optional(),
+  /** #319: uprawnienia (UDT/HDS itd.) z numerem dokumentu i datą ważności. */
+  qualificationDetails: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(80),
+        docNumber: z.string().max(60).optional(),
+        expiry: isoDate.optional(),
+      }),
+    )
+    .default([]),
 });
 export type DriverInput = z.infer<typeof driverSchema>;
 

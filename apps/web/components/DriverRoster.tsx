@@ -116,6 +116,12 @@ export function DriverRoster() {
   const [medicalExpiry, setMedicalExpiry] = useState("");
   const [psychotechExpiry, setPsychotechExpiry] = useState("");
   const [adrExpiry, setAdrExpiry] = useState("");
+  const [passportExpiry, setPassportExpiry] = useState("");
+  const [idCardExpiry, setIdCardExpiry] = useState("");
+  // #319: szczegóły uprawnień (nr dokumentu + ważność) per nazwa uprawnienia.
+  const [qualDetails, setQualDetails] = useState<
+    Record<string, { docNumber: string; expiry: string }>
+  >({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, Docs>>({});
 
@@ -152,6 +158,9 @@ export function DriverRoster() {
     setMedicalExpiry("");
     setPsychotechExpiry("");
     setAdrExpiry("");
+    setPassportExpiry("");
+    setIdCardExpiry("");
+    setQualDetails({});
     setErrors({});
   }
 
@@ -262,6 +271,16 @@ export function DriverRoster() {
     setMedicalExpiry(d.medical_expiry ?? "");
     setPsychotechExpiry(d.psychotech_expiry ?? "");
     setAdrExpiry(d.adr_expiry ?? "");
+    setPassportExpiry(d.passport_expiry ?? "");
+    setIdCardExpiry(d.id_card_expiry ?? "");
+    setQualDetails(
+      Object.fromEntries(
+        (d.qualification_details ?? []).map((q) => [
+          q.name,
+          { docNumber: q.doc_number ?? "", expiry: q.expiry ?? "" },
+        ]),
+      ),
+    );
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -283,6 +302,13 @@ export function DriverRoster() {
       medicalExpiry: medicalExpiry || undefined,
       psychotechExpiry: psychotechExpiry || undefined,
       adrExpiry: adrExpiry || undefined,
+      passportExpiry: passportExpiry || undefined,
+      idCardExpiry: idCardExpiry || undefined,
+      qualificationDetails: quals.map((q) => ({
+        name: q,
+        docNumber: qualDetails[q]?.docNumber?.trim() || undefined,
+        expiry: qualDetails[q]?.expiry || undefined,
+      })),
     });
     if (!parsed.success) {
       const map = zodFieldErrors(parsed.error);
@@ -468,6 +494,24 @@ export function DriverRoster() {
                 onChange={(e) => setAdrExpiry(e.target.value)}
               />
             </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Paszport ważny do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={passportExpiry}
+                onChange={(e) => setPassportExpiry(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Dowód osobisty ważny do</span>
+              <input
+                style={styles.input}
+                type="date"
+                value={idCardExpiry}
+                onChange={(e) => setIdCardExpiry(e.target.value)}
+              />
+            </label>
           </div>
         </div>
 
@@ -532,6 +576,41 @@ export function DriverRoster() {
             </Button>
           </div>
         </div>
+
+        {quals.length > 0 && (
+          <div>
+            <span style={styles.label}>Szczegóły uprawnień (nr dokumentu i ważność)</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+              {quals.map((q) => (
+                <div key={q} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ minWidth: 130, fontSize: 13 }}>{q}</span>
+                  <input
+                    style={{ ...styles.input, maxWidth: 200 }}
+                    value={qualDetails[q]?.docNumber ?? ""}
+                    onChange={(e) =>
+                      setQualDetails((d) => ({
+                        ...d,
+                        [q]: { docNumber: e.target.value, expiry: d[q]?.expiry ?? "" },
+                      }))
+                    }
+                    placeholder="Nr dokumentu"
+                  />
+                  <input
+                    style={{ ...styles.input, maxWidth: 170 }}
+                    type="date"
+                    value={qualDetails[q]?.expiry ?? ""}
+                    onChange={(e) =>
+                      setQualDetails((d) => ({
+                        ...d,
+                        [q]: { docNumber: d[q]?.docNumber ?? "", expiry: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <label style={styles.field}>
           <span style={styles.label}>Notatki</span>

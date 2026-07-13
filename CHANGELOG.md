@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-318-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.171.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-319-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.172.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.172.0] — 🪪 Kartoteka kierowcy: paszport, dowód i uprawnienia z numerem oraz datą
+
+- `[#319]` 🪪 **Daty ważności paszportu i dowodu osobistego** w kartotece kierowcy (migracja [0074](supabase/migrations/0074_driver_passport_id_qualifications.sql), nałożona na żywo) — jawne daty compliance obok prawa jazdy/kodu 95/badań; numery dokumentów pozostają szyfrowane jak dotąd.
+- `[#319]` 🎓 **Uprawnienia (UDT, HDS itd.) z detalami** — po zaznaczeniu uprawnienia pojawiają się pola **nr dokumentu + data ważności** ([DriverRoster](apps/web/components/DriverRoster.tsx)); zapis w `qualification_details` (jsonb) przez rozszerzone RPC `driver_save`/`list_drivers`.
+- `[#319]` 🔔 **Cron powiadomień** obejmuje teraz także paszport, dowód i każde uprawnienie z datą (z numerem dokumentu w treści), z wyprzedzeniem wg `notify_days_ahead` firmy.
+- **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.171.0] — 👤 Mój profil: avatar, telefon, e-mail i hasło w rękach kierowcy
 

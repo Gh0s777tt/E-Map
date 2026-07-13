@@ -681,6 +681,9 @@ export interface Database {
           adr_expiry: string | null;
           user_id: string | null;
           psychotech_expiry: string | null;
+          passport_expiry: string | null;
+          id_card_expiry: string | null;
+          qualification_details: Json | null;
         };
         Insert: {
           id?: string;
@@ -702,6 +705,9 @@ export interface Database {
           adr_expiry?: string | null;
           user_id?: string | null;
           psychotech_expiry?: string | null;
+          passport_expiry?: string | null;
+          id_card_expiry?: string | null;
+          qualification_details?: Json | null;
         };
         Update: {
           id?: string;
@@ -723,6 +729,9 @@ export interface Database {
           adr_expiry?: string | null;
           user_id?: string | null;
           psychotech_expiry?: string | null;
+          passport_expiry?: string | null;
+          id_card_expiry?: string | null;
+          qualification_details?: Json | null;
         };
         Relationships: [];
       };
@@ -2094,6 +2103,9 @@ export interface Database {
           p_medical_expiry?: string | null;
           p_adr_expiry?: string | null;
           p_psychotech_expiry?: string | null;
+          p_passport_expiry?: string | null;
+          p_id_card_expiry?: string | null;
+          p_qual_details?: Json | null;
         };
         Returns: string;
       };
