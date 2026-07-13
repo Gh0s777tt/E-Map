@@ -76,21 +76,31 @@ describe("fuelLogSchema", () => {
 });
 
 describe("tripEventSchema", () => {
-  it("load wymaga wagi", () => {
-    const bad = tripEventSchema.safeParse({
-      action: "load",
-      vehicleId: VID,
-      place: { country: "PL" },
-      odometerKm: 100000,
-    });
-    expect(bad.success).toBe(false);
-
+  it("load — waga opcjonalna (#343: kierowca może wysłać bez wagi)", () => {
     const ok = tripEventSchema.safeParse({
       action: "load",
       vehicleId: VID,
       place: { country: "PL" },
       odometerKm: 100000,
+    });
+    expect(ok.success).toBe(true);
+
+    const withWeight = tripEventSchema.safeParse({
+      action: "load",
+      vehicleId: VID,
+      place: { country: "PL" },
+      odometerKm: 100000,
       weightKg: 24000,
+    });
+    expect(withWeight.success).toBe(true);
+  });
+
+  it("kod pocztowy i firma w miejscu (#343)", () => {
+    const ok = tripEventSchema.safeParse({
+      action: "unload",
+      vehicleId: VID,
+      place: { country: "GB", city: "London", postcode: "SW1A 1AA", company: "Tesco DC" },
+      odometerKm: 100000,
     });
     expect(ok.success).toBe(true);
   });

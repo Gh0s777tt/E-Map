@@ -20,6 +20,10 @@ export const geoLocationSchema = z.object({
   country: z.string().min(2).max(56),
   city: z.string().min(1).optional(),
   location: z.string().min(1).optional(),
+  /** Kod pocztowy (np. wymagany dla UK/Anglii). */
+  postcode: z.string().min(1).max(16).optional(),
+  /** Nazwa firmy w miejscu (opcjonalnie). */
+  company: z.string().min(1).max(120).optional(),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
 });
@@ -193,7 +197,7 @@ export const tripEventSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("load"),
     ...tripBase,
-    weightKg: z.number().int().nonnegative(),
+    weightKg: z.number().int().nonnegative().optional(),
     /** Powiązanie z zleceniem (do auto-zamykania + kosztu transportu). */
     orderId: z.string().uuid().optional(),
     comment: z.string().max(2000).optional(),
@@ -201,14 +205,14 @@ export const tripEventSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("unload"),
     ...tripBase,
-    weightKg: z.number().int().nonnegative(),
+    weightKg: z.number().int().nonnegative().optional(),
     orderId: z.string().uuid().optional(),
     comment: z.string().max(2000).optional(),
   }),
   z.object({
     action: z.literal("transshipment"),
     ...tripBase,
-    weightKg: z.number().int().nonnegative(),
+    weightKg: z.number().int().nonnegative().optional(),
     /** Rejestracja auta, Z KTÓREGO przeładowano. */
     fromVehicleReg: z.string().min(2).max(20),
     /** Rejestracja auta, NA KTÓRE przeładowano. */

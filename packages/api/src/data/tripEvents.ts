@@ -22,6 +22,8 @@ export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
     action: input.action,
     country: input.place.country,
     location: input.place.location ?? input.place.city ?? null,
+    postcode: input.place.postcode ?? null,
+    company: input.place.company ?? null,
     geo: hasGeo ? `POINT(${input.place.lng} ${input.place.lat})` : null,
     odometer_km: input.odometerKm,
     weight_kg: "weightKg" in input ? input.weightKg : null,

@@ -21,6 +21,8 @@ export function fuelLogToRow(input: FuelLogInput, ctx: FuelLogContext) {
     station_country: input.station.country,
     station_city: input.station.city ?? null,
     station_loc: input.station.location ?? null,
+    station_postcode: input.station.postcode ?? null,
+    station_company: input.station.company ?? null,
     geo: hasGeo ? `POINT(${input.station.lng} ${input.station.lat})` : null,
     odometer_km: input.odometerKm,
     liters: input.liters,

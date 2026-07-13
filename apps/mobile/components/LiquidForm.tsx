@@ -9,6 +9,7 @@ import { palette } from "@e-logistic/ui";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { fillFromLocation, requiresPostcode } from "../lib/geoFill";
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
@@ -36,6 +37,10 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [company, setCompany] = useState("");
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [odometer, setOdometer] = useState("");
   const [liters, setLiters] = useState("");
   const [payment, setPayment] = useState<"card" | "cash">("cash");
@@ -138,6 +143,26 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     }
   }
 
+  async function autofill() {
+    if (geoBusy) return;
+    setGeoBusy(true);
+    setMsg(null);
+    try {
+      const p = await fillFromLocation();
+      if (!p) {
+        setMsg(t("m.fuel.geoDenied"));
+        return;
+      }
+      if (p.country) setCountry(p.country);
+      if (p.city) setCity(p.city);
+      if (p.postcode) setPostcode(p.postcode);
+      setGeo({ lat: p.lat, lng: p.lng });
+      setMsg(t("m.fuel.geoFilled"));
+    } finally {
+      setGeoBusy(false);
+    }
+  }
+
   async function submit() {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
@@ -147,7 +172,13 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     }
     const parsed = fuelLogSchema.safeParse({
       vehicleId,
-      station: { country, ...(city.trim() ? { city: city.trim() } : {}) },
+      station: {
+        country,
+        ...(city.trim() ? { city: city.trim() } : {}),
+        ...(postcode.trim() ? { postcode: postcode.trim() } : {}),
+        ...(company.trim() ? { company: company.trim() } : {}),
+        ...(geo ? { lat: geo.lat, lng: geo.lng } : {}),
+      },
       // przecinek dziesiętny (klawiatura EU / prefill z OCR) traktujemy jak kropkę
       odometerKm: Number(odometer.replace(",", ".")),
       liters: Number(liters.replace(",", ".")),
@@ -167,6 +198,9 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       setMsg(item.status === "synced" ? t("m.fuel.savedSynced") : t("m.fuel.savedLocal"));
       setOdometer("");
       setLiters("");
+      setPostcode("");
+      setCompany("");
+      setGeo(null);
       await refresh();
     } finally {
       setBusy(false);
@@ -239,6 +273,11 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       <Text style={styles.label}>
         {t("m.fuel.location")} <Text style={styles.accent}>▾</Text>
       </Text>
+      <Pressable style={styles.repeatBtn} onPress={autofill} disabled={geoBusy}>
+        <Text style={styles.repeatText}>
+          📍 {geoBusy ? t("m.fuel.geoFilling") : t("m.fuel.geoFill")}
+        </Text>
+      </Pressable>
       <TextInput
         style={styles.input}
         value={country}
@@ -252,6 +291,23 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         value={city}
         onChangeText={setCity}
         placeholder={t("m.fuel.city")}
+        placeholderTextColor={palette.smoke}
+      />
+      {requiresPostcode(country) && (
+        <TextInput
+          style={styles.input}
+          value={postcode}
+          onChangeText={setPostcode}
+          placeholder={t("m.fuel.postcode")}
+          placeholderTextColor={palette.smoke}
+          autoCapitalize="characters"
+        />
+      )}
+      <TextInput
+        style={styles.input}
+        value={company}
+        onChangeText={setCompany}
+        placeholder={t("m.fuel.company")}
         placeholderTextColor={palette.smoke}
       />
 

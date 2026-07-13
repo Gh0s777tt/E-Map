@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-342-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.187.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-343-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.188.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.188.0] — 🐛 Fix wysyłki formularza Trip + kod pocztowy (UK), autouzupełnianie z GPS i nazwa firmy
+
+- `[#343]` 🐛 **Naprawa: „nie można wysłać formularza Trip"** — dla akcji load/unload/przeładunek schemat **wymagał wagi**, a formularz pozwalał zostawić ją pustą → walidacja po cichu odrzucała zapis. Waga jest teraz **opcjonalna** ([schemas](packages/core/src/schemas.ts), test zaktualizowany) — kierowca może wysłać zdarzenie bez wpisywania wagi.
+- `[#343]` 🇬🇧 **Kod pocztowy dla Anglii** — po wpisaniu/wykryciu kraju UK/GB (i pokrewnych) w formularzach Trip oraz Paliwo/AdBlue pojawia się pole **kodu pocztowego** (`requiresPostcode`).
+- `[#343]` 📍 **Autouzupełnianie z lokalizacji** — przycisk „📍 Uzupełnij z lokalizacji" (GPS + reverse-geocode, [geoFill](apps/mobile/lib/geoFill.ts)) wypełnia kraj, miejscowość i kod pocztowy; fail-safe bez zgody.
+- `[#343]` 🏢 **Opcjonalna nazwa firmy** w miejscu (załadunek/rozładunek/stacja). Migracja [0078](supabase/migrations/0078_place_postcode_company.sql) (nałożona na żywo) — kolumny postcode/company w `trip_events` i station_postcode/station_company w `fuel_logs`/`adblue_logs`; zapis przez wspólną warstwę API.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓ · migracja nałożona + `gen:types` ✓.
 
 ## [1.187.0] — 🛠 Parytet zarządzania, fala 2: pojazdy i karty paliwowe z telefonu
 

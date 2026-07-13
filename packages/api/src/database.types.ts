@@ -55,6 +55,8 @@ export interface Database {
           updated_at: string;
           synced_at: string | null;
           is_full: boolean;
+          station_postcode: string | null;
+          station_company: string | null;
         };
         Insert: {
           id: string;
@@ -77,6 +79,8 @@ export interface Database {
           updated_at?: string;
           synced_at?: string | null;
           is_full?: boolean;
+          station_postcode?: string | null;
+          station_company?: string | null;
         };
         Update: {
           id?: string;
@@ -99,6 +103,8 @@ export interface Database {
           updated_at?: string;
           synced_at?: string | null;
           is_full?: boolean;
+          station_postcode?: string | null;
+          station_company?: string | null;
         };
         Relationships: [];
       };
@@ -886,6 +892,8 @@ export interface Database {
           updated_at: string;
           synced_at: string | null;
           is_full: boolean;
+          station_postcode: string | null;
+          station_company: string | null;
         };
         Insert: {
           id: string;
@@ -908,6 +916,8 @@ export interface Database {
           updated_at?: string;
           synced_at?: string | null;
           is_full?: boolean;
+          station_postcode?: string | null;
+          station_company?: string | null;
         };
         Update: {
           id?: string;
@@ -930,6 +940,8 @@ export interface Database {
           updated_at?: string;
           synced_at?: string | null;
           is_full?: boolean;
+          station_postcode?: string | null;
+          station_company?: string | null;
         };
         Relationships: [];
       };
@@ -1801,6 +1813,8 @@ export interface Database {
           order_id: string | null;
           from_vehicle_reg: string | null;
           to_vehicle_reg: string | null;
+          postcode: string | null;
+          company: string | null;
         };
         Insert: {
           id: string;
@@ -1823,6 +1837,8 @@ export interface Database {
           order_id?: string | null;
           from_vehicle_reg?: string | null;
           to_vehicle_reg?: string | null;
+          postcode?: string | null;
+          company?: string | null;
         };
         Update: {
           id?: string;
@@ -1845,6 +1861,8 @@ export interface Database {
           order_id?: string | null;
           from_vehicle_reg?: string | null;
           to_vehicle_reg?: string | null;
+          postcode?: string | null;
+          company?: string | null;
         };
         Relationships: [];
       };

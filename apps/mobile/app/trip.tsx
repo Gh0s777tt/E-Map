@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
 import { VehiclePicker } from "../components/VehiclePicker";
+import { fillFromLocation, requiresPostcode } from "../lib/geoFill";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
@@ -44,6 +45,10 @@ export default function TripScreen() {
   const [fromReg, setFromReg] = useState("");
   const [toReg, setToReg] = useState("");
   const [country, setCountry] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [company, setCompany] = useState("");
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [odometer, setOdometer] = useState("");
   const [weight, setWeight] = useState("");
   const [comment, setComment] = useState("");
@@ -91,6 +96,26 @@ export default function TripScreen() {
     setMsg("Wczytano dane z ostatniego zdarzenia — uzupełnij licznik.");
   }
 
+  async function autofill() {
+    if (geoBusy) return;
+    setGeoBusy(true);
+    setMsg(null);
+    try {
+      const p = await fillFromLocation();
+      if (!p) {
+        setMsg(t("form.geo.denied"));
+        return;
+      }
+      if (p.country) setCountry(p.country);
+      if (p.city) setCity(p.city);
+      if (p.postcode) setPostcode(p.postcode);
+      setGeo({ lat: p.lat, lng: p.lng });
+      setMsg(t("form.geo.filled"));
+    } finally {
+      setGeoBusy(false);
+    }
+  }
+
   async function submit() {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
@@ -101,7 +126,13 @@ export default function TripScreen() {
     const base = {
       action,
       vehicleId,
-      place: { country, ...(city.trim() ? { city: city.trim() } : {}) },
+      place: {
+        country,
+        ...(city.trim() ? { city: city.trim() } : {}),
+        ...(postcode.trim() ? { postcode: postcode.trim() } : {}),
+        ...(company.trim() ? { company: company.trim() } : {}),
+        ...(geo ? { lat: geo.lat, lng: geo.lng } : {}),
+      },
       odometerKm: Number(odometer),
       comment: comment || undefined,
     };
@@ -135,6 +166,9 @@ export default function TripScreen() {
       setComment("");
       setFromReg("");
       setToReg("");
+      setPostcode("");
+      setCompany("");
+      setGeo(null);
       setOrderId(null);
       await refresh();
     } finally {
@@ -179,6 +213,12 @@ export default function TripScreen() {
         ))}
       </View>
 
+      <Pressable style={styles.repeatBtn} onPress={autofill} disabled={geoBusy}>
+        <Text style={styles.repeatText}>
+          📍 {geoBusy ? t("form.geo.filling") : t("form.geo.fill")}
+        </Text>
+      </Pressable>
+
       <Text style={styles.label}>{t("form.field.country")}</Text>
       <TextInput
         style={styles.input}
@@ -195,6 +235,29 @@ export default function TripScreen() {
         value={city}
         onChangeText={setCity}
         placeholder="Poznań"
+        placeholderTextColor={palette.smoke}
+      />
+
+      {requiresPostcode(country) && (
+        <>
+          <Text style={styles.label}>{t("form.field.postcode")}</Text>
+          <TextInput
+            style={styles.input}
+            value={postcode}
+            onChangeText={setPostcode}
+            placeholder="SW1A 1AA"
+            placeholderTextColor={palette.smoke}
+            autoCapitalize="characters"
+          />
+        </>
+      )}
+
+      <Text style={styles.label}>{t("form.field.company")}</Text>
+      <TextInput
+        style={styles.input}
+        value={company}
+        onChangeText={setCompany}
+        placeholder={t("form.field.companyPlaceholder")}
         placeholderTextColor={palette.smoke}
       />
 
