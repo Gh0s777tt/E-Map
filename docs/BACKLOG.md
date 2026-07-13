@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.183.0 · #332 · 2026-07-13 -->
+<!-- SYNC: po v1.184.0 · #333 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -112,7 +112,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
   - **CSP-enforce = osobny, większy projekt** (nie „kolejny etap"): wymaga usunięcia `'unsafe-inline'` ze `style-src` (→ usunąć WSZYSTKIE one-off inline, dziesiątki plików) ORAZ `script-src` (→ **nonce** dla skryptu anty-FOUC w `layout.tsx`). Do zrobienia z authed QA, gdy priorytet. Dziś CSP `Report-Only` (od #214) obserwuje bez blokowania.
   - Rekomendacja: dalsze migracje tylko z podglądem authed; one-off inline styli w React jest idiomatyczny i nie wymaga masowej migracji poza celem CSP.
 - [x] **Toasty w formularzach** — `useToast` we **wszystkich** formularzach/komponentach CRUD/akcji (16 widoków, #208–#213; inline tylko w publicznych login/reset). Spójny feedback success/error/info.
-- [ ] Mobile: animacje `react-native-reanimated` (jest dep, nieużywany), haptyka, gesty.
+- [ ] Mobile: własne animacje `react-native-reanimated` (przejścia/mikrointerakcje). Haptyka ✅ (#294), gesty częściowo ✅ (swipe na zleceniach, `ReanimatedSwipeable`).
 
 ---
 

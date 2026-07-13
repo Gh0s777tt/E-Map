@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "E-Logistic · GH0ST EMPIRE",
+  title: "E-Logistic",
   description: "Platforma dla kierowców, spedytorów i firm transportowych.",
   // #279: instalacja jako aplikacja na macOS (Safari „Dodaj do Docka") i iOS.
   appleWebApp: {

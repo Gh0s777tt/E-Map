@@ -20,7 +20,7 @@ więc każdy deploy na Vercel od razu aktualizuje też „aplikację Windows".
    (konto Microsoft; opłata jednorazowa ~**19 USD** dla konta indywidualnego, ~99 USD firmowego).
 2. Po rejestracji: **Apps and games → New product → App (MSIX)** i **zarezerwuj nazwę** `E-Logistic`.
 3. Z zakładki **Product identity** zanotuj 3 wartości (potrzebne w kroku 2):
-   - `Package/Identity/Name` (np. `12345GH0STEMPIRE.ELogistic`),
+   - `Package/Identity/Name` (np. `12345PUBLISHER.ELogistic`),
    - `Package/Identity/Publisher` (np. `CN=A1B2C3D4-…`),
    - `Publisher display name`.
 

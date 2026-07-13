@@ -1,18 +1,18 @@
-<!-- SYNC: v1.183.0 · #332 · 2026-07-13 — weryfikowane bramką `pnpm docs:check` (CI) -->
+<!-- SYNC: v1.184.0 · #333 · 2026-07-13 — weryfikowane bramką `pnpm docs:check` (CI) -->
 <!-- ╔══════════════════════════════════════════════════════════════════╗ -->
 <!-- ║                       E - L O G I S T I C                         ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->
 
 <div align="center">
 
-# 🚛 E‑LOGISTIC &nbsp;·&nbsp; GH0ST EMPIRE
+# 🚛 E‑LOGISTIC
 
 ### ⟣ Platforma dla kierowców, spedytorów i firm transportowych ⟣
 ### ⟣ Web · iOS · Android · macOS — offline-first ⟣
 
 <br/>
 
-![Wersja](https://img.shields.io/badge/wersja-1.183.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.184.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Status](https://img.shields.io/badge/status-produkcja-22c55e?style=for-the-badge&labelColor=0a0a0a)
 ![Licencja](https://img.shields.io/badge/licencja-PROPRIETARY-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Repo](https://img.shields.io/badge/repo-publiczne-E50914?style=for-the-badge&labelColor=0a0a0a)
@@ -148,6 +148,6 @@ E-Logistic/
 
 <div align="center">
 
-**GH0ST EMPIRE** &nbsp;·&nbsp; 👻🔴⚫ &nbsp;·&nbsp; oprogramowanie własnościowe
+**E‑Logistic** &nbsp;·&nbsp; oprogramowanie własnościowe
 
 </div>

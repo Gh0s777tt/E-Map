@@ -1,5 +1,5 @@
 // Generator grafik aplikacji mobilnej (ikony + splash) — zamiast ręcznych PNG.
-// Motyw: czerń #0a0a0a + czerwień #E50914 (GH0ST EMPIRE), monogram „E" z drogą.
+// Motyw: czerń #0a0a0a + czerwień #E50914, monogram „E" z drogą.
 // Czysta geometria SVG (bez fontów) ⇒ identyczny render na każdej maszynie.
 //
 // Użycie: node scripts/gen-mobile-assets.mjs   (wyjście: apps/mobile/assets/)

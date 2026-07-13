@@ -1,12 +1,12 @@
 # CLAUDE.md — E‑Logistic
 
-Zasady pracy nad tym repo (część ekosystemu **GH0ST EMPIRE**). Trzymaj się ich, aby repo
-było zawsze spójne, zsynchronizowane i w jednej stylistyce z resztą (np. `E-Bot`).
+Zasady pracy nad tym repo. Trzymaj się ich, aby repo było zawsze spójne,
+zsynchronizowane i w jednej stylistyce.
 
 ## Język i styl
 - Dokumentacja, changelog i opisy commitów/PR — **po polsku**.
 - Motyw wizualny: **czerwień `#E50914` na czerni `#0a0a0a`** (styl Netflix). Bez wyjątków w UI/badge'ach.
-- Konwencja nazw repo w ekosystemie: `E-<Nazwa>`.
+- Konwencja nazw repo: `E-<Nazwa>`.
 
 ## Stack (✅ = w kodzie · 🔜 = docelowe; szczegóły w docs/ARCHITECTURE.md)
 - ✅ Node 26 · TypeScript 6 (strict) · **pnpm** · **Turborepo** · **Biome** (lint+format, NIE ESLint/Prettier).

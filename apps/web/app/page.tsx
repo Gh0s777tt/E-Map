@@ -14,22 +14,57 @@ const CORE_FEATURES: { glyph: string; title: string; desc: string }[] = [
   {
     glyph: "🚛",
     title: "Pulpit kierowcy",
-    desc: "Widok ograniczony do danych własnego pojazdu. Szybki start trasy, tankowania i checklisty, KPI dnia i ostatnie aktywności — wszystko działa też offline.",
+    desc: "Karta kierowcy: staż, km z trasy, litry ON+AdBlue i średnie spalanie. Szybki start trasy, tankowania i checklisty, „na dziś” i ostatnie aktywności — wszystko działa też offline.",
   },
   {
     glyph: "📊",
     title: "Panel właściciela i spedytora",
-    desc: "Pełny przegląd floty z KPI: aktywne pojazdy, spalanie, rentowność tras i klientów. Wykresy, statystyki i szybkie akcje zarządcze.",
+    desc: "Pulpit floty z KPI: pojazdy w trasie / przerwie / serwisie, spalanie, przychody i scoring kierowców. Status floty, harmonogram terminów, wykresy i szybkie akcje zarządcze.",
   },
   {
-    glyph: "🚚",
-    title: "Formularz trasy (Trip)",
-    desc: "Zdarzenia trasy: załadunek, rozładunek, serwis. Miejsce, czas i waga towaru — dane spinają się z rozliczeniem zlecenia.",
+    glyph: "🕓",
+    title: "Tacho PRO — czas pracy 561/AETR",
+    desc: "Licznik 561 jak w VDO (jazda ciągła z przerwą 15+30, doba 9/10 h, tydzień 56 h) z alertami i lokalnymi powiadomieniami o przerwie, planer odpoczynku tygodniowego, import karty kierowcy .ddd i pełne rozporządzenie 561/2006 pod ręką.",
+  },
+  {
+    glyph: "📡",
+    title: "Telematyka live i śledzenie dla klienta",
+    desc: "Pozycje aut na żywo na mapie firmy (kolor = świeżość) oraz publiczny link śledzenia z ETA dla klienta końcowego — bez logowania, auto-odświeżanie. Kierowca dobrowolnie włącza udostępnianie pozycji.",
   },
   {
     glyph: "⛽",
     title: "Tankowanie: Diesel + AdBlue",
-    desc: "Przełącznik Diesel/AdBlue, litry, stan licznika, kraj stacji i opcja „Zatankowano do pełna” (dokładne liczenie spalania). Historia ostatnich tankowań pod ręką.",
+    desc: "Diesel/AdBlue, litry (skan paragonu OCR uzupełnia je automatycznie), licznik, kraj i miejscowość, „do pełna” do dokładnego spalania oraz wybór karty flotowej przypisanej do auta.",
+  },
+  {
+    glyph: "🚚",
+    title: "Zlecenia, trasa i POD z QR",
+    desc: "Zdarzenia trasy (załadunek, rozładunek, przeładunek, serwis) z miejscem, wagą i licznikiem. Zlecenia ze statusami, CMR i Proof of Delivery: zdjęcie + podpis + kod QR z publicznym śledzeniem.",
+  },
+  {
+    glyph: "🧾",
+    title: "Faktury, KSeF i rozliczenia",
+    desc: "Faktury VAT z eksportem do Fakturowni i generatorem e-faktury XML FA(3) w strukturze KSeF 2.0. Diety (per diem), wypłaty i salda kierowców liczone jednym silnikiem na webie i w aplikacji.",
+  },
+  {
+    glyph: "💬",
+    title: "Czat z dyspozytorem",
+    desc: "Realtime, nazwane kanały prywatne, powiadomienia push o nowej wiadomości i zdjęcia z trasy — szybka komunikacja kierowca ↔ biuro bez telefonów.",
+  },
+  {
+    glyph: "💸",
+    title: "Rejestr wydatków",
+    desc: "Opłaty drogowe, parkingi i naprawy ze zdjęciami paragonów (OCR kwoty), praca offline, akcje zbiorcze zatwierdź/odrzuć — automatyczne rozliczenie z firmą.",
+  },
+  {
+    glyph: "🗺️",
+    title: "Mapa TIR i trasy",
+    desc: "Routing dla ciężarówek wg wymiarów i wagi, myto na odcinki, auto-objazd przy nowym utrudnieniu, parkingi z ocenami społeczności i stacje z cenami. Spedytor wysyła gotową trasę na telefon.",
+  },
+  {
+    glyph: "🔧",
+    title: "Flota i harmonogram terminów",
+    desc: "Pojazdy ze statusami, przeglądy, OC, leasing i licencja transportowa, badania i dokumenty kierowców (paszport, dowód, UDT), karty paliwowe, usterki i szkody. Alerty scalone per auto — czytelne przy 30–50 pojazdach.",
   },
   {
     glyph: "✅",
@@ -37,40 +72,33 @@ const CORE_FEATURES: { glyph: string; title: string; desc: string }[] = [
     desc: "Listy kontrolne z paskiem postępu — np. „Wjazd do UK” (Border Force) i „Tachograf”. Wyniki trafiają do raportów właściciela, a dni służby do ewidencji czasu pracy.",
   },
   {
-    glyph: "🗺️",
-    title: "Mapa TIR i trasy",
-    desc: "Routing dla ciężarówek wg wymiarów i wagi, myto liczone na odcinki, parkingi i stacje z cenami. Spedytor wysyła gotową trasę na telefon kierowcy.",
+    glyph: "🌍",
+    title: "Cztery języki: PL · EN · DE · UK",
+    desc: "Cała aplikacja — pulpit, zlecenia, formularze, wydatki, ustawienia, logowanie i czat — po polsku, angielsku, niemiecku i ukraińsku. Automatyczne wykrywanie języka telefonu i ręczny wybór.",
   },
   {
-    glyph: "📈",
-    title: "Raporty i statystyki",
-    desc: "Wykresy spalania, kosztów i wydajności z filtrami po dacie, pojeździe i kierowcy. Pełny dostęp dla właściciela, ograniczony dla kierowcy.",
-  },
-  {
-    glyph: "🔧",
-    title: "Zarządzanie flotą",
-    desc: "Pojazdy ze statusami i terminami (przegląd, OC, leasing), przypisywanie kierowców, karty paliwowe z rabatami, usterki i szkody z obiegiem naprawy.",
+    glyph: "🖥️",
+    title: "Telefon, macOS, iPad i Windows",
+    desc: "Aplikacja iOS/Android z pracą offline, ta sama apka na Makach z Apple Silicon i iPadzie (layout na duże ekrany), a panel właściciela jako PWA na macOS/Windows — gotowy do Microsoft Store.",
   },
 ];
 
 const DRIVER_ROADMAP: { title: string; desc: string }[] = [
   {
-    title: "Proof of Delivery (POD)",
-    desc: "zdjęcie + podpis odbiorcy na ekranie — już działa przy zleceniach; dojdzie kod QR",
-  },
-  {
-    title: "Rejestr wydatków",
-    desc: "opłaty drogowe, parkingi i naprawy ze zdjęciami paragonów, automatyczne rozliczenie z firmą",
-  },
-  {
-    title: "Czas pracy i przerwy (AETR)",
-    desc: "alerty o zbliżającym się przekroczeniu limitu jazdy",
-  },
-  { title: "Czat z dyspozytorem", desc: "szybka komunikacja tekstowa + zdjęcia z trasy" },
-  { title: "Nawigacja z optymalizacją", desc: "najbardziej ekonomiczna trasa pod kątem spalania" },
-  {
     title: "Głosowe wypełnianie formularzy",
     desc: "dyktowanie tripów i tankowań — bezpieczeństwo podczas jazdy",
+  },
+  {
+    title: "Eco-routing",
+    desc: "najbardziej ekonomiczna trasa pod kątem spalania (dziś: routing TIR + auto-objazd)",
+  },
+  {
+    title: "Gamifikacja",
+    desc: "punkty, odznaki i wyzwania za spalanie i terminowość — obok istniejącego scoringu",
+  },
+  {
+    title: "Asystent pasa i widok skrzyżowań",
+    desc: "premium nawigacja (Navigation SDK) — reroute z ruchem live i widok 3D już działają",
   },
 ];
 
@@ -80,49 +108,45 @@ const OWNER_ROADMAP: { title: string; desc: string }[] = [
     desc: "prognoza kosztów paliwa, wykrywanie nieefektywności, sugestie tras",
   },
   {
-    title: "Harmonogram serwisów",
-    desc: "przypomnienia o przeglądach, ubezpieczeniach i tachografach — już działa dla przeglądów/OC",
-  },
-  { title: "Scoring kierowców", desc: "punkty za spalanie, terminowość i bezpieczeństwo" },
-  {
-    title: "Faktury i rozliczenia",
-    desc: "faktury VAT z eksportem do Fakturowni — już działa; dojdą kolejne integracje księgowe",
+    title: "KSeF — wysyłka online",
+    desc: "sesja z API KSeF 2.0 i numer KSeF/UPO przy fakturze (dziś: eksport XML FA(3))",
   },
   {
-    title: "Alerty w czasie rzeczywistym",
-    desc: "opóźnienia, niskie paliwo, przekroczony czas jazdy, zbliżający się serwis",
+    title: "Kolejne integracje księgowe",
+    desc: "obok eksportu do Fakturowni — Comarch, Symfonia, enova i inne",
   },
   {
-    title: "Portal dla klientów",
-    desc: "link do śledzenia przesyłki na żywo dla klienta końcowego",
+    title: "Pełny portal dla klientów",
+    desc: "konta i historia przesyłek (dziś: publiczny link śledzenia z ETA)",
   },
 ];
 
 const INTEGRATIONS =
-  "Karty paliwowe (Orlen, Shell, BP…) · Telematyka (WebEye, GPS Guardian…) · Księgowość (Comarch, Symfonia, enova) · Biometria i PIN · Wielojęzyczność (PL · EN · DE · UA) · Gamifikacja dla kierowców · Automatyczne raporty PDF na e-mail";
+  "Karty paliwowe (DKV, Orlen, Shell, BP…) · Telematyka GPS wbudowana · e-Faktura KSeF FA(3) + eksport do Fakturowni · Biometria, PIN i passkey · Wielojęzyczność PL · EN · DE · UK · Automatyczne raporty PDF na e-mail · Praca offline (outbox + PowerSync)";
 
 export default function Home() {
   return (
     <main style={s.main}>
       {/* HERO */}
       <section style={s.hero}>
-        <p style={s.brand}>GH0ST EMPIRE</p>
         <h1 style={s.h1}>
           <span style={{ color: palette.red }}>E</span>-Logistic
         </h1>
         <p style={s.tagline}>{t("app.tagline")}</p>
         <p style={s.heroSub}>
-          Aplikacja kierowcy (iOS · Android · offline) + panel właściciela i spedytora w jednym.
-          Trasy TIR, paliwo, checklisty, zlecenia z CMR/POD i rozliczenia — bez kartek i Excela.
+          Aplikacja kierowcy (iOS · Android · macOS · iPad · offline) + panel właściciela i
+          spedytora jako PWA na macOS/Windows. Trasy TIR, paliwo, checklisty, zlecenia z CMR/POD,
+          czas pracy 561/AETR i rozliczenia — po polsku, angielsku, niemiecku i ukraińsku, bez
+          kartek i Excela.
         </p>
         <div style={s.ctaRow}>
           <Link href="/login" style={s.ctaPrimary}>
             Wejdź do aplikacji →
           </Link>
-          <a href="https://appstoreconnect.apple.com" style={s.ctaGhost} aria-disabled>
-            📱 iOS — TestFlight / App Store
-          </a>
         </div>
+        <p style={s.platforms}>
+          📱 iOS · 🤖 Android (Google Play) · 🖥️ macOS / iPad · 🪟 panel PWA na Windows
+        </p>
       </section>
 
       {/* FUNKCJE */}
@@ -188,7 +212,6 @@ export default function Home() {
 const s: Record<string, CSSProperties> = {
   main: { minHeight: "100vh", padding: "56px 20px 40px", maxWidth: 1080, margin: "0 auto" },
   hero: { textAlign: "center", marginBottom: 56 },
-  brand: { letterSpacing: 4, color: palette.smoke, margin: 0, fontSize: 12 },
   h1: { fontSize: 60, margin: "8px 0 0", fontWeight: 800 },
   tagline: { color: palette.smoke, marginTop: 8, fontSize: 18 },
   heroSub: {
@@ -216,16 +239,7 @@ const s: Record<string, CSSProperties> = {
     boxShadow: "0 0 24px rgba(229, 9, 20, 0.33)",
     display: "inline-block",
   },
-  ctaGhost: {
-    border: `1px solid ${palette.graphite}`,
-    color: palette.offWhite,
-    padding: "14px 28px",
-    borderRadius: 999,
-    fontWeight: 600,
-    fontSize: 15,
-    textDecoration: "none",
-    display: "inline-block",
-  },
+  platforms: { color: palette.smoke, fontSize: 13, marginTop: 18, lineHeight: 1.7 },
   section: { marginBottom: 56 },
   h2: { fontSize: 28, fontWeight: 800, textAlign: "center", marginBottom: 28 },
   h3: { fontSize: 18, fontWeight: 700, marginBottom: 12 },

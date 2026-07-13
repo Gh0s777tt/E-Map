@@ -136,7 +136,6 @@ export default function Login() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
-      <Text style={styles.brand}>GH0ST EMPIRE</Text>
       <Text style={styles.title}>
         <Text style={styles.accent}>E</Text>-Logistic
       </Text>
@@ -238,7 +237,6 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 24,
   },
-  brand: { color: palette.smoke, letterSpacing: 4, fontSize: 12 },
   title: { color: palette.offWhite, fontSize: 40, fontWeight: "800" },
   accent: { color: palette.red },
   subtitle: { color: palette.smoke, fontSize: 15, marginBottom: 12 },

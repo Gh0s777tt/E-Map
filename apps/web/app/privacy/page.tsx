@@ -26,8 +26,8 @@ export default function PrivacyPage() {
 
         <h2 style={styles.h2}>1. Administrator danych</h2>
         <p style={styles.p}>
-          Administratorem danych jest operator platformy E-Logistic (GH0ST EMPIRE). Kontakt we
-          wszystkich sprawach dotyczących danych: <strong>dzierzawskii98.dam@gmail.com</strong>.
+          Administratorem danych jest operator platformy E-Logistic. Kontakt we wszystkich sprawach
+          dotyczących danych: <strong>dzierzawskii98.dam@gmail.com</strong>.
         </p>
 
         <h2 style={styles.h2}>2. Jakie dane przetwarzamy i po co</h2>

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-332-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.183.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-333-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.184.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.184.0] — 🧹 Usunięcie brandingu GH0ST EMPIRE + odświeżenie strony głównej
+
+- `[#333]` 🧹 **Usunięcie marki „GH0ST EMPIRE"** z wszystkich miejsc widocznych dla użytkownika i z dokumentacji: strona główna, tytuł panelu ([layout](apps/web/app/layout.tsx)), ekran logowania aplikacji (mobile **1.71.0**), polityka prywatności, README, CLAUDE.md, opis pakietu, skrypt grafik, ROADMAP i dane testowe. **Świadomie zachowane** (zmiana zepsułaby wydane aplikacje/konto): identyfikatory `com.ghostempire.elogistic` (iOS/Android w App Store Connect i Google Play), Expo `owner: gh0stt77` oraz historyczne wpisy w tym CHANGELOG-u.
+- `[#333]` ✨ **Strona główna zaktualizowana do realnego stanu** ([page.tsx](apps/web/app/page.tsx)) — z sekcji „W przygotowaniu" przeniesiono do zrealizowanych funkcji wszystko, co już działa (POD z QR, rejestr wydatków, czat, Tacho PRO/AETR, harmonogram, scoring, faktury+KSeF, alerty real-time, portal śledzenia z ETA); **13 kafli funkcji** (nowe: Tacho PRO 561, telematyka live + ETA, KSeF FA(3), diety/rozliczenia, 4 języki PL/EN/DE/UK, multi-platforma macOS/iPad/Windows). „W przygotowaniu" zawiera już tylko niezrobione pozycje; integracje i CTA odzwierciedlają realną dostępność (Android w Google Play, panel PWA); poprawka języka UA→UK.
+- `[#333]` 🩹 Korekta nieaktualnej pozycji w [BACKLOG](docs/BACKLOG.md): haptyka jest zrobiona (#294), gesty częściowo (swipe) — otwarte pozostają tylko własne animacje `react-native-reanimated`.
+- **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.183.0] — 🛰 Tacho z GPS i ewidencją, karta flotowa przy tankowaniu, czytelne zdjęcia poradnika
 

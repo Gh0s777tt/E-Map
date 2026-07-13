@@ -1,8 +1,8 @@
 {
   "name": "e-logistic",
-  "version": "1.183.0",
+  "version": "1.184.0",
   "private": true,
-  "description": "E-Logistic — platforma dla kierowców, spedytorów i firm transportowych (GH0ST EMPIRE)",
+  "description": "E-Logistic — platforma dla kierowców, spedytorów i firm transportowych",
   "license": "UNLICENSED",
   "packageManager": "pnpm@11.5.2",
   "engines": {

@@ -1,6 +1,6 @@
 # 🗺️ Roadmapa — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.183.0 (#332) · 2026-07-13
+> Status: **w realizacji** · stan na v1.184.0 (#333) · 2026-07-13
 > Zasada: każda faza = działający przyrost. Część zarobkowa (Faza 1) **nie wymaga drogich API map**.
 >
 > **Stan dostarczenia** (autorytatywnie: [CHANGELOG](../CHANGELOG.md)):
@@ -16,7 +16,7 @@
 
 ## Faza 0 — Fundament 🧱
 
-**Cel:** szkielet repo gotowy do pracy, spójny z ekosystemem GH0ST EMPIRE.
+**Cel:** szkielet repo gotowy do pracy, spójny z resztą repo.
 
 - [x] Monorepo (Turborepo + pnpm), `apps/web`, `apps/mobile`, `packages/*`.
 - [x] Konfiguracja: TypeScript 6 strict, Biome, tsconfig bazowy, `.env.example`.

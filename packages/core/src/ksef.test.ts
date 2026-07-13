@@ -6,7 +6,7 @@ const BASE: KsefInvoice = {
   issueDate: "2026-07-13",
   currency: "PLN",
   seller: {
-    name: "Trans-GH0ST Sp. z o.o.",
+    name: "Trans-Test Sp. z o.o.",
     taxId: "PL 526-10-40-828",
     address: "ul. Prosta 1, 00-001 Warszawa",
   },
