@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-304-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.157.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-305-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.158.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.158.0] — 🌍 i18n fala 5: czat w 4 językach — APLIKACJA W 100% PRZETŁUMACZONA
+
+- `[#305]` 🌍 **Czat po EN/DE/UK** (mobile **1.54.0**) — lista kanałów (Ogólny, kanały prywatne, tworzenie z członkami) i rozmowa (pole wiadomości, pusty stan, ustawienia kanału: nazwa/członkowie, wszystkie błędy) — [chat](apps/mobile/app/chat.tsx), [chat-thread](apps/mobile/app/chat-thread.tsx); +30 kluczy ×4 w [mobile.ts](packages/i18n/src/mobile.ts).
+- 🏁 **Komplet i18n (fale 1–5)**: cała aplikacja kierowcy — pulpit, zlecenia, formularze z OCR, wydatki, Więcej, ustawienia, logowanie i czat — dostępna po **polsku, angielsku, niemiecku i ukraińsku**, z automatycznym wykrywaniem języka telefonu i ręcznym wyborem.
+- ⚠️ Build iOS nadal wstrzymany (limit EAS, reset 1 sierpnia) — fale 3–5 pojadą pierwszym buildem (mobile 1.54.0). **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.157.0] — 🌍 i18n fala 4: ekran logowania w 4 językach
 

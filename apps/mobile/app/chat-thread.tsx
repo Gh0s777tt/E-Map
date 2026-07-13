@@ -38,6 +38,7 @@ import {
 import { useAuth } from "../components/AuthProvider";
 import { notifyChat } from "../lib/chatNotify";
 import { tap, warn } from "../lib/haptics";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 /** Zdjęcie w dymku — pobiera podpisany URL raz i cache'uje w stanie. */
@@ -55,7 +56,8 @@ function ChatImage({ path }: { path: string }) {
 export default function ChatThreadScreen() {
   const params = useLocalSearchParams<{ id?: string; name?: string }>();
   const threadId = params.id ? String(params.id) : null;
-  const [title, setTitle] = useState(params.name ? String(params.name) : "Ogólny");
+  const t = useT();
+  const [title, setTitle] = useState(params.name ? String(params.name) : t("m.chat.general"));
   const { session } = useAuth();
   const me = session?.user?.id;
   const myLabel = session?.user?.email ?? "ja";
@@ -91,14 +93,14 @@ export default function ChatThreadScreen() {
           setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
         });
       } catch {
-        if (alive) setErr("Nie udało się wczytać czatu — sprawdź zasięg.");
+        if (alive) setErr(t("m.chat.loadFail"));
       }
     })();
     return () => {
       alive = false;
       cleanup?.();
     };
-  }, [threadId]);
+  }, [threadId, t]);
 
   const send = useCallback(async () => {
     const body = text.trim();
@@ -113,11 +115,11 @@ export default function ChatThreadScreen() {
       notifyChat(threadId, body);
     } catch {
       warn();
-      setErr("Nie wysłano — spróbuj ponownie przy zasięgu.");
+      setErr(t("m.chat.sendFail"));
     } finally {
       setBusy(false);
     }
-  }, [text, companyId, busy, myLabel, threadId]);
+  }, [text, companyId, busy, myLabel, threadId, t]);
 
   async function sendPhoto() {
     if (!companyId || photoBusy) return;
@@ -138,7 +140,7 @@ export default function ChatThreadScreen() {
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
       notifyChat(threadId, "📷 Zdjęcie");
     } catch {
-      setErr("Nie udało się wysłać zdjęcia — spróbuj przy lepszym zasięgu.");
+      setErr(t("m.chat.photoFail"));
     } finally {
       setPhotoBusy(false);
     }
@@ -175,7 +177,7 @@ export default function ChatThreadScreen() {
         return next;
       });
     } catch {
-      setErr("Nie udało się zmienić członków.");
+      setErr(t("m.chat.membersChangeFail"));
     }
   }
 
@@ -186,7 +188,7 @@ export default function ChatThreadScreen() {
       setTitle(nameDraft.trim());
       setSettingsOpen(false);
     } catch {
-      setErr("Nie udało się zmienić nazwy.");
+      setErr(t("m.chat.renameFail"));
     }
   }
 
@@ -215,9 +217,7 @@ export default function ChatThreadScreen() {
         keyExtractor={(m) => m.id}
         contentContainerStyle={s.list}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        ListEmptyComponent={
-          <Text style={s.empty}>{err ?? "Brak wiadomości — zacznij rozmowę."}</Text>
-        }
+        ListEmptyComponent={<Text style={s.empty}>{err ?? t("m.chat.empty")}</Text>}
         renderItem={({ item }) => {
           const mine = item.sender_id === me;
           return (
@@ -225,7 +225,7 @@ export default function ChatThreadScreen() {
               <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther]}>
                 {!mine && (
                   <Text style={s.sender} numberOfLines={1}>
-                    {item.sender_label || "członek firmy"}
+                    {item.sender_label || t("m.chat.member")}
                   </Text>
                 )}
                 {item.photo_path ? (
@@ -248,7 +248,7 @@ export default function ChatThreadScreen() {
           style={s.input}
           value={text}
           onChangeText={setText}
-          placeholder="Wiadomość…"
+          placeholder={t("m.chat.messagePh")}
           placeholderTextColor={palette.smoke}
           multiline
         />
@@ -264,8 +264,8 @@ export default function ChatThreadScreen() {
       <Modal visible={settingsOpen} transparent animationType="slide">
         <View style={s.backdrop}>
           <View style={s.sheet}>
-            <Text style={s.sheetTitle}>Ustawienia kanału</Text>
-            <Text style={s.sheetLabel}>Nazwa</Text>
+            <Text style={s.sheetTitle}>{t("m.chat.settings")}</Text>
+            <Text style={s.sheetLabel}>{t("m.chat.name")}</Text>
             <View style={s.nameRow}>
               <TextInput
                 style={[s.inputSheet, { flex: 1 }]}
@@ -273,10 +273,10 @@ export default function ChatThreadScreen() {
                 onChangeText={setNameDraft}
               />
               <Pressable style={s.saveName} onPress={saveName}>
-                <Text style={s.saveNameText}>Zapisz</Text>
+                <Text style={s.saveNameText}>{t("m.chat.save")}</Text>
               </Pressable>
             </View>
-            <Text style={s.sheetLabel}>Członkowie (dotknij, by dodać/usunąć)</Text>
+            <Text style={s.sheetLabel}>{t("m.chat.membersToggle")}</Text>
             <ScrollView style={{ maxHeight: 240 }}>
               {members.map((m) => {
                 const on = threadMemberIds.has(m.user_id);
@@ -297,7 +297,7 @@ export default function ChatThreadScreen() {
               })}
             </ScrollView>
             <Pressable style={s.close} onPress={() => setSettingsOpen(false)}>
-              <Text style={s.closeText}>Zamknij</Text>
+              <Text style={s.closeText}>{t("m.chat.close")}</Text>
             </Pressable>
           </View>
         </View>
