@@ -143,6 +143,9 @@ export const en: Record<MessageKey, string> = {
   "form.trip.title": "Trip form",
   "form.field.vehicle": "Vehicle",
   "form.field.odometer": "Odometer (km)",
+  "form.field.city": "City / town",
+  "form.field.fromReg": "From vehicle (plate)",
+  "form.field.toReg": "To vehicle (plate)",
   "form.field.liters": "Liters",
   "form.field.country": "Country",
   "form.field.location": "Location",
@@ -154,6 +157,7 @@ export const en: Record<MessageKey, string> = {
   "form.payment.cash": "Cash",
 
   "trip.action.load": "Loading",
+  "trip.action.transshipment": "Transshipment",
   "trip.action.unload": "Unloading",
   "trip.action.start": "Start",
   "trip.action.end": "End",

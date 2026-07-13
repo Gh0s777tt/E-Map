@@ -40,6 +40,9 @@ export default function TripScreen() {
   const perm = usePermission("forms"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
+  const [city, setCity] = useState("");
+  const [fromReg, setFromReg] = useState("");
+  const [toReg, setToReg] = useState("");
   const [country, setCountry] = useState("");
   const [odometer, setOdometer] = useState("");
   const [weight, setWeight] = useState("");
@@ -51,7 +54,8 @@ export default function TripScreen() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
 
-  const needsWeight = action === "load" || action === "unload";
+  const isTransship = action === "transshipment";
+  const needsWeight = action === "load" || action === "unload" || isTransship;
   const commentRequired = action === "service" || action === "other";
 
   const refresh = useCallback(async () => {
@@ -97,13 +101,21 @@ export default function TripScreen() {
     const base = {
       action,
       vehicleId,
-      place: { country },
+      place: { country, ...(city.trim() ? { city: city.trim() } : {}) },
       odometerKm: Number(odometer),
       comment: comment || undefined,
     };
-    const candidate = needsWeight
-      ? { ...base, weightKg: weight ? Number(weight) : undefined, orderId: orderId || undefined }
-      : base;
+    const candidate = isTransship
+      ? {
+          ...base,
+          weightKg: weight ? Number(weight) : undefined,
+          fromVehicleReg: fromReg.trim(),
+          toVehicleReg: toReg.trim(),
+          orderId: orderId || undefined,
+        }
+      : needsWeight
+        ? { ...base, weightKg: weight ? Number(weight) : undefined, orderId: orderId || undefined }
+        : base;
 
     const parsed = tripEventSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -121,6 +133,8 @@ export default function TripScreen() {
       setOdometer("");
       setWeight("");
       setComment("");
+      setFromReg("");
+      setToReg("");
       setOrderId(null);
       await refresh();
     } finally {
@@ -174,6 +188,38 @@ export default function TripScreen() {
         placeholderTextColor={palette.smoke}
         autoCapitalize="characters"
       />
+
+      <Text style={styles.label}>{t("form.field.city")}</Text>
+      <TextInput
+        style={styles.input}
+        value={city}
+        onChangeText={setCity}
+        placeholder="Poznań"
+        placeholderTextColor={palette.smoke}
+      />
+
+      {isTransship && (
+        <>
+          <Text style={styles.label}>{t("form.field.fromReg")}</Text>
+          <TextInput
+            style={styles.input}
+            value={fromReg}
+            onChangeText={setFromReg}
+            placeholder="WGM 4C77"
+            placeholderTextColor={palette.smoke}
+            autoCapitalize="characters"
+          />
+          <Text style={styles.label}>{t("form.field.toReg")}</Text>
+          <TextInput
+            style={styles.input}
+            value={toReg}
+            onChangeText={setToReg}
+            placeholder="WPR 88TK"
+            placeholderTextColor={palette.smoke}
+            autoCapitalize="characters"
+          />
+        </>
+      )}
 
       <Text style={styles.label}>{t("form.field.odometer")}</Text>
       <TextInput

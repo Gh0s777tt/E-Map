@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.169.0 · #316 · 2026-07-13 -->
+<!-- SYNC: po v1.170.0 · #317 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -82,7 +82,7 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 **Powiadomienia terminów (konfigurowalne wyprzedzenie: 1 dzień / 1–3 tyg. / miesiąc):**
 - [x] ~~ważność kart · licencja · OC · przegląd~~ (#316: notify_days_ahead 1–90 dni per firma) — ustawienie per firma/per typ.
-- [ ] **Harmonogram: alerty scalone per pojazd** (1 wiersz = 1 auto, rozwinięcie po kliknięciu) — przy 30–50 autach lista musi się skalować.
+- [x] ~~Harmonogram: alerty scalone per pojazd~~ (#315 — pulpit W1 w aplikacji; strona harmonogramu web następna) (1 wiersz = 1 auto, rozwinięcie po kliknięciu) — przy 30–50 autach lista musi się skalować.
 
 **Karta kierowcy / właściciela (start aplikacji):** *(warianty A/B/C i W1/W2 — artefakt „warianty-ui-v1", czeka na wybór)*
 - [ ] Kierowca: „Witaj, Imię Nazwisko" (bez e-maila), staż w firmie, km z Trip, litry ON+AdBlue, śr. spalanie z formularzy.
@@ -97,8 +97,8 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 - [ ] Zakładka kierowcy: **ważność paszportu i dowodu**; uprawnienia (np. UDT) z polem **nr dokumentu + data ważności**.
 
 **Pozostałe:**
-- [ ] **Trip: zdarzenie „przeładunek"** — rejestracja auta źródłowego i docelowego + lokalizacja, waga, km.
-- [ ] **Kreator startu pomijalny** („Pomiń" — firmy transport-only nie tworzą zleceń).
+- [x] ~~Trip: zdarzenie „przeładunek"~~ (#317) — rejestracja auta źródłowego i docelowego + lokalizacja, waga, km.
+- [x] ~~Kreator startu pomijalny~~ (#317) („Pomiń" — firmy transport-only nie tworzą zleceń).
 - [ ] **Duże ekrany**: layout 3-kolumnowy (iPad/macOS „Designed for iPad"); **Microsoft Store** — panel web jako MSIX/WebView2.
 
 ## 🎨 UI/UX (z wizji — kolejne fazy)

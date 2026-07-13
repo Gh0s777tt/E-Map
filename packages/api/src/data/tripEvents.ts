@@ -27,6 +27,8 @@ export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
     weight_kg: "weightKg" in input ? input.weightKg : null,
     amount: "amount" in input ? (input.amount ?? null) : null,
     comment: input.comment ?? null,
+    from_vehicle_reg: "fromVehicleReg" in input ? input.fromVehicleReg : null,
+    to_vehicle_reg: "toVehicleReg" in input ? input.toVehicleReg : null,
     device_id: ctx.deviceId ?? null,
   };
   // order_id dołączany TYLKO gdy wskazany — bez migracji 0052 istniejące trasy (bez zlecenia)

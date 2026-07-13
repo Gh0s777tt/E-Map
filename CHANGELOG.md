@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-316-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.169.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-317-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.170.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.170.0] — 🔧 Feedback właściciela, fala 2: przeładunek w Trasie, miejscowość w Trip, pomijalny kreator
+
+- `[#317]` 🔄 **Przeładunek w formularzu Trasa** (mobile **1.61.0**) — nowa akcja `transshipment` (migracja [0072](supabase/migrations/0072_trip_transshipment.sql), nałożona na żywo): rejestracja auta, **z którego** i **na które** przeładowano (tekst — auto może być spoza floty), plus standardowo lokalizacja, waga i licznik; wariant w zdyskryminowanej unii `tripEventSchema` z walidacją Zod.
+- `[#317]` 📍 **Miejscowość w formularzu Trasa** — pole obok kraju (jak w Paliwo/AdBlue z #316).
+- `[#317]` ⏭ **Pomijalny kreator startu** — przycisk „Pomiń ✕" na karcie „Pierwsze kroki" dashboardu chowa kreator na stałe (firmy transport-only nie muszą tworzyć zleceń, by pozbyć się karty).
+- **Bramki:** `pnpm check` exit 0 ✓.
 
 ## [1.169.0] — 🔧 Feedback właściciela, fala 1: daty kart, licencja pojazdu, wyprzedzenie alertów, miejscowości
 

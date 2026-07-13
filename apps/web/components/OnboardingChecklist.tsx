@@ -13,8 +13,19 @@ type Step = { key: string; label: string; href: string; done: boolean };
  * Lista startowa dla nowej firmy (owner/dispatcher): pojazd → kierowca → karta →
  * pierwsze zlecenie. Każdy krok linkuje do modułu. Znika, gdy wszystko zrobione.
  */
+const SKIP_KEY = "el-onboarding-skip";
+
 export function OnboardingChecklist() {
   const [steps, setSteps] = useState<Step[] | null>(null);
+  // #317: pomijalny kreator — firmy transport-only (bez zleceń/spedycji) chowają go na stałe.
+  const [skipped, setSkipped] = useState(true);
+  useEffect(() => {
+    try {
+      setSkipped(localStorage.getItem(SKIP_KEY) === "1");
+    } catch {
+      setSkipped(false);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -55,9 +66,16 @@ export function OnboardingChecklist() {
     })();
   }, []);
 
-  if (!steps) return null;
+  if (!steps || skipped) return null;
   const doneCount = steps.filter((s) => s.done).length;
   if (doneCount === steps.length) return null; // wszystko gotowe → ukryj
+
+  const skip = () => {
+    try {
+      localStorage.setItem(SKIP_KEY, "1");
+    } catch {}
+    setSkipped(true);
+  };
 
   return (
     <div style={styles.card}>
@@ -66,6 +84,15 @@ export function OnboardingChecklist() {
         <span style={styles.count}>
           {doneCount}/{steps.length}
         </span>
+        <span style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={skip}
+          style={styles.skipBtn}
+          title="Ukryj kreator na stałe — wszystko zrobisz też z menu"
+        >
+          Pomiń ✕
+        </button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {steps.map((s) =>
@@ -97,6 +124,16 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.red}`,
   },
   head: { display: "flex", gap: 10, alignItems: "center", marginBottom: 10 },
+  skipBtn: {
+    background: "transparent",
+    border: `1px solid ${palette.graphite}`,
+    color: palette.smoke,
+    borderRadius: 999,
+    padding: "3px 12px",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
   count: {
     background: palette.red,
     color: palette.white,

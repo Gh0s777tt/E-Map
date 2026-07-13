@@ -28,7 +28,15 @@ export const PAYMENT_METHODS = ["card", "cash"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /** Akcje formularza Trip — zgodne ze specyfikacją (DATA-MODEL §4). */
-export const TRIP_ACTIONS = ["load", "unload", "start", "end", "service", "other"] as const;
+export const TRIP_ACTIONS = [
+  "load",
+  "unload",
+  "transshipment",
+  "start",
+  "end",
+  "service",
+  "other",
+] as const;
 export type TripAction = (typeof TRIP_ACTIONS)[number];
 
 /** Wykaz dostawców kart paliwowych (rozszerzalny). */

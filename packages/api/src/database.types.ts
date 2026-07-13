@@ -1757,6 +1757,8 @@ export interface Database {
           updated_at: string;
           synced_at: string | null;
           order_id: string | null;
+          from_vehicle_reg: string | null;
+          to_vehicle_reg: string | null;
         };
         Insert: {
           id: string;
@@ -1777,6 +1779,8 @@ export interface Database {
           updated_at?: string;
           synced_at?: string | null;
           order_id?: string | null;
+          from_vehicle_reg?: string | null;
+          to_vehicle_reg?: string | null;
         };
         Update: {
           id?: string;
@@ -1797,6 +1801,8 @@ export interface Database {
           updated_at?: string;
           synced_at?: string | null;
           order_id?: string | null;
+          from_vehicle_reg?: string | null;
+          to_vehicle_reg?: string | null;
         };
         Relationships: [];
       };
@@ -2198,7 +2204,7 @@ export interface Database {
       poi_type: "parking" | "fuel_station" | "ferry" | "airport" | "company" | "wash" | "weigh";
       report_type: "accident" | "police" | "closure" | "traffic" | "weigh" | "hazard";
       role: "developer" | "owner" | "dispatcher" | "driver";
-      trip_action: "load" | "unload" | "start" | "end" | "service" | "other";
+      trip_action: "load" | "unload" | "start" | "end" | "service" | "other" | "transshipment";
       vehicle_type: "truck" | "tractor" | "van" | "trailer" | "other";
     };
     CompositeTypes: { [_ in never]: never };

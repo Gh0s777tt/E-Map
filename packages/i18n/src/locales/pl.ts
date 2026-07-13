@@ -141,6 +141,9 @@ export const pl = {
   "form.trip.title": "Formularz Trip",
   "form.field.vehicle": "Pojazd",
   "form.field.odometer": "Stan licznika (km)",
+  "form.field.city": "Miejscowość",
+  "form.field.fromReg": "Z pojazdu (rejestracja)",
+  "form.field.toReg": "Na pojazd (rejestracja)",
   "form.field.liters": "Litry",
   "form.field.country": "Kraj",
   "form.field.location": "Lokalizacja",
@@ -152,6 +155,7 @@ export const pl = {
   "form.payment.cash": "Gotówka",
 
   "trip.action.load": "Załadunek",
+  "trip.action.transshipment": "Przeładunek",
   "trip.action.unload": "Rozładunek",
   "trip.action.start": "Rozpoczęcie",
   "trip.action.end": "Zakończenie",

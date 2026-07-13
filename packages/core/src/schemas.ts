@@ -194,6 +194,17 @@ export const tripEventSchema = z.discriminatedUnion("action", [
     comment: z.string().max(2000).optional(),
   }),
   z.object({
+    action: z.literal("transshipment"),
+    ...tripBase,
+    weightKg: z.number().int().nonnegative(),
+    /** Rejestracja auta, Z KTÓREGO przeładowano. */
+    fromVehicleReg: z.string().min(2).max(20),
+    /** Rejestracja auta, NA KTÓRE przeładowano. */
+    toVehicleReg: z.string().min(2).max(20),
+    orderId: z.string().uuid().optional(),
+    comment: z.string().max(2000).optional(),
+  }),
+  z.object({
     action: z.literal("start"),
     ...tripBase,
     comment: z.string().max(2000).optional(),
