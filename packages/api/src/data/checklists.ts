@@ -7,6 +7,8 @@ export interface ChecklistTemplate {
   name: string;
   items: ChecklistItem[];
   active: boolean;
+  /** #338: przypisani kierowcy (id z kartoteki). Pusta = dla wszystkich. */
+  assignedDrivers: string[];
 }
 
 export interface ChecklistSubmission {
@@ -27,7 +29,7 @@ export async function listChecklistTemplates(
 ): Promise<ChecklistTemplate[]> {
   let q = client
     .from("checklist_templates")
-    .select("id, name, items, active")
+    .select("id, name, items, active, assigned_drivers")
     .eq("company_id", companyId)
     .order("name");
   if (opts.activeOnly) q = q.eq("active", true);
@@ -38,20 +40,67 @@ export async function listChecklistTemplates(
     name: r.name,
     items: (r.items as unknown as ChecklistItem[]) ?? [],
     active: r.active,
+    assignedDrivers: (r.assigned_drivers as string[] | null) ?? [],
   }));
+}
+
+/**
+ * #338: szablony WIDOCZNE dla zalogowanego kierowcy (tylko aktywne i
+ * przypisane do niego lub dla wszystkich). RPC security definer.
+ */
+export async function listVisibleChecklistTemplates(
+  client: SupabaseClient,
+): Promise<ChecklistTemplate[]> {
+  const { data, error } = await client.rpc("list_visible_checklist_templates");
+  if (error) throw error;
+  return (
+    (data as {
+      id: string;
+      name: string;
+      items: unknown;
+      active: boolean;
+      assigned_drivers: string[] | null;
+    }[]) ?? []
+  ).map((r) => ({
+    id: r.id,
+    name: r.name,
+    items: (r.items as unknown as ChecklistItem[]) ?? [],
+    active: r.active,
+    assignedDrivers: r.assigned_drivers ?? [],
+  }));
+}
+
+/** #338: szybkie włącz/wyłącz szablonu (owner/dispatcher). */
+export async function setChecklistActive(
+  client: SupabaseClient,
+  id: string,
+  active: boolean,
+): Promise<void> {
+  const { error } = await client
+    .from("checklist_templates")
+    .update({ active, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 /** Zapis/edycja szablonu (owner/dispatcher). Bez id → insert. */
 export async function saveChecklistTemplate(
   client: SupabaseClient,
   companyId: string,
-  tpl: { id?: string; name: string; items: ChecklistItem[]; active?: boolean },
+  tpl: {
+    id?: string;
+    name: string;
+    items: ChecklistItem[];
+    active?: boolean;
+    assignedDrivers?: string[];
+  },
 ): Promise<void> {
   const row = {
     company_id: companyId,
     name: tpl.name.trim(),
     items: tpl.items as unknown as Json,
     active: tpl.active ?? true,
+    assigned_drivers: tpl.assignedDrivers ?? [],
     updated_at: new Date().toISOString(),
   };
   const { error } = tpl.id

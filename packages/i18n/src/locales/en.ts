@@ -20,6 +20,11 @@ export const en: Record<MessageKey, string> = {
   "mobileMap.poiParking": "HGV parking",
   "mobileMap.permissionDenied": "Location permission denied — showing Europe.",
   "mobileMap.poiError": "Failed to load POI — try again.",
+  "mobileMap.searchPlaceholder": "Search address or city…",
+  "mobileMap.searchError": "Search failed.",
+  "mobileMap.routeError": "Could not plan the route.",
+  "mobileMap.planRoute": "Plan truck route",
+  "mobileMap.planning": "Planning",
 
   "role.developer": "Developer",
   "role.owner": "Owner",

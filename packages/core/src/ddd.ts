@@ -51,11 +51,6 @@ const ACTIVITIES: DddActivity[] = ["rest", "availability", "work", "driving"];
 function u16(b: Uint8Array, o: number): number {
   return ((b[o] ?? 0) << 8) | (b[o + 1] ?? 0);
 }
-function u32(b: Uint8Array, o: number): number {
-  return (
-    (b[o] ?? 0) * 0x1000000 + (((b[o + 1] ?? 0) << 16) | ((b[o + 2] ?? 0) << 8) | (b[o + 3] ?? 0))
-  );
-}
 
 /** Nazwa z pola Name (1 bajt strony kodowej + 35 znaków latin1). */
 function readName(b: Uint8Array, o: number): string {

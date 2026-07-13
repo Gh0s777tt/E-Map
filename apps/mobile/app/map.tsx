@@ -1,6 +1,7 @@
 import { type DriverRoute, listMyDriverRoutes } from "@e-logistic/api";
+import { estimateRouteFuel } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
-import { fetchPois, type Poi } from "@e-logistic/maps";
+import { fetchPois, type GeoHit, geocode, type Poi } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import {
   Camera,
@@ -15,11 +16,13 @@ import {
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { ParkingReviewCard } from "../components/ParkingReviewCard";
@@ -44,6 +47,19 @@ export default function MapScreen() {
   // #272 (M3 fala 2): trasy wysłane przez spedytora — web liczy, mobile rysuje.
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [activeRoute, setActiveRoute] = useState<DriverRoute | null>(null);
+  // #341: wyszukiwanie adresu + wyznaczanie trasy TIR z web /api/route
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<GeoHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [dest, setDest] = useState<GeoHit | null>(null);
+  const [planned, setPlanned] = useState<{
+    geometry: [number, number][];
+    distanceKm: number;
+    durationMin: number;
+    tollCost: number;
+    currency: string;
+  } | null>(null);
+  const [planning, setPlanning] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -74,6 +90,78 @@ export default function MapScreen() {
       zoom: 11,
       duration: 600,
     });
+  }, []);
+
+  const searchAddress = useCallback(async () => {
+    if (query.trim().length < 2 || searching) return;
+    setSearching(true);
+    try {
+      setResults(await geocode(query.trim(), { limit: 6 }));
+    } catch {
+      setNotice(t("mobileMap.searchError"));
+    } finally {
+      setSearching(false);
+    }
+  }, [query, searching]);
+
+  const selectDest = useCallback((hit: GeoHit) => {
+    setDest(hit);
+    setResults([]);
+    setQuery(hit.label);
+    cameraRef.current?.easeTo({ center: [hit.lng, hit.lat], zoom: 9, duration: 700 });
+  }, []);
+
+  const planRoute = useCallback(async () => {
+    if (!dest || planning) return;
+    setPlanning(true);
+    setNotice(null);
+    try {
+      const perm = await Location.getForegroundPermissionsAsync();
+      const req = perm.granted ? perm : await Location.requestForegroundPermissionsAsync();
+      if (!req.granted) {
+        setNotice(t("mobileMap.permissionDenied"));
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const res = await fetch("https://e-logistic-one.vercel.app/api/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          waypoints: [
+            { lat: pos.coords.latitude, lng: pos.coords.longitude },
+            { lat: dest.lat, lng: dest.lng },
+          ],
+          profile: { kind: "truck", weightKg: 24000 },
+          options: {},
+        }),
+      });
+      const r = (await res.json()) as {
+        geometry: [number, number][];
+        distanceKm: number;
+        durationMin: number;
+        tollCost: number;
+        currency: string;
+      };
+      if (!r.geometry || r.geometry.length < 2) {
+        setNotice(t("mobileMap.routeError"));
+        return;
+      }
+      setPlanned(r);
+      setActiveRoute(null);
+      const mid = r.geometry[Math.floor(r.geometry.length / 2)];
+      if (mid) cameraRef.current?.easeTo({ center: mid, zoom: 6, duration: 700 });
+    } catch {
+      setNotice(t("mobileMap.routeError"));
+    } finally {
+      setPlanning(false);
+    }
+  }, [dest, planning]);
+
+  const clearRoute = useCallback(() => {
+    setPlanned(null);
+    setDest(null);
+    setQuery("");
+    setResults([]);
   }, []);
 
   const loadPois = useCallback(async () => {
@@ -165,7 +253,110 @@ export default function MapScreen() {
             />
           </GeoJSONSource>
         )}
+        {/* #341: wyznaczona trasa TIR (z web /api/route) */}
+        {planned && planned.geometry.length >= 2 && (
+          <GeoJSONSource
+            id="planned-route"
+            data={{
+              type: "Feature",
+              geometry: { type: "LineString", coordinates: planned.geometry },
+              properties: {},
+            }}
+          >
+            <Layer
+              type="line"
+              id="planned-route-line"
+              style={{ lineColor: "#3b82f6", lineWidth: 5, lineOpacity: 0.9 }}
+            />
+          </GeoJSONSource>
+        )}
+        {dest && (
+          <GeoJSONSource
+            id="dest-pin"
+            data={{
+              type: "Feature",
+              geometry: { type: "Point", coordinates: [dest.lng, dest.lat] },
+              properties: {},
+            }}
+          >
+            <Layer
+              type="circle"
+              id="dest-pin-circle"
+              style={{
+                circleRadius: 8,
+                circleColor: palette.red,
+                circleStrokeColor: palette.white,
+                circleStrokeWidth: 2,
+              }}
+            />
+          </GeoJSONSource>
+        )}
       </MapLibreMap>
+
+      {/* #341: pasek wyszukiwania adresu + wyznaczanie trasy */}
+      <View style={styles.searchBar}>
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={searchAddress}
+            placeholder={t("mobileMap.searchPlaceholder")}
+            placeholderTextColor={palette.smoke}
+            returnKeyType="search"
+          />
+          <Pressable style={styles.searchBtn} onPress={searchAddress}>
+            {searching ? (
+              <ActivityIndicator color={palette.white} size="small" />
+            ) : (
+              <Text style={styles.searchBtnText}>🔍</Text>
+            )}
+          </Pressable>
+        </View>
+        {results.length > 0 && (
+          <View style={styles.results}>
+            {results.map((r) => (
+              <Pressable
+                key={`${r.lat},${r.lng}`}
+                style={styles.resultRow}
+                onPress={() => selectDest(r)}
+              >
+                <Text style={styles.resultText} numberOfLines={1}>
+                  📍 {r.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+        {dest && results.length === 0 && (
+          <Pressable
+            style={[styles.planBtn, planning && styles.buttonBusy]}
+            onPress={planRoute}
+            disabled={planning}
+          >
+            <Text style={styles.planBtnText}>
+              {planning ? `${t("mobileMap.planning")}…` : `🧭 ${t("mobileMap.planRoute")}`}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {planned && (
+        <View style={styles.planInfo}>
+          <Text style={styles.planInfoText} numberOfLines={2}>
+            {planned.distanceKm} km · ~{Math.round(planned.durationMin / 60)} h{" "}
+            {Math.round(planned.durationMin % 60)} min
+            {planned.tollCost > 0 ? ` · myto ${planned.tollCost} ${planned.currency}` : ""}
+            {(() => {
+              const eco = estimateRouteFuel({ distanceKm: planned.distanceKm, fuelPricePerL: 0 });
+              return ` · ${eco.fuelLiters} l · 🌿 ${eco.co2Kg} kg CO₂`;
+            })()}
+          </Text>
+          <Pressable onPress={clearRoute} hitSlop={8}>
+            <Text style={styles.planClose}>✕</Text>
+          </Pressable>
+        </View>
+      )}
 
       {routes.length > 0 && (
         <ScrollView horizontal style={styles.routesBar} contentContainerStyle={styles.routesBarIn}>
@@ -232,7 +423,66 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.black },
-  routesBar: { position: "absolute", top: 10, left: 0, right: 0, maxHeight: 44 },
+  searchBar: { position: "absolute", top: 12, left: 12, right: 12, gap: 6 },
+  searchRow: { flexDirection: "row", gap: 8 },
+  searchInput: {
+    flex: 1,
+    backgroundColor: "rgba(10,10,10,0.92)",
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    color: palette.offWhite,
+    fontSize: 14,
+  },
+  searchBtn: {
+    width: 46,
+    backgroundColor: palette.red,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchBtnText: { fontSize: 18 },
+  results: {
+    backgroundColor: "rgba(10,10,10,0.96)",
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  resultRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomColor: palette.graphite,
+    borderBottomWidth: 1,
+  },
+  resultText: { color: palette.offWhite, fontSize: 13.5 },
+  planBtn: {
+    backgroundColor: palette.red,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  planBtnText: { color: palette.white, fontWeight: "800", fontSize: 14 },
+  planInfo: {
+    position: "absolute",
+    bottom: 84,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(59,130,246,0.16)",
+    borderColor: "#3b82f6",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  planInfoText: { color: palette.offWhite, flex: 1, fontSize: 13, fontWeight: "600" },
+  planClose: { color: "#3b82f6", fontSize: 16, fontWeight: "800" },
+  routesBar: { position: "absolute", top: 66, left: 0, right: 0, maxHeight: 44 },
   routesBarIn: { paddingHorizontal: 12, gap: 8 },
   routeChip: {
     backgroundColor: "rgba(10,10,10,0.85)",

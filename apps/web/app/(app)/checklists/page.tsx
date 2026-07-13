@@ -4,8 +4,10 @@ import {
   type ChecklistSubmission,
   type ChecklistTemplate,
   checklistPhotoUrl,
+  type DriverRow,
   listChecklistSubmissions,
   listChecklistTemplates,
+  listDrivers,
   listVehicles,
   saveChecklistTemplate,
 } from "@e-logistic/api";
@@ -33,6 +35,7 @@ export default function ChecklistsPage() {
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [subs, setSubs] = useState<ChecklistSubmission[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOpt[]>([]);
+  const [drivers, setDrivers] = useState<{ id: string; label: string }[]>([]);
   const [vehicleFilter, setVehicleFilter] = useState("");
   const [editing, setEditing] = useState<ChecklistTemplate | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,6 +58,15 @@ export default function ChecklistsPage() {
       setTemplates(tpls);
       setSubs(list);
       setVehicles(veh.map((v) => ({ id: v.id, registration: v.registration ?? "—" })));
+      if (manage) {
+        const drv = (await listDrivers(sb, m.companyId).catch(() => [])) as DriverRow[];
+        setDrivers(
+          drv.map((d) => ({
+            id: d.id,
+            label: `${d.first_name} ${d.last_name}`.trim() || "—",
+          })),
+        );
+      }
     } catch (e) {
       toast(e instanceof Error ? e.message : "Nie udało się pobrać checklist.", "error");
     }
@@ -136,6 +148,7 @@ export default function ChecklistsPage() {
                   name: "",
                   items: [],
                   active: true,
+                  assignedDrivers: [],
                 })
               }
             >
@@ -151,6 +164,7 @@ export default function ChecklistsPage() {
                 onClick={() => setEditing({ ...t, items: t.items.map((i) => ({ ...i })) })}
               >
                 📋 {t.name} ({t.items.length}){!t.active && " · wyłączony"}
+                {t.assignedDrivers.length > 0 && ` · 👤${t.assignedDrivers.length}`}
               </button>
             ))}
           </div>
@@ -175,6 +189,54 @@ export default function ChecklistsPage() {
                   aktywny
                 </label>
               </div>
+
+              {/* #338: przypisanie do kierowców — puste = dla wszystkich */}
+              <div style={styles.assignBox}>
+                <div style={{ color: palette.smoke, fontSize: 13, marginBottom: 6 }}>
+                  Przypisz do kierowców{" "}
+                  <span style={{ color: palette.offWhite }}>
+                    {editing.assignedDrivers.length === 0
+                      ? "(pusto = dla wszystkich)"
+                      : `(${editing.assignedDrivers.length} wybranych)`}
+                  </span>
+                </div>
+                {drivers.length === 0 ? (
+                  <span style={styles.dim}>Brak kierowców w kartotece.</span>
+                ) : (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {drivers.map((d) => {
+                      const on = editing.assignedDrivers.includes(d.id);
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          style={{
+                            ...styles.tplChip,
+                            borderColor: on ? palette.red : palette.graphite,
+                            color: on ? palette.red : palette.offWhite,
+                          }}
+                          onClick={() =>
+                            setEditing((t) =>
+                              t
+                                ? {
+                                    ...t,
+                                    assignedDrivers: on
+                                      ? t.assignedDrivers.filter((x) => x !== d.id)
+                                      : [...t.assignedDrivers, d.id],
+                                  }
+                                : t,
+                            )
+                          }
+                        >
+                          {on ? "✓ " : ""}
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {editing.items.map((it, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: pozycje edytora są czysto pozycyjne
                 <div key={`it-${i * 1}`} style={styles.itemRow}>
@@ -353,6 +415,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 10,
+  },
+  assignBox: {
+    padding: "10px 12px",
+    borderRadius: 10,
+    background: palette.black,
+    border: `1px solid ${palette.graphite}`,
   },
   itemRow: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
   flag: { color: palette.smoke, fontSize: 15, display: "flex", alignItems: "center", gap: 4 },

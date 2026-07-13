@@ -9,6 +9,12 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
 import { Card, GhostButton, PrimaryButton, SectionTitle, wide } from "../components/ui";
+import {
+  authenticate,
+  biometricAvailable,
+  isAppLockEnabled,
+  setAppLockEnabled,
+} from "../lib/appLock";
 import { type LocalePref, useLocale } from "../lib/i18n";
 import { getSharePosition, reportPositionOnce, setSharePosition } from "../lib/positionShare";
 import { type PowerSyncStatusInfo, powersyncConfigured, powersyncStatus } from "../lib/powersync";
@@ -46,6 +52,28 @@ export default function SettingsScreen() {
   useEffect(() => {
     getSharePosition().then(setSharePos);
   }, []);
+  // #340: blokada biometryczna aplikacji
+  const [lockOn, setLockOn] = useState(false);
+  const [bioAvail, setBioAvail] = useState<boolean | null>(null);
+  useEffect(() => {
+    isAppLockEnabled().then(setLockOn);
+    biometricAvailable().then(setBioAvail);
+  }, []);
+  async function toggleLock() {
+    if (lockOn) {
+      // wyłączenie wymaga potwierdzenia tożsamości
+      const ok = await authenticate(t("m.lock.prompt"));
+      if (!ok) return;
+      await setAppLockEnabled(false);
+      setLockOn(false);
+      return;
+    }
+    const ok = await authenticate(t("m.lock.prompt"));
+    if (!ok) return;
+    await setAppLockEnabled(true);
+    setLockOn(true);
+  }
+
   async function toggleShare() {
     setPosMsg(null);
     if (sharePos) {
@@ -104,6 +132,25 @@ export default function SettingsScreen() {
         </Text>
         <PrimaryButton label="🔔 Włącz / odśwież powiadomienia" onPress={enablePush} />
         {pushMsg && <Text style={s.msg}>{pushMsg}</Text>}
+      </Card>
+
+      <SectionTitle>{t("m.settings.security")}</SectionTitle>
+      <Card style={{ gap: 10 }}>
+        <Text style={s.hint}>{t("m.settings.appLockHint")}</Text>
+        {bioAvail === false ? (
+          <Text style={s.msg}>{t("m.settings.appLockUnavailable")}</Text>
+        ) : (
+          <Pressable
+            style={[s.lang, lockOn && s.langOn, { alignSelf: "flex-start" }]}
+            onPress={toggleLock}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: lockOn }}
+          >
+            <Text style={[s.langText, lockOn && s.langTextOn]}>
+              {lockOn ? `🔒 ${t("m.settings.appLockOn")}` : `🔓 ${t("m.settings.appLockOff")}`}
+            </Text>
+          </Pressable>
+        )}
       </Card>
 
       <SectionTitle>{t("m.settings.position")}</SectionTitle>

@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { AppLockGate } from "../components/AppLockGate";
 import { AuthProvider, useAuth } from "../components/AuthProvider";
 import { LocaleProvider, useT } from "../lib/i18n";
 import { guardRedirect, notificationTarget } from "../lib/navigation";
@@ -85,9 +86,11 @@ function RootLayout() {
     // #295: korzeń gestów — wymagany przez swipe na kartach zleceń (RNGH)
     <GestureHandlerRootView style={{ flex: 1 }}>
       <LocaleProvider>
-        <AuthProvider>
-          <RootNav />
-        </AuthProvider>
+        <AppLockGate>
+          <AuthProvider>
+            <RootNav />
+          </AuthProvider>
+        </AppLockGate>
       </LocaleProvider>
     </GestureHandlerRootView>
   );

@@ -18,6 +18,11 @@ export const pl = {
   "mobileMap.poiParking": "Parking TIR",
   "mobileMap.permissionDenied": "Brak zgody na lokalizację — pokazuję Europę.",
   "mobileMap.poiError": "Nie udało się pobrać POI — spróbuj ponownie.",
+  "mobileMap.searchPlaceholder": "Szukaj adresu lub miasta…",
+  "mobileMap.searchError": "Nie udało się wyszukać.",
+  "mobileMap.routeError": "Nie udało się wyznaczyć trasy.",
+  "mobileMap.planRoute": "Wyznacz trasę TIR",
+  "mobileMap.planning": "Liczę trasę",
 
   "role.developer": "Developer",
   "role.owner": "Właściciel",

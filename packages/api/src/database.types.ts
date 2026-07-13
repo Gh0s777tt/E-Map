@@ -246,6 +246,7 @@ export interface Database {
           active: boolean;
           created_at: string;
           updated_at: string;
+          assigned_drivers: string[];
         };
         Insert: {
           id?: string;
@@ -255,6 +256,7 @@ export interface Database {
           active?: boolean;
           created_at?: string;
           updated_at?: string;
+          assigned_drivers?: string[];
         };
         Update: {
           id?: string;
@@ -264,6 +266,7 @@ export interface Database {
           active?: boolean;
           created_at?: string;
           updated_at?: string;
+          assigned_drivers?: string[];
         };
         Relationships: [];
       };
@@ -2177,6 +2180,16 @@ export interface Database {
         }[];
       };
       list_invites: { Args: { p_company: string | null }; Returns: Json };
+      list_visible_checklist_templates: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          name: string;
+          items: Json;
+          active: boolean;
+          assigned_drivers: string[];
+        }[];
+      };
       my_driver_identity: { Args: Record<PropertyKey, never>; Returns: Json };
       notify_company: {
         Args: {

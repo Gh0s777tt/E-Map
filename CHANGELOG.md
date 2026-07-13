@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-337-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.185.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-341-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.186.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.186.0] — 📋 Checklisty per kierowca, Tacho na Starcie, biometria i rozbudowa mapy
+
+Pierwsza fala programu „pełny parytet zarządzania web↔mobile" + trzy wprost proszone funkcje.
+
+- `[#338]` 📋 **Checklisty przypisywane per kierowca + włącznik** (migracja [0077](supabase/migrations/0077_checklist_assignments.sql), nałożona na żywo) — właściciel w panelu Checklisty wybiera, którym kierowcom przypisać szablon (pusto = dla wszystkich) i włącza/wyłącza go; RPC `list_visible_checklist_templates` sprawia, że kierowca w aplikacji widzi **tylko przypisane i aktywne** (np. ADR wyłącznie dla kierowców ADR, „Wjazd do UK" tylko dla jeżdżących do UK). Filtr działa też w liczniku „na dziś".
+- `[#339]` 🕓 **Tacho na karcie kierowcy** ([TachoStrip](apps/mobile/components/TachoStrip.tsx)) — na ekranie Start pasek z najważniejszymi licznikami 561: jazda dziś, do przerwy, pozostała jazda w dobie i tygodniu, z alertem przekroczenia (dane z licznika LIVE; lokalne powiadomienia o przerwie z #329). Bez wchodzenia w zakładkę Tacho.
+- `[#340]` 🔒 **Blokada aplikacji Face ID / Touch ID** ([AppLockGate](apps/mobile/components/AppLockGate.tsx), `expo-local-authentication`) — opcjonalna (przełącznik w Ustawieniach → Bezpieczeństwo), pyta o biometrię przy starcie i po powrocie z tła. Fail-safe: bez skonfigurowanej biometrii nie blokuje, a kod urządzenia jest zawsze zapasem — nie da się zablokować sobie dostępu.
+- `[#341]` 🗺 **Mapa mobilna — wyszukiwanie i trasy** — nowy pasek wyszukiwania adresu/miasta (geokoder) z listą wyników, ustawienie celu i **wyznaczenie trasy TIR** z tego samego backendu co web (`/api/route`) z rysowaniem linii i podsumowaniem dystans/czas/myto + **zużycie i CO₂** (eco). Dotychczas mapa miała tylko lokalizację i POI.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓ · migracja nałożona + `gen:types` ✓.
+- **Uwaga:** biometria i rozbudowa mapy używają natywnych modułów — zweryfikuję działanie na Twoim telefonie po instalacji buildu 1.73.0 (fail-safe zabezpiecza przed lockoutem).
 
 ## [1.185.0] — 🏆 Gamifikacja kierowców, analityka floty i eco-routing (backlog kod-only)
 

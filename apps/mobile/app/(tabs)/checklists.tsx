@@ -2,7 +2,7 @@ import {
   type ChecklistSubmissionInput,
   type ChecklistTemplate,
   getActiveMembership,
-  listChecklistTemplates,
+  listVisibleChecklistTemplates,
   uploadChecklistPhotoBinary,
 } from "@e-logistic/api";
 import {
@@ -69,7 +69,8 @@ export default function ChecklistsScreen() {
           data: { user },
         } = await sb.auth.getUser();
         setEmail(user?.email ?? "");
-        setTemplates(await listChecklistTemplates(sb, m.companyId, { activeOnly: true }));
+        // #338: tylko checklisty przypisane do tego kierowcy (lub dla wszystkich)
+        setTemplates(await listVisibleChecklistTemplates(sb));
       } catch {
         setMsg("Nie udało się pobrać szablonów — spróbuj przy zasięgu.");
       }
@@ -165,7 +166,8 @@ export default function ChecklistsScreen() {
           <Text style={styles.label}>Wybierz checklistę</Text>
           {templates.length === 0 && (
             <Text style={styles.hint}>
-              Brak szablonów — właściciel dodaje je w panelu web (Checklisty → „Dodaj domyślne").
+              Brak przypisanych checklist. Właściciel przypisuje je i włącza w panelu Checklisty
+              (np. ADR tylko dla kierowców ADR).
             </Text>
           )}
           {templates.map((t) => (

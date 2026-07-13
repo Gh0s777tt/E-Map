@@ -73,14 +73,16 @@ export function linearTrend(series: MonthlyPoint[]): TrendResult | null {
   let num = 0;
   let den = 0;
   for (let i = 0; i < n; i++) {
-    num += (xs[i]! - meanX) * (ys[i]! - meanY);
-    den += (xs[i]! - meanX) ** 2;
+    const x = xs[i] ?? 0;
+    const y = ys[i] ?? 0;
+    num += (x - meanX) * (y - meanY);
+    den += (x - meanX) ** 2;
   }
   const slope = den === 0 ? 0 : num / den;
   const intercept = meanY - slope * meanX;
   const forecastNext = Math.max(0, round2(intercept + slope * n));
-  const first = ys[0]!;
-  const last = ys[n - 1]!;
+  const first = ys[0] ?? 0;
+  const last = ys[n - 1] ?? 0;
   const changePct = first === 0 ? 0 : round2(((last - first) / first) * 100);
   const direction: TrendResult["direction"] =
     Math.abs(changePct) < 3 ? "flat" : changePct > 0 ? "up" : "down";

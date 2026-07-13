@@ -8,8 +8,8 @@
 import {
   getActiveMembership,
   listChecklistSubmissions,
-  listChecklistTemplates,
   listMyOrders,
+  listVisibleChecklistTemplates,
   type Order,
 } from "@e-logistic/api";
 import { type AppModule, type FuelLogInput, visibleModules } from "@e-logistic/core";
@@ -29,6 +29,7 @@ import {
 import { AppHeader } from "../../components/AppHeader";
 import { GamificationCard } from "../../components/GamificationCard";
 import { OwnerDashboard, useOwnerDashboard } from "../../components/OwnerDashboard";
+import { TachoStrip } from "../../components/TachoStrip";
 import { Avatar, wide } from "../../components/ui";
 import { navigationUrl } from "../../lib/chatNotify";
 import { useT } from "../../lib/i18n";
@@ -94,7 +95,7 @@ export default function StartScreen() {
         setMods(visibleModules(m.role, m.modules, m.permissions));
         try {
           const [templates, subs] = await Promise.all([
-            listChecklistTemplates(sb, m.companyId, { activeOnly: true }),
+            listVisibleChecklistTemplates(sb),
             listChecklistSubmissions(sb, m.companyId, { limit: 50 }),
           ]);
           const today = new Date().toISOString().slice(0, 10);
@@ -210,6 +211,7 @@ export default function StartScreen() {
         </View>
 
         {isManager && <OwnerDashboard data={owner} />}
+        {!isManager && <TachoStrip />}
         {!isManager && game && <GamificationCard data={game} />}
 
         {/* Na dziś */}

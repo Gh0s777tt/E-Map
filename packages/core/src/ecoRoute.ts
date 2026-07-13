@@ -4,7 +4,7 @@
  * Czysty silnik: heurystyka na bazie dystansu, spalania i ceny — bez API.
  */
 
-import { DIESEL_CO2_KG_PER_L, dieselCo2Kg } from "./co2";
+import { dieselCo2Kg } from "./co2";
 
 export interface RouteFuelInput {
   distanceKm: number;
