@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-324-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.177.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-325-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.178.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,12 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.178.0] — 🚚 Link śledzenia z ETA — klient widzi auto w drodze i szacowany przyjazd
+
+- `[#325]` 🚚 **Pozycja auta na publicznej stronie śledzenia** — RPC `order_tracking` (migracja [0076](supabase/migrations/0076_order_tracking_eta.sql), nałożona na żywo) zwraca też pozycję przypisanego kierowcy z telematyki #324; prywatność: współrzędne zaokrąglone do ~1 km, wyłącznie dla zleceń **przypisanych/w trasie** i pozycji świeższej niż 12 h. Strona [/track](apps/web/app/track/%5Btoken%5D/page.tsx) pokazuje „🚛 Auto w drodze · pozycja sprzed X min" z linkiem „zobacz na mapie" (OSM).
+- `[#325]` ⏱ **Szacowany przyjazd (ETA)** — cel geokodowany (Nominatim/MapTiler), dystans w linii prostej ×1,25 ≈ trasa drogowa, średnie tempo TIR 65 km/h → „za ~3 h 05 min (ok. 210 km)" z zastrzeżeniem, że to szacunek. Strona **auto-odświeża się co 60 s**.
+- **Bramki:** `pnpm check` exit 0 ✓ · migracja nałożona + `gen:types` ✓.
 
 ## [1.177.0] — 📡 Telematyka, fala 1: auta na żywo na mapie firmy
 

@@ -14,6 +14,10 @@ export interface OrderTracking {
   load_date: string | null;
   unload_date: string | null;
   updated_at: string;
+  /** #325: pozycja auta (~1 km, tylko assigned/in_progress i świeższa niż 12 h). */
+  truck_lat: number | null;
+  truck_lng: number | null;
+  truck_updated_at: string | null;
 }
 
 /** Token śledzenia zlecenia (RLS: członek firmy). */

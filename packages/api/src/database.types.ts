@@ -2205,6 +2205,9 @@ export interface Database {
           load_date: string;
           unload_date: string;
           updated_at: string;
+          truck_lat: number;
+          truck_lng: number;
+          truck_updated_at: string;
         }[];
       };
       send_driver_route: {
