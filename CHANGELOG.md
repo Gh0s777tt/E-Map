@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-312-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.165.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-313-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.166.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.166.0] — 🧾 Karta sklepu Google Play + strona usuwania konta + fix triggera powiadomień
+
+- `[#313]` 🏪 **Karta sklepu Google Play wypełniona end-to-end** (Android Publisher API przez konto usługi z nowym uprawnieniem „Obecność w sklepie"): nazwa/opisy PL, ikona 512, grafika promocyjna 1024×500 i 4 zrzuty 1080×1920 (przycięte ze zrzutów iPhone, [store/screenshots/android](apps/mobile/store/screenshots/android)). Deklaracje „Zawartość aplikacji": polityka prywatności, reklamy (brak), Ad ID (brak), aplikacja rządowa (nie), zdrowie (nie), finanse (brak), odbiorcy 18+, dane logowania recenzenta (konto demo `play.review.elogistic@…` w osobnej firmie „Demo Spedycja" z pojazdem i 2 zleceniami).
+- `[#313]` 🗑️ **Publiczna strona usuwania konta** [/account-deletion](apps/web/app/account-deletion/page.tsx) (PL + skrót EN): kroki żądania, zakres usuwanych danych, okresy retencji — wymagana przez deklarację „Bezpieczeństwo danych" Google Play; spójna z [/privacy](apps/web/app/privacy/page.tsx).
+- `[#313]` 🐛 **Fix produkcyjny**: `notify_order_assignment` i `generate_expiry_notifications` używały `ON CONFLICT (user_id, dedup_key)` bez klauzuli partial indexu `notifications_dedup` (WHERE dedup_key IS NOT NULL) — INSERT zlecenia z przypisanym kierowcą i cron terminów padały błędem 42P10. Naprawione na żywej bazie + migracja [0069](supabase/migrations/0069_fix_notify_onconflict_partial_index.sql).
+- **Bramki:** `pnpm check` exit 0 ✓ · secret-scan staged ✓.
 
 ## [1.165.0] — 🏝️ Live Activity na iOS + automatyczna publikacja w Google Play
 

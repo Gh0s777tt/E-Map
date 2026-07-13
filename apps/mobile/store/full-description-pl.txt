@@ -1,0 +1,25 @@
+E-Logistic to platforma dla firm transportowych: aplikacja kierowcy + panel dla właściciela i spedytora.
+
+DLA KIEROWCY
+• Zlecenia z pełnymi danymi załadunku i rozładunku, zmiana statusów jednym dotknięciem
+• Dokumentacja ładunku: zdjęcia z aparatu, CMR oraz podpis odbiorcy (POD) na ekranie
+• Formularze Paliwo / AdBlue / Trasa — działają BEZ ZASIĘGU i synchronizują się po powrocie sieci
+• Mapa TIR: Twoja pozycja, parkingi dla ciężarówek i stacje paliw w okolicy
+• Powiadomienia push o nowych zleceniach i terminach
+
+DLA WŁAŚCICIELA I SPEDYTORA (panel web)
+• Flota: pojazdy, naczepy, przeglądy, OC, leasing, karty paliwowe z rabatami
+• Zlecenia, faktury VAT z eksportem do Fakturowni, rentowność tras i klientów
+• Rozliczenia kierowców: diety, czas pracy, wypłaty
+• Statystyki spalania i kosztów liczone z realnych tankowań
+• Przypomnienia o terminach: przeglądy, ubezpieczenia, badania kierowców
+
+BEZPIECZEŃSTWO
+• Dane firmy odizolowane od innych firm (Row Level Security)
+• Sesja na urządzeniu szyfrowana (klucz w systemowym keychainie)
+• Dane osobowe kierowców szyfrowane w bazie, transmisja wyłącznie HTTPS
+• Logowanie z 2FA i passkey
+
+Aplikacja przeznaczona dla firm — konto kierowcy tworzy Twoja firma transportowa (zaproszenie link/QR).
+
+Polityka prywatności: https://e-logistic-one.vercel.app/privacy
