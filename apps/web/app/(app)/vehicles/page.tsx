@@ -170,6 +170,7 @@ export default function VehiclesPage() {
   const [heightCm, setHeightCm] = useState("");
   const [inspectionExpiry, setInspectionExpiry] = useState("");
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
+  const [licenseExpiry, setLicenseExpiry] = useState("");
   const [insurer, setInsurer] = useState("");
   const [insurerOther, setInsurerOther] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
@@ -218,6 +219,7 @@ export default function VehiclesPage() {
     setHeightCm("");
     setInspectionExpiry("");
     setInsuranceExpiry("");
+    setLicenseExpiry("");
     setInsurer("");
     setInsurerOther("");
     setLicenseNumber("");
@@ -263,6 +265,7 @@ export default function VehiclesPage() {
     setHeightCm(v.height_cm ? String(v.height_cm) : "");
     setInspectionExpiry(v.inspection_expiry ?? "");
     setInsuranceExpiry(v.insurance_expiry ?? "");
+    setLicenseExpiry(v.license_expiry ?? "");
     pickListValue(v.insurer, INSURERS as unknown as string[], setInsurer, setInsurerOther);
     setLicenseNumber(v.license_number ?? "");
     setTrailerRegistration(v.trailer_registration ?? "");
@@ -306,6 +309,7 @@ export default function VehiclesPage() {
       heightCm: heightCm ? Number(heightCm) : undefined,
       inspectionExpiry: inspectionExpiry || undefined,
       insuranceExpiry: insuranceExpiry || undefined,
+      licenseExpiry: licenseExpiry || undefined,
       insurer: resolvedInsurer || undefined,
       licenseNumber: licenseNumber.trim() || undefined,
       trailerRegistration: trailerRegistration.trim() || undefined,
@@ -638,6 +642,15 @@ export default function VehiclesPage() {
                 type="date"
                 value={insuranceExpiry}
                 onChange={(e) => setInsuranceExpiry(e.target.value)}
+              />
+            </label>
+            <label style={f.field}>
+              <span style={f.label}>Licencja transportowa ważna do</span>
+              <input
+                style={f.input}
+                type="date"
+                value={licenseExpiry}
+                onChange={(e) => setLicenseExpiry(e.target.value)}
               />
             </label>
             <label style={f.field}>

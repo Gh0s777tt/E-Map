@@ -178,6 +178,7 @@ export const pl = {
   "settings.company.country": "Kraj",
   "settings.company.vat": "Domyślny VAT (%)",
   "settings.company.dueDays": "Termin płatności (dni)",
+  "settings.company.notifyDays": "Wyprzedzenie alertów terminów (dni, 1–90)",
   "settings.company.bank": "Bank",
   "settings.company.account": "Nr konta (IBAN)",
   "settings.company.save": "Zapisz dane firmy",

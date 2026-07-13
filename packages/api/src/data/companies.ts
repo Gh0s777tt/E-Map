@@ -10,6 +10,7 @@ export interface Company {
   country: string | null;
   default_vat_rate: number;
   payment_due_days: number;
+  notify_days_ahead: number | null;
   bank_name: string | null;
   bank_account: string | null;
 }
@@ -22,7 +23,7 @@ export async function getCompany(
   const { data, error } = await client
     .from("companies")
     .select(
-      "id, name, tax_id, address, country, default_vat_rate, payment_due_days, bank_name, bank_account",
+      "id, name, tax_id, address, country, default_vat_rate, payment_due_days, notify_days_ahead, bank_name, bank_account",
     )
     .eq("id", companyId)
     .maybeSingle();
@@ -37,6 +38,7 @@ export interface CompanyPatch {
   country?: string | null;
   defaultVatRate?: number;
   paymentDueDays?: number;
+  notifyDaysAhead?: number;
   bankName?: string | null;
   bankAccount?: string | null;
 }
@@ -54,6 +56,7 @@ export async function updateCompany(
     country: string | null;
     default_vat_rate?: number;
     payment_due_days?: number;
+    notify_days_ahead?: number;
     bank_name?: string | null;
     bank_account?: string | null;
   } = {
@@ -64,6 +67,7 @@ export async function updateCompany(
   };
   if (patch.defaultVatRate !== undefined) row.default_vat_rate = patch.defaultVatRate;
   if (patch.paymentDueDays !== undefined) row.payment_due_days = patch.paymentDueDays;
+  if (patch.notifyDaysAhead !== undefined) row.notify_days_ahead = patch.notifyDaysAhead;
   if (patch.bankName !== undefined) row.bank_name = patch.bankName ?? null;
   if (patch.bankAccount !== undefined) row.bank_account = patch.bankAccount ?? null;
   const { error } = await client.from("companies").update(row).eq("id", companyId);

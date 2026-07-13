@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-315-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.168.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-316-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.169.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.169.0] — 🔧 Feedback właściciela, fala 1: daty kart, licencja pojazdu, wyprzedzenie alertów, miejscowości
+
+- `[#316]` 🐛 **Naprawa pola „Ważna do" w kartach paliwowych** — Safari renderuje `input type="month"` jako zwykły tekst, a formularz kasował każdy wpis przy parsowaniu w `onChange`; teraz stan trzyma surową wartość, a parser w core przyjmuje też ręczne **MM/RRRR** i **M.RRRR** ([cardExpiry](packages/core/src/cardExpiry.ts), +3 testy → **295**).
+- `[#316]` 🚛 **Licencja transportowa pojazdu** — nowe pole `license_expiry` (migracja [0071](supabase/migrations/0071_vehicle_license_notify_days.sql), nałożona na żywo): formularz pojazdu na web, alerty pulpitu W1 w aplikacji i **cron powiadomień** (push/in-app jak OC i przegląd).
+- `[#316]` ⏰ **Konfigurowalne wyprzedzenie alertów terminów** — `companies.notify_days_ahead` (1–90 dni; np. 1 dzień, 2–3 tyg., miesiąc) ustawiane w Ustawieniach firmy na web; cron `generate_expiry_notifications` liczy horyzont z ustawienia (dotyczy: OC, przegląd, leasing, licencja, karty paliwowe, dokumenty kierowców).
+- `[#316]` 📍 **Miejscowość w formularzach Paliwo/AdBlue** (mobile **1.61.0**) — pole „Miejscowość" obok kraju (schemat `station.city` już istniał; ×4 języki).
+- **Bramki:** `pnpm check` exit 0 ✓ (295 testów) · parytet i18n ✓.
 
 ## [1.168.0] — 📊 Pulpit właściciela — wariant W1 (liczby najpierw)
 

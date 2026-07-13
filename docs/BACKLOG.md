@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.168.0 · #315 · 2026-07-13 -->
+<!-- SYNC: po v1.169.0 · #316 · 2026-07-13 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -76,12 +76,12 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 ## 🔥 P0 — Feedback właściciela (2026-07-13, do wdrożenia falami)
 
 **Naprawy:**
-- [ ] **Karty paliwowe: pole daty ważności nie działa** (klik nie otwiera pickera, brak echa wpisywania) — naprawić na web.
-- [ ] **Pojazdy: brak pola „data ważności licencji"** (licencja transportowa) — dodać do formularza + schematu.
-- [ ] **Formularze mobile: brak miejscowości** (jest tylko kraj) — dodać pole miejscowości w Paliwo/AdBlue/Trasa.
+- [x] ~~Karty paliwowe: pole daty ważności nie działa~~ (#316) (klik nie otwiera pickera, brak echa wpisywania) — naprawić na web.
+- [x] ~~Pojazdy: brak pola „data ważności licencji"~~ (#316) (licencja transportowa) — dodać do formularza + schematu.
+- [x] ~~Formularze mobile: brak miejscowości~~ (#316) (jest tylko kraj) — dodać pole miejscowości w Paliwo/AdBlue/Trasa.
 
 **Powiadomienia terminów (konfigurowalne wyprzedzenie: 1 dzień / 1–3 tyg. / miesiąc):**
-- [ ] ważność kart paliwowych · [ ] licencja pojazdu · [ ] OC · [ ] przegląd — ustawienie per firma/per typ.
+- [x] ~~ważność kart · licencja · OC · przegląd~~ (#316: notify_days_ahead 1–90 dni per firma) — ustawienie per firma/per typ.
 - [ ] **Harmonogram: alerty scalone per pojazd** (1 wiersz = 1 auto, rozwinięcie po kliknięciu) — przy 30–50 autach lista musi się skalować.
 
 **Karta kierowcy / właściciela (start aplikacji):** *(warianty A/B/C i W1/W2 — artefakt „warianty-ui-v1", czeka na wybór)*

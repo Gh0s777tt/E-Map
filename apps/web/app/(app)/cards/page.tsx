@@ -112,7 +112,7 @@ export default function CardsPage() {
     );
     setMasked(c.card_number_masked);
     setPin("");
-    setValidUntil(c.valid_until ?? "");
+    setValidUntil(dateToMonthInput(c.valid_until));
     setDiscount(String(c.discount_percent ?? ""));
     setVehicleId(c.vehicle_id ?? "");
     setErrors({});
@@ -134,7 +134,7 @@ export default function CardsPage() {
       provider,
       cardNumberMasked: masked,
       pin: pin || undefined,
-      validUntil: validUntil || undefined,
+      validUntil: validUntil ? (monthInputToDate(validUntil) ?? validUntil) : undefined,
       discountPercent: discount ? Number(discount) : undefined,
       vehicleId: vehicleId || undefined,
     });
@@ -240,8 +240,9 @@ export default function CardsPage() {
               <input
                 style={input}
                 type="month"
-                value={dateToMonthInput(validUntil)}
-                onChange={(e) => setValidUntil(monthInputToDate(e.target.value) ?? "")}
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
+                placeholder="MM/RRRR np. 03/2027"
               />
             </Field>
             <Field label="Rabat %" error={errors.discountPercent}>

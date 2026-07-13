@@ -42,6 +42,7 @@ export default function SettingsPage() {
   const [cCountry, setCCountry] = useState("");
   const [cVat, setCVat] = useState("23");
   const [cDueDays, setCDueDays] = useState("14");
+  const [cNotifyDays, setCNotifyDays] = useState("30");
   const [cBank, setCBank] = useState("");
   const [cAccount, setCAccount] = useState("");
   const [cMsg, setCMsg] = useState<string | null>(null);
@@ -66,6 +67,7 @@ export default function SettingsPage() {
         setCCountry(c.country ?? "");
         setCVat(String(c.default_vat_rate ?? 23));
         setCDueDays(String(c.payment_due_days ?? 14));
+        setCNotifyDays(String(c.notify_days_ahead ?? 30));
         setCBank(c.bank_name ?? "");
         setCAccount(c.bank_account ?? "");
       }
@@ -90,6 +92,7 @@ export default function SettingsPage() {
         country: cCountry.trim() || undefined,
         defaultVatRate: Number(cVat) || 0,
         paymentDueDays: Math.max(0, Math.round(Number(cDueDays) || 0)),
+        notifyDaysAhead: Math.min(90, Math.max(1, Math.round(Number(cNotifyDays) || 30))),
         bankName: cBank.trim() || undefined,
         bankAccount: cAccount.trim() || undefined,
       });
@@ -369,6 +372,18 @@ export default function SettingsPage() {
                     step="1"
                     value={cDueDays}
                     onChange={(e) => setCDueDays(e.target.value)}
+                  />
+                </label>
+                <label style={styles.field}>
+                  <span style={f.label}>{t("settings.company.notifyDays")}</span>
+                  <input
+                    style={{ ...styles.cInput, maxWidth: 140 }}
+                    type="number"
+                    step="1"
+                    min={1}
+                    max={90}
+                    value={cNotifyDays}
+                    onChange={(e) => setCNotifyDays(e.target.value)}
                   />
                 </label>
               </div>

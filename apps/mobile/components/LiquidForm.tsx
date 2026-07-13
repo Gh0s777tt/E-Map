@@ -33,6 +33,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   const perm = usePermission("forms"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
   const [odometer, setOdometer] = useState("");
   const [liters, setLiters] = useState("");
   const [payment, setPayment] = useState<"card" | "cash">("cash");
@@ -62,6 +63,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     }
     const input = last.input as FuelLogInput;
     setCountry(input.station.country ?? "");
+    setCity(input.station.city ?? "");
     if (input.paymentMethod === "card" || input.paymentMethod === "cash") {
       setPayment(input.paymentMethod);
     }
@@ -107,7 +109,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
     }
     const parsed = fuelLogSchema.safeParse({
       vehicleId,
-      station: { country },
+      station: { country, ...(city.trim() ? { city: city.trim() } : {}) },
       // przecinek dziesiętny (klawiatura EU / prefill z OCR) traktujemy jak kropkę
       odometerKm: Number(odometer.replace(",", ".")),
       liters: Number(liters.replace(",", ".")),
@@ -205,6 +207,13 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         placeholder={t("m.fuel.country")}
         placeholderTextColor={palette.smoke}
         autoCapitalize="characters"
+      />
+      <TextInput
+        style={styles.input}
+        value={city}
+        onChangeText={setCity}
+        placeholder={t("m.fuel.city")}
+        placeholderTextColor={palette.smoke}
       />
 
       <Text style={styles.label}>{t("m.fuel.payment")}</Text>

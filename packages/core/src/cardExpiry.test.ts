@@ -41,3 +41,15 @@ describe("formatCardExpiry", () => {
     expect(formatCardExpiry(undefined)).toBe("—");
   });
 });
+
+describe("monthInputToDate — wpis ręczny (Safari, #316)", () => {
+  it("akceptuje MM/YYYY", () => {
+    expect(monthInputToDate("03/2027")).toBe("2027-03-31");
+  });
+  it("akceptuje M.YYYY", () => {
+    expect(monthInputToDate("7.2026")).toBe("2026-07-31");
+  });
+  it("odrzuca rok spoza zakresu", () => {
+    expect(monthInputToDate("03/1889")).toBeNull();
+  });
+});

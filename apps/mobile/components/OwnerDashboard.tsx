@@ -106,6 +106,7 @@ export function useOwnerDashboard(companyId: string | null) {
         push("oc", v.insurance_expiry);
         push("inspection", v.inspection_expiry);
         push("leasing", v.leasing_end);
+        push("license", v.license_expiry);
         for (const c of cardByVehicle.get(v.id) ?? []) push("card", c.valid_until);
         if (items.length) {
           items.sort((a, b) => a[1] - b[1]);
@@ -157,6 +158,7 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
     inspection: t("m.owner.inspection"),
     leasing: t("m.owner.leasing"),
     card: t("m.owner.card"),
+    license: t("m.owner.license"),
   };
   return (
     <View style={{ gap: 10 }}>

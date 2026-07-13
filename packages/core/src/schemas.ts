@@ -40,6 +40,7 @@ export const vehicleSchema = z.object({
   firstRegistrationDate: isoDate.optional(),
   inspectionExpiry: isoDate.optional(),
   insuranceExpiry: isoDate.optional(),
+  licenseExpiry: isoDate.optional(),
   insurer: z.string().max(60).optional(),
   licenseNumber: z.string().max(40).optional(),
   leasingEnd: isoDate.optional(),

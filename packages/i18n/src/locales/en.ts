@@ -180,6 +180,7 @@ export const en: Record<MessageKey, string> = {
   "settings.company.country": "Country",
   "settings.company.vat": "Default VAT (%)",
   "settings.company.dueDays": "Payment term (days)",
+  "settings.company.notifyDays": "Deadline alert lead time (days, 1–90)",
   "settings.company.bank": "Bank",
   "settings.company.account": "Account no. (IBAN)",
   "settings.company.save": "Save company details",

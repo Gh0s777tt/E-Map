@@ -280,6 +280,7 @@ export interface Database {
           payment_due_days: number;
           bank_name: string | null;
           bank_account: string | null;
+          notify_days_ahead: number;
         };
         Insert: {
           id?: string;
@@ -293,6 +294,7 @@ export interface Database {
           payment_due_days?: number;
           bank_name?: string | null;
           bank_account?: string | null;
+          notify_days_ahead?: number;
         };
         Update: {
           id?: string;
@@ -306,6 +308,7 @@ export interface Database {
           payment_due_days?: number;
           bank_name?: string | null;
           bank_account?: string | null;
+          notify_days_ahead?: number;
         };
         Relationships: [];
       };
@@ -1913,6 +1916,7 @@ export interface Database {
           adblue_tank_l: number | null;
           trailer_registration: string | null;
           trailer_type: string | null;
+          license_expiry: string | null;
         };
         Insert: {
           id?: string;
@@ -1942,6 +1946,7 @@ export interface Database {
           adblue_tank_l?: number | null;
           trailer_registration?: string | null;
           trailer_type?: string | null;
+          license_expiry?: string | null;
         };
         Update: {
           id?: string;
@@ -1971,6 +1976,7 @@ export interface Database {
           adblue_tank_l?: number | null;
           trailer_registration?: string | null;
           trailer_type?: string | null;
+          license_expiry?: string | null;
         };
         Relationships: [];
       };

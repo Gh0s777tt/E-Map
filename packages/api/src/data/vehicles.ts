@@ -18,7 +18,7 @@ export async function listVehicles(client: SupabaseClient, companyId: string) {
 export async function listVehiclesExpiry(client: SupabaseClient, companyId: string) {
   const { data, error } = await client
     .from("vehicles")
-    .select("id, registration, inspection_expiry, insurance_expiry, leasing_end")
+    .select("id, registration, inspection_expiry, insurance_expiry, leasing_end, license_expiry")
     .eq("company_id", companyId)
     .order("registration");
   if (error) throw error;
@@ -38,6 +38,7 @@ export function vehicleToRow(input: VehicleInput, companyId: string) {
     first_registration_date: input.firstRegistrationDate ?? null,
     inspection_expiry: input.inspectionExpiry ?? null,
     insurance_expiry: input.insuranceExpiry ?? null,
+    license_expiry: input.licenseExpiry ?? null,
     license_number: input.licenseNumber ?? null,
     leasing_end: input.leasingEnd ?? null,
     curb_weight_kg: input.curbWeightKg ?? null,
