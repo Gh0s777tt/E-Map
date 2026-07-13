@@ -11,11 +11,13 @@ import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../components/AuthProvider";
 import { Avatar, Card, ListRow, ScreenTitle, SectionTitle } from "../../components/ui";
+import { useT } from "../../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { initialOf, roleLabel, useProfile } from "../../lib/useProfile";
 
 export default function MoreScreen() {
   const router = useRouter();
+  const t = useT();
   const { signOut } = useAuth();
   const profile = useProfile();
   const [mods, setMods] = useState<AppModule[] | null>(null);
@@ -32,7 +34,7 @@ export default function MoreScreen() {
 
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
-      <ScreenTitle>Więcej</ScreenTitle>
+      <ScreenTitle>{t("m.tab.more")}</ScreenTitle>
 
       <Card style={s.profile}>
         <Avatar initial={initialOf(profile.email)} size={56} />
@@ -50,91 +52,91 @@ export default function MoreScreen() {
         </View>
       </Card>
 
-      <SectionTitle>Praca</SectionTitle>
+      <SectionTitle>{t("m.more.work")}</SectionTitle>
       <Card style={s.list}>
         <ListRow
           glyph="💬"
-          title="Czat z dyspozytorem"
-          subtitle="wspólny kanał firmy · na żywo"
+          title={t("m.more.chatTitle")}
+          subtitle={t("m.more.chatSub")}
           onPress={() => router.push("/chat")}
         />
         {show("checklists") && (
           <ListRow
             glyph="✅"
-            title="Checklisty"
-            subtitle="Wjazd do UK · Tachograf"
+            title={t("m.screen.checklists")}
+            subtitle={t("m.more.checklistsSub")}
             onPress={() => router.push("/checklists")}
           />
         )}
         <ListRow
           glyph="⏱"
-          title="Czas pracy"
-          subtitle="dni służby i odpoczynki"
+          title={t("m.screen.workTime")}
+          subtitle={t("m.more.workTimeSub")}
           onPress={() => router.push("/work-time")}
         />
         <ListRow
           glyph="🧾"
-          title="Rejestr wydatków"
-          subtitle="opłaty drogowe · parkingi · paragony"
+          title={t("m.screen.expenses")}
+          subtitle={t("m.more.expensesSub")}
           onPress={() => router.push("/expenses")}
         />
         {show("settlements") && (
           <ListRow
             glyph="💶"
-            title="Moje rozliczenie"
-            subtitle="stawki firmy · podgląd miesiąca"
+            title={t("m.screen.settlement")}
+            subtitle={t("m.more.settlementSub")}
             onPress={() => router.push("/settlement")}
           />
         )}
         {show("documents") && (
           <ListRow
             glyph="📄"
-            title="Dokumenty"
-            subtitle="od firmy · tachobooki"
+            title={t("m.screen.documents")}
+            subtitle={t("m.more.documentsSub")}
             onPress={() => router.push("/documents")}
             last
           />
         )}
       </Card>
 
-      <SectionTitle>Pojazd</SectionTitle>
+      <SectionTitle>{t("m.more.vehicleSec")}</SectionTitle>
       <Card style={s.list}>
         {show("damages") && (
           <ListRow
             glyph="🔧"
-            title="Usterki i szkody"
-            subtitle="zgłoś usterkę pojazdu"
+            title={t("m.screen.defects")}
+            subtitle={t("m.more.defectsSub")}
             onPress={() => router.push("/defects")}
           />
         )}
         {show("vehicles") && (
           <ListRow
             glyph="🚛"
-            title="Mój pojazd"
-            subtitle="przeglądy · OC · terminy"
+            title={t("m.screen.vehicle")}
+            subtitle={t("m.more.vehicleSub")}
             onPress={() => router.push("/vehicle")}
           />
         )}
         {show("stats") && (
           <ListRow
             glyph="📊"
-            title="Statystyki"
-            subtitle="tankowania · koszty"
+            title={t("m.screen.stats")}
+            subtitle={t("m.more.statsSub")}
             onPress={() => router.push("/stats")}
             last
           />
         )}
       </Card>
 
-      <SectionTitle>Konto</SectionTitle>
+      <SectionTitle>{t("m.more.account")}</SectionTitle>
       <Card style={s.list}>
         <ListRow
           glyph="⚙️"
-          title="Ustawienia"
-          subtitle="powiadomienia · wersja aplikacji"
+          title={t("m.screen.settings")}
+          subtitle={t("m.more.settingsSub")}
           onPress={() => router.push("/settings")}
         />
-        <ListRow glyph="🚪" title="Wyloguj" danger onPress={() => signOut()} last />
+        <ListRow glyph="🚪" title={t("m.more.logout")} danger onPress={() => signOut()} last />
       </Card>
     </ScrollView>
   );

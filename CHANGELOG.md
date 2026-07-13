@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-302-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.155.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-303-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.156.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.156.0] — 🌍 i18n fala 3: menu Więcej i rejestr wydatków w 4 językach
+
+- `[#303]` 🌍 **Ekran „Więcej" po EN/DE/UK** (mobile **1.52.0**) — sekcje Praca/Pojazd/Konto, wszystkie wiersze menu z podtytułami i wylogowanie ([more](<apps/mobile/app/(tabs)/more.tsx>)).
+- `[#303]` 🌍 **Rejestr wydatków po EN/DE/UK** — statusy rozliczenia, pola formularza, komunikaty OCR/offline/zdjęcia, lista ostatnich wpisów ([expenses](apps/mobile/app/expenses.tsx)).
+- `[#303]` ➕ ~40 nowych kluczy ×4 języki ([mobile.ts](packages/i18n/src/mobile.ts), parytet testowany). Zostały: logowanie i czat (fala 4).
+- Build iOS **1.52.0**. **Bramki:** web+mobile `tsc` ✓ · `biome` ✓ · testy ✓ (`pnpm check`).
 
 ## [1.155.0] — 🌍 i18n fala 2: formularz paliwa i zlecenia w 4 językach
 

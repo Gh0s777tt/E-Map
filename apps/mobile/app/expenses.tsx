@@ -30,19 +30,21 @@ import {
 } from "react-native";
 import { Card, PrimaryButton, SectionTitle } from "../components/ui";
 import { VehiclePicker } from "../components/VehiclePicker";
+import { useT } from "../lib/i18n";
 import { enqueue } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
-const STATUS_LABEL: Record<DriverExpense["status"], { label: string; color: string }> = {
-  submitted: { label: "do rozliczenia", color: palette.warning },
-  approved: { label: "zatwierdzony", color: palette.success },
-  rejected: { label: "odrzucony", color: palette.red },
-};
+const STATUS_META = {
+  submitted: { key: "m.exp.submitted", color: palette.warning },
+  approved: { key: "m.exp.approved", color: palette.success },
+  rejected: { key: "m.exp.rejected", color: palette.red },
+} as const;
 
 const CURRENCIES = ["PLN", "EUR", "GBP", "CZK"] as const;
 
 export default function ExpensesScreen() {
+  const t = useT();
   const { vehicles, loading: fleetLoading } = useFleet();
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [category, setCategory] = useState<ExpenseCategory>("toll");
@@ -69,11 +71,11 @@ export default function ExpensesScreen() {
       setCompanyId(m.companyId);
       setItems(await listDriverExpenses(sb, { limit: 30 }));
     } catch {
-      setMsg("Brak zasięgu — lista wydatków wczyta się przy sieci.");
+      setMsg(t("m.exp.listOffline"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
@@ -94,7 +96,7 @@ export default function ExpensesScreen() {
         setCurrency(parsed.currency as (typeof CURRENCIES)[number]);
         filled.push(parsed.currency);
       }
-      return filled.length > 0 ? `✨ Odczytano z paragonu: ${filled.join(" ")}` : null;
+      return filled.length > 0 ? t("m.exp.ocrRead", { v: filled.join(" ") }) : null;
     } catch {
       return null; // OCR niedostępny (np. Expo Go) — bez wpływu na przepływ
     }
@@ -102,7 +104,7 @@ export default function ExpensesScreen() {
 
   async function attachPhoto() {
     if (!companyId) {
-      setMsg("Poczekaj na wczytanie firmy (wymaga zasięgu).");
+      setMsg(t("m.exp.waitCompany"));
       return;
     }
     setPhotoBusy(true);
@@ -116,9 +118,9 @@ export default function ExpensesScreen() {
         mime: asset.mimeType ?? "image/jpeg",
       });
       setPhotoPath(path);
-      setMsg(ocrMsg ? `📷 Paragon dołączony · ${ocrMsg}` : "📷 Paragon dołączony.");
+      setMsg(ocrMsg ? `${t("m.exp.photoAttached")} · ${ocrMsg}` : t("m.exp.photoAttached"));
     } catch {
-      setMsg("Nie udało się wgrać zdjęcia — spróbuj przy lepszym zasięgu.");
+      setMsg(t("m.exp.photoFail"));
     } finally {
       setPhotoBusy(false);
     }
@@ -128,7 +130,7 @@ export default function ExpensesScreen() {
     setMsg(null);
     const value = Number(amount.replace(",", "."));
     if (!Number.isFinite(value) || value <= 0) {
-      setMsg("Podaj kwotę większą od zera.");
+      setMsg(t("m.exp.amountInvalid"));
       return;
     }
     setBusy(true);
@@ -147,7 +149,7 @@ export default function ExpensesScreen() {
       setAmount("");
       setNote("");
       setPhotoPath(null);
-      setMsg("✅ Wydatek dodany — firma zobaczy go w panelu.");
+      setMsg(t("m.exp.saved"));
       load();
     } catch {
       // #291: offline — wydatek trafia do outboxu (zdjęcie wymaga zasięgu).
@@ -155,11 +157,7 @@ export default function ExpensesScreen() {
       setAmount("");
       setNote("");
       setPhotoPath(null);
-      setMsg(
-        photoPath
-          ? "📥 Zapisano offline (bez zdjęcia) — wyśle się przy zasięgu."
-          : "📥 Zapisano offline — wyśle się automatycznie przy zasięgu.",
-      );
+      setMsg(photoPath ? t("m.exp.savedOfflineNoPhoto") : t("m.exp.savedOffline"));
     } finally {
       setBusy(false);
     }
@@ -170,7 +168,7 @@ export default function ExpensesScreen() {
       await deleteDriverExpense(getSupabase(), id);
       setItems((list) => list.filter((x) => x.id !== id));
     } catch {
-      setMsg("Nie udało się usunąć wpisu.");
+      setMsg(t("m.exp.deleteFail"));
     }
   }
 
@@ -204,7 +202,7 @@ export default function ExpensesScreen() {
             value={amount}
             onChangeText={setAmount}
             keyboardType="decimal-pad"
-            placeholder="Kwota"
+            placeholder={t("m.exp.amount")}
             placeholderTextColor={palette.smoke}
           />
           <View style={[s.row, { flex: 1, gap: 6 }]}>
@@ -231,41 +229,39 @@ export default function ExpensesScreen() {
           style={s.input}
           value={note}
           onChangeText={setNote}
-          placeholder="Opis (np. A2 bramka Konin)"
+          placeholder={t("m.exp.note")}
           placeholderTextColor={palette.smoke}
         />
 
         <Pressable style={s.photoBtn} onPress={attachPhoto} disabled={photoBusy}>
           <Text style={s.photoText}>
             {photoBusy
-              ? "Wgrywam…"
+              ? t("m.exp.photoBusy")
               : photoPath
-                ? "📷 Paragon dołączony ✓ (zmień)"
-                : "📷 Zdjęcie paragonu"}
+                ? t("m.exp.photoChange")
+                : t("m.exp.photoAdd")}
           </Text>
         </Pressable>
 
         {msg && <Text style={s.msg}>{msg}</Text>}
         <PrimaryButton
-          label={busy ? "Zapisuję…" : "Dodaj wydatek"}
+          label={busy ? t("m.exp.saving") : t("m.exp.submit")}
           onPress={submit}
           disabled={busy}
         />
       </Card>
 
-      <SectionTitle>Ostatnie wydatki</SectionTitle>
-      {!loading && items.length === 0 && (
-        <Text style={s.note}>Brak wydatków — dodaj pierwszy powyżej.</Text>
-      )}
+      <SectionTitle>{t("m.exp.recent")}</SectionTitle>
+      {!loading && items.length === 0 && <Text style={s.note}>{t("m.exp.empty")}</Text>}
       {items.map((e) => {
-        const st = STATUS_LABEL[e.status];
+        const st = STATUS_META[e.status];
         return (
           <Card key={e.id} style={s.entry}>
             <View style={s.entryHead}>
               <Text style={s.entryAmount}>
                 {e.amount.toFixed(2)} {e.currency}
               </Text>
-              <Text style={[s.entryStatus, { color: st.color }]}>{st.label}</Text>
+              <Text style={[s.entryStatus, { color: st.color }]}>{t(st.key)}</Text>
             </View>
             <Text style={s.entryMeta}>
               {EXPENSE_CATEGORY_LABELS[e.category]} · {e.expense_date}
@@ -274,7 +270,7 @@ export default function ExpensesScreen() {
             </Text>
             {e.status === "submitted" && (
               <Pressable onPress={() => remove(e.id)} hitSlop={8}>
-                <Text style={s.entryDelete}>Usuń</Text>
+                <Text style={s.entryDelete}>{t("m.exp.delete")}</Text>
               </Pressable>
             )}
           </Card>
