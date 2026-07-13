@@ -8,9 +8,12 @@
  */
 import { aetrStatus, formatTachoMin, parseTachoTimes, planWeeklyRest } from "@e-logistic/core";
 import type { MobileMessageKey } from "@e-logistic/i18n";
+import { haversineKm } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState } from "react";
+import * as Location from "expo-location";
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Linking,
@@ -24,10 +27,12 @@ import {
 import { Card, Chip, SectionTitle, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 import {
+  addKmToday,
   cancelBreakAlerts,
   type LiveActivity,
   type LiveSegment,
   liveStatus,
+  loadKmToday,
   loadLiveSegments,
   resetLive,
   scheduleBreakAlerts,
@@ -43,17 +48,17 @@ interface Shot {
   captionKey: MobileMessageKey;
 }
 const DRIVING_SHOTS: Shot[] = [
-  { file: "jazda-ekran-glowny.jpg", aspect: 1200 / 795, captionKey: "m.tacho.capJazdaMain" },
-  { file: "jazda-do-przerwy.jpg", aspect: 1200 / 687, captionKey: "m.tacho.capJazdaBreak" },
-  { file: "jazda-cykl-4h30.jpg", aspect: 1200 / 705, captionKey: "m.tacho.capJazdaCycle" },
+  { file: "jazda-ekran-glowny.jpg", aspect: 1600 / 1380, captionKey: "m.tacho.capJazdaMain" },
+  { file: "jazda-do-przerwy.jpg", aspect: 1600 / 1303, captionKey: "m.tacho.capJazdaBreak" },
+  { file: "jazda-cykl-4h30.jpg", aspect: 1600 / 1248, captionKey: "m.tacho.capJazdaCycle" },
 ];
 const STOP_SHOTS: Shot[] = [
-  { file: "postoj-ekran-glowny.jpg", aspect: 1200 / 736, captionKey: "m.tacho.capStopMain" },
-  { file: "postoj-czas-utc.jpg", aspect: 1200 / 469, captionKey: "m.tacho.capStopUtc" },
-  { file: "postoj-kredyty-9h-10h.jpg", aspect: 1200 / 558, captionKey: "m.tacho.capStopCredits" },
-  { file: "postoj-limity-tygodnia.jpg", aspect: 1200 / 671, captionKey: "m.tacho.capStopWeek" },
-  { file: "postoj-limity-doby.jpg", aspect: 1200 / 606, captionKey: "m.tacho.capStopDay" },
-  { file: "postoj-do-odpoczynku.jpg", aspect: 1200 / 577, captionKey: "m.tacho.capStopRest" },
+  { file: "postoj-ekran-glowny.jpg", aspect: 1600 / 951, captionKey: "m.tacho.capStopMain" },
+  { file: "postoj-czas-utc.jpg", aspect: 1600 / 706, captionKey: "m.tacho.capStopUtc" },
+  { file: "postoj-kredyty-9h-10h.jpg", aspect: 1600 / 810, captionKey: "m.tacho.capStopCredits" },
+  { file: "postoj-limity-tygodnia.jpg", aspect: 1600 / 820, captionKey: "m.tacho.capStopWeek" },
+  { file: "postoj-limity-doby.jpg", aspect: 1600 / 815, captionKey: "m.tacho.capStopDay" },
+  { file: "postoj-do-odpoczynku.jpg", aspect: 1600 / 815, captionKey: "m.tacho.capStopRest" },
 ];
 const MANUAL_STEPS: MobileMessageKey[] = [
   "m.tacho.manualStep1",
@@ -129,6 +134,56 @@ export default function TachoScreen() {
   }, []);
   const current = segments[segments.length - 1] ?? null;
   const live = segments.length > 0 ? liveStatus(segments, now) : null;
+  const router = useRouter();
+
+  // #332: GPS w trybie LIVE — prędkość, km dziś, auto-przełączenie na jazdę.
+  const [speed, setSpeed] = useState<number | null>(null);
+  const [kmToday, setKmToday] = useState(0);
+  const lastFix = useRef<{ lat: number; lng: number } | null>(null);
+  const currentRef = useRef(current);
+  currentRef.current = current;
+  const switchRef = useRef<(a: LiveActivity) => void>(() => {});
+  useEffect(() => {
+    loadKmToday().then(setKmToday);
+  }, []);
+  const liveOn = segments.length > 0;
+  useEffect(() => {
+    if (!liveOn) {
+      setSpeed(null);
+      lastFix.current = null;
+      return;
+    }
+    let sub: Location.LocationSubscription | null = null;
+    let cancelled = false;
+    (async () => {
+      let perm = await Location.getForegroundPermissionsAsync();
+      if (!perm.granted) perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted || cancelled) return;
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 30 },
+        (pos) => {
+          const raw = pos.coords.speed;
+          const kmh = raw != null && raw >= 0 ? Math.round(raw * 3.6) : null;
+          setSpeed(kmh);
+          const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const prev = lastFix.current;
+          lastFix.current = fix;
+          if (prev && currentRef.current?.activity === "driving") {
+            const d = haversineKm(prev, fix);
+            if (d > 0.02 && d < 3) addKmToday(d).then(setKmToday);
+          }
+          // auto-wypełnianie: ruszyłeś (>15 km/h) → licznik sam przechodzi na jazdę
+          if (kmh != null && kmh > 15 && currentRef.current?.activity !== "driving") {
+            switchRef.current("driving");
+          }
+        },
+      );
+    })();
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
+  }, [liveOn]);
 
   async function switchActivity(a: LiveActivity) {
     const segs = await setLiveActivity(a);
@@ -144,6 +199,7 @@ export default function TachoScreen() {
       await cancelBreakAlerts();
     }
   }
+  switchRef.current = switchActivity;
 
   // ── #327: kalkulator ręczny ───────────────────────────────────────
   const [continuous, setContinuous] = useState(0);
@@ -248,6 +304,10 @@ export default function TachoScreen() {
         <Text style={s.regBtnText}>📜 {t("m.tacho.regulation")}</Text>
       </Pressable>
       <Text style={s.hint}>{t("m.tacho.regulationHint")}</Text>
+      <Pressable style={s.worktimeBtn} onPress={() => router.push("/work-time")}>
+        <Text style={s.worktimeText}>📋 {t("m.tacho.worktime")}</Text>
+        <Text style={s.hint}>{t("m.tacho.worktimeHint")}</Text>
+      </Pressable>
 
       {/* #329: Licznik LIVE */}
       <SectionTitle>{t("m.tacho.live")}</SectionTitle>
@@ -274,6 +334,8 @@ export default function TachoScreen() {
               {formatTachoMin(currentMin)}
             </Text>
             <View style={s.liveStats}>
+              {speed != null && <Chip label={`🚀 ${speed} km/h`} color="#3b82f6" />}
+              <Chip label={`🛣 ${kmToday.toFixed(1)} km`} color="#a855f7" />
               <Chip
                 label={`${t("m.tacho.toBreak")}: ${formatTachoMin(live.toBreakMin)}`}
                 color={colorFor(live.toBreakMin)}
@@ -300,6 +362,7 @@ export default function TachoScreen() {
           <Text style={s.hint}>{t("m.tacho.liveOff")}</Text>
         )}
         <Text style={s.hint}>{t("m.tacho.liveHint")}</Text>
+        <Text style={s.hint}>{t("m.tacho.gpsHint")}</Text>
       </Card>
 
       {/* #327: Licznik 561 (ręczny) + #330 OCR */}
@@ -589,4 +652,12 @@ const s = StyleSheet.create({
   typeText: { color: palette.smoke, fontSize: 12.5, fontWeight: "700" },
   planLine: { color: palette.offWhite, fontSize: 13.5, lineHeight: 19 },
   planWarn: { color: "#f59e0b", fontSize: 13, fontWeight: "700" },
+  worktimeBtn: {
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  worktimeText: { color: palette.offWhite, fontSize: 14, fontWeight: "800" },
 });

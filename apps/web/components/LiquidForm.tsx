@@ -102,9 +102,14 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   useEffect(() => {
     if (!editId && !vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId, editId]);
+  // #332: pokazuj tylko karty przypisane do wybranego auta (+ karty firmowe)
+  const vehicleReg = vehicles.find((v) => v.id === vehicleId)?.registration ?? null;
+  const vehicleCards = cards.filter((c) => !c.registration || c.registration === vehicleReg);
   useEffect(() => {
-    if (!fuelCardId && cards[0]) setFuelCardId(cards[0].id);
-  }, [cards, fuelCardId]);
+    if (!vehicleCards.some((c) => c.id === fuelCardId)) {
+      setFuelCardId(vehicleCards[0]?.id ?? "");
+    }
+  }, [vehicleCards, fuelCardId]);
 
   // Podpowiedź ceny: ostatnia cena jednostkowa z historii pojazdu (paliwo/AdBlue).
   useEffect(() => {
@@ -397,7 +402,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
               value={fuelCardId}
               onChange={(e) => setFuelCardId(e.target.value)}
             >
-              {cards.map((c) => (
+              {vehicleCards.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
                 </option>

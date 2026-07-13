@@ -114,7 +114,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         item("/chat", t("nav.chat"), "chat"),
         item("/expenses", t("nav.expenses"), "receipt"),
         ...(manage ? [item("/per-diem", t("nav.perDiem"), "wallet")] : []),
-        ...(manage ? [item("/work-time", t("nav.workTime"), "clock")] : []),
         ...(manage ? [item("/payouts", t("nav.payouts"), "banknote")] : []),
         item("/fuel-prices", t("nav.fuelPrices"), "globe"),
         ...(has("stats") ? [item("/stats", t("nav.stats"), "chart")] : []),

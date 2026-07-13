@@ -49,7 +49,6 @@ const GROUPS: Group[] = [
       { glyph: "⛽️", labelKey: "m.nav.forms", href: "/forms", module: "forms" },
       { glyph: "✅", labelKey: "m.screen.checklists", href: "/checklists", module: "checklists" },
       { glyph: "🧾", labelKey: "m.screen.expenses", href: "/expenses" },
-      { glyph: "⏱", labelKey: "m.screen.workTime", href: "/work-time" },
       { glyph: "🕓", labelKey: "m.screen.tacho", href: "/tacho" },
     ],
   },

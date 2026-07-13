@@ -394,6 +394,9 @@ export default function TachoPage() {
         <Button onClick={() => window.open(PDF, "_blank", "noopener")}>
           📜 Rozporządzenie 561/2006 (PDF)
         </Button>
+        <Button variant="ghost" onClick={() => window.location.assign("/work-time")}>
+          📋 Ewidencja czasu pracy
+        </Button>
         <span style={{ color: palette.smoke, fontSize: 13, alignSelf: "center" }}>
           Pełny skonsolidowany tekst — także do pokazania na kontroli.
         </span>

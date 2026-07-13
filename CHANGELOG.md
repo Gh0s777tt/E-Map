@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-331-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.182.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-332-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.183.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,14 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.183.0] — 🛰 Tacho z GPS i ewidencją, karta flotowa przy tankowaniu, czytelne zdjęcia poradnika
+
+- `[#332]` 🗂 **Czas pracy wchłonięty przez Tacho** — zakładka „Czas pracy" znika z nawigacji panelu i szuflady aplikacji; ewidencja (dni, odpoczynki, import z checklisty i z .ddd) jest teraz podstroną huba **Tacho** (przycisk „📋 Ewidencja czasu pracy"; stare adresy działają).
+- `[#332]` 🛰 **GPS w liczniku LIVE** (mobile **1.70.0**) — przy włączonym liczniku telefon mierzy **prędkość** i **kilometry dnia** (haversine między poprawkami, zapis lokalny z resetem o północy), a po ruszeniu (>15 km/h) licznik **sam przełącza się na jazdę** — pola wypełniają się automatycznie; chipy 🚀 km/h i 🛣 km w sekcji LIVE.
+- `[#332]` 💳 **Karta flotowa w formularzu tankowania** — przy płatności kartą wybierasz kartę **spośród przypisanych do wybranego auta** (+ karty firmowe bez przypisania): chipy w aplikacji, filtrowany select na webie; zapis w `fuel_logs.fuel_card_id` (naprawia też walidację „karta bez karty").
+- `[#332]` 🖼 **Zdjęcia poradnika przekomponowane** — zamiast małych napisów: kadr samego wyświetlacza + **duże etykiety (Arial Bold 34 px)** ze strzałkami, rysowane od nowa dla wszystkich 9 ekranów; obrazy 1600 px, wyostrzone.
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n ✓.
 
 ## [1.182.0] — 🚦 Tacho PRO 2–4/4: Licznik LIVE z powiadomieniami, skan wyświetlacza OCR, planer odpoczynku tygodniowego
 

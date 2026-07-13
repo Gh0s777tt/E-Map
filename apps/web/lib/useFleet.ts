@@ -16,6 +16,8 @@ export interface FleetCard {
   id: string;
   label: string;
   provider: FuelCardProvider;
+  /** #332: rejestracja przypisanego auta (null = karta firmowa, bez przypisania). */
+  registration: string | null;
 }
 
 /** Stan floty: skąd pochodzą dane / czego brakuje do zapisu w bazie. */
@@ -82,6 +84,7 @@ export function useFleet() {
               id: c.id,
               provider,
               label: `${brand} ${c.card_number_masked ?? ""}${reg ? ` · ${reg}` : ""}`.trim(),
+              registration: reg,
             };
           }),
         );

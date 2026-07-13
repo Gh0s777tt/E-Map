@@ -155,6 +155,13 @@ const pl = {
   "m.card.tenure": "staż",
   "m.card.years": "lata",
   "m.card.months": "mies.",
+  "m.fuel.cardPick": "Karta flotowa",
+  "m.fuel.cardNone": "Brak kart przypisanych do tego auta — dodaj w panelu (Karty paliwowe).",
+  "m.tacho.gpsHint":
+    "GPS: prędkość i kilometry liczą się same, a przy ruszeniu (>15 km/h) licznik automatycznie przełącza się na jazdę.",
+  "m.tacho.worktime": "Ewidencja czasu pracy",
+  "m.tacho.worktimeHint":
+    "Dni pracy, odpoczynki i import z checklisty — teraz część zakładki Tacho.",
   "m.tacho.live": "Licznik LIVE",
   "m.tacho.liveHint":
     "Przełączaj czynność jak w tachografie — aplikacja liczy jazdę ciągłą, dobową i tygodniową oraz przypomni o przerwie (powiadomienie 30 min wcześniej i na czas).",
@@ -597,6 +604,12 @@ const en: Record<MobileMessageKey, string> = {
   "m.card.tenure": "tenure",
   "m.card.years": "yrs",
   "m.card.months": "mo",
+  "m.fuel.cardPick": "Fleet card",
+  "m.fuel.cardNone": "No cards assigned to this vehicle — add one in the panel (Fuel cards).",
+  "m.tacho.gpsHint":
+    "GPS: speed and kilometres count automatically, and once you move (>15 km/h) the counter switches to driving by itself.",
+  "m.tacho.worktime": "Working time records",
+  "m.tacho.worktimeHint": "Work days, rests and checklist import — now part of the Tacho tab.",
   "m.tacho.live": "LIVE counter",
   "m.tacho.liveHint":
     "Switch activity like on the tachograph — the app tracks continuous, daily and weekly driving and reminds you about the break (30 min ahead and on time).",
@@ -1040,6 +1053,13 @@ const de: Record<MobileMessageKey, string> = {
   "m.card.tenure": "Betriebszugehörigkeit",
   "m.card.years": "J.",
   "m.card.months": "Mon.",
+  "m.fuel.cardPick": "Flottenkarte",
+  "m.fuel.cardNone": "Keine Karten diesem Fahrzeug zugewiesen — im Panel hinzufügen (Tankkarten).",
+  "m.tacho.gpsHint":
+    "GPS: Geschwindigkeit und Kilometer zählen automatisch; beim Anfahren (>15 km/h) schaltet der Zähler selbst auf Fahrt.",
+  "m.tacho.worktime": "Arbeitszeitnachweis",
+  "m.tacho.worktimeHint":
+    "Arbeitstage, Ruhezeiten und Checklisten-Import — jetzt Teil des Tacho-Tabs.",
   "m.tacho.live": "LIVE-Zähler",
   "m.tacho.liveHint":
     "Tätigkeit wie am Tachographen umschalten — die App zählt Lenkzeit (ununterbrochen, täglich, wöchentlich) und erinnert an die Pause (30 Min. vorher und pünktlich).",
@@ -1480,6 +1500,13 @@ const uk: Record<MobileMessageKey, string> = {
   "m.card.tenure": "стаж",
   "m.card.years": "р.",
   "m.card.months": "міс.",
+  "m.fuel.cardPick": "Паливна картка",
+  "m.fuel.cardNone": "Немає карток, привʼязаних до цього авто — додай у панелі (Паливні картки).",
+  "m.tacho.gpsHint":
+    "GPS: швидкість і кілометри рахуються самі, а після старту (>15 км/год) лічильник сам перемикається на керування.",
+  "m.tacho.worktime": "Облік робочого часу",
+  "m.tacho.worktimeHint":
+    "Робочі дні, відпочинки та імпорт із чеклиста — тепер частина вкладки Тахо.",
   "m.tacho.live": "Лічильник LIVE",
   "m.tacho.liveHint":
     "Перемикай діяльність як у тахографі — застосунок рахує безперервне, добове й тижневе керування та нагадає про перерву (за 30 хв і вчасно).",

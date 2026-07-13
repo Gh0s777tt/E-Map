@@ -1,3 +1,4 @@
+import { listFuelCardsForUser } from "@e-logistic/api";
 import {
   type FuelLogInput,
   firstZodError,
@@ -11,6 +12,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
+import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 import { usePermission } from "../lib/usePermission";
 import { VehiclePicker } from "./VehiclePicker";
@@ -37,6 +39,11 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   const [odometer, setOdometer] = useState("");
   const [liters, setLiters] = useState("");
   const [payment, setPayment] = useState<"card" | "cash">("cash");
+  // #332: karty flotowe — wybór spośród kart przypisanych do wybranego auta
+  const [cards, setCards] = useState<{ id: string; label: string; registration: string | null }[]>(
+    [],
+  );
+  const [cardId, setCardId] = useState<string | null>(null);
   const [isFull, setIsFull] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +60,37 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   useEffect(() => {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId]);
+
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    listFuelCardsForUser(getSupabase())
+      .then((rows) =>
+        setCards(
+          (
+            rows as {
+              id: string;
+              provider: string;
+              card_number_masked: string | null;
+              registration?: string | null;
+            }[]
+          ).map((r) => ({
+            id: r.id,
+            label: `${r.provider} ${r.card_number_masked ?? ""}`.trim(),
+            registration: r.registration ?? null,
+          })),
+        ),
+      )
+      .catch(() => {});
+  }, []);
+
+  const vehicleReg = vehicles.find((v) => v.id === vehicleId)?.registration ?? null;
+  // karty przypisane do wybranego auta + karty bez przypisania (firmowe)
+  const vehicleCards = cards.filter((c) => !c.registration || c.registration === vehicleReg);
+  useEffect(() => {
+    if (payment === "card" && !vehicleCards.some((c) => c.id === cardId)) {
+      setCardId(vehicleCards[0]?.id ?? null);
+    }
+  }, [payment, vehicleCards, cardId]);
 
   // A5: powtórz ostatni wpis — prefill kraju/płatności z ostatniego wpisu (outbox).
   function repeatLast() {
@@ -115,6 +153,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       liters: Number(liters.replace(",", ".")),
       paymentMethod: payment,
       isFull,
+      ...(payment === "card" && cardId ? { fuelCardId: cardId } : {}),
     });
     if (!parsed.success) {
       warn();
@@ -230,6 +269,34 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
           </Pressable>
         ))}
       </View>
+
+      {payment === "card" && (
+        <>
+          <Text style={styles.label}>{t("m.fuel.cardPick")}</Text>
+          {vehicleCards.length === 0 ? (
+            <Text style={styles.msg}>{t("m.fuel.cardNone")}</Text>
+          ) : (
+            <View style={[styles.row, { flexWrap: "wrap" }]}>
+              {vehicleCards.map((c) => (
+                <Pressable
+                  key={c.id}
+                  style={[
+                    styles.chip,
+                    { flex: 0, paddingHorizontal: 14 },
+                    cardId === c.id && styles.chipActive,
+                  ]}
+                  onPress={() => setCardId(c.id)}
+                >
+                  <Text style={cardId === c.id ? styles.chipTextActive : styles.chipText}>
+                    💳 {c.label}
+                    {c.registration ? ` · ${c.registration}` : ""}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </>
+      )}
 
       <Pressable style={styles.fullRow} onPress={() => setIsFull((v) => !v)}>
         <View style={[styles.checkbox, isFull && styles.checkboxOn]}>

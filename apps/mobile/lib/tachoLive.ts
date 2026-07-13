@@ -105,6 +105,28 @@ export function liveStatus(segments: LiveSegment[], now: number) {
   return aetrStatus(liveToAetrInput(segments, now));
 }
 
+const KM_KEY = "el-tacho-km";
+
+/** Kilometry przejechane dziś (GPS, tryb LIVE). Reset o północy. */
+export async function loadKmToday(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(KM_KEY);
+    const v = raw ? (JSON.parse(raw) as { date: string; km: number }) : null;
+    return v && v.date === new Date().toISOString().slice(0, 10) ? v.km : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function addKmToday(deltaKm: number): Promise<number> {
+  const km = Math.round(((await loadKmToday()) + deltaKm) * 100) / 100;
+  await AsyncStorage.setItem(
+    KM_KEY,
+    JSON.stringify({ date: new Date().toISOString().slice(0, 10), km }),
+  );
+  return km;
+}
+
 export async function cancelBreakAlerts(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(NOTIF_KEY);
