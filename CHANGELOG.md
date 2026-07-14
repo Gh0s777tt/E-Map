@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-353-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.198.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-354-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.199.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,19 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.199.0] — 🐛 KRYTYCZNE: „przycisk nic nie robi" — martwe akcje w aplikacji (audyt całej interaktywności)
+
+Zgłoszenie: w aplikacji nie dało się zapisać formularza ani wyszukać na mapie — po kliknięciu „nic się nie dzieje". Wielo-agentowy audyt **wszystkich** przycisków/narzędzi (6 grup ekranów, 57 agentów) potwierdził **30 martwych/no-op akcji**; naprawiono przyczynę systemową + wszystkie bezpośrednio dotykające użytkownika.
+
+- `[#354]` ⏱️ **PRZYCZYNA SYSTEMOWA — żądania sieciowe bez timeoutu** ([client.ts](packages/api/src/client.ts)): każde zapytanie Supabase (`auth.getUser`, `select`/`insert`, `rpc`) mogło na wolnej/zerwanej sieci **wisieć w nieskończoność**, a wołający przycisk zostawał `busy`/`loading` na zawsze → kolejne tapnięcia ginęły na `if (busy) return`. **Fix:** klient mobilny dostał `fetch` z **twardym timeoutem 30 s** — każde żądanie zawsze się rozstrzyga, więc `finally` resetuje stan i pokazuje błąd. To naprawia całą klasę „zawieszonych" przycisków w CAŁEJ apce (zapisy, czat, odświeżanie, tacho, upload zdjęć).
+- `[#354]` 💾 **Zapis formularzy nie może się już zawiesić** ([outbox](apps/mobile/lib/outbox.ts)): `enqueue` robił blokujący `await trySync` (a `trySync` wołał `getUser`/`getActiveMembership` bez timeoutu). Teraz zapis do outboxu jest **lokalny i natychmiastowy**, a synchronizacja leci w tle. Dotyczy: **tankowanie, AdBlue, trasa, checklisty, wydatki**. (To była prawdziwa przyczyna — #344 „keyboard" był błędną diagnozą.)
+- `[#354]` ⌨️ **Formularze Wydatki i Profil** ([expenses](apps/mobile/app/expenses.tsx), [profile](apps/mobile/app/profile.tsx)) — **jedyne** ScrollView bez `keyboardShouldPersistTaps="handled"`: przy otwartej klawiaturze pierwsze tapnięcie tylko chowało klawiaturę (`onPress` nie odpalał). Wyrównane do reszty.
+- `[#354]` 🔍 **Lupa w mapie** ([map](apps/mobile/app/map.tsx)) — `geocode` nigdy nie rzuca wyjątku, więc brak wyników / za krótkie zapytanie kończyły się **cicho** ([]). Teraz komunikat „nie znaleziono" / „wpisz min. 2 znaki".
+- `[#354]` 📍 **GPS/POI bez zawieszenia** ([geoFill](apps/mobile/lib/geoFill.ts) — timeout 12 s na pozycję/reverse-geocode; [poi](packages/maps/src/poi.ts) — timeout 15 s na Overpass): przyciski „Uzupełnij z lokalizacji" i „Wczytaj POI" nie zostają już w `busy`.
+- `[#354]` 📷 **Ciche odmowy uprawnień** ([tacho scan](apps/mobile/app/tacho.tsx), [profile avatar](apps/mobile/app/profile.tsx)) — tapnięcie przy odmowie dostępu do aparatu/zdjęć nic nie robiło; teraz komunikat „włącz w ustawieniach".
+- **Audyt — do domknięcia w kolejnym wydaniu** (niższy priorytet, w większości pokryte już timeoutem powyżej): brak spinnera przy pull-to-refresh na 8 ekranach finansowych (dane i tak się odświeżają), cichy `companyId===null` w kilku zapisach zarządczych (rzadki edge), drobne guardy w czacie i statusie zlecenia.
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · testy api 68 + maps 60 ✓ · parytet i18n 5/5 ✓ · docs:check ✓ · bez migracji.
 
 ## [1.198.0] — 🛠 Parytet zarządzania, fala 9: faktury (wystawianie/pozycje/płatności) z telefonu
 

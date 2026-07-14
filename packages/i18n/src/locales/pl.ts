@@ -20,6 +20,8 @@ export const pl = {
   "mobileMap.poiError": "Nie udało się pobrać POI — spróbuj ponownie.",
   "mobileMap.searchPlaceholder": "Szukaj adresu lub miasta…",
   "mobileMap.searchError": "Nie udało się wyszukać.",
+  "mobileMap.searchTooShort": "Wpisz min. 2 znaki.",
+  "mobileMap.noResults": "Nie znaleziono — spróbuj innej nazwy.",
   "mobileMap.routeError": "Nie udało się wyznaczyć trasy.",
   "mobileMap.planRoute": "Wyznacz trasę TIR",
   "mobileMap.planning": "Liczę trasę",

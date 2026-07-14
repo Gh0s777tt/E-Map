@@ -79,11 +79,20 @@ export async function fetchPois(
   types: OsmPoiType[] = ["parking", "fuel_station"],
   url: string = OVERPASS_URL,
 ): Promise<Poi[]> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" },
-    body: buildOverpassQuery(bbox, types),
-  });
-  if (!res.ok) throw new Error(`Overpass API: ${res.status}`);
-  return parseOverpass((await res.json()) as OverpassResponse);
+  // #354: twardy timeout — Overpass bywa wolny/niedostępny, a bez tego przycisk
+  // „Wczytaj POI" zostawał w stanie busy (promise nie rozstrzygał się).
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: buildOverpassQuery(bbox, types),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`Overpass API: ${res.status}`);
+    return parseOverpass((await res.json()) as OverpassResponse);
+  } finally {
+    clearTimeout(timer);
+  }
 }

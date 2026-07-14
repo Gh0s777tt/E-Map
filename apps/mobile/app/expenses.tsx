@@ -184,6 +184,7 @@ export default function ExpensesScreen() {
     <ScrollView
       style={s.screen}
       contentContainerStyle={[s.content, wide]}
+      keyboardShouldPersistTaps="handled"
       refreshControl={
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }

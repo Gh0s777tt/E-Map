@@ -55,7 +55,12 @@ export default function ProfileScreen() {
 
   async function pickAvatar() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      // #354: bez tego tapnięcie w avatar przy odmowie dostępu do zdjęć nic nie robiło.
+      warn();
+      setMsg(t("m.profile.avatarDenied"));
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       quality: 0.5,
       base64: true,
@@ -80,7 +85,11 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
+    <ScrollView
+      style={s.screen}
+      contentContainerStyle={[s.content, wide]}
+      keyboardShouldPersistTaps="handled"
+    >
       <Card style={s.head}>
         <Pressable onPress={pickAvatar} accessibilityLabel={t("m.profile.changeAvatar")}>
           <Avatar initial={initialOf(profile.email)} size={72} uri={shownAvatar} />

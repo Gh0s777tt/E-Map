@@ -22,6 +22,8 @@ export const en: Record<MessageKey, string> = {
   "mobileMap.poiError": "Failed to load POI — try again.",
   "mobileMap.searchPlaceholder": "Search address or city…",
   "mobileMap.searchError": "Search failed.",
+  "mobileMap.searchTooShort": "Type at least 2 characters.",
+  "mobileMap.noResults": "Nothing found — try another name.",
   "mobileMap.routeError": "Could not plan the route.",
   "mobileMap.planRoute": "Plan truck route",
   "mobileMap.planning": "Planning",

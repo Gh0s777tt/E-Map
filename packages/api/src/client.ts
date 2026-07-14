@@ -49,6 +49,27 @@ export interface MobileAuthStorage {
  * (AsyncStorage), bez detekcji sesji w URL. Warstwa danych (`packages/api`)
  * jest niezależna od platformy — przyjmuje ten klient tak samo jak webowy.
  */
+/**
+ * #354: fetch z twardym timeoutem. Bez tego pojedyncze zapytanie (auth.getUser,
+ * select/insert, rpc) na wolnej/zerwanej sieci mogło wisieć w nieskończoność, a
+ * wywołujący przycisk zostawał w stanie `busy`/`loading` — user widział „nic się
+ * nie dzieje". Timeout gwarantuje, że każde żądanie ZAWSZE się rozstrzygnie
+ * (reject po `ms`), więc `finally` zresetuje stan i pokaże błąd. 30 s = zapas na
+ * wolne uploady zdjęć, a i tak ratuje z zawieszenia.
+ */
+function timeoutFetch(ms: number): typeof fetch {
+  return (input, init) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    const external = init?.signal;
+    if (external) {
+      if (external.aborted) controller.abort();
+      else external.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+    return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  };
+}
+
 export function createSupabaseMobileClient(
   storage: MobileAuthStorage,
   cfg?: Partial<SupabaseConfig>,
@@ -64,6 +85,8 @@ export function createSupabaseMobileClient(
       // wymieniany na sesje przez exchangeCodeForSession (PKCE).
       flowType: "pkce",
     },
+    // #354: bez timeoutu wiszące żądanie zawieszało przyciski (busy na zawsze).
+    global: { fetch: timeoutFetch(30_000) },
   });
 }
 

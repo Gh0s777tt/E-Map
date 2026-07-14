@@ -1,6 +1,6 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.85.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.198.0 (#353) · 2026-07-14 · **iOS w TestFlight** (build 47 VALID, ASC App ID 6789726653) · **Android w testach wewnętrznych Google Play** (com.ghostempire.elogistic)
+> Stan: **v1.86.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.199.0 (#354) · 2026-07-14 · **iOS w TestFlight** (build 47 VALID, ASC App ID 6789726653) · **Android w testach wewnętrznych Google Play** (com.ghostempire.elogistic)
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.

@@ -227,7 +227,11 @@ export default function TachoScreen() {
   async function scanDisplay() {
     setScanMsg(null);
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      // #354: bez tego tapnięcie przy odmowie aparatu nic nie robiło (cichy return).
+      setScanMsg(t("m.tacho.scanNoCamera"));
+      return;
+    }
     const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (res.canceled) return;
     const uri = res.assets[0]?.uri;

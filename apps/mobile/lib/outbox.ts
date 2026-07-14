@@ -77,8 +77,14 @@ export async function enqueue(
   const items = await read();
   items.unshift(item);
   await write(items);
-  await trySync(item.id);
-  return (await read()).find((i) => i.id === item.id) ?? item;
+  // #354: zapis do outboxu jest LOKALNY i natychmiastowy — synchronizację z serwerem
+  // odpalamy w tle (fire-and-forget). Wcześniej `await trySync` blokował powrót z
+  // enqueue, a że `trySync` woła `sb.auth.getUser()`/`getActiveMembership()` BEZ
+  // timeoutu, na wolnej/zerwanej sieci wisiał w nieskończoność — przez co przycisk
+  // „Zapisz" zostawał w stanie `busy` (disabled) i każde kolejne tapnięcie ginęło na
+  // `if (busy) return`, co user widział jako „nic się nie dzieje / nie da się zapisać".
+  void trySync(item.id).catch(() => {});
+  return item;
 }
 
 /** Best-effort synchronizacja jednego wpisu: wymaga konfiguracji + sesji. */

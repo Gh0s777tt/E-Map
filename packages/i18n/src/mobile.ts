@@ -97,6 +97,7 @@ const pl = {
   "m.profile.title": "Mój profil",
   "m.profile.save": "Zapisz",
   "m.profile.error": "Nie udało się zapisać.",
+  "m.profile.avatarDenied": "Brak dostępu do zdjęć — włącz go w ustawieniach systemu.",
   "m.profile.changeAvatar": "Zmień avatar",
   "m.profile.avatarHint": "Dotknij zdjęcia, aby zmienić avatar (widoczny w aplikacji i czacie).",
   "m.profile.avatarSaved": "✅ Avatar zapisany.",
@@ -471,6 +472,7 @@ const pl = {
   "m.tacho.scanHint":
     "Zrób ostre zdjęcie ekranu tacho — odczytane liczniki przypiszesz jednym dotknięciem.",
   "m.tacho.scanNone": "Nie odczytano liczników — spróbuj ostrzejszego zdjęcia z bliska.",
+  "m.tacho.scanNoCamera": "Brak dostępu do aparatu — włącz go w ustawieniach systemu.",
   "m.tacho.scanDetected": "Odczytane wartości",
   "m.tacho.assignContinuous": "→ ciągła",
   "m.tacho.assignDaily": "→ dziś",
@@ -842,6 +844,7 @@ const en: Record<MobileMessageKey, string> = {
   "m.profile.title": "My profile",
   "m.profile.save": "Save",
   "m.profile.error": "Could not save.",
+  "m.profile.avatarDenied": "No photo access — enable it in system settings.",
   "m.profile.changeAvatar": "Change avatar",
   "m.profile.avatarHint": "Tap the photo to change your avatar (visible in the app and chat).",
   "m.profile.avatarSaved": "✅ Avatar saved.",
@@ -1213,6 +1216,7 @@ const en: Record<MobileMessageKey, string> = {
   "m.tacho.scanHint":
     "Take a sharp photo of the tacho screen — assign the recognised counters with one tap.",
   "m.tacho.scanNone": "No counters recognised — try a sharper, closer photo.",
+  "m.tacho.scanNoCamera": "No camera access — enable it in system settings.",
   "m.tacho.scanDetected": "Recognised values",
   "m.tacho.assignContinuous": "→ continuous",
   "m.tacho.assignDaily": "→ today",
@@ -1584,6 +1588,7 @@ const de: Record<MobileMessageKey, string> = {
   "m.profile.title": "Mein Profil",
   "m.profile.save": "Speichern",
   "m.profile.error": "Speichern fehlgeschlagen.",
+  "m.profile.avatarDenied": "Kein Fotozugriff — in den Systemeinstellungen aktivieren.",
   "m.profile.changeAvatar": "Avatar ändern",
   "m.profile.avatarHint":
     "Tippen Sie auf das Foto, um den Avatar zu ändern (sichtbar in App und Chat).",
@@ -1957,6 +1962,7 @@ const de: Record<MobileMessageKey, string> = {
   "m.tacho.scanHint":
     "Mach ein scharfes Foto des Tacho-Displays — erkannte Zähler mit einem Tipp zuweisen.",
   "m.tacho.scanNone": "Keine Zähler erkannt — versuche ein schärferes Foto aus der Nähe.",
+  "m.tacho.scanNoCamera": "Kein Kamerazugriff — in den Systemeinstellungen aktivieren.",
   "m.tacho.scanDetected": "Erkannte Werte",
   "m.tacho.assignContinuous": "→ ununterbr.",
   "m.tacho.assignDaily": "→ heute",
@@ -2326,6 +2332,7 @@ const uk: Record<MobileMessageKey, string> = {
   "m.profile.title": "Мій профіль",
   "m.profile.save": "Зберегти",
   "m.profile.error": "Не вдалося зберегти.",
+  "m.profile.avatarDenied": "Немає доступу до фото — увімкніть у налаштуваннях.",
   "m.profile.changeAvatar": "Змінити аватар",
   "m.profile.avatarHint": "Торкніться фото, щоб змінити аватар (видно в застосунку та чаті).",
   "m.profile.avatarSaved": "✅ Аватар збережено.",
@@ -2698,6 +2705,7 @@ const uk: Record<MobileMessageKey, string> = {
   "m.tacho.scanHint":
     "Зроби чітке фото екрана тахографа — розпізнані лічильники призначиш одним дотиком.",
   "m.tacho.scanNone": "Лічильники не розпізнано — спробуй чіткіше фото зблизька.",
+  "m.tacho.scanNoCamera": "Немає доступу до камери — увімкніть у налаштуваннях.",
   "m.tacho.scanDetected": "Розпізнані значення",
   "m.tacho.assignContinuous": "→ безперервне",
   "m.tacho.assignDaily": "→ сьогодні",

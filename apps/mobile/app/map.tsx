@@ -93,10 +93,19 @@ export default function MapScreen() {
   }, []);
 
   const searchAddress = useCallback(async () => {
-    if (query.trim().length < 2 || searching) return;
+    if (searching) return;
+    // #354: krótkie zapytanie i „brak wyników" muszą dać widoczny komunikat —
+    // wcześniej cichy early-return / puste `geocode` wyglądały jak martwy przycisk.
+    if (query.trim().length < 2) {
+      setNotice(t("mobileMap.searchTooShort"));
+      return;
+    }
     setSearching(true);
+    setNotice(null);
     try {
-      setResults(await geocode(query.trim(), { limit: 6 }));
+      const hits = await geocode(query.trim(), { limit: 6 });
+      setResults(hits);
+      if (hits.length === 0) setNotice(t("mobileMap.noResults"));
     } catch {
       setNotice(t("mobileMap.searchError"));
     } finally {
