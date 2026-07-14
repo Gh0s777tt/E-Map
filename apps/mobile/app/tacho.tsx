@@ -24,6 +24,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { TachoJournal } from "../components/TachoJournal";
 import { Card, Chip, SectionTitle, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 import {
@@ -462,6 +463,9 @@ export default function TachoScreen() {
         ))}
       </View>
       <Text style={s.hint}>{t("m.tacho.counterHint")}</Text>
+
+      {/* #345: Dziennik — dzień pracy i odpoczynek tygodniowy zapisywane w profilu */}
+      <TachoJournal />
 
       {/* #331: Planer odpoczynku tygodniowego */}
       <SectionTitle>{t("m.tacho.planner")}</SectionTitle>

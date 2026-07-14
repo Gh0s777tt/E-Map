@@ -699,6 +699,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      driver_tacho_events: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_user_id: string;
+          kind: string;
+          rest_type: string | null;
+          at: string;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          driver_user_id: string;
+          kind: string;
+          rest_type?: string | null;
+          at?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_user_id?: string;
+          kind?: string;
+          rest_type?: string | null;
+          at?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       drivers: {
         Row: {
           id: string;
