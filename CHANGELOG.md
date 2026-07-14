@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-352-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.197.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-353-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.198.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.198.0] — 🛠 Parytet zarządzania, fala 9: faktury (wystawianie/pozycje/płatności) z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie. **Domyka komplet głównych ekranów zarządczych na telefonie.**
+
+- `[#353]` 🧾 **Faktury w aplikacji** ([manage-invoices](apps/mobile/app/manage-invoices.tsx)) — dotąd mobile miało tylko podgląd. Teraz owner/dyspozytor **wystawia pustą fakturę** (nabywca + numeracja bez luk przez RPC), **dodaje/usuwa pozycje** (opis, ilość, cena, VAT — sumy net/VAT/brutto liczy trigger), **oznacza opłaconą/cofnięcie**, **anuluje/przywraca**, **duplikuje** i **usuwa**. Widok lista → szczegóły (pozycje + akcje) → nowa. Odpowiednik panelu web „Faktury".
+- `[#353]` 🌍 **i18n** — ekran + statusy w PL/EN/DE/UK (32 klucze ×4, parytet zielony).
+- `[#353]` ✅ **Przegląd adwersarialny przed wydaniem** (3 soczewki + weryfikacja) wykrył i naprawiono **5 defektów**: (1) **anulowaną fakturę dało się oznaczyć „opłaconą"** — web to blokuje, core wymusza „unpaid" dla cancelled → zbramkowane; (2) **podwójne tapnięcie „Duplikuj"** tworzyło dwie kopie (marnując numerację) → strażnik `busy` + `disabled`; (3) numer pozycji `length+1` kolidował po usunięciu środkowej → `max(istniejące)+1`; (4) ilość/cena = 0 przechodziły → wymagane > 0 (VAT 0% dozwolony); (5) „Nowa faktura" nie czyściła starego komunikatu błędu.
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · parytet i18n 5/5 ✓ · docs:check ✓ · bez migracji.
 
 ## [1.197.0] — 🛠 Parytet zarządzania, fala 8: zlecenia (tworzenie/edycja/przydział) z telefonu
 

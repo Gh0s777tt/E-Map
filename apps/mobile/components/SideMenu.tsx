@@ -123,6 +123,12 @@ const GROUPS: Group[] = [
         href: "/manage-orders",
         managerOnly: true,
       },
+      {
+        glyph: "🧾",
+        labelKey: "m.screen.manageInvoices",
+        href: "/manage-invoices",
+        managerOnly: true,
+      },
     ],
   },
 ];
