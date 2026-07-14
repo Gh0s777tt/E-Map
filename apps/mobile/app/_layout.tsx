@@ -75,6 +75,7 @@ function RootNav() {
       <Stack.Screen name="manage-vehicle-costs" options={{ title: t("m.screen.manageCosts") }} />
       <Stack.Screen name="manage-drivers" options={{ title: t("m.screen.manageDrivers") }} />
       <Stack.Screen name="manage-service" options={{ title: t("m.screen.manageService") }} />
+      <Stack.Screen name="manage-team" options={{ title: t("m.screen.manageTeam") }} />
       <Stack.Screen name="vehicle" options={{ title: t("m.screen.vehicle") }} />
       <Stack.Screen name="defects" options={{ title: t("m.screen.defects") }} />
       <Stack.Screen name="stats" options={{ title: t("m.screen.stats") }} />

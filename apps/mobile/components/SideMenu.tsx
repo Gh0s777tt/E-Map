@@ -111,6 +111,12 @@ const GROUPS: Group[] = [
         href: "/manage-service",
         managerOnly: true,
       },
+      {
+        glyph: "👥",
+        labelKey: "m.screen.manageTeam",
+        href: "/manage-team",
+        managerOnly: true,
+      },
     ],
   },
 ];

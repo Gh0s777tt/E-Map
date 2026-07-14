@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-350-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.195.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-351-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.196.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.196.0] — 🛠 Parytet zarządzania, fala 7: zespół i uprawnienia z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie.
+
+- `[#351]` 👥 **Zespół i uprawnienia w aplikacji** ([manage-team](apps/mobile/app/manage-team.tsx)) — właściciel widzi członków firmy, zmienia rolę (dyspozytor/kierowca) i ustawia **matrycę uprawnień per moduł** (brak → podgląd → edycja, 12 modułów) oraz **generuje link zaproszenia** (`/join?token=…`) do udostępnienia natywnym Share. Zapis wysyła **pełną matrycę** (jak web) — nie kasuje uprawnień pominiętych modułów. Wiersz właściciela zablokowany; zarządzanie tylko dla właściciela. Odpowiednik panelu web „Zespół".
+- `[#351]` 🌍 **i18n** — ekran w PL/EN/DE/UK (13 kluczy ekranu + role/moduły/poziomy z i18n, parytet zielony).
+- `[#351]` 🔒 **Przegląd adwersarialny przed wydaniem** (soczewki: uprawnienia/utrata danych · zaproszenia/bezpieczeństwo · stan/i18n) wykrył i naprawiono **3 defekty**: (1) **eskalacja uprawnień** — degradacja dyspozytora do kierowcy zasiewała matrycę pełnym „edit" (m.in. PIN-y kart), bo `effectivePermission` dla menedżera zawsze zwraca „edit" → teraz menedżerowi zasiewamy **bezpieczne domyślne kierowcy**; (2) etykiety **ról** były zaszyte po polsku → i18n; (3) etykiety **modułów i poziomów uprawnień** były zaszyte po polsku (z `core`) → i18n (`m.mmod.*`, `m.perm.*`). Ta sama luka #1 istnieje na webie — **oflagowana do naprawy** (osobny task).
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · parytet i18n 5/5 ✓ · docs:check ✓ · bez migracji.
 
 ## [1.195.0] — 🛠 Parytet zarządzania, fala 6: serwis / harmonogram z telefonu
 
