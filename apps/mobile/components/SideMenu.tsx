@@ -93,6 +93,12 @@ const GROUPS: Group[] = [
         href: "/manage-contractors",
         managerOnly: true,
       },
+      {
+        glyph: "💸",
+        labelKey: "m.screen.manageCosts",
+        href: "/manage-vehicle-costs",
+        managerOnly: true,
+      },
     ],
   },
 ];

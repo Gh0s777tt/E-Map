@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-346-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.191.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-347-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.192.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.192.0] — 🛠 Parytet zarządzania, fala 4: koszty pojazdów z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie.
+
+- `[#347]` 💸 **Koszty pojazdów w aplikacji** ([manage-vehicle-costs](apps/mobile/app/manage-vehicle-costs.tsx)) — owner/dyspozytor z telefonu **rejestruje i usuwa koszty inne niż paliwo**: naprawa/serwis, leasing/rata, ubezpieczenie, podatek/opłaty, mandat, parking, opony, inne. Wybór pojazdu i kategorii, kwota + waluta, data (domyślnie dziś) i opis. Walidacja wspólnym `vehicleCostSchema`; odpowiednik panelu web „Koszty".
+- `[#347]` 🧭 **Szuflada** — pozycja „Koszty pojazdów" (tylko owner/dyspozytor) + rejestracja trasy w [`_layout`](apps/mobile/app/_layout.tsx).
+- `[#347]` 🌍 **i18n** — ekran w PL/EN/DE/UK (10 nowych kluczy ×4, parytet zielony); etykiety kategorii z `@e-logistic/core` (spójne z webem).
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · parytet i18n 5/5 ✓ · docs:check ✓ · brak migracji (istniejąca tabela `vehicle_costs`).
 
 ## [1.191.0] — 🛠 Parytet zarządzania, fala 3: checklisty i kontrahenci z telefonu
 
