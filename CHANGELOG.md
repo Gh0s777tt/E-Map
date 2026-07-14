@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-349-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.194.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-350-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.195.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.195.0] — 🛠 Parytet zarządzania, fala 6: serwis / harmonogram z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie.
+
+- `[#350]` 🔧 **Serwis pojazdów w aplikacji** ([manage-service](apps/mobile/app/manage-service.tsx)) — owner/dyspozytor tworzy, edytuje, **„odhacza"** (jednym dotknięciem: bieżący przebieg z tankowań + dzisiejsza data) i usuwa zadania serwisowe: interwał **km / miesiące**, ostatni serwis, notatki. Lista pokazuje **status wg przebiegu ORAZ terminu** — „pozostało X km / Y dni" / „przekroczono", kolor wg najpilniejszego wymiaru (rdzeniowe `serviceStatus` + `expiryStatus`). Dotąd ekran Harmonogram tylko wyświetlał serwis — teraz pełne zarządzanie. Odpowiednik panelu web „Serwis".
+- `[#350]` 🌍 **i18n** — ekran w PL/EN/DE/UK (23 klucze ×4, parytet zielony).
+- `[#350]` ✅ **Przegląd adwersarialny przed wydaniem** (2 soczewki + weryfikacja) wykrył i naprawiono **5 defektów**: (1) interwał **miesięczny był ignorowany** przy statusie (tylko km) → dodano wymiar czasowy przez `expiryStatus`; (2) brak **pustego stanu przy zero pojazdów** → formularz nie do wysłania, teraz podpowiedź „dodaj pojazd"; (3) `load()` nie czyścił błędu po udanym odświeżeniu → nieaktualny baner; (4) `optInt("150,000")` dawał po cichu **150** (przecinek jako separator) → tylko czyste cyfry; (5) `companyId=null` → cichy brak zapisu, teraz komunikat.
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · parytet i18n 5/5 ✓ · docs:check ✓ · bez migracji (istniejąca tabela `service_tasks`).
 
 ## [1.194.0] — 🛠 Parytet zarządzania, fala 5: kartoteka kierowców z telefonu
 

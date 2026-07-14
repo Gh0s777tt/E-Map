@@ -105,6 +105,12 @@ const GROUPS: Group[] = [
         href: "/manage-drivers",
         managerOnly: true,
       },
+      {
+        glyph: "🔧",
+        labelKey: "m.screen.manageService",
+        href: "/manage-service",
+        managerOnly: true,
+      },
     ],
   },
 ];
