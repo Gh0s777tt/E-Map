@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-344-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.189.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-345-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.190.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.190.0] — 🕓 Dziennik Tacho kierowcy: dzień pracy, odpoczynek tygodniowy z typem + przypomnienia
+
+- `[#345]` 🕓 **Dziennik czasu pracy w zakładce Tacho** ([TachoJournal](apps/mobile/components/TachoJournal.tsx)) — kierowca jednym dotknięciem loguje **rozpoczęcie i zakończenie dnia pracy** oraz **rozpoczęcie odpoczynku tygodniowego z wyborem typu** (regularny 45 h / skrócony 24 h) i jego zakończenie. Historia i status bieżącego dnia.
+- `[#345]` 🔔 **Przypomnienie o terminie odpoczynku tygodniowego** — po zalogowaniu końca odpoczynku aplikacja **odlicza 144 h** do kolejnego i planuje lokalne powiadomienia (6 h przed i w terminie), z licznikiem „za X h" i alertem po terminie ([tachoJournal](apps/mobile/lib/tachoJournal.ts)).
+- `[#345]` 💾 **Zapis w profilu kierowcy** — zdarzenia trwale w bazie (migracja [0079](supabase/migrations/0079_driver_tacho_events.sql) `driver_tacho_events`, nałożona na żywo; RLS: kierowca pisze/czyta swoje, zarząd czyta firmę).
+- **Bramki:** `pnpm check` exit 0 ✓ · parytet i18n (20 kluczy ×4) ✓ · migracja nałożona + `gen:types` ✓.
 
 ## [1.189.0] — 🐛 Fix: przycisk „Zapisz" w formularzach (klawiatura przechwytywała pierwsze dotknięcie)
 
