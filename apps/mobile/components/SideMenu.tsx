@@ -99,6 +99,12 @@ const GROUPS: Group[] = [
         href: "/manage-vehicle-costs",
         managerOnly: true,
       },
+      {
+        glyph: "👤",
+        labelKey: "m.screen.manageDrivers",
+        href: "/manage-drivers",
+        managerOnly: true,
+      },
     ],
   },
 ];

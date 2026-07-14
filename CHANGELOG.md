@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-348-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.193.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-349-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.194.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.194.0] — 🛠 Parytet zarządzania, fala 5: kartoteka kierowców z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie.
+
+- `[#349]` 👤 **Kartoteka kierowców w aplikacji** ([manage-drivers](apps/mobile/app/manage-drivers.tsx)) — owner/dyspozytor z telefonu dodaje, edytuje i usuwa kierowców: tożsamość (imię/nazwisko/data ur., **szyfrowane at-rest** przez RPC `driver_save`), **kategorie prawa jazdy** (16) i **uprawnienia** (12) jako chipy, **7 terminów ważności** (prawo jazdy, kod 95, badania lekarskie/psychotechniczne, ADR, paszport, dowód) i notatki. Lista pokazuje **najbliższy termin** z ostrzeżeniem (≤30 dni / po terminie). Odpowiednik panelu web „Kierowcy".
+- `[#349]` 🌍 **i18n** — ekran w PL/EN/DE/UK (22 klucze ×4, parytet zielony).
+- `[#349]` ✅ **Przegląd adwersarialny przed wydaniem** (4 soczewki + weryfikacja) wykrył i naprawiono 3 defekty: (1) odznaczenie uprawnienia zostawiało **osierocony wpis** w `qualification_details` → **fałszywe alerty compliance** (teraz szczegóły filtrowane do wybranych uprawnień); (2) **data urodzenia w przyszłości** była akceptowana → walidacja `birthDate ≤ dziś` we współdzielonym `driverSchema` (+3 testy core); (3) najbliższy termin liczony względem daty **UTC** → przełączono na datę lokalną (off-by-one o północy).
+- **Świadomie poza tą falą** (kolejna): numery dokumentów (osobne szyfrowane RPC), szczegóły uprawnień UDT/HDS (numer+data) i powiązanie kartoteki z kontem aplikacji.
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · testy core 348 ✓ · parytet i18n 5/5 ✓ · docs:check ✓ · bez migracji.
 
 ## [1.193.0] — 🐛 Poprawki z przeglądu adwersarialnego fal 3–4 (11 defektów)
 

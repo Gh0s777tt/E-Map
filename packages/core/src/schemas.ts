@@ -99,7 +99,12 @@ export type VehicleCostInput = z.infer<typeof vehicleCostSchema>;
 export const driverSchema = z.object({
   firstName: z.string().min(1).max(60),
   lastName: z.string().min(1).max(60),
-  birthDate: isoDate.optional(),
+  birthDate: isoDate
+    .refine(
+      (d) => d <= new Date().toISOString().slice(0, 10),
+      "Data urodzenia nie może być w przyszłości",
+    )
+    .optional(),
   licenseNumber: z.string().max(40).optional(),
   idCardNumber: z.string().max(40).optional(),
   passportNumber: z.string().max(40).optional(),

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { fuelCardSchema, fuelLogSchema, tripEventSchema, vehicleSchema } from "./schemas";
+import {
+  driverSchema,
+  fuelCardSchema,
+  fuelLogSchema,
+  tripEventSchema,
+  vehicleSchema,
+} from "./schemas";
 
 const VID = "11111111-1111-4111-8111-111111111111";
 const CID = "22222222-2222-4222-8222-222222222222";
@@ -24,6 +30,32 @@ describe("vehicleSchema", () => {
       vehicleType: "truck",
     });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("driverSchema", () => {
+  it("akceptuje kierowcę z datą urodzenia w przeszłości", () => {
+    const r = driverSchema.safeParse({
+      firstName: "Jan",
+      lastName: "Kowalski",
+      birthDate: "1985-06-15",
+      licenseCategories: ["C", "C+E"],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("odrzuca datę urodzenia w przyszłości (#349)", () => {
+    const r = driverSchema.safeParse({
+      firstName: "Jan",
+      lastName: "Kowalski",
+      birthDate: "2100-01-01",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("pozwala pominąć datę urodzenia", () => {
+    const r = driverSchema.safeParse({ firstName: "Anna", lastName: "Nowak" });
+    expect(r.success).toBe(true);
   });
 });
 
