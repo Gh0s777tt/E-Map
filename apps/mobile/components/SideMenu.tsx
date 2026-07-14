@@ -81,6 +81,18 @@ const GROUPS: Group[] = [
         managerOnly: true,
       },
       { glyph: "💳", labelKey: "m.screen.manageCards", href: "/manage-cards", managerOnly: true },
+      {
+        glyph: "✅",
+        labelKey: "m.screen.manageChecklists",
+        href: "/manage-checklists",
+        managerOnly: true,
+      },
+      {
+        glyph: "🏢",
+        labelKey: "m.screen.manageContractors",
+        href: "/manage-contractors",
+        managerOnly: true,
+      },
     ],
   },
 ];

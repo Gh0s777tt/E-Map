@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-345-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.190.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-346-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.191.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.191.0] — 🛠 Parytet zarządzania, fala 3: checklisty i kontrahenci z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie.
+
+- `[#346]` ✅ **Edytor checklist właściciela w aplikacji** ([manage-checklists](apps/mobile/app/manage-checklists.tsx)) — owner/dyspozytor z telefonu **tworzy i edytuje szablony**, **włącza/wyłącza** je przełącznikiem, **przypisuje do wybranych kierowców** (puste = dla wszystkich) i redaguje pozycje (Tak/Nie · wielokrotny wybór · zdjęcie · godzina); jednym dotknięciem dokłada domyślne (UK + Tacho). Odpowiednik panelu web „Checklisty" — domyka [#338] po stronie właściciela.
+- `[#346]` 🏢 **Rejestr kontrahentów w aplikacji** ([manage-contractors](apps/mobile/app/manage-contractors.tsx)) — dodawanie, edycja i usuwanie nabywców/nadawców (nazwa, NIP/VAT, adres, kraj) z telefonu, jak w panelu web „Kontrahenci".
+- `[#346]` 🧭 **Szuflada** — nowe pozycje „Zarządzaj checklistami" i „Kontrahenci" (tylko owner/dyspozytor) + rejestracja tras w [`_layout`](apps/mobile/app/_layout.tsx).
+- `[#346]` 🌍 **i18n** — oba ekrany w PL/EN/DE/UK (38 nowych kluczy ×4, parytet zielony).
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · parytet i18n 5/5 ✓ · brak migracji (istniejące tabele). Poprzedni release **1.77.0 dostarczony**: iOS build 47 **VALID** w TestFlight, Android v26 na **Google Play internal**.
 
 ## [1.190.0] — 🕓 Dziennik Tacho kierowcy: dzień pracy, odpoczynek tygodniowy z typem + przypomnienia
 
