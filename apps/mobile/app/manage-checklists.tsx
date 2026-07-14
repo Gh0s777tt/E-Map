@@ -41,22 +41,40 @@ export default function ManageChecklistsScreen() {
 
   const load = useCallback(async () => {
     if (!supabaseConfigured) return;
-    const sb = getSupabase();
-    const m = await getActiveMembership(sb);
-    if (!m) return;
-    setCompanyId(m.companyId);
-    const [tpls, drv] = await Promise.all([
-      listChecklistTemplates(sb, m.companyId),
-      listDrivers(sb, m.companyId).catch(() => []),
-    ]);
-    setTemplates(tpls);
-    setDrivers(
-      drv.map((d) => ({ id: d.id, label: `${d.first_name} ${d.last_name}`.trim() || "—" })),
-    );
-  }, []);
+    try {
+      const sb = getSupabase();
+      const m = await getActiveMembership(sb);
+      if (!m) return;
+      setCompanyId(m.companyId);
+      const [tpls, drv] = await Promise.all([
+        listChecklistTemplates(sb, m.companyId),
+        listDrivers(sb, m.companyId).catch(() => []),
+      ]);
+      setTemplates(tpls);
+      setDrivers(
+        drv.map((d) => ({ id: d.id, label: `${d.first_name} ${d.last_name}`.trim() || "—" })),
+      );
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : t("m.mchk.loadError"));
+    }
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
+
+  // Otwieranie/zamykanie edytora zawsze czyści stary komunikat błędu.
+  const openNew = () => {
+    setMsg(null);
+    setDraft({ id: undefined, name: "", items: [], active: true, assignedDrivers: [] });
+  };
+  const openEdit = (tpl: ChecklistTemplate) => {
+    setMsg(null);
+    setDraft({ ...tpl, items: tpl.items.map((x) => ({ ...x })) });
+  };
+  const closeEditor = () => {
+    setMsg(null);
+    setDraft(null);
+  };
 
   const patch = (p: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...p } : d));
   const setItem = (i: number, p: Partial<ChecklistItem>) =>
@@ -108,6 +126,20 @@ export default function ManageChecklistsScreen() {
     if (!draft.name.trim() || draft.items.length === 0) {
       warn();
       setMsg(t("m.mchk.needNameItems"));
+      return;
+    }
+    if (draft.items.some((it) => !it.label.trim())) {
+      warn();
+      setMsg(t("m.mchk.needLabels"));
+      return;
+    }
+    if (
+      draft.items.some(
+        (it) => it.type === "multi" && (it.options?.filter(Boolean).length ?? 0) === 0,
+      )
+    ) {
+      warn();
+      setMsg(t("m.mchk.needMultiOptions"));
       return;
     }
     setBusy(true);
@@ -272,7 +304,7 @@ export default function ManageChecklistsScreen() {
 
           {msg && <Text style={s.err}>{msg}</Text>}
           <PrimaryButton label={busy ? "…" : t("m.mchk.save")} onPress={save} />
-          <Pressable onPress={() => setDraft(null)}>
+          <Pressable onPress={closeEditor}>
             <Text style={s.cancel}>{t("m.mchk.cancel")}</Text>
           </Pressable>
         </Card>
@@ -288,18 +320,15 @@ export default function ManageChecklistsScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={s.topRow}>
-        <Pressable
-          style={s.addBtn}
-          onPress={() =>
-            setDraft({ id: undefined, name: "", items: [], active: true, assignedDrivers: [] })
-          }
-        >
+        <Pressable style={s.addBtn} onPress={openNew}>
           <Text style={s.addText}>➕ {t("m.mchk.newTemplate")}</Text>
         </Pressable>
         <Pressable style={s.ghostBtn} onPress={addDefaults} disabled={busy}>
           <Text style={s.ghostText}>📋 {t("m.mchk.addDefaults")}</Text>
         </Pressable>
       </View>
+
+      {msg && <Text style={s.err}>{msg}</Text>}
 
       <SectionTitle>
         {t("m.mchk.templates")} ({templates.length})
@@ -309,10 +338,7 @@ export default function ManageChecklistsScreen() {
         <Card key={tpl.id} style={{ gap: 8, opacity: tpl.active ? 1 : 0.6 }}>
           <View style={s.rowTop}>
             <Text style={s.name}>📋 {tpl.name}</Text>
-            <Pressable
-              onPress={() => setDraft({ ...tpl, items: tpl.items.map((x) => ({ ...x })) })}
-              hitSlop={8}
-            >
+            <Pressable onPress={() => openEdit(tpl)} hitSlop={8}>
               <Text style={s.editLink}>✏️</Text>
             </Pressable>
           </View>

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-347-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.192.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-348-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.193.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.193.0] — 🐛 Poprawki z przeglądu adwersarialnego fal 3–4 (11 defektów)
+
+Wewnętrzny, wielo-agentowy przegląd nowych ekranów zarządzania wykrył i potwierdził 11 realnych defektów — naprawione zanim trafiły do kierowców na szeroko.
+
+- `[#348]` 🐛 **Kontrahenci — utrata danych** ([manage-contractors](apps/mobile/app/manage-contractors.tsx)): „Nowy" z nazwą już istniejącą wykonywał `upsert(onConflict company_id,name)`, który **po cichu nadpisywał** istniejący wiersz (zerował NIP/adres/kraj) i pokazywał sukces. Dodano strażnika duplikatu nazwy → komunikat „już istnieje, edytuj".
+- `[#348]` 🐛 **Checklisty — szablon nie do wysłania** ([manage-checklists](apps/mobile/app/manage-checklists.tsx)): można było zapisać pozycję typu „wielokrotny wybór" **bez żadnej opcji** (kierowca nie mógł nigdy wysłać checklisty) oraz pozycje z **pustą treścią**. Dodano walidacje. Ponadto `load()` bez try/catch przy błędzie sieci cicho pokazywał „brak szablonów" — owinięto w obsługę błędu.
+- `[#348]` 🐛 **Koszty — cichy zapis 0 i braki** ([manage-vehicle-costs](apps/mobile/app/manage-vehicle-costs.tsx)): puste/nieprawidłowe pole kwoty (`Number("")→0`, `NaN||0`) zapisywało koszt **0 EUR** bez ostrzeżenia — dodano walidację kwoty dodatniej. Etykiety kategorii były **tylko po polsku** dla DE/UK/EN — przetłumaczone (nowe klucze `m.mvc.cat.*`).
+- `[#348]` 🐛 **Niewidoczne błędy usuwania** (wszystkie 3 ekrany): komunikat błędu renderował się tylko w otwartym formularzu, a usuwanie odbywa się z listy → błąd (offline/RLS) był niewidoczny. Teraz błąd usuwania pokazywany `Alert`-em; stary komunikat czyszczony przy otwieraniu/zamykaniu formularza.
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · parytet i18n 5/5 (13 nowych kluczy ×4) ✓ · docs:check ✓. Przegląd: 3 recenzentów + 14 adwersarialnych weryfikatorów (11/14 potwierdzone).
 
 ## [1.192.0] — 🛠 Parytet zarządzania, fala 4: koszty pojazdów z telefonu
 

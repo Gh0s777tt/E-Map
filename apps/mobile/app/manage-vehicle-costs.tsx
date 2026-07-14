@@ -15,10 +15,10 @@ import {
 import {
   firstZodError,
   VEHICLE_COST_CATEGORIES,
-  VEHICLE_COST_CATEGORY_LABELS,
   type VehicleCostCategory,
   vehicleCostSchema,
 } from "@e-logistic/core";
+import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -28,6 +28,18 @@ import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
+
+// Etykiety kategorii tłumaczone (rdzeniowe VEHICLE_COST_CATEGORY_LABELS są tylko po PL).
+const CAT_KEY: Record<VehicleCostCategory, MobileMessageKey> = {
+  repair: "m.mvc.cat.repair",
+  leasing: "m.mvc.cat.leasing",
+  insurance: "m.mvc.cat.insurance",
+  tax: "m.mvc.cat.tax",
+  fine: "m.mvc.cat.fine",
+  parking: "m.mvc.cat.parking",
+  tires: "m.mvc.cat.tires",
+  other: "m.mvc.cat.other",
+};
 
 const empty = {
   vehicleId: null as string | null,
@@ -71,13 +83,25 @@ export default function ManageVehicleCostsScreen() {
 
   const set = (patch: Partial<typeof empty>) => setForm((f) => (f ? { ...f, ...patch } : f));
   const regOf = (id: string) => vehicles.find((v) => v.id === id)?.registration ?? "—";
+  const catLabel = (c: string) => {
+    const k = CAT_KEY[c as VehicleCostCategory];
+    return k ? t(k) : c;
+  };
 
   async function save() {
     if (!form || !companyId || busy) return;
+    // Puste/nieprawidłowe pole kwoty dawało wcześniej `Number("")→0` / `NaN||0` → cichy
+    // zapis 0 EUR. Wymagamy dodatniej, skończonej liczby, zanim trafi do schematu.
+    const amt = Number(form.amount.replace(",", "."));
+    if (!form.amount.trim() || !Number.isFinite(amt) || amt <= 0) {
+      warn();
+      setMsg(t("m.mvc.amountRequired"));
+      return;
+    }
     const parsed = vehicleCostSchema.safeParse({
       vehicleId: form.vehicleId ?? "",
       category: form.category,
-      amount: Number(form.amount.replace(",", ".")) || 0,
+      amount: amt,
       currency: form.currency.trim() || "EUR",
       costDate: form.costDate.trim(),
       description: form.description.trim() || undefined,
@@ -105,7 +129,7 @@ export default function ManageVehicleCostsScreen() {
   function confirmDelete(r: VehicleCost) {
     Alert.alert(
       t("m.manage.deleteTitle"),
-      `${VEHICLE_COST_CATEGORY_LABELS[r.category as VehicleCostCategory] ?? r.category} ${r.amount} ${r.currency} — ${t("m.manage.delete")}?`,
+      `${catLabel(r.category)} ${r.amount} ${r.currency} — ${t("m.manage.delete")}?`,
       [
         { text: t("m.manage.cancel"), style: "cancel" },
         {
@@ -118,7 +142,8 @@ export default function ManageVehicleCostsScreen() {
               await load();
             } catch (e) {
               warn();
-              setMsg(e instanceof Error ? e.message : t("m.manage.saveError"));
+              // Usuwanie idzie z listy (form === null) — inline `msg` niewidoczny; Alert.
+              Alert.alert(t("m.manage.saveError"), e instanceof Error ? e.message : "");
             }
           },
         },
@@ -160,7 +185,7 @@ export default function ManageVehicleCostsScreen() {
                 onPress={() => set({ category: c })}
               >
                 <Text style={[s.chipText, form.category === c && { color: palette.white }]}>
-                  {VEHICLE_COST_CATEGORY_LABELS[c]}
+                  {catLabel(c)}
                 </Text>
               </Pressable>
             ))}
@@ -214,12 +239,23 @@ export default function ManageVehicleCostsScreen() {
 
           {msg && <Text style={s.err}>{msg}</Text>}
           <PrimaryButton label={busy ? "…" : t("m.manage.save")} onPress={save} />
-          <Pressable onPress={() => setForm(null)}>
+          <Pressable
+            onPress={() => {
+              setForm(null);
+              setMsg(null);
+            }}
+          >
             <Text style={s.cancel}>{t("m.manage.cancel")}</Text>
           </Pressable>
         </Card>
       ) : (
-        <Pressable style={s.addBtn} onPress={() => setForm({ ...empty, costDate: todayISO() })}>
+        <Pressable
+          style={s.addBtn}
+          onPress={() => {
+            setMsg(null);
+            setForm({ ...empty, costDate: todayISO() });
+          }}
+        >
           <Text style={s.addText}>➕ {t("m.mvc.new")}</Text>
         </Pressable>
       )}
@@ -234,8 +270,7 @@ export default function ManageVehicleCostsScreen() {
             <Card key={r.id} style={{ gap: 6 }}>
               <View style={s.rowTop}>
                 <Text style={s.name}>
-                  {VEHICLE_COST_CATEGORY_LABELS[r.category as VehicleCostCategory] ?? r.category} ·{" "}
-                  {r.amount} {r.currency}
+                  {catLabel(r.category)} · {r.amount} {r.currency}
                 </Text>
                 <Pressable onPress={() => confirmDelete(r)} hitSlop={8}>
                   <Text style={s.delLink}>🗑</Text>

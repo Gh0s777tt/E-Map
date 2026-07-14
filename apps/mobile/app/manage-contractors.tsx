@@ -62,9 +62,17 @@ export default function ManageContractorsScreen() {
 
   async function save() {
     if (!form || !companyId || busy) return;
-    if (!form.name.trim()) {
+    const name = form.name.trim();
+    if (!name) {
       warn();
       setMsg(t("m.mctr.needName"));
+      return;
+    }
+    // Nowy kontrahent o nazwie już istniejącej: upsert(onConflict company_id,name)
+    // po cichu NADPISAŁBY istniejący wiersz (utrata NIP/adresu). Blokujemy i sugerujemy edycję.
+    if (!form.id && rows.some((r) => r.name.trim().toLowerCase() === name.toLowerCase())) {
+      warn();
+      setMsg(t("m.mctr.exists"));
       return;
     }
     setBusy(true);
@@ -103,7 +111,9 @@ export default function ManageContractorsScreen() {
             await load();
           } catch (e) {
             warn();
-            setMsg(e instanceof Error ? e.message : t("m.manage.saveError"));
+            // Usuwanie odbywa się z listy (form === null), gdzie inline `msg` nie
+            // jest renderowany — pokazujemy błąd Alertem, żeby był widoczny.
+            Alert.alert(t("m.manage.saveError"), e instanceof Error ? e.message : "");
           }
         },
       },
@@ -155,12 +165,23 @@ export default function ManageContractorsScreen() {
           />
           {msg && <Text style={s.err}>{msg}</Text>}
           <PrimaryButton label={busy ? "…" : t("m.manage.save")} onPress={save} />
-          <Pressable onPress={() => setForm(null)}>
+          <Pressable
+            onPress={() => {
+              setForm(null);
+              setMsg(null);
+            }}
+          >
             <Text style={s.cancel}>{t("m.manage.cancel")}</Text>
           </Pressable>
         </Card>
       ) : (
-        <Pressable style={s.addBtn} onPress={() => setForm({ ...empty })}>
+        <Pressable
+          style={s.addBtn}
+          onPress={() => {
+            setMsg(null);
+            setForm({ ...empty });
+          }}
+        >
           <Text style={s.addText}>➕ {t("m.mctr.new")}</Text>
         </Pressable>
       )}
