@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-343-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.188.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-344-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.189.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,11 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.189.0] — 🐛 Fix: przycisk „Zapisz" w formularzach (klawiatura przechwytywała pierwsze dotknięcie)
+
+- `[#344]` 🐛 **Naprawa niedziałającego „Zapisz"** we WSZYSTKICH formularzach mobilnych (paliwo, AdBlue, Trip: załadunek/rozładunek/przeładunek, checklisty, zarządzanie pojazdami/kartami). Przyczyna: `ScrollView` bez `keyboardShouldPersistTaps` — przy otwartej klawiaturze pierwsze dotknięcie przycisku tylko ją chowało (domyślne zachowanie RN), więc `onPress` nie odpalał. Dodano `keyboardShouldPersistTaps="handled"` — teraz zapis działa za pierwszym razem, także z otwartą klawiaturą.
+- **Bramki:** `pnpm check` exit 0 ✓ (web-testy zweryfikowane pojedynczym wątkiem — 44/44; wcześniejszy fail workera był flaky przy presji pamięci).
 
 ## [1.188.0] — 🐛 Fix wysyłki formularza Trip + kod pocztowy (UK), autouzupełnianie z GPS i nazwa firmy
 

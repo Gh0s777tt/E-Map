@@ -177,7 +177,11 @@ export default function TripScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Stack.Screen options={{ title: t("form.trip.title") }} />
 
       <Text style={styles.label}>Pojazd</Text>

@@ -208,7 +208,11 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Segment Diesel | AdBlue (mockup 04) */}
       <View style={styles.segment}>
         {(

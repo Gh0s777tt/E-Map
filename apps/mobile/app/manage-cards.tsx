@@ -152,7 +152,11 @@ export default function ManageCardsScreen() {
   }
 
   return (
-    <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
+    <ScrollView
+      style={s.screen}
+      contentContainerStyle={[s.content, wide]}
+      keyboardShouldPersistTaps="handled"
+    >
       {form ? (
         <Card style={{ gap: 10 }}>
           <SectionTitle>{form.id ? t("m.manage.editCard") : t("m.manage.newCard")}</SectionTitle>
