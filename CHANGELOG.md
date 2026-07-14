@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-351-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.196.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-352-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.197.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,15 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.197.0] — 🛠 Parytet zarządzania, fala 8: zlecenia (tworzenie/edycja/przydział) z telefonu
+
+Program „pełny parytet zarządzania web↔mobile" — właściciel/dyspozytor robi z aplikacji to, co dotąd tylko na webie.
+
+- `[#352]` 📦 **Zlecenia w aplikacji** ([manage-orders](apps/mobile/app/manage-orders.tsx)) — dotąd mobile miało tylko widok kierowcy („moje zlecenia"). Teraz owner/dyspozytor **tworzy, edytuje, przypisuje** (pojazd + kierowca), **zmienia status** (Nowe → Przypisane → W trakcie → Dostarczone → Zafakturowane / Anulowane, przez RPC `order_set_status`) i **usuwa** zlecenia. Trasa, nadawca/odbiorca, ładunek, waga, cena+waluta, daty za/rozładunku, notatki. Walidacja wspólnym `orderSchema`. Odpowiednik panelu web „Zlecenia".
+- `[#352]` 🌍 **i18n** — ekran + statusy w PL/EN/DE/UK (29 kluczy ×4, parytet zielony).
+- `[#352]` ✅ **Przegląd adwersarialny przed wydaniem** (3 soczewki + weryfikacja) wykrył i naprawiono **4 defekty**: (1) **przecinek dziesiętny odrzucany** — pola cena/waga (`decimal-pad`) w locale PL/DE podają przecinek, a parser akceptował tylko kropkę → „1800,50" było blokowane; teraz normalizacja `,`→`.`; (2) waluta zapisywana z autokapitalizacją zdaniową („usd"→„Usd") → wymuszony **uppercase**; (3) walidacja „puste zlecenie" pomijała nadawcę/odbiorcę → dodano; (4) hipoteza utraty focusu pola przez helper `field()` — **zweryfikowana jako fałszywa** (wołany inline, nie jako komponent — React nie remountuje).
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · parytet i18n 5/5 ✓ · docs:check ✓ · bez migracji.
 
 ## [1.196.0] — 🛠 Parytet zarządzania, fala 7: zespół i uprawnienia z telefonu
 

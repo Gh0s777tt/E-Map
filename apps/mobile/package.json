@@ -1,6 +1,6 @@
 {
   "name": "@e-logistic/mobile",
-  "version": "1.83.0",
+  "version": "1.84.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
