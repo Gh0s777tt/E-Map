@@ -202,6 +202,11 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       setCompany("");
       setGeo(null);
       await refresh();
+    } catch (e) {
+      // #355: bez catch błąd zapisu (np. generowanie ID) ginął bez śladu —
+      // user widział „nic się nie dzieje". Każdy błąd musi być widoczny.
+      warn();
+      setMsg(e instanceof Error ? e.message : t("m.manage.saveError"));
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,5 @@
 /** Warstwa danych: checklisty kierowców (#273). */
-import type { ChecklistAnswers, ChecklistItem } from "@e-logistic/core";
+import { type ChecklistAnswers, type ChecklistItem, newId } from "@e-logistic/core";
 import type { Json, TypedSupabaseClient as SupabaseClient } from "../client";
 
 export interface ChecklistTemplate {
@@ -176,7 +176,7 @@ export async function uploadChecklistPhotoBinary(
   bytes: ArrayBuffer,
   opts: { mime?: string } = {},
 ): Promise<string> {
-  const rand = crypto.randomUUID().slice(0, 12);
+  const rand = newId().slice(0, 12);
   const ext = opts.mime?.includes("png") ? ".png" : ".jpg";
   const path = `${companyId}/checklists/${rand}${ext}`;
   const { error } = await client.storage

@@ -3,6 +3,7 @@
  * `cargo-photos` pod `{companyId}/damage-{claimId}/…`, więc istniejące polityki
  * storage (prefiks = firma, RLS 0044) obejmują je bez zmian. Metadane = listing.
  */
+import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 const BUCKET = "cargo-photos";
@@ -48,7 +49,7 @@ export async function uploadDamagePhoto(
   claimId: string,
   file: File,
 ): Promise<void> {
-  const rand = crypto.randomUUID().slice(0, 8);
+  const rand = newId().slice(0, 8);
   const ext = file.name.includes(".") ? `.${file.name.split(".").pop()}` : "";
   const path = `${prefix(companyId, claimId)}/${rand}${ext}`;
   const { error } = await client.storage

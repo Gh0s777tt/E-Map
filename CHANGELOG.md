@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-354-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.199.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-355-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.200.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.200.0] — 🐛 KRYTYCZNE: znaleziona PRAWDZIWA przyczyna „nie da się zapisać" — `newId()` rzucał na telefonie
+
+Użytkownik potwierdził na 1.86.0: „zupełnie nic się nie dzieje", wszystkie formularze. To wykluczyło sieć i klawiaturę — objaw był deterministyczny. Znaleziono twardą przyczynę:
+
+- `[#355]` 💥 **`newId()` rzucał wyjątek na Hermes/React Native** ([ids.ts](packages/core/src/ids.ts)) — generator ID (od #003!) wymagał `crypto.randomUUID`, którego **silnik Hermes nie ma**. Jedyny wołający to outbox `enqueue` = **każdy zapis formularza** (tankowanie, AdBlue, trasa, checklisty, wydatki): klik → `newId()` rzuca natychmiast → zapis pada. Testy przechodziły, bo Node 26 ma `randomUUID` — telefon nie. **Fix:** fallback `getRandomValues` → `Math.random`, zawsze poprawny UUIDv4 (RFC 4122) + **4 testy regresji** symulujące środowisko Hermes.
+- `[#355]` 🔇 **Dlaczego było „zupełnie nic":** submit w 4 formularzach miał `try/finally` **bez `catch`** — wyjątek ginął bez komunikatu, `busy` wracał na false. Dodano `catch` z widocznym błędem w [LiquidForm](apps/mobile/components/LiquidForm.tsx), [trip](apps/mobile/app/trip.tsx), [checklists](apps/mobile/app/(tabs)/checklists.tsx), [expenses](apps/mobile/app/expenses.tsx) — **żaden błąd zapisu nie może już być niewidzialny**.
+- `[#355]` 📷 **Ta sama bomba w 8 miejscach packages/api** (upload zdjęć zleceń/szkód/checklist/wydatków, avatar, czat, dokumenty) — `crypto.randomUUID()` → `newId()` z fallbackiem; na telefonie te akcje też by rzucały.
+- Poprzednie poprawki (#344 klawiatura, #354 timeouty) były realnymi błędami, ale **nie tą** przyczyną — usterka zapisu siedziała w generatorze ID od pierwszej wersji formularzy i ujawniała się wyłącznie na fizycznym urządzeniu.
+- **Bramki:** `biome` czysto ✓ · `tsc` (mobile) exit 0 ✓ · testy core **352** (+4 regresji ids) + api 68 ✓ · docs:check ✓ · bez migracji.
 
 ## [1.199.0] — 🐛 KRYTYCZNE: „przycisk nic nie robi" — martwe akcje w aplikacji (audyt całej interaktywności)
 

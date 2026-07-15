@@ -144,6 +144,9 @@ export default function ChecklistsScreen() {
       setTpl(null);
       setAnswers({});
       await refresh();
+    } catch (e) {
+      // #355: błąd zapisu musi być widoczny (wcześniej ginął bez komunikatu).
+      setMsg(`⚠️ ${e instanceof Error ? e.message : "Nie udało się zapisać."}`);
     } finally {
       setBusy(false);
     }

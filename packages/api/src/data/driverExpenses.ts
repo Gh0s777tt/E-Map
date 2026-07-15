@@ -2,6 +2,7 @@
  * Warstwa danych: rejestr wydatków kierowcy (#288) — opłaty drogowe, parkingi,
  * naprawy itd. ze zdjęciem paragonu. Kierowca dodaje; zarząd zatwierdza.
  */
+import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export const EXPENSE_CATEGORIES = ["toll", "parking", "repair", "wash", "other"] as const;
@@ -107,7 +108,7 @@ export async function uploadExpensePhotoBinary(
   opts: { mime?: string } = {},
 ): Promise<string> {
   const ext = (opts.mime ?? "image/jpeg").split("/")[1] ?? "jpg";
-  const path = `${companyId}/expense-${crypto.randomUUID()}.${ext}`;
+  const path = `${companyId}/expense-${newId()}.${ext}`;
   const { error } = await client.storage.from(BUCKET).upload(path, bytes, {
     contentType: opts.mime ?? "image/jpeg",
   });

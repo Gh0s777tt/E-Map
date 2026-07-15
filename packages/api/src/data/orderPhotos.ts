@@ -1,4 +1,5 @@
 /** Warstwa danych: zdjęcia towaru przy zleceniu (dowód zabezpieczenia ładunku). */
+import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export const CARGO_PHOTOS_BUCKET = "cargo-photos";
@@ -42,7 +43,7 @@ export async function uploadOrderPhoto(
   file: File,
   caption?: string | null,
 ): Promise<OrderPhoto> {
-  const rand = crypto.randomUUID().slice(0, 8);
+  const rand = newId().slice(0, 8);
   const ext = file.name.includes(".") ? `.${file.name.split(".").pop()}` : "";
   const path = `${companyId}/${orderId}/${rand}${ext}`;
 
@@ -81,7 +82,7 @@ export async function uploadOrderPhotoBinary(
   data: ArrayBuffer | Uint8Array,
   opts: { contentType: string; ext?: string; sizeBytes?: number; caption?: string | null },
 ): Promise<OrderPhoto> {
-  const rand = crypto.randomUUID().slice(0, 8);
+  const rand = newId().slice(0, 8);
   const ext = opts.ext ? (opts.ext.startsWith(".") ? opts.ext : `.${opts.ext}`) : "";
   const path = `${companyId}/${orderId}/${rand}${ext}`;
 

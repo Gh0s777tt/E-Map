@@ -1,4 +1,5 @@
 /** Warstwa danych: sejf dokumentów (Supabase Storage + metadane). */
+import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export const DOCUMENTS_BUCKET = "documents";
@@ -67,7 +68,7 @@ export async function uploadDocument(
   file: File,
   input: UploadDocumentInput,
 ): Promise<DocumentMeta> {
-  const rand = crypto.randomUUID().slice(0, 8);
+  const rand = newId().slice(0, 8);
   const path = `${companyId}/${rand}-${slugifyName(input.name || file.name)}`;
 
   const up = await client.storage

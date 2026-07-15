@@ -3,6 +3,7 @@
  * telefon (user_metadata), zmiana e-maila (link potwierdzający Supabase)
  * i hasła. Wspólne dla web i mobile.
  */
+import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 const AVATARS_BUCKET = "avatars";
@@ -21,7 +22,7 @@ export async function uploadMyAvatar(
   } = await client.auth.getUser();
   if (!user) throw new Error("Brak sesji.");
   const ext = opts.ext ? (opts.ext.startsWith(".") ? opts.ext : `.${opts.ext}`) : ".jpg";
-  const path = `${user.id}/avatar-${crypto.randomUUID().slice(0, 8)}${ext}`;
+  const path = `${user.id}/avatar-${newId().slice(0, 8)}${ext}`;
   const up = await client.storage
     .from(AVATARS_BUCKET)
     .upload(path, data, { contentType: opts.contentType, upsert: true });

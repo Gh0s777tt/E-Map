@@ -3,6 +3,7 @@
  * (thread_id NULL) + nazwane wątki z członkami (np. osobny per kierowca).
  * Zdjęcia w wiadomościach przez Storage (photo_path). Realtime INSERT.
  */
+import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export interface ChatMessage {
@@ -198,7 +199,7 @@ export async function uploadChatPhotoBinary(
   opts: { mime?: string } = {},
 ): Promise<string> {
   const ext = (opts.mime ?? "image/jpeg").split("/")[1] ?? "jpg";
-  const path = `${companyId}/chat-${crypto.randomUUID()}.${ext}`;
+  const path = `${companyId}/chat-${newId()}.${ext}`;
   const { error } = await client.storage.from(BUCKET).upload(path, bytes, {
     contentType: opts.mime ?? "image/jpeg",
   });

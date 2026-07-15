@@ -161,11 +161,16 @@ export default function ExpensesScreen() {
       load();
     } catch {
       // #291: offline — wydatek trafia do outboxu (zdjęcie wymaga zasięgu).
-      await enqueue("expense", { ...input, photoPath: null }, new Date().toISOString());
-      setAmount("");
-      setNote("");
-      setPhotoPath(null);
-      setMsg(photoPath ? t("m.exp.savedOfflineNoPhoto") : t("m.exp.savedOffline"));
+      try {
+        await enqueue("expense", { ...input, photoPath: null }, new Date().toISOString());
+        setAmount("");
+        setNote("");
+        setPhotoPath(null);
+        setMsg(photoPath ? t("m.exp.savedOfflineNoPhoto") : t("m.exp.savedOffline"));
+      } catch (e) {
+        // #355: błąd zapisu do outboxu musi być widoczny (wcześniej ginął).
+        setMsg(`⚠️ ${e instanceof Error ? e.message : t("m.manage.saveError")}`);
+      }
     } finally {
       setBusy(false);
     }
