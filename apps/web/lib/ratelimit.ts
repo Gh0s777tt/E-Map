@@ -27,9 +27,22 @@ function getLimiter(): Ratelimit | null {
   return cached;
 }
 
+/**
+ * Klucz per-klient dla limitu. NIE ufamy skrajnie-lewej wartości `x-forwarded-for` — jest
+ * sterowana przez klienta i pozwala rotować klucz, omijając limit (audyt N18). Preferujemy
+ * nagłówki nadpisywane przez proxy platformy (Vercel: `x-vercel-forwarded-for` / `x-real-ip`);
+ * jako ostateczność bierzemy skrajnie PRAWY wpis XFF (dodany przez infrastrukturę, nie klienta).
+ */
 function clientIp(req: Request): string {
+  const trusted = req.headers.get("x-vercel-forwarded-for") ?? req.headers.get("x-real-ip");
+  if (trusted?.trim()) return trusted.trim();
   const fwd = req.headers.get("x-forwarded-for");
-  return fwd?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "anon";
+  if (fwd) {
+    const parts = fwd.split(",");
+    const rightmost = parts[parts.length - 1]?.trim();
+    if (rightmost) return rightmost;
+  }
+  return "anon";
 }
 
 /**

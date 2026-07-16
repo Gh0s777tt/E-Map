@@ -1,6 +1,7 @@
 import { buildHereTrafficUrl, parseHereTraffic, tomtomTrafficIncidents } from "@e-logistic/maps";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { authenticateRequest } from "@/lib/apiAuth";
 import { rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,11 @@ const bboxSchema = z.object({
 export async function POST(request: Request) {
   if (!(await rateLimit(request, "traffic")).ok) {
     return NextResponse.json({ error: "Za dużo żądań — spróbuj za chwilę." }, { status: 429 });
+  }
+  // Płatne API ruchu (HERE/TomTom) — tylko dla zalogowanych (audyt Ś16).
+  // Sesja: ciasteczko (web) lub Bearer access token (mobile). Brak → 401.
+  if (!(await authenticateRequest(request))) {
+    return NextResponse.json({ error: "Wymagane zalogowanie." }, { status: 401 });
   }
   const hereKey = process.env.HERE_API_KEY;
   const ttKey = process.env.TOMTOM_API_KEY;

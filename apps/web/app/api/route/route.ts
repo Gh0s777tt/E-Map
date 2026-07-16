@@ -8,6 +8,7 @@ import {
 } from "@e-logistic/maps";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { authenticateRequest } from "@/lib/apiAuth";
 import { rateLimit } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,11 @@ const routeBodySchema = z.object({
 export async function POST(request: Request) {
   if (!(await rateLimit(request, "route")).ok) {
     return NextResponse.json({ error: "Za dużo żądań — spróbuj za chwilę." }, { status: 429 });
+  }
+  // Płatne API routingu (HERE/TomTom/GraphHopper) — tylko dla zalogowanych (audyt Ś16).
+  // Sesja: ciasteczko (web) lub Bearer access token (mobile). Brak → 401.
+  if (!(await authenticateRequest(request))) {
+    return NextResponse.json({ error: "Wymagane zalogowanie." }, { status: 401 });
   }
   const raw = await request.json().catch(() => null);
   const parsed = routeBodySchema.safeParse(raw);

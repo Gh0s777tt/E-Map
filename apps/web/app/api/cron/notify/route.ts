@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { listExpoPushTokensForUsers, listPushSubscriptionsForDelivery } from "@e-logistic/api";
 import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import { NextResponse } from "next/server";
@@ -18,8 +19,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "CRON_SECRET nieustawiony." }, { status: 503 });
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${secret}`) {
+  // Porównanie w stałym czasie (audyt N22) — zabezpiecza sekret przed atakiem czasowym.
+  // Najpierw równa długość (timingSafeEqual rzuca dla różnych długości), potem stały czas.
+  const auth = Buffer.from(request.headers.get("authorization") ?? "");
+  const expected = Buffer.from(`Bearer ${secret}`);
+  if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) {
     return NextResponse.json({ error: "Brak autoryzacji." }, { status: 401 });
   }
   const admin = createSupabaseAdminClient();
