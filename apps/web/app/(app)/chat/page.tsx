@@ -75,6 +75,9 @@ export default function ChatPage() {
   const [editingMembers, setEditingMembers] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const threadId = activeThread?.id ?? null;
+  // Filtr aktywnego wątku dla realtime trzymany w refie — subskrypcja jest jedna
+  // per firma (niżej) i nie odtwarza się przy przełączeniu kanału (audyt N15).
+  const threadIdRef = useRef<string | null>(threadId);
 
   // Init: firma, rola, kanały, subskrypcja realtime (jedna na firmę).
   useEffect(() => {
@@ -103,28 +106,34 @@ export default function ChatPage() {
     };
   }, []);
 
-  // Wiadomości + realtime dla aktywnego kanału.
+  // Wiadomości aktywnego kanału — lekki reload przy zmianie firmy/wątku
+  // (bez zrywania połączenia WSS; realtime subskrybuje osobny efekt niżej).
   useEffect(() => {
     if (!companyId) return;
-    let cleanup: (() => void) | undefined;
+    threadIdRef.current = threadId;
     let alive = true;
     (async () => {
       try {
-        const sb = getBrowserSupabase();
-        setMessages(await listMessages(sb, companyId, { threadId }));
-        cleanup = subscribeMessages(sb, companyId, (msg) => {
-          if ((msg.thread_id ?? null) !== threadId) return;
-          setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-        });
+        const msgs = await listMessages(getBrowserSupabase(), companyId, { threadId });
+        if (alive) setMessages(msgs);
       } catch {
         if (alive) setErr("Nie udało się wczytać wiadomości.");
       }
     })();
     return () => {
       alive = false;
-      cleanup?.();
     };
   }, [companyId, threadId]);
+
+  // Realtime: jedna subskrypcja per firma (kanał firmowy, filtr company_id).
+  // Przełączenie wątku NIE odtwarza połączenia — handler filtruje po refie (N15).
+  useEffect(() => {
+    if (!companyId) return;
+    return subscribeMessages(getBrowserSupabase(), companyId, (msg) => {
+      if ((msg.thread_id ?? null) !== threadIdRef.current) return;
+      setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+    });
+  }, [companyId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll przy każdej nowej wiadomości
   useEffect(() => {

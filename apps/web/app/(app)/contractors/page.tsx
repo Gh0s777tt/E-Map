@@ -173,19 +173,27 @@ export default function ContractorsPage() {
         errors: ["Brak firmy — utwórz ją na Pulpicie."],
       };
     }
-    let inserted = 0;
-    let failed = 0;
-    const errors: string[] = [];
+    // Audyt Ś14: jeden batch upsert zamiast N sekwencyjnych round-tripów.
+    // Dedup po nazwie (klucz konfliktu company_id,name) — ostatni wiersz wygrywa,
+    // jak przy sekwencyjnym upsert, i unika błędu „ON CONFLICT … a second time".
+    const byName = new Map<string, ContractorInput>();
     for (const v of values) {
-      try {
-        await upsertContractor(sb, m.companyId, v);
-        inserted++;
-      } catch (e) {
-        failed++;
-        if (errors.length < 8) errors.push(`${v.name}: ${e instanceof Error ? e.message : "błąd"}`);
-      }
+      const name = v.name.trim();
+      if (name) byName.set(name, { ...v, name });
     }
-    return { inserted, failed, errors };
+    const rows = [...byName.values()].map((v) => ({
+      company_id: m.companyId,
+      name: v.name,
+      tax_id: v.taxId?.trim() || null,
+      address: v.address?.trim() || null,
+      country: v.country?.trim() || null,
+    }));
+    if (rows.length === 0) return { inserted: 0, failed: 0, errors: [] };
+    const { error } = await sb.from("contractors").upsert(rows, { onConflict: "company_id,name" });
+    if (error) {
+      return { inserted: 0, failed: rows.length, errors: [error.message] };
+    }
+    return { inserted: rows.length, failed: 0, errors: [] };
   }, []);
 
   const cols: Column<Contractor>[] = [
