@@ -25,16 +25,16 @@
     "SUPABASE_MGMT_TOKEN",
     "SUPABASE_PROJECT_REF"
   ],
+  "globalDependencies": ["tsconfig.base.json", "biome.json"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "lint": {},
     "typecheck": {
       "dependsOn": ["^build"]
     },

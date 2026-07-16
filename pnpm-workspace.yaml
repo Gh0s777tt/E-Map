@@ -13,8 +13,9 @@ allowBuilds:
   '@sentry/cli': false
   sharp: true
 
-# Overrides bezpieczeństwa (audyt #216): postcss (XSS via next), xmldom (XML injection/DoS via expo
-# toolchain). uuid<11 pominięty — major bump (7→11) zepsułby Expo SDK (transitive, build-only).
+# Override bezpieczeństwa (audyt #216): postcss (XSS via next) — next przypina postcss@8.4.31,
+# override podbija do bezpiecznej linii. uuid<11 pominięty — major bump (7→11) zepsułby Expo SDK
+# (transitive, build-only). Override @xmldom/xmldom usunięty (audyt N26): był martwym no-opem —
+# w drzewie tylko @expo/plist→0.8.13 i plist→0.9.10, oba już ≥0.8.0, nic nie żąda <0.8.0.
 overrides:
   "postcss@<8.5.10": ">=8.5.10"
-  "@xmldom/xmldom@<0.8.0": "^0.8.10"
