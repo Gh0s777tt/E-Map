@@ -3,9 +3,10 @@
  * web wysyła Expo Push do członków kanału. Błędy ignorujemy (realtime i tak
  * dostarczy wiadomość aktywnym; push to bonus dla zablokowanych ekranów).
  */
+import { WEB_BASE_URL } from "./config";
 import { getSupabase } from "./supabase";
 
-const NOTIFY_URL = "https://e-logistic-one.vercel.app/api/chat/notify";
+const NOTIFY_URL = `${WEB_BASE_URL}/api/chat/notify`;
 
 export function notifyChat(threadId: string | null, preview: string): void {
   (async () => {

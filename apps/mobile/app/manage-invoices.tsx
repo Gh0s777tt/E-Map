@@ -20,7 +20,16 @@ import {
 } from "@e-logistic/api";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
@@ -468,30 +477,40 @@ export default function ManageInvoicesScreen() {
   }
 
   // ── Lista faktur ──────────────────────────────────────────────────────────
+  // #audyt Ś10: FlatList (wirtualizacja) zamiast ScrollView+.map — lista do 200
+  // złożonych kart nie montuje się cała naraz (szybszy pierwszy render, mniej pamięci).
   return (
-    <ScrollView
+    <FlatList
       style={s.screen}
       contentContainerStyle={[s.content, wide]}
       keyboardShouldPersistTaps="handled"
-    >
-      <Pressable
-        style={s.addBtn}
-        onPress={() => {
-          setMsg(null);
-          setNewForm({ ...emptyBuyer });
-        }}
-      >
-        <Text style={s.addText}>➕ {t("m.minv.new")}</Text>
-      </Pressable>
+      data={rows}
+      keyExtractor={(inv) => inv.id}
+      initialNumToRender={12}
+      windowSize={11}
+      removeClippedSubviews
+      ListHeaderComponent={
+        <>
+          <Pressable
+            style={s.addBtn}
+            onPress={() => {
+              setMsg(null);
+              setNewForm({ ...emptyBuyer });
+            }}
+          >
+            <Text style={s.addText}>➕ {t("m.minv.new")}</Text>
+          </Pressable>
 
-      {msg && <Text style={s.err}>{msg}</Text>}
+          {msg && <Text style={s.err}>{msg}</Text>}
 
-      <SectionTitle>
-        {t("m.minv.invoices")} ({rows.length})
-      </SectionTitle>
-      {rows.length === 0 && <Text style={s.dim}>{t("m.minv.empty")}</Text>}
-      {rows.map((inv) => (
-        <Pressable key={inv.id} onPress={() => openDetail(inv)}>
+          <SectionTitle>
+            {t("m.minv.invoices")} ({rows.length})
+          </SectionTitle>
+        </>
+      }
+      ListEmptyComponent={<Text style={s.dim}>{t("m.minv.empty")}</Text>}
+      renderItem={({ item: inv }) => (
+        <Pressable onPress={() => openDetail(inv)}>
           <Card style={{ gap: 6 }}>
             <View style={s.rowTop}>
               <Text style={s.name}>🧾 {inv.number}</Text>
@@ -514,8 +533,8 @@ export default function ManageInvoicesScreen() {
             </Text>
           </Card>
         </Pressable>
-      ))}
-    </ScrollView>
+      )}
+    />
   );
 }
 

@@ -17,6 +17,7 @@ import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { VehiclePicker } from "../../components/VehiclePicker";
+import { useT } from "../../lib/i18n";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
@@ -39,6 +40,7 @@ function nowHHMM(): string {
 }
 
 export default function ChecklistsScreen() {
+  const t = useT();
   const { vehicles, loading } = useFleet();
   const perm = usePermission("checklists"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
@@ -72,19 +74,19 @@ export default function ChecklistsScreen() {
         // #338: tylko checklisty przypisane do tego kierowcy (lub dla wszystkich)
         setTemplates(await listVisibleChecklistTemplates(sb));
       } catch {
-        setMsg("Nie udało się pobrać szablonów — spróbuj przy zasięgu.");
+        setMsg(t("m.chk.loadError"));
       }
     })();
-  }, [refresh]);
+  }, [refresh, t]);
 
   useEffect(() => {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId]);
 
-  function openTemplate(t: ChecklistTemplate) {
-    setTpl(t);
+  function openTemplate(template: ChecklistTemplate) {
+    setTpl(template);
     const init: ChecklistAnswers = {};
-    for (const it of t.items) {
+    for (const it of template.items) {
       if (it.type === "multi")
         init[it.key] = { value: [], ...(it.time ? { time: nowHHMM() } : {}) };
     }
@@ -111,9 +113,9 @@ export default function ChecklistsScreen() {
         },
       );
       setAns(it.key, { photo: path });
-      setMsg("📷 Zdjęcie dołączone.");
+      setMsg(t("m.chk.photoAttached"));
     } catch {
-      setMsg("Zdjęcie wymaga zasięgu — odpowiedź możesz zapisać bez niego.");
+      setMsg(t("m.chk.photoOffline"));
     } finally {
       setPhotoBusy(null);
     }
@@ -138,15 +140,15 @@ export default function ChecklistsScreen() {
       const item = await enqueue("checklist", input, new Date().toISOString());
       setMsg(
         item.status === "synced"
-          ? `✅ Zapisano: ${tpl.name}.`
-          : `📥 Zapisano lokalnie: ${tpl.name} — sync w tle.`,
+          ? t("m.chk.savedSynced", { name: tpl.name })
+          : t("m.chk.savedLocal", { name: tpl.name }),
       );
       setTpl(null);
       setAnswers({});
       await refresh();
     } catch (e) {
       // #355: błąd zapisu musi być widoczny (wcześniej ginął bez komunikatu).
-      setMsg(`⚠️ ${e instanceof Error ? e.message : "Nie udało się zapisać."}`);
+      setMsg(`⚠️ ${e instanceof Error ? e.message : t("m.manage.saveError")}`);
     } finally {
       setBusy(false);
     }
@@ -158,11 +160,11 @@ export default function ChecklistsScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: "Checklisty" }} />
+      <Stack.Screen options={{ title: t("m.screen.checklists") }} />
 
       {!tpl && (
         <>
-          <Text style={styles.label}>Pojazd</Text>
+          <Text style={styles.label}>{t("m.fuel.vehicle")}</Text>
           <VehiclePicker
             vehicles={vehicles}
             loading={loading}
@@ -170,17 +172,18 @@ export default function ChecklistsScreen() {
             onSelect={setVehicleId}
           />
 
-          <Text style={styles.label}>Wybierz checklistę</Text>
-          {templates.length === 0 && (
-            <Text style={styles.hint}>
-              Brak przypisanych checklist. Właściciel przypisuje je i włącza w panelu Checklisty
-              (np. ADR tylko dla kierowców ADR).
-            </Text>
-          )}
-          {templates.map((t) => (
-            <Pressable key={t.id} style={styles.tplBtn} onPress={() => openTemplate(t)}>
-              <Text style={styles.tplText}>📋 {t.name}</Text>
-              <Text style={styles.tplSub}>{t.items.length} pozycji</Text>
+          <Text style={styles.label}>{t("m.chk.pickTemplate")}</Text>
+          {templates.length === 0 && <Text style={styles.hint}>{t("m.chk.none")}</Text>}
+          {templates.map((template) => (
+            <Pressable
+              key={template.id}
+              style={styles.tplBtn}
+              onPress={() => openTemplate(template)}
+            >
+              <Text style={styles.tplText}>📋 {template.name}</Text>
+              <Text style={styles.tplSub}>
+                {t("m.chk.itemsCount", { n: template.items.length })}
+              </Text>
             </Pressable>
           ))}
         </>
@@ -227,7 +230,7 @@ export default function ChecklistsScreen() {
                         onPress={() => setAns(it.key, { value: v })}
                       >
                         <Text style={a?.value === v ? styles.chipTextActive : styles.chipText}>
-                          {v ? "✅ Tak" : "❌ Nie"}
+                          {v ? t("m.chk.yes") : t("m.chk.no")}
                         </Text>
                       </Pressable>
                     ))}
@@ -258,7 +261,7 @@ export default function ChecklistsScreen() {
 
                 {it.time && (
                   <View style={styles.row}>
-                    <Text style={styles.timeLabel}>Godzina (data automatycznie):</Text>
+                    <Text style={styles.timeLabel}>{t("m.chk.timeLabel")}</Text>
                     <TextInput
                       style={styles.timeInput}
                       value={a?.time ?? nowHHMM()}
@@ -279,10 +282,10 @@ export default function ChecklistsScreen() {
                   >
                     <Text style={styles.photoText}>
                       {photoBusy === it.key
-                        ? "Wgrywam…"
+                        ? t("m.exp.photoBusy")
                         : a?.photo
-                          ? "📷 Zdjęcie dołączone ✓ (zmień)"
-                          : "📷 Zrób / dodaj zdjęcie"}
+                          ? t("m.chk.photoChange")
+                          : t("m.chk.photoAdd")}
                     </Text>
                   </Pressable>
                 )}
@@ -291,18 +294,18 @@ export default function ChecklistsScreen() {
           })}
 
           {perm === "view" ? (
-            <Text style={styles.viewOnly}>👁 Masz uprawnienia tylko do podglądu checklist.</Text>
+            <Text style={styles.viewOnly}>{t("m.chk.viewOnly")}</Text>
           ) : (
             <Pressable
               style={[styles.btn, busy && styles.btnBusy]}
               onPress={submit}
               disabled={busy}
             >
-              <Text style={styles.btnText}>{busy ? "Zapisuję…" : "Zatwierdź checklistę ✓"}</Text>
+              <Text style={styles.btnText}>{busy ? t("m.fuel.saving") : t("m.chk.submit")}</Text>
             </Pressable>
           )}
           <Pressable style={styles.cancelBtn} onPress={() => setTpl(null)}>
-            <Text style={styles.cancelText}>← Wróć do listy</Text>
+            <Text style={styles.cancelText}>← {t("m.minv.backToList")}</Text>
           </Pressable>
         </>
       )}
@@ -311,12 +314,14 @@ export default function ChecklistsScreen() {
 
       {!tpl && items.length > 0 && (
         <View style={styles.queue}>
-          <Text style={styles.queueHead}>Ostatnie checklisty ({items.length})</Text>
+          <Text style={styles.queueHead}>
+            {t("m.chk.recent")} ({items.length})
+          </Text>
           {items.slice(0, 10).map((it) => {
             const input = it.input as { templateName?: string };
             return (
               <Text key={it.id} style={styles.queueRow}>
-                {STATUS_ICON[it.status]} {input.templateName ?? "checklista"} ·{" "}
+                {STATUS_ICON[it.status]} {input.templateName ?? t("m.chk.fallback")} ·{" "}
                 {it.createdAt.slice(0, 16).replace("T", " ")}
                 {it.status === "error" && it.error ? ` — ${it.error}` : ""}
               </Text>

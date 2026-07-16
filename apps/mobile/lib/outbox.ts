@@ -58,13 +58,52 @@ async function write(items: OutboxItem[]): Promise<void> {
   for (const fn of listeners) fn();
 }
 
+// #audyt Ś4: wyścig read-modify-write. Wcześniej trySync czytał CAŁĄ tablicę,
+// mutował jeden wpis i zapisywał ją w całości — z awaitami pomiędzy. Dwa
+// przeploty (np. tłowy sync z enqueue + flushQueued z ekranu) nadpisywały świeży
+// `synced` nieaktualną kopią: A→synced, potem B zapisuje starą tablicę z A=queued
+// → przy kolejnym flushu A wstawiany PONOWNIE (duplikat) lub ginął status error.
+// Naprawa: (a) każdy zapis tablicy idzie przez `withOutboxLock` (łańcuch obietnic
+// serializuje read-modify-write); (b) status pojedynczego wpisu zmienia atomowo
+// `patchItem` (re-czyta świeżą tablicę i podmienia TYLKO ten wpis); (c) sieciowa
+// synchronizacja danego id jest deduplikowana przez `inFlight` — ten sam wpis nie
+// poleci równolegle (brak podwójnego insertu), a równolegli wołający dzielą jedną
+// obietnicę i czekają na jej wynik.
+let writeChain: Promise<unknown> = Promise.resolve();
+function withOutboxLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(fn, fn);
+  // Ogniwo łańcucha nigdy nie odrzuca — inaczej kolejna operacja by przepadła.
+  writeChain = run.then(
+    () => {},
+    () => {},
+  );
+  return run;
+}
+
+/** Synchronizacje w toku (id → obietnica) — dedup i wspólne oczekiwanie. */
+const inFlight = new Map<string, Promise<void>>();
+
+/** Atomowa podmiana statusu/błędu jednego wpisu (read-merge-write pod mutexem). */
+async function patchItem(id: string, status: OutboxItem["status"], error?: string): Promise<void> {
+  await withOutboxLock(async () => {
+    const items = await read();
+    const current = items.find((i) => i.id === id);
+    if (!current) return; // usunięty w międzyczasie — nie wskrzeszamy
+    current.status = status;
+    current.error = error;
+    await write(items);
+  });
+}
+
 export async function listOutbox(kind?: OutboxKind): Promise<OutboxItem[]> {
   const all = await read();
   return kind ? all.filter((i) => i.kind === kind) : all;
 }
 
 export async function removeOutbox(itemId: string): Promise<void> {
-  await write((await read()).filter((i) => i.id !== itemId));
+  await withOutboxLock(async () => {
+    await write((await read()).filter((i) => i.id !== itemId));
+  });
 }
 
 /** Dodaje wpis do outboxu (zawsze lokalnie) i próbuje od razu zsynchronizować. */
@@ -74,9 +113,11 @@ export async function enqueue(
   createdAt: string,
 ): Promise<OutboxItem> {
   const item: OutboxItem = { id: newId(), kind, input, status: "queued", createdAt };
-  const items = await read();
-  items.unshift(item);
-  await write(items);
+  await withOutboxLock(async () => {
+    const items = await read();
+    items.unshift(item);
+    await write(items);
+  });
   // #354: zapis do outboxu jest LOKALNY i natychmiastowy — synchronizację z serwerem
   // odpalamy w tle (fire-and-forget). Wcześniej `await trySync` blokował powrót z
   // enqueue, a że `trySync` woła `sb.auth.getUser()`/`getActiveMembership()` BEZ
@@ -87,10 +128,23 @@ export async function enqueue(
   return item;
 }
 
-/** Best-effort synchronizacja jednego wpisu: wymaga konfiguracji + sesji. */
-export async function trySync(itemId: string): Promise<void> {
-  const items = await read();
-  const item = items.find((i) => i.id === itemId);
+/**
+ * Best-effort synchronizacja jednego wpisu: wymaga konfiguracji + sesji.
+ * Deduplikowana — równoległe wywołania dla tego samego id dzielą jedną obietnicę
+ * (bez podwójnego insertu), a status trafia do storage atomowo przez `patchItem`.
+ */
+export function trySync(itemId: string): Promise<void> {
+  const existing = inFlight.get(itemId);
+  if (existing) return existing;
+  // Rejestracja jest SYNCHRONICZNA (żaden await między get a set) — dwa równoległe
+  // trySync tego samego id nie mogą wystartować dwóch synchronizacji.
+  const run = syncItem(itemId).finally(() => inFlight.delete(itemId));
+  inFlight.set(itemId, run);
+  return run;
+}
+
+async function syncItem(itemId: string): Promise<void> {
+  const item = (await read()).find((i) => i.id === itemId);
   if (!item || item.status === "synced") return;
 
   try {
@@ -134,7 +188,8 @@ export async function trySync(itemId: string): Promise<void> {
     item.status = "error";
     item.error = errorMessage(e);
   }
-  await write(items);
+  // Zapis statusu re-czyta świeżą tablicę i podmienia tylko ten wpis (patrz Ś4).
+  await patchItem(item.id, item.status, item.error);
 }
 
 /** Próba zsynchronizowania wszystkich niewysłanych wpisów (np. po odzyskaniu sieci). */

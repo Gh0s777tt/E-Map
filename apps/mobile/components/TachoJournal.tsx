@@ -14,6 +14,7 @@ import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { fmtDT } from "../lib/date";
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import { getSupabase } from "../lib/supabase";
@@ -37,18 +38,13 @@ const KIND_GLYPH: Record<TachoEventKind, string> = {
   daily_rest_end: "☀️",
 };
 
-const fmtDT = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => n.toString().padStart(2, "0");
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
-
 export function TachoJournal() {
   const t = useT();
   const [events, setEvents] = useState<TachoEvent[]>([]);
   const [busy, setBusy] = useState(false);
   const [pickType, setPickType] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -66,13 +62,18 @@ export function TachoJournal() {
   async function log(kind: TachoEventKind, restType?: TachoRestType) {
     if (busy) return;
     setBusy(true);
+    setMsg(null);
     try {
       await logTachoEvent(kind, restType);
       success();
       setPickType(false);
       await load();
-    } catch {
+    } catch (e) {
+      // #audyt Ś6: nie połykaj błędu cicho (sama haptyka) — pokaż komunikat, żeby
+      // przycisk nie wyglądał na „martwy" gdy offline (brak konfiguracji/firmy/sieci)
+      // i wpis nie ginął bez śladu (klasa buga #354).
       warn();
+      setMsg(e instanceof Error ? e.message : t("m.manage.saveError"));
     } finally {
       setBusy(false);
     }
@@ -162,6 +163,8 @@ export function TachoJournal() {
           </View>
         )}
 
+        {msg && <Text style={s.err}>{msg}</Text>}
+
         {/* Historia */}
         {events.length > 0 && (
           <View style={{ gap: 4, marginTop: 4 }}>
@@ -191,6 +194,7 @@ const s = StyleSheet.create({
   btnBlue: { backgroundColor: "#2456a6" },
   btnText: { color: palette.white, fontWeight: "800", fontSize: 13 },
   pickHint: { color: palette.smoke, fontSize: 12.5 },
+  err: { color: palette.red, fontSize: 12.5 },
   cancel: { color: palette.smoke, textAlign: "center", paddingVertical: 4 },
   histHead: { color: palette.offWhite, fontSize: 12.5, fontWeight: "800", marginTop: 4 },
   histRow: { color: palette.smoke, fontSize: 12.5, lineHeight: 18 },

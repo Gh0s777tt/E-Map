@@ -21,7 +21,11 @@ export default function DocumentsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!supabaseConfigured) return;
+    if (!supabaseConfigured) {
+      // #audyt N8: bez tego `loading` zostawało na true → wieczne „Ładowanie…".
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         const sb = getSupabase();

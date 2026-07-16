@@ -97,16 +97,6 @@ export function Skeleton({ height = 44, style }: { height?: number; style?: View
   );
 }
 
-/** Pasek postępu 0..1. */
-export function ProgressBar({ value, color = palette.red }: { value: number; color?: string }) {
-  const pct = Math.max(0, Math.min(1, value));
-  return (
-    <View style={ui.progressTrack}>
-      <View style={[ui.progressFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
-    </View>
-  );
-}
-
 export interface ListRowProps {
   glyph: string;
   title: string;
@@ -143,27 +133,6 @@ export function ListRow({ glyph, title, subtitle, badge, onPress, danger, last }
         <Text style={ui.rowChevron}>›</Text>
       </View>
       {!last && <View style={ui.rowSeparator} />}
-    </Pressable>
-  );
-}
-
-/** Kafel szybkiej akcji (emoji + podpis). */
-export function QuickAction({
-  glyph,
-  label,
-  onPress,
-}: {
-  glyph: string;
-  label: string;
-  onPress?: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={withTap(onPress)}
-      style={({ pressed }) => [ui.quick, pressed && ui.rowPressed]}
-    >
-      <Text style={ui.quickGlyph}>{glyph}</Text>
-      <Text style={ui.quickLabel}>{label}</Text>
     </Pressable>
   );
 }
@@ -224,13 +193,6 @@ const ui = StyleSheet.create({
   chipText: { color: palette.black, fontSize: 13, fontWeight: "700" },
   avatar: { backgroundColor: palette.red, alignItems: "center", justifyContent: "center" },
   avatarText: { color: palette.white, fontWeight: "800" },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: palette.graphite,
-    overflow: "hidden",
-  },
-  progressFill: { height: 6, borderRadius: 3 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
   rowPressed: { opacity: 0.7 },
   rowIcon: {
@@ -257,18 +219,6 @@ const ui = StyleSheet.create({
   rowBadgeText: { color: palette.white, fontSize: 13, fontWeight: "800" },
   rowChevron: { color: palette.smoke, fontSize: 22, marginTop: -2 },
   rowSeparator: { height: 1, backgroundColor: palette.graphite, marginLeft: 52 },
-  quick: {
-    flex: 1,
-    backgroundColor: palette.nearBlack,
-    borderColor: palette.graphite,
-    borderWidth: 1,
-    borderRadius: 16,
-    alignItems: "center",
-    paddingVertical: 14,
-    gap: 6,
-  },
-  quickGlyph: { fontSize: 28 },
-  quickLabel: { color: palette.smoke, fontSize: 13, fontWeight: "600" },
   primaryBtn: {
     backgroundColor: palette.red,
     borderRadius: 999,

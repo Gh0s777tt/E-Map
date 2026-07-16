@@ -28,7 +28,17 @@ const insertFuelLog = vi.fn();
 const insertTripEvent = vi.fn();
 vi.mock("@e-logistic/api", () => ({ getActiveMembership, insertFuelLog, insertTripEvent }));
 
-const { enqueue, flushQueued, listOutbox, removeOutbox } = await import("./outbox");
+const { enqueue, flushQueued, listOutbox, removeOutbox, trySync } = await import("./outbox");
+
+// #354: enqueue zwraca wpis natychmiast (status `queued`) i synchronizuje w tle
+// (fire-and-forget). Testy stanu KOŃCOWEGO dołączają do tej synchronizacji przez
+// `trySync` (deduplikowane — ta sama obietnica co tłowy sync z enqueue) i czytają
+// świeży wpis ze storage.
+async function enqueueAndSettle(...args: Parameters<typeof enqueue>) {
+  const item = await enqueue(...args);
+  await trySync(item.id);
+  return (await listOutbox()).find((i) => i.id === item.id) ?? item;
+}
 
 const fuelInput: FuelLogInput = {
   vehicleId: "v",
@@ -58,7 +68,7 @@ describe("outbox (kolejka offline-first)", () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     getActiveMembership.mockResolvedValue({ companyId: "c1" });
     insertFuelLog.mockResolvedValue({});
-    const item = await enqueue("fuel", fuelInput, "2026-06-27T10:00:00Z");
+    const item = await enqueueAndSettle("fuel", fuelInput, "2026-06-27T10:00:00Z");
     expect(item.status).toBe("synced");
     expect(insertFuelLog).toHaveBeenCalledOnce();
     expect((await listOutbox()).length).toBe(1);
@@ -66,7 +76,7 @@ describe("outbox (kolejka offline-first)", () => {
 
   it("status error (wpis czeka w kolejce) gdy brak sesji", async () => {
     getUser.mockResolvedValue({ data: { user: null } });
-    const item = await enqueue("fuel", fuelInput, "t");
+    const item = await enqueueAndSettle("fuel", fuelInput, "t");
     expect(item.status).toBe("error");
     expect(item.error ?? "").toMatch(/sesji/i);
     expect(insertFuelLog).not.toHaveBeenCalled();
@@ -76,7 +86,7 @@ describe("outbox (kolejka offline-first)", () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     getActiveMembership.mockResolvedValue({ companyId: "c1" });
     insertTripEvent.mockResolvedValue({});
-    const item = await enqueue("trip", tripInput, "t");
+    const item = await enqueueAndSettle("trip", tripInput, "t");
     expect(item.status).toBe("synced");
     expect(insertTripEvent).toHaveBeenCalledOnce();
   });
@@ -85,7 +95,7 @@ describe("outbox (kolejka offline-first)", () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     getActiveMembership.mockResolvedValue({ companyId: "c1" });
     insertFuelLog.mockResolvedValue({});
-    await enqueue("adblue", fuelInput, "t");
+    await enqueueAndSettle("adblue", fuelInput, "t");
     expect(insertFuelLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -96,7 +106,7 @@ describe("outbox (kolejka offline-first)", () => {
 
   it("flushQueued ponawia wpisy z błędem po odzyskaniu sesji", async () => {
     getUser.mockResolvedValue({ data: { user: null } });
-    await enqueue("fuel", fuelInput, "t");
+    await enqueueAndSettle("fuel", fuelInput, "t");
     expect((await listOutbox())[0]?.status).toBe("error");
 
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
@@ -108,8 +118,8 @@ describe("outbox (kolejka offline-first)", () => {
 
   it("listOutbox filtruje po kind; removeOutbox usuwa wpis", async () => {
     getUser.mockResolvedValue({ data: { user: null } });
-    await enqueue("fuel", fuelInput, "t");
-    await enqueue("trip", tripInput, "t");
+    await enqueueAndSettle("fuel", fuelInput, "t");
+    await enqueueAndSettle("trip", tripInput, "t");
     expect((await listOutbox("trip")).length).toBe(1);
     const all = await listOutbox();
     await removeOutbox(all[0]?.id ?? "");
@@ -123,7 +133,7 @@ describe("outbox — integralność i odporność", () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     getActiveMembership.mockResolvedValue({ companyId: "c1" });
     insertFuelLog.mockResolvedValue({});
-    await enqueue("fuel", fuelInput, "t"); // → synced, insert 1×
+    await enqueueAndSettle("fuel", fuelInput, "t"); // → synced, insert 1×
     await flushQueued(); // synced pomijany
     await flushQueued(); // i ponownie
     expect(insertFuelLog).toHaveBeenCalledTimes(1); // brak podwójnego zapisu
@@ -133,7 +143,7 @@ describe("outbox — integralność i odporność", () => {
   it("brak firmy (membership null) → status error z komunikatem o firmie", async () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     getActiveMembership.mockResolvedValue(null);
-    const item = await enqueue("fuel", fuelInput, "t");
+    const item = await enqueueAndSettle("fuel", fuelInput, "t");
     expect(item.status).toBe("error");
     expect(item.error ?? "").toMatch(/firmy/i);
     expect(insertFuelLog).not.toHaveBeenCalled();
@@ -143,7 +153,7 @@ describe("outbox — integralność i odporność", () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     getActiveMembership.mockResolvedValue({ companyId: "c1" });
     insertFuelLog.mockRejectedValue(new Error("DB padło"));
-    const item = await enqueue("fuel", fuelInput, "t");
+    const item = await enqueueAndSettle("fuel", fuelInput, "t");
     expect(item).toMatchObject({ status: "error", error: "DB padło" });
   });
 
@@ -151,7 +161,7 @@ describe("outbox — integralność i odporność", () => {
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
     getActiveMembership.mockResolvedValue({ companyId: "c1" });
     insertFuelLog.mockRejectedValue({ code: "23505", details: "duplicate key" });
-    const item = await enqueue("fuel", fuelInput, "t");
+    const item = await enqueueAndSettle("fuel", fuelInput, "t");
     expect(item.error).toBe("duplicate key"); // details ma priorytet nad code
   });
 
@@ -162,10 +172,28 @@ describe("outbox — integralność i odporność", () => {
 
   it("najnowszy wpis na początku kolejki (unshift)", async () => {
     getUser.mockResolvedValue({ data: { user: null } });
-    await enqueue("fuel", fuelInput, "2026-06-01T00:00:00Z");
-    await enqueue("trip", tripInput, "2026-06-02T00:00:00Z");
+    await enqueueAndSettle("fuel", fuelInput, "2026-06-01T00:00:00Z");
+    await enqueueAndSettle("trip", tripInput, "2026-06-02T00:00:00Z");
     const all = await listOutbox();
     expect(all[0]?.kind).toBe("trip"); // dodany później → pierwszy
     expect(all[1]?.kind).toBe("fuel");
+  });
+
+  // #audyt Ś4: wyścig read-modify-write — współbieżny sync nie może cofnąć
+  // świeżego `synced` ani zdublować insertu.
+  it("KRYTYCZNE: współbieżny flush nie cofa statusu ani nie dubluje insertu", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "u1" } } });
+    getActiveMembership.mockResolvedValue({ companyId: "c1" });
+    // Insert wolniejszy niż mikrozadanie — wymusza przeplot dwóch synchronizacji.
+    insertFuelLog.mockImplementation(() => new Promise((res) => setTimeout(() => res({}), 5)));
+    insertTripEvent.mockImplementation(() => new Promise((res) => setTimeout(() => res({}), 5)));
+    const a = await enqueue("fuel", fuelInput, "t1");
+    const b = await enqueue("trip", tripInput, "t2");
+    // Równoległe flushe (jak OfflineBar + ekran naraz) muszą się zserializować.
+    await Promise.all([flushQueued(), flushQueued(), trySync(a.id), trySync(b.id)]);
+    const all = await listOutbox();
+    expect(all.every((i) => i.status === "synced")).toBe(true); // nic nie cofnięte
+    expect(insertFuelLog).toHaveBeenCalledTimes(1); // brak duplikatu A
+    expect(insertTripEvent).toHaveBeenCalledTimes(1); // brak duplikatu B
   });
 });

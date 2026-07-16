@@ -6,12 +6,8 @@
 import { getActiveMembership, listFuelLogs, listMyOrders, listMyTripEvents } from "@e-logistic/api";
 import { computeDriverGamification, type GamificationResult } from "@e-logistic/core";
 import { useCallback, useState } from "react";
+import { monthStartIso } from "./date";
 import { getSupabase, supabaseConfigured } from "./supabase";
-
-function monthStartIso(): string {
-  const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
-}
 
 export function useGamification(): {
   data: GamificationResult | null;

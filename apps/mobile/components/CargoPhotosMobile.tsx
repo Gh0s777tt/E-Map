@@ -17,7 +17,6 @@ import {
   resolvePhotoKind,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { decode } from "base64-arraybuffer";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -92,17 +91,21 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
       }
       const result =
         source === "camera"
-          ? await ImagePicker.launchCameraAsync({ quality: 0.6, base64: true })
-          : await ImagePicker.launchImageLibraryAsync({ quality: 0.6, base64: true });
+          ? await ImagePicker.launchCameraAsync({ quality: 0.6 })
+          : await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
       if (result.canceled) return;
       const asset = result.assets[0];
-      if (!asset?.base64) {
+      if (!asset?.uri) {
         setErr("Nie udało się odczytać zdjęcia.");
         return;
       }
       setBusy(true);
       const contentType = asset.mimeType ?? "image/jpeg";
-      await uploadOrderPhotoBinary(getSupabase(), companyId, orderId, decode(asset.base64), {
+      // #audyt Ś12: bez `base64:true` — czytamy bajty wprost z uri (fetch→arrayBuffer).
+      // Base64 puchło o ~33%, trzymało cały string w pamięci JS i blokowało wątek
+      // przy decode. Uint8Array idzie prosto do uploadu (jak ścieżka podpisu POD).
+      const bytes = new Uint8Array(await (await fetch(asset.uri)).arrayBuffer());
+      await uploadOrderPhotoBinary(getSupabase(), companyId, orderId, bytes, {
         contentType,
         ext: extFromMime(contentType),
         sizeBytes: asset.fileSize,

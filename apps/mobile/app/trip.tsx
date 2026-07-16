@@ -5,20 +5,17 @@ import {
   type TripEventInput,
   tripEventSchema,
 } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
-import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { fillFromLocation, requiresPostcode } from "../lib/geoFill";
+import { useT } from "../lib/i18n";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 import { usePermission } from "../lib/usePermission";
-
-const t = createTranslator("pl");
 
 const STATUS_ICON: Record<OutboxItem["status"], string> = {
   queued: "⏳",
@@ -37,6 +34,7 @@ function orderLabel(o: Order): string {
 }
 
 export default function TripScreen() {
+  const t = useT();
   const { vehicles, loading } = useFleet();
   const perm = usePermission("forms"); // #278: view = tylko podgląd
   const [vehicleId, setVehicleId] = useState<string | null>(null);
@@ -87,13 +85,13 @@ export default function TripScreen() {
   function repeatLast() {
     const last = items[0];
     if (!last) {
-      setMsg("Brak wcześniejszych zdarzeń.");
+      setMsg(t("m.trip.repeatNone"));
       return;
     }
     const input = last.input as TripEventInput;
     setAction(input.action);
     setCountry(input.place.country ?? "");
-    setMsg("Wczytano dane z ostatniego zdarzenia — uzupełnij licznik.");
+    setMsg(t("m.trip.repeatLoaded"));
   }
 
   async function autofill() {
@@ -103,14 +101,14 @@ export default function TripScreen() {
     try {
       const p = await fillFromLocation();
       if (!p) {
-        setMsg(t("form.geo.denied"));
+        setMsg(t("m.fuel.geoDenied"));
         return;
       }
       if (p.country) setCountry(p.country);
       if (p.city) setCity(p.city);
       if (p.postcode) setPostcode(p.postcode);
       setGeo({ lat: p.lat, lng: p.lng });
-      setMsg(t("form.geo.filled"));
+      setMsg(t("m.fuel.geoFilled"));
     } finally {
       setGeoBusy(false);
     }
@@ -120,7 +118,7 @@ export default function TripScreen() {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
     if (!vehicleId) {
-      setMsg("Wybierz pojazd.");
+      setMsg(t("m.fuel.pickVehicle"));
       return;
     }
     const base = {
@@ -156,10 +154,11 @@ export default function TripScreen() {
     setBusy(true);
     try {
       const item = await enqueue("trip", parsed.data, new Date().toISOString());
+      const actionLabel = t(`m.trip.act.${parsed.data.action}`);
       setMsg(
         item.status === "synced"
-          ? `✅ Zapisano i zsynchronizowano: ${t(`trip.action.${parsed.data.action}`)}.`
-          : `📥 Zapisano lokalnie: ${t(`trip.action.${parsed.data.action}`)} — sync w tle.`,
+          ? t("m.trip.savedSynced", { a: actionLabel })
+          : t("m.trip.savedLocal", { a: actionLabel }),
       );
       setOdometer("");
       setWeight("");
@@ -173,7 +172,7 @@ export default function TripScreen() {
       await refresh();
     } catch (e) {
       // #355: błąd zapisu musi być widoczny (wcześniej ginął bez komunikatu).
-      setMsg(`⚠️ ${e instanceof Error ? e.message : "Nie udało się zapisać."}`);
+      setMsg(`⚠️ ${e instanceof Error ? e.message : t("m.manage.saveError")}`);
     } finally {
       setBusy(false);
     }
@@ -185,9 +184,7 @@ export default function TripScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: t("form.trip.title") }} />
-
-      <Text style={styles.label}>Pojazd</Text>
+      <Text style={styles.label}>{t("m.fuel.vehicle")}</Text>
       <VehiclePicker
         vehicles={vehicles}
         loading={loading}
@@ -201,11 +198,11 @@ export default function TripScreen() {
         disabled={items.length === 0}
       >
         <Text style={styles.repeatText}>
-          {items.length > 0 ? "↺ Powtórz ostatnie" : "↺ Powtórz ostatnie — po pierwszym wpisie"}
+          {items.length > 0 ? t("m.trip.repeatLast") : t("m.trip.repeatFirst")}
         </Text>
       </Pressable>
 
-      <Text style={styles.label}>Akcja</Text>
+      <Text style={styles.label}>{t("m.trip.action")}</Text>
       <View style={styles.chips}>
         {TRIP_ACTIONS.map((a) => (
           <Pressable
@@ -214,7 +211,7 @@ export default function TripScreen() {
             onPress={() => setAction(a)}
           >
             <Text style={action === a ? styles.chipTextActive : styles.chipText}>
-              {t(`trip.action.${a}`)}
+              {t(`m.trip.act.${a}`)}
             </Text>
           </Pressable>
         ))}
@@ -222,11 +219,11 @@ export default function TripScreen() {
 
       <Pressable style={styles.repeatBtn} onPress={autofill} disabled={geoBusy}>
         <Text style={styles.repeatText}>
-          📍 {geoBusy ? t("form.geo.filling") : t("form.geo.fill")}
+          📍 {geoBusy ? t("m.fuel.geoFilling") : t("m.fuel.geoFill")}
         </Text>
       </Pressable>
 
-      <Text style={styles.label}>{t("form.field.country")}</Text>
+      <Text style={styles.label}>{t("m.trip.country")}</Text>
       <TextInput
         style={styles.input}
         value={country}
@@ -236,7 +233,7 @@ export default function TripScreen() {
         autoCapitalize="characters"
       />
 
-      <Text style={styles.label}>{t("form.field.city")}</Text>
+      <Text style={styles.label}>{t("m.trip.city")}</Text>
       <TextInput
         style={styles.input}
         value={city}
@@ -247,7 +244,7 @@ export default function TripScreen() {
 
       {requiresPostcode(country) && (
         <>
-          <Text style={styles.label}>{t("form.field.postcode")}</Text>
+          <Text style={styles.label}>{t("m.trip.postcode")}</Text>
           <TextInput
             style={styles.input}
             value={postcode}
@@ -259,18 +256,18 @@ export default function TripScreen() {
         </>
       )}
 
-      <Text style={styles.label}>{t("form.field.company")}</Text>
+      <Text style={styles.label}>{t("m.trip.company")}</Text>
       <TextInput
         style={styles.input}
         value={company}
         onChangeText={setCompany}
-        placeholder={t("form.field.companyPlaceholder")}
+        placeholder={t("m.trip.companyPlaceholder")}
         placeholderTextColor={palette.smoke}
       />
 
       {isTransship && (
         <>
-          <Text style={styles.label}>{t("form.field.fromReg")}</Text>
+          <Text style={styles.label}>{t("m.trip.fromReg")}</Text>
           <TextInput
             style={styles.input}
             value={fromReg}
@@ -279,7 +276,7 @@ export default function TripScreen() {
             placeholderTextColor={palette.smoke}
             autoCapitalize="characters"
           />
-          <Text style={styles.label}>{t("form.field.toReg")}</Text>
+          <Text style={styles.label}>{t("m.trip.toReg")}</Text>
           <TextInput
             style={styles.input}
             value={toReg}
@@ -291,7 +288,7 @@ export default function TripScreen() {
         </>
       )}
 
-      <Text style={styles.label}>{t("form.field.odometer")}</Text>
+      <Text style={styles.label}>{t("m.trip.odometer")}</Text>
       <TextInput
         style={styles.input}
         value={odometer}
@@ -301,7 +298,7 @@ export default function TripScreen() {
 
       {needsWeight && (
         <>
-          <Text style={styles.label}>{t("form.field.weight")}</Text>
+          <Text style={styles.label}>{t("m.trip.weight")}</Text>
           <TextInput
             style={styles.input}
             value={weight}
@@ -313,14 +310,14 @@ export default function TripScreen() {
 
       {needsWeight && orders.length > 0 && (
         <>
-          <Text style={styles.label}>Zlecenie (auto-zamknięcie po load+unload)</Text>
+          <Text style={styles.label}>{t("m.trip.order")}</Text>
           <View style={styles.chips}>
             <Pressable
               style={[styles.chip, orderId === null && styles.chipActive]}
               onPress={() => setOrderId(null)}
             >
               <Text style={orderId === null ? styles.chipTextActive : styles.chipText}>
-                — bez —
+                {t("m.trip.orderNone")}
               </Text>
             </Pressable>
             {orders.map((o) => (
@@ -342,20 +339,15 @@ export default function TripScreen() {
           #263: podpowiedzi, gdy sekcja ukryta — kierowcy nie widzieli, że funkcja istnieje. */}
       {needsWeight && orderId && <CargoPhotosMobile orderId={orderId} />}
       {needsWeight && !orderId && orders.length > 0 && (
-        <Text style={styles.hint}>
-          📷 Wybierz zlecenie powyżej, aby dodać zdjęcia towaru / CMR — trafią prosto do niego.
-        </Text>
+        <Text style={styles.hint}>{t("m.trip.photoHintPick")}</Text>
       )}
       {needsWeight && orders.length === 0 && (
-        <Text style={styles.hint}>
-          📷 Zdjęcia towaru / CMR dodasz po przypisaniu Ci otwartego zlecenia (ekran „Moje
-          zlecenia").
-        </Text>
+        <Text style={styles.hint}>{t("m.trip.photoHintNoOrders")}</Text>
       )}
 
       <Text style={styles.label}>
-        {t("form.field.comment")}
-        {commentRequired ? " (wymagane)" : ""}
+        {t("m.trip.comment")}
+        {commentRequired ? ` (${t("m.trip.required")})` : ""}
       </Text>
       <TextInput
         style={[styles.input, { minHeight: 70 }]}
@@ -365,22 +357,24 @@ export default function TripScreen() {
       />
 
       {perm === "view" ? (
-        <Text style={styles.viewOnly}>👁 Masz uprawnienia tylko do podglądu formularzy.</Text>
+        <Text style={styles.viewOnly}>{t("m.fuel.viewOnly")}</Text>
       ) : (
         <Pressable style={[styles.btn, busy && styles.btnBusy]} onPress={submit} disabled={busy}>
-          <Text style={styles.btnText}>{busy ? "Zapisuję…" : t("common.save")}</Text>
+          <Text style={styles.btnText}>{busy ? t("m.fuel.saving") : t("m.manage.save")}</Text>
         </Pressable>
       )}
       {msg && <Text style={styles.msg}>{msg}</Text>}
 
       {items.length > 0 && (
         <View style={styles.queue}>
-          <Text style={styles.queueHead}>Ostatnie zdarzenia ({items.length})</Text>
+          <Text style={styles.queueHead}>
+            {t("m.trip.recent")} ({items.length})
+          </Text>
           {items.slice(0, 10).map((it) => {
             const input = it.input as TripEventInput;
             return (
               <Text key={it.id} style={styles.queueRow}>
-                {STATUS_ICON[it.status]} {t(`trip.action.${input.action}`)} · {input.place.country}
+                {STATUS_ICON[it.status]} {t(`m.trip.act.${input.action}`)} · {input.place.country}
                 {it.status === "error" && it.error ? ` — ${it.error}` : ""}
               </Text>
             );

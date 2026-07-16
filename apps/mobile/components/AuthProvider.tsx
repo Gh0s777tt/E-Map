@@ -38,9 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         setLoading(false);
       }
-      unsub = sb.auth.onAuthStateChange((_event, s) => {
+      unsub = sb.auth.onAuthStateChange((event, s) => {
         setSession(s);
-        if (s?.user) void registerForPush(s.user.id);
+        // #audyt N9: rejestruj push tylko przy realnym logowaniu — NIE przy
+        // TOKEN_REFRESHED (~co godzinę)/USER_UPDATED/INITIAL_SESSION. Start pokrywa
+        // jawne wywołanie w getSession() wyżej; wcześniej szło przy KAŻDYM zdarzeniu.
+        if (s?.user && event === "SIGNED_IN") void registerForPush(s.user.id);
       }).data.subscription.unsubscribe;
     })();
     return () => unsub?.();

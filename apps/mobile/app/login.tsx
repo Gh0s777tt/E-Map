@@ -7,7 +7,7 @@
 import { palette } from "@e-logistic/ui";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -25,17 +25,17 @@ WebBrowser.maybeCompleteAuthSession();
 
 const REDIRECT = "elogistic://auth";
 
-let DISABLED_TEXT = "Ten sposób logowania nie jest jeszcze włączony przez administratora firmy.";
-function friendlyOAuthError(message: string): string {
-  if (/not enabled|disabled|unsupported provider/i.test(message)) {
-    return DISABLED_TEXT;
-  }
-  return message;
-}
-
 export default function Login() {
   const t = useT();
-  DISABLED_TEXT = t("m.login.oauthDisabled");
+  // #audyt Ś5: mapowanie błędu OAuth liczone w komponencie (przez `t`), a nie na
+  // mutowalnej zmiennej modułowej nadpisywanej w renderze (efekt uboczny/niepewność).
+  const friendlyOAuthError = useCallback(
+    (message: string): string =>
+      /not enabled|disabled|unsupported provider/i.test(message)
+        ? t("m.login.oauthDisabled")
+        : message,
+    [t],
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<null | "password" | "apple" | "google" | "azure">(null);

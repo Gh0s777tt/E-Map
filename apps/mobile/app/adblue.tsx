@@ -1,14 +1,6 @@
-import { createTranslator } from "@e-logistic/i18n";
-import { Stack } from "expo-router";
 import { LiquidForm } from "../components/LiquidForm";
 
-const t = createTranslator("pl");
-
+// #300: tytuł ekranu nadaje _layout.tsx przez useT (m.screen.adblue) — świadomy języka.
 export default function AdblueScreen() {
-  return (
-    <>
-      <Stack.Screen options={{ title: t("form.adblue.title") }} />
-      <LiquidForm kind="adblue" />
-    </>
-  );
+  return <LiquidForm kind="adblue" />;
 }

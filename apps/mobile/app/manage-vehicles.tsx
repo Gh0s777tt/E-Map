@@ -11,6 +11,7 @@ import {
   updateVehicle,
 } from "@e-logistic/api";
 import { firstZodError, VEHICLE_TYPES, type VehicleType, vehicleSchema } from "@e-logistic/core";
+import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -32,12 +33,13 @@ interface Row {
   leasing_end: string | null;
 }
 
-const TYPE_LABEL: Record<VehicleType, string> = {
-  truck: "Ciężarówka",
-  tractor: "Ciągnik",
-  van: "Bus",
-  trailer: "Naczepa",
-  other: "Inny",
+// #300/N7: etykiety typów pojazdu przez i18n (świadome języka), jak CAT_KEY w manage-vehicle-costs.
+const TYPE_LABEL: Record<VehicleType, MobileMessageKey> = {
+  truck: "m.vtype.truck",
+  tractor: "m.vtype.tractor",
+  van: "m.vtype.van",
+  trailer: "m.vtype.trailer",
+  other: "m.vtype.other",
 };
 
 const empty = {
@@ -189,7 +191,7 @@ export default function ManageVehiclesScreen() {
                 onPress={() => set({ vehicleType: vt })}
               >
                 <Text style={[s.typeText, form.vehicleType === vt && { color: palette.white }]}>
-                  {TYPE_LABEL[vt]}
+                  {t(TYPE_LABEL[vt])}
                 </Text>
               </Pressable>
             ))}
@@ -229,7 +231,11 @@ export default function ManageVehiclesScreen() {
                 </View>
               </View>
               <Text style={s.dim}>
-                {[TYPE_LABEL[r.vehicle_type], [r.make, r.model].filter(Boolean).join(" "), r.year]
+                {[
+                  t(TYPE_LABEL[r.vehicle_type]),
+                  [r.make, r.model].filter(Boolean).join(" "),
+                  r.year,
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </Text>

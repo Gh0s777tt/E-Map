@@ -1,6 +1,5 @@
 import { type DriverRoute, listMyDriverRoutes } from "@e-logistic/api";
 import { estimateRouteFuel } from "@e-logistic/core";
-import { createTranslator } from "@e-logistic/i18n";
 import {
   fetchPois,
   type GeoHit,
@@ -36,10 +35,10 @@ import {
   View,
 } from "react-native";
 import { ParkingReviewCard } from "../components/ParkingReviewCard";
+import { WEB_BASE_URL } from "../lib/config";
+import { useT } from "../lib/i18n";
 import { EUROPE_CENTER, EUROPE_ZOOM, mapStyle } from "../lib/mapStyle";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
-
-const t = createTranslator("pl");
 
 // #356: klucz TomTom (klient-side, EXPO_PUBLIC). Pusty → mapa działa jak dotąd
 // (geokoder MapTiler/Nominatim, routing przez web /api/route). Ustawiony → lepsze
@@ -68,6 +67,7 @@ function bboxOf(geometry: [number, number][]): string {
  * fala 2 (web ma go w `/api/route`; tu dojdzie po QA renderu na urządzeniu).
  */
 export default function MapScreen() {
+  const t = useT();
   const mapRef = useRef<MapRef>(null);
   const cameraRef = useRef<CameraRef>(null);
   const [pois, setPois] = useState<Poi[]>([]);
@@ -117,7 +117,7 @@ export default function MapScreen() {
   const locate = useCallback(async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
-      setNotice(t("mobileMap.permissionDenied"));
+      setNotice(t("m.map.permissionDenied"));
       return;
     }
     setNotice(null);
@@ -130,14 +130,14 @@ export default function MapScreen() {
       zoom: 11,
       duration: 600,
     });
-  }, []);
+  }, [t]);
 
   const searchAddress = useCallback(async () => {
     if (searching) return;
     // #354: krótkie zapytanie i „brak wyników" muszą dać widoczny komunikat —
     // wcześniej cichy early-return / puste `geocode` wyglądały jak martwy przycisk.
     if (query.trim().length < 2) {
-      setNotice(t("mobileMap.searchTooShort"));
+      setNotice(t("m.map.searchTooShort"));
       return;
     }
     setSearching(true);
@@ -148,13 +148,13 @@ export default function MapScreen() {
         tomtomKey: TOMTOM_KEY || undefined,
       });
       setResults(hits);
-      if (hits.length === 0) setNotice(t("mobileMap.noResults"));
+      if (hits.length === 0) setNotice(t("m.map.noResults"));
     } catch {
-      setNotice(t("mobileMap.searchError"));
+      setNotice(t("m.map.searchError"));
     } finally {
       setSearching(false);
     }
-  }, [query, searching]);
+  }, [query, searching, t]);
 
   const selectDest = useCallback((hit: GeoHit) => {
     setDest(hit);
@@ -165,24 +165,27 @@ export default function MapScreen() {
 
   // #358: pobierz incydenty ruchu dla bieżącego widoku. bbox = "minLng,minLat,maxLng,maxLat"
   // (getBounds() zwraca [west, south, east, north]). Bez klucza — no-op.
-  const refreshTraffic = useCallback(async (bboxOverride?: string) => {
-    const map = mapRef.current;
-    if (!map || !TOMTOM_KEY) return;
-    try {
-      // Po wytyczeniu trasy kamera dopiero animuje — bierzemy bbox trasy (override),
-      // inaczej getBounds() zwróciłby jeszcze stary kadr (#358, przegląd).
-      let bbox = bboxOverride;
-      if (!bbox) {
-        const [west, south, east, north] = await map.getBounds();
-        bbox = `${west},${south},${east},${north}`;
+  const refreshTraffic = useCallback(
+    async (bboxOverride?: string) => {
+      const map = mapRef.current;
+      if (!map || !TOMTOM_KEY) return;
+      try {
+        // Po wytyczeniu trasy kamera dopiero animuje — bierzemy bbox trasy (override),
+        // inaczej getBounds() zwróciłby jeszcze stary kadr (#358, przegląd).
+        let bbox = bboxOverride;
+        if (!bbox) {
+          const [west, south, east, north] = await map.getBounds();
+          bbox = `${west},${south},${east},${north}`;
+        }
+        const found = await tomtomTrafficIncidents(bbox, TOMTOM_KEY);
+        setIncidents(found);
+        if (found.length === 0) setNotice(t("m.map.trafficNone"));
+      } catch {
+        setNotice(t("m.map.trafficError"));
       }
-      const found = await tomtomTrafficIncidents(bbox, TOMTOM_KEY);
-      setIncidents(found);
-      if (found.length === 0) setNotice(t("mobileMap.trafficNone"));
-    } catch {
-      setNotice(t("mobileMap.trafficError"));
-    }
-  }, []);
+    },
+    [t],
+  );
 
   const planRoute = useCallback(async () => {
     if (!dest || planning) return;
@@ -192,7 +195,7 @@ export default function MapScreen() {
       const perm = await Location.getForegroundPermissionsAsync();
       const req = perm.granted ? perm : await Location.requestForegroundPermissionsAsync();
       if (!req.granted) {
-        setNotice(t("mobileMap.permissionDenied"));
+        setNotice(t("m.map.permissionDenied"));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -232,15 +235,26 @@ export default function MapScreen() {
         }
       }
 
-      const res = await fetch("https://e-logistic-one.vercel.app/api/route", {
+      // #audyt Ś16: /api/route wymaga teraz uwierzytelnienia — dołącz token sesji.
+      const token = supabaseConfigured
+        ? (await getSupabase().auth.getSession()).data.session?.access_token
+        : undefined;
+      const res = await fetch(`${WEB_BASE_URL}/api/route`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           waypoints,
           profile: { kind: "truck", weightKg: 24000 },
           options: {},
         }),
       });
+      if (!res.ok) {
+        setNotice(t("m.map.routeError"));
+        return;
+      }
       const r = (await res.json()) as {
         geometry: [number, number][];
         distanceKm: number;
@@ -249,7 +263,7 @@ export default function MapScreen() {
         currency: string;
       };
       if (!r.geometry || r.geometry.length < 2) {
-        setNotice(t("mobileMap.routeError"));
+        setNotice(t("m.map.routeError"));
         return;
       }
       setPlanned(r);
@@ -260,11 +274,11 @@ export default function MapScreen() {
       if (mid) cameraRef.current?.easeTo({ center: mid, zoom: 6, duration: 700 });
       if (trafficOn) void refreshTraffic(bboxOf(r.geometry));
     } catch {
-      setNotice(t("mobileMap.routeError"));
+      setNotice(t("m.map.routeError"));
     } finally {
       setPlanning(false);
     }
-  }, [dest, planning, trafficOn, refreshTraffic]);
+  }, [dest, planning, trafficOn, refreshTraffic, t]);
 
   const clearRoute = useCallback(() => {
     setPlanned(null);
@@ -296,14 +310,14 @@ export default function MapScreen() {
           limit: 20,
         });
         setAlongPois(found);
-        if (found.length === 0) setNotice(t("mobileMap.alongEmpty"));
+        if (found.length === 0) setNotice(t("m.map.alongEmpty"));
       } catch {
-        setNotice(t("mobileMap.poiError"));
+        setNotice(t("m.map.poiError"));
       } finally {
         setAlongBusy(false);
       }
     },
-    [planned, alongBusy],
+    [planned, alongBusy, t],
   );
 
   // #358: włącz/wyłącz warstwę incydentów ruchu TomTom dla bieżącego widoku.
@@ -331,11 +345,11 @@ export default function MapScreen() {
       const found = await fetchPois({ south, west, north, east });
       setPois(found);
     } catch {
-      setNotice(t("mobileMap.poiError"));
+      setNotice(t("m.map.poiError"));
     } finally {
       setBusy(false);
     }
-  }, [busy]);
+  }, [busy, t]);
 
   const poiGeoJson: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
@@ -530,7 +544,7 @@ export default function MapScreen() {
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={searchAddress}
-            placeholder={t("mobileMap.searchPlaceholder")}
+            placeholder={t("m.map.searchPlaceholder")}
             placeholderTextColor={palette.smoke}
             returnKeyType="search"
           />
@@ -564,7 +578,7 @@ export default function MapScreen() {
             disabled={planning}
           >
             <Text style={styles.planBtnText}>
-              {planning ? `${t("mobileMap.planning")}…` : `🧭 ${t("mobileMap.planRoute")}`}
+              {planning ? `${t("m.map.planning")}…` : `🧭 ${t("m.map.planRoute")}`}
             </Text>
           </Pressable>
         )}
@@ -587,7 +601,7 @@ export default function MapScreen() {
                 onPress={() => findAlongRoute("fuel")}
                 disabled={alongBusy}
                 hitSlop={6}
-                accessibilityLabel={t("mobileMap.alongFuel")}
+                accessibilityLabel={t("m.map.alongFuel")}
               >
                 <Text style={styles.alongBtn}>
                   {alongBusy && alongKind === "fuel" ? "…" : "⛽"}
@@ -597,7 +611,7 @@ export default function MapScreen() {
                 onPress={() => findAlongRoute("parking")}
                 disabled={alongBusy}
                 hitSlop={6}
-                accessibilityLabel={t("mobileMap.alongParking")}
+                accessibilityLabel={t("m.map.alongParking")}
               >
                 <Text style={styles.alongBtn}>
                   {alongBusy && alongKind === "parking" ? "…" : "🅿️"}
@@ -650,7 +664,7 @@ export default function MapScreen() {
         <View style={styles.infoBar}>
           <Text style={styles.infoIcon}>⛽</Text>
           <Text style={styles.infoText} numberOfLines={2}>
-            {selected.name || t("mobileMap.poiFuel")}
+            {selected.name || t("m.map.poiFuel")}
           </Text>
           <Pressable onPress={() => setSelected(null)} hitSlop={8}>
             <Text style={styles.infoClose}>✕</Text>
@@ -673,14 +687,14 @@ export default function MapScreen() {
 
       <View style={styles.controls}>
         <Pressable style={styles.button} onPress={locate}>
-          <Text style={styles.buttonText}>📍 {t("mobileMap.locate")}</Text>
+          <Text style={styles.buttonText}>📍 {t("m.map.locate")}</Text>
         </Pressable>
         <Pressable
           style={[styles.button, styles.buttonSecondary, busy && styles.buttonBusy]}
           onPress={loadPois}
           disabled={busy}
         >
-          <Text style={styles.buttonText}>{busy ? "…" : `🅿️ ${t("mobileMap.poiLoad")}`}</Text>
+          <Text style={styles.buttonText}>{busy ? "…" : `🅿️ ${t("m.map.poiLoad")}`}</Text>
         </Pressable>
         {TOMTOM_KEY ? (
           <Pressable
@@ -695,7 +709,7 @@ export default function MapScreen() {
             <Text style={styles.buttonText}>
               {trafficBusy
                 ? "…"
-                : `🚦 ${trafficOn ? t("mobileMap.trafficHide") : t("mobileMap.trafficShow")}`}
+                : `🚦 ${trafficOn ? t("m.map.trafficHide") : t("m.map.trafficShow")}`}
             </Text>
           </Pressable>
         ) : null}
