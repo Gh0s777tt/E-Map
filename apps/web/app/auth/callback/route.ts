@@ -9,7 +9,10 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await getServerSupabase();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // Kod wygasły/zużyty (OAuth/magic-link/recovery) — nie odbijaj cicho na pulpit
+    // (layout i tak zawróci na /login bez komunikatu). Pokaż błąd na logowaniu.
+    if (error) return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 
   // `next` akceptujemy tylko jako ścieżkę wewnętrzną (ochrona przed open-redirect).

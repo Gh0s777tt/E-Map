@@ -1257,7 +1257,21 @@ export default function MapPage() {
           options: { avoidTolls, avoidFerries, avoidCountries: avoidCH ? ["CH"] : [] },
         }),
       });
+      // #W1: strażnik statusu — 429 (rate-limit) / 4xx zwraca `{ error }` bez geometry/segments;
+      // bez tego setResult(obiekt błędu) wchodzi w render RouteSummary i wywala go na
+      // `result.segments.length` (undefined). Auto-reroute (#309) może wywołać burst 429.
+      if (!res.ok) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string };
+        toast(e.error ?? "Nie udało się wyznaczyć trasy.", "error");
+        return null;
+      }
       const r = (await res.json()) as RouteResponse;
+      // #W1: waliduj kształt odpowiedzi przed użyciem — 2xx bez geometry/segments też
+      // wywaliłby drawRoute/itemsNearRoute/render, a brak `catch` = nieobsłużone odrzucenie.
+      if (!Array.isArray(r.geometry) || !Array.isArray(r.segments)) {
+        toast("Nieprawidłowa odpowiedź routingu.", "error");
+        return null;
+      }
       setResult(r);
       routeGeoRef.current = r.geometry;
       // #309: znane utrudnienia liczymy od nowej trasy (bez ponownego reroute po własnym przeliczeniu)
@@ -1277,6 +1291,10 @@ export default function MapPage() {
         }
       }
       return r;
+    } catch {
+      // #W1: sieć/parse/nieoczekiwany wyjątek — komunikat zamiast nieobsłużonego odrzucenia.
+      toast("Nie udało się wyznaczyć trasy.", "error");
+      return null;
     } finally {
       setBusy(false);
     }

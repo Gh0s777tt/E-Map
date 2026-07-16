@@ -22,11 +22,6 @@ export function LocaleProvider({
   return <LocaleContext.Provider value={locale}>{children}</LocaleContext.Provider>;
 }
 
-/** Aktualny język po stronie klienta. */
-export function useLocale(): Locale {
-  return useContext(LocaleContext);
-}
-
 /** Funkcja tłumacząca związana z aktualnym językiem (memoizowana per język). */
 export function useT(): (key: MessageKey) => string {
   const locale = useContext(LocaleContext);

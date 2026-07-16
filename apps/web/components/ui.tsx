@@ -62,25 +62,6 @@ export function PrintButton({ label = "🖨️ Drukuj / PDF" }: { label?: string
   );
 }
 
-/** Wskaźnik ładowania (obracające się kółko). */
-export function Spinner({ size = 18 }: { size?: number }) {
-  return (
-    <span
-      className="el-spin"
-      role="status"
-      aria-label="Ładowanie"
-      style={{
-        display: "inline-block",
-        width: size,
-        height: size,
-        border: `2px solid ${palette.graphite}`,
-        borderTopColor: palette.red,
-        borderRadius: "50%",
-      }}
-    />
-  );
-}
-
 /**
  * Lekki wykres słupkowy (CSS, bez zależności). Responsywny, motyw red/black.
  * Dane: lista `{ label, value }`; wysokość słupka proporcjonalna do maksimum.

@@ -4,13 +4,13 @@ import { LOCALES, type Locale } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { LOCALE_COOKIE } from "@/lib/localeCookie";
 
 const LABEL: Record<Locale, string> = { pl: "PL", en: "EN" };
-const COOKIE = "locale";
 
 function readCookie(): Locale {
   if (typeof document === "undefined") return "pl";
-  const m = document.cookie.match(/(?:^|; )locale=([^;]+)/);
+  const m = document.cookie.match(new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]+)`));
   const v = m?.[1] ?? "";
   return (LOCALES as readonly string[]).includes(v) ? (v as Locale) : "pl";
 }
@@ -29,7 +29,7 @@ export function LocaleSwitcher() {
 
   function pick(l: Locale) {
     // biome-ignore lint/suspicious/noDocumentCookie: prosty zapis ciasteczka języka; Cookie Store API jest async i nie wszędzie wspierane
-    document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
+    document.cookie = `${LOCALE_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
     setActive(l);
     router.refresh();
   }
