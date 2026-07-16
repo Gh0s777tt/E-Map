@@ -1,4 +1,4 @@
-import type { Poi } from "@e-logistic/maps";
+import type { Poi, TrafficIncident } from "@e-logistic/maps";
 import { REPORT_COLOR, REPORT_LABEL } from "./mapTheme";
 import type { Report } from "./mapTypes";
 
@@ -24,6 +24,21 @@ export function poiFeatures(pois: Poi[]) {
       type: "Feature" as const,
       properties: { id: p.id, name: p.name ?? "", type: p.type },
       geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] as [number, number] },
+    })),
+  };
+}
+
+/** GeoJSON incydentów ruchu TomTom (punkty; kolor liczony w warstwie wg severity). */
+export function incidentFeatures(incidents: TrafficIncident[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: incidents.map((i) => ({
+      type: "Feature" as const,
+      properties: { id: i.id, severity: i.severity, description: i.description },
+      geometry: {
+        type: "Point" as const,
+        coordinates: [i.point.lng, i.point.lat] as [number, number],
+      },
     })),
   };
 }

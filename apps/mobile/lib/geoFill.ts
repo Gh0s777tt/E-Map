@@ -3,6 +3,7 @@
  * formularzy Trip/Paliwo/AdBlue — kraj (ISO), miejscowość i kod pocztowy.
  * Fail-safe: brak zgody/uprawnień → zwraca null, formularz działa ręcznie.
  */
+import { tomtomReverseGeocode } from "@e-logistic/maps";
 import * as Location from "expo-location";
 
 export interface PlaceFill {
@@ -11,6 +12,9 @@ export interface PlaceFill {
   postcode: string;
   lat: number;
   lng: number;
+  /** #358: pełny adres z reverse-geocode (TomTom) — do pól adresowych zarządzania.
+   *  Opcjonalny: fuel/adblue/trip nadal używają country/city/postcode/lat/lng. */
+  label?: string;
 }
 
 /** Kraje, dla których pokazujemy pole kodu pocztowego (Anglia/UK i okolice). */
@@ -50,19 +54,43 @@ export async function fillFromLocation(): Promise<PlaceFill | null> {
       Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
       12_000,
     );
+    const { latitude: lat, longitude: lng } = pos.coords;
+
+    // #358: najpierw TomTom reverse-geocode (dokładniejszy, zwraca pełny adres —
+    // `label`). Klucz KLIENTA jak MapTiler. Pusty klucz / błąd / null → łagodnie
+    // spadamy na dotychczasowy expo-location poniżej (wsteczna kompatybilność).
+    const key = process.env.EXPO_PUBLIC_TOMTOM_KEY ?? "";
+    if (key) {
+      try {
+        const hit = await withTimeout(
+          tomtomReverseGeocode(lat, lng, key, { language: "pl-PL" }),
+          12_000,
+        );
+        if (hit) {
+          return {
+            country: hit.country,
+            city: hit.city,
+            postcode: hit.postcode,
+            lat,
+            lng,
+            label: hit.label || undefined,
+          };
+        }
+      } catch {
+        // brak wyniku / rzut na !res.ok / timeout → fallback expo poniżej
+      }
+    }
+
     const [place] = await withTimeout(
-      Location.reverseGeocodeAsync({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-      }),
+      Location.reverseGeocodeAsync({ latitude: lat, longitude: lng }),
       12_000,
     );
     return {
       country: (place?.isoCountryCode ?? place?.country ?? "").toUpperCase(),
       city: place?.city ?? place?.subregion ?? "",
       postcode: place?.postalCode ?? "",
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude,
+      lat,
+      lng,
     };
   } catch {
     return null;

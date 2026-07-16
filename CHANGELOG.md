@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-356-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.201.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-358-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.202.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,26 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.202.0] — 🗺️ TomTom parytet web↔mobile: routing/geokoder/ruch na stronie + „po drodze" i „z GPS"
+
+Domknięcie parytetu z #356: funkcje TomTom trafiły na **web** (dotąd tylko mobile) i doszły nowe UI/UX po obu stronach. Wszystko **klucz-gated** (web: `NEXT_PUBLIC_TOMTOM_KEY` klient + `TOMTOM_API_KEY` serwer; mobile: `EXPO_PUBLIC_TOMTOM_KEY`) — bez klucza mapa działa jak dotąd.
+
+**Web — nowy parytet:**
+- `[#358]` 🧭 **Routing TomTom** w [route.ts](apps/web/app/api/route/route.ts) — łańcuch HERE→TomTom→GraphHopper→mock; TomTom liczy ETA TIR z ruchem (myto doszacowane, bo TomTom zwraca 0).
+- `[#358]` 🚧 **Warstwa incydentów TomTom** (korki/zamknięcia) jako overlay obok ruchu HERE — [/api/traffic](apps/web/app/api/traffic/route.ts) wariant TomTom + render w `map/page.tsx`.
+- `[#358]` 🔎 **Geokoder TomTom** w wyszukiwarce mapy (`map/page.tsx`) i w formularzach ([PlaceSearch.tsx](apps/web/components/PlaceSearch.tsx)).
+- `[#358]` ⛽🅿️ **„Paliwo/parking po drodze"** na mapie web — POI wzdłuż wytyczonej trasy (próbkowanie ≤100 pkt).
+
+**Mobile — domknięcie funkcji:**
+- `[#358]` 🚦 **Warstwa ruchu** (incydenty TomTom) na mapie + 🅿️ **„parking po drodze"** obok paliwa ([map.tsx](apps/mobile/app/map.tsx)).
+- `[#358]` 📍 **„Z GPS" (reverse-geocode)** w formularzach — nowy [GeoFillButton](apps/mobile/components/GeoFillButton.tsx) wpięty w [kontrahentów](apps/mobile/app/manage-contractors.tsx) i [zlecenia](apps/mobile/app/manage-orders.tsx); [geoFill](apps/mobile/lib/geoFill.ts) używa TomTom z fallbackiem expo.
+
+**Wspólne:**
+- `[#358]` 🌍 **i18n:** +12 kluczy web ([pl](packages/i18n/src/locales/pl.ts)/[en](packages/i18n/src/locales/en.ts)) + 5 mobile ([mobile.ts](packages/i18n/src/mobile.ts) pl/en/de/uk) — parytet zielony.
+- `[#358]` ⚙️ **Config:** `TOMTOM_API_KEY` + `NEXT_PUBLIC_TOMTOM_KEY` w [.env.example](.env.example) i [turbo.json](turbo.json).
+- `[#357]` 🔧 **Play:** tor Android `internal → alpha` (zamknięty — liczy się do dostępu produkcyjnego dla konta prywatnego) + materiały strony sklepu i testu zamkniętego ([docs](docs/PLAY-CLOSED-TEST.md)).
+- **Bramki:** `biome` ✓ · `tsc` web+mobile exit 0 ✓ · testy i18n **5/5** ✓ · **przegląd adwersarialny** (5 agentów) → 3 defekty naprawione: próbkowanie ≤100 (było 101 → 400 z TomTom), odtwarzanie warstw po zmianie podkładu, bbox trasy dla ruchu. Bez migracji.
 
 ## [1.201.0] — 🗺️ TomTom w aplikacji: geokoder, routing TIR z ruchem na żywo i „paliwo po drodze"
 

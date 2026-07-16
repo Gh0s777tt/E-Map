@@ -41,7 +41,8 @@ const routeBodySchema = z.object({
 /**
  * Serwerowe wytyczanie trasy przez przystanki. Klucze czytane z env po stronie
  * serwera (nigdy w bundlu). Priorytet dostawcy: HERE (realny routing TIR z wymiarami
- * + prawdziwe myto + ruch) → GraphHopper (car; myto doszacowane) → mock (bez klucza).
+ * + prawdziwe myto + ruch) → TomTom (TIR + ruch; myto doszacowane, tollCost:0) →
+ * GraphHopper (car; myto doszacowane) → mock (bez klucza).
  * Trasa liczona odcinkami (routeMultiLeg) → myto/dystans z podziałem na odcinki.
  */
 export async function POST(request: Request) {
@@ -60,19 +61,27 @@ export async function POST(request: Request) {
 
   const hereKey = process.env.HERE_API_KEY;
   const ghKey = process.env.GRAPHHOPPER_API_KEY;
+  const ttKey = process.env.TOMTOM_API_KEY;
   const provider = hereKey
     ? createRoutingProvider({ provider: "here", apiKey: hereKey })
-    : ghKey
-      ? createRoutingProvider({ provider: "graphhopper", apiKey: ghKey })
-      : createRoutingProvider();
+    : ttKey
+      ? createRoutingProvider({ provider: "tomtom", apiKey: ttKey })
+      : ghKey
+        ? createRoutingProvider({ provider: "graphhopper", apiKey: ghKey })
+        : createRoutingProvider();
 
   try {
     const result = await routeMultiLeg(provider, body);
 
     let { segments, tollCost } = result;
     let tollEstimated = false;
-    // Tylko GraphHopper nie zwraca myta → doszacowujemy. HERE podaje realne myto.
-    if (provider.name === "graphhopper" && tollCost === 0 && !body.options?.avoidTolls) {
+    // GraphHopper i TomTom nie zwracają myta (TomTom tollCost:0) → doszacowujemy.
+    // HERE podaje realne myto.
+    if (
+      (provider.name === "graphhopper" || provider.name === "tomtom") &&
+      tollCost === 0 &&
+      !body.options?.avoidTolls
+    ) {
       segments = result.segments.map((s) => ({
         ...s,
         tollCost: estimateTollEur(s.distanceKm, { weightKg: body.profile?.weightKg }),
@@ -81,11 +90,13 @@ export async function POST(request: Request) {
       tollEstimated = true;
     }
 
-    // HERE zwraca realny czas TIR; mock/GraphHopper(car) — szacujemy czas jazdy
-    // ciężarówki z dystansu (realna średnia TIR), bo profil „car" jest zbyt szybki.
+    // HERE i TomTom zwracają realny ETA z ruchem; mock/GraphHopper(car) — szacujemy
+    // czas jazdy ciężarówki z dystansu (realna średnia TIR), bo profil „car" jest zbyt szybki.
     const durationMin =
-      provider.name === "here" ? result.durationMin : estimateTruckDurationMin(result.distanceKm);
-    const durationEstimated = provider.name !== "here";
+      provider.name === "here" || provider.name === "tomtom"
+        ? result.durationMin
+        : estimateTruckDurationMin(result.distanceKm);
+    const durationEstimated = provider.name !== "here" && provider.name !== "tomtom";
 
     return NextResponse.json({
       ...result,

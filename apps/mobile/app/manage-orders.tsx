@@ -19,6 +19,7 @@ import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { GeoFillButton } from "../components/GeoFillButton";
 import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
@@ -261,6 +262,15 @@ export default function ManageOrdersScreen() {
           <SectionTitle>{form.id ? t("m.mord.edit") : t("m.mord.new")}</SectionTitle>
 
           {field("referenceNo", "m.mord.reference", { ph: "REF-2026-001" })}
+          {/* #358: bieżąca pozycja = miejsce załadunku → uzupełnia tylko `origin`
+              (rozładunek/destination wpisywany ręcznie). Sugestia edytowalna. */}
+          <GeoFillButton
+            onFill={(p) => {
+              const origin = (p.label || `${p.country} ${p.city}`).trim();
+              if (origin) set({ origin });
+            }}
+            onMsg={setMsg}
+          />
           <View style={s.row2}>
             {field("origin", "m.mord.origin", { ph: "PL Warszawa" })}
             {field("destination", "m.mord.destination", { ph: "DE Berlin" })}

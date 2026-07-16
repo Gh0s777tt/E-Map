@@ -8,7 +8,9 @@ import {
   type Poi,
   type TomTomPoi,
   TomTomRoutingProvider,
+  type TrafficIncident,
   tomtomSearchAlongRoute,
+  tomtomTrafficIncidents,
 } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import {
@@ -44,6 +46,22 @@ const t = createTranslator("pl");
 // wyszukiwanie, routing TIR z ruchem na żywo po stronie klienta oraz „POI po drodze".
 const TOMTOM_KEY = process.env.EXPO_PUBLIC_TOMTOM_KEY ?? "";
 
+// #358: bbox "minLng,minLat,maxLng,maxLat" z geometrii [lng,lat][] — do zapytań o ruch
+// dla obszaru wytyczonej trasy (nie zależy od stanu animacji kamery).
+function bboxOf(geometry: [number, number][]): string {
+  let minLng = Number.POSITIVE_INFINITY;
+  let minLat = Number.POSITIVE_INFINITY;
+  let maxLng = Number.NEGATIVE_INFINITY;
+  let maxLat = Number.NEGATIVE_INFINITY;
+  for (const [lng, lat] of geometry) {
+    if (lng < minLng) minLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lng > maxLng) maxLng = lng;
+    if (lat > maxLat) maxLat = lat;
+  }
+  return `${minLng},${minLat},${maxLng},${maxLat}`;
+}
+
 /**
  * Faza M3 (fala 1): render mapy + „moja lokalizacja" + POI TIR (parkingi hgv /
  * stacje paliw) z Overpass przez `@e-logistic/maps`. Routing TIR na mapie —
@@ -75,8 +93,13 @@ export default function MapScreen() {
   const [planning, setPlanning] = useState(false);
   // #356: POI TomTom wzdłuż wytyczonej trasy (paliwo/parking po drodze).
   const [alongPois, setAlongPois] = useState<TomTomPoi[]>([]);
+  const [alongKind, setAlongKind] = useState<"fuel" | "parking" | null>(null);
   const [alongBusy, setAlongBusy] = useState(false);
   const [selectedAlong, setSelectedAlong] = useState<TomTomPoi | null>(null);
+  // #358: warstwa ruchu — incydenty TomTom (wypadki, roboty, zamknięcia) w widoku.
+  const [trafficOn, setTrafficOn] = useState(false);
+  const [incidents, setIncidents] = useState<TrafficIncident[]>([]);
+  const [trafficBusy, setTrafficBusy] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -140,6 +163,27 @@ export default function MapScreen() {
     cameraRef.current?.easeTo({ center: [hit.lng, hit.lat], zoom: 9, duration: 700 });
   }, []);
 
+  // #358: pobierz incydenty ruchu dla bieżącego widoku. bbox = "minLng,minLat,maxLng,maxLat"
+  // (getBounds() zwraca [west, south, east, north]). Bez klucza — no-op.
+  const refreshTraffic = useCallback(async (bboxOverride?: string) => {
+    const map = mapRef.current;
+    if (!map || !TOMTOM_KEY) return;
+    try {
+      // Po wytyczeniu trasy kamera dopiero animuje — bierzemy bbox trasy (override),
+      // inaczej getBounds() zwróciłby jeszcze stary kadr (#358, przegląd).
+      let bbox = bboxOverride;
+      if (!bbox) {
+        const [west, south, east, north] = await map.getBounds();
+        bbox = `${west},${south},${east},${north}`;
+      }
+      const found = await tomtomTrafficIncidents(bbox, TOMTOM_KEY);
+      setIncidents(found);
+      if (found.length === 0) setNotice(t("mobileMap.trafficNone"));
+    } catch {
+      setNotice(t("mobileMap.trafficError"));
+    }
+  }, []);
+
   const planRoute = useCallback(async () => {
     if (!dest || planning) return;
     setPlanning(true);
@@ -176,9 +220,11 @@ export default function MapScreen() {
               currency: rr.currency,
             });
             setAlongPois([]);
+            setAlongKind(null);
             setActiveRoute(null);
             const mid = geometry[Math.floor(geometry.length / 2)];
             if (mid) cameraRef.current?.easeTo({ center: mid, zoom: 6, duration: 700 });
+            if (trafficOn) void refreshTraffic(bboxOf(geometry));
             return;
           }
         } catch {
@@ -208,15 +254,17 @@ export default function MapScreen() {
       }
       setPlanned(r);
       setAlongPois([]);
+      setAlongKind(null);
       setActiveRoute(null);
       const mid = r.geometry[Math.floor(r.geometry.length / 2)];
       if (mid) cameraRef.current?.easeTo({ center: mid, zoom: 6, duration: 700 });
+      if (trafficOn) void refreshTraffic(bboxOf(r.geometry));
     } catch {
       setNotice(t("mobileMap.routeError"));
     } finally {
       setPlanning(false);
     }
-  }, [dest, planning]);
+  }, [dest, planning, trafficOn, refreshTraffic]);
 
   const clearRoute = useCallback(() => {
     setPlanned(null);
@@ -224,33 +272,54 @@ export default function MapScreen() {
     setQuery("");
     setResults([]);
     setAlongPois([]);
+    setAlongKind(null);
     setSelectedAlong(null);
   }, []);
 
-  // #356: „paliwo po drodze" — POI TomTom wzdłuż wytyczonej trasy (do 10 min objazdu).
-  const findAlongRoute = useCallback(async () => {
-    if (!planned || alongBusy || !TOMTOM_KEY) return;
-    setAlongBusy(true);
-    setNotice(null);
-    try {
-      // TomTom searchAlongRoute ma limit punktów trasy — próbkujemy do ≤100
-      // równomiernie (zachowując pierwszy i ostatni), by nie dostać 400 na długiej trasie.
-      const geo = planned.geometry;
-      const step = Math.max(1, Math.ceil(geo.length / 100));
-      const sampled = geo.filter((_, i) => i % step === 0 || i === geo.length - 1);
-      const routePoints = sampled.map((g) => ({ lat: g[1], lng: g[0] }));
-      const found = await tomtomSearchAlongRoute(routePoints, "fuel", TOMTOM_KEY, {
-        maxDetourSec: 600,
-        limit: 20,
-      });
-      setAlongPois(found);
-      if (found.length === 0) setNotice(t("mobileMap.noResults"));
-    } catch {
-      setNotice(t("mobileMap.poiError"));
-    } finally {
-      setAlongBusy(false);
+  // #356/#358: „po drodze" — POI TomTom (paliwo/parking) wzdłuż trasy (do 10 min objazdu).
+  const findAlongRoute = useCallback(
+    async (kind: "fuel" | "parking") => {
+      if (!planned || alongBusy || !TOMTOM_KEY) return;
+      setAlongKind(kind);
+      setAlongBusy(true);
+      setNotice(null);
+      try {
+        // TomTom searchAlongRoute ma limit punktów trasy — próbkujemy do ≤100
+        // równomiernie (zachowując pierwszy i ostatni), by nie dostać 400 na długiej trasie.
+        // Dzielnik 99 (nie 100): filtr daje ≤99 punktów bazowych, +1 dołożony ostatni = ≤100.
+        const geo = planned.geometry;
+        const step = Math.max(1, Math.ceil(geo.length / 99));
+        const sampled = geo.filter((_, i) => i % step === 0 || i === geo.length - 1);
+        const routePoints = sampled.map((g) => ({ lat: g[1], lng: g[0] }));
+        const found = await tomtomSearchAlongRoute(routePoints, kind, TOMTOM_KEY, {
+          maxDetourSec: 600,
+          limit: 20,
+        });
+        setAlongPois(found);
+        if (found.length === 0) setNotice(t("mobileMap.alongEmpty"));
+      } catch {
+        setNotice(t("mobileMap.poiError"));
+      } finally {
+        setAlongBusy(false);
+      }
+    },
+    [planned, alongBusy],
+  );
+
+  // #358: włącz/wyłącz warstwę incydentów ruchu TomTom dla bieżącego widoku.
+  const toggleTraffic = useCallback(async () => {
+    if (!TOMTOM_KEY) return;
+    if (trafficOn) {
+      setTrafficOn(false);
+      setIncidents([]);
+      return;
     }
-  }, [planned, alongBusy]);
+    setTrafficOn(true);
+    setTrafficBusy(true);
+    setNotice(null);
+    await refreshTraffic();
+    setTrafficBusy(false);
+  }, [trafficOn, refreshTraffic]);
 
   const loadPois = useCallback(async () => {
     const map = mapRef.current;
@@ -365,7 +434,7 @@ export default function MapScreen() {
             />
           </GeoJSONSource>
         )}
-        {/* #356: POI TomTom wzdłuż trasy (paliwo po drodze) — zielone piny */}
+        {/* #356/#358: POI TomTom wzdłuż trasy — paliwo (zielone) / parking (niebieskie) */}
         {alongPois.length > 0 && (
           <GeoJSONSource
             id="along-pois"
@@ -375,7 +444,7 @@ export default function MapScreen() {
                 type: "Feature",
                 id: p.id,
                 geometry: { type: "Point", coordinates: [p.lng, p.lat] },
-                properties: { id: p.id, name: p.name },
+                properties: { id: p.id, name: p.name, kind: alongKind ?? "fuel" },
               })),
             }}
             onPress={onAlongPress}
@@ -385,7 +454,45 @@ export default function MapScreen() {
               id="along-pois-circle"
               style={{
                 circleRadius: 6,
-                circleColor: "#22c55e",
+                circleColor: ["match", ["get", "kind"], "parking", "#3b82f6", "#22c55e"],
+                circleStrokeColor: palette.black,
+                circleStrokeWidth: 1.5,
+              }}
+            />
+          </GeoJSONSource>
+        )}
+        {/* #358: warstwa ruchu — incydenty TomTom kolorowane wg severity */}
+        {trafficOn && incidents.length > 0 && (
+          <GeoJSONSource
+            id="traffic-incidents"
+            data={{
+              type: "FeatureCollection",
+              features: incidents.map((inc) => ({
+                type: "Feature",
+                id: inc.id,
+                geometry: { type: "Point", coordinates: [inc.point.lng, inc.point.lat] },
+                properties: { id: inc.id, severity: inc.severity },
+              })),
+            }}
+          >
+            <Layer
+              type="circle"
+              id="traffic-incidents-circle"
+              style={{
+                circleRadius: 7,
+                circleColor: [
+                  "match",
+                  ["get", "severity"],
+                  "closure",
+                  palette.red,
+                  "major",
+                  "#f97316",
+                  "moderate",
+                  "#eab308",
+                  "minor",
+                  "#3b82f6",
+                  "#9ca3af",
+                ],
                 circleStrokeColor: palette.black,
                 circleStrokeWidth: 1.5,
               }}
@@ -475,9 +582,28 @@ export default function MapScreen() {
             })()}
           </Text>
           {TOMTOM_KEY ? (
-            <Pressable onPress={findAlongRoute} disabled={alongBusy} hitSlop={6}>
-              <Text style={styles.alongBtn}>{alongBusy ? "…" : "⛽"}</Text>
-            </Pressable>
+            <>
+              <Pressable
+                onPress={() => findAlongRoute("fuel")}
+                disabled={alongBusy}
+                hitSlop={6}
+                accessibilityLabel={t("mobileMap.alongFuel")}
+              >
+                <Text style={styles.alongBtn}>
+                  {alongBusy && alongKind === "fuel" ? "…" : "⛽"}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => findAlongRoute("parking")}
+                disabled={alongBusy}
+                hitSlop={6}
+                accessibilityLabel={t("mobileMap.alongParking")}
+              >
+                <Text style={styles.alongBtn}>
+                  {alongBusy && alongKind === "parking" ? "…" : "🅿️"}
+                </Text>
+              </Pressable>
+            </>
           ) : null}
           <Pressable onPress={clearRoute} hitSlop={8}>
             <Text style={styles.planClose}>✕</Text>
@@ -534,7 +660,7 @@ export default function MapScreen() {
       {/* #356: wybrany POI wzdłuż trasy (paliwo po drodze) */}
       {selectedAlong ? (
         <View style={styles.infoBar}>
-          <Text style={styles.infoIcon}>⛽</Text>
+          <Text style={styles.infoIcon}>{alongKind === "parking" ? "🅿️" : "⛽"}</Text>
           <Text style={styles.infoText} numberOfLines={2}>
             {selectedAlong.name}
             {selectedAlong.address ? ` · ${selectedAlong.address}` : ""}
@@ -556,6 +682,23 @@ export default function MapScreen() {
         >
           <Text style={styles.buttonText}>{busy ? "…" : `🅿️ ${t("mobileMap.poiLoad")}`}</Text>
         </Pressable>
+        {TOMTOM_KEY ? (
+          <Pressable
+            style={[
+              styles.button,
+              !trafficOn && styles.buttonSecondary,
+              trafficBusy && styles.buttonBusy,
+            ]}
+            onPress={toggleTraffic}
+            disabled={trafficBusy}
+          >
+            <Text style={styles.buttonText}>
+              {trafficBusy
+                ? "…"
+                : `🚦 ${trafficOn ? t("mobileMap.trafficHide") : t("mobileMap.trafficShow")}`}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -657,6 +800,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     justifyContent: "center",
   },

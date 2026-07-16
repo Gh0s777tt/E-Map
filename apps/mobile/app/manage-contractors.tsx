@@ -14,6 +14,7 @@ import {
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { GeoFillButton } from "../components/GeoFillButton";
 import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
@@ -147,6 +148,18 @@ export default function ManageContractorsScreen() {
             autoCapitalize="characters"
           />
           <Text style={s.lbl}>{t("m.mctr.address")}</Text>
+          {/* #358: podpowiedź adres/kraj z bieżącej pozycji (TomTom → expo). Edytowalne;
+              nie nadpisujemy pustymi wartościami. */}
+          <GeoFillButton
+            onFill={(p) => {
+              const address = p.label || p.city;
+              set({
+                ...(address ? { address } : {}),
+                ...(p.country ? { country: p.country } : {}),
+              });
+            }}
+            onMsg={setMsg}
+          />
           <TextInput
             style={s.input}
             value={form.address}

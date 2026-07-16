@@ -5,6 +5,7 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import { useRef, useState } from "react";
 
 const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
+const TOMTOM_KEY = process.env.NEXT_PUBLIC_TOMTOM_KEY ?? "";
 
 /**
  * Wyszukiwarka miejsc (geokoder): wpisz miasto/adres → podpowiedzi → wybór
@@ -29,7 +30,7 @@ export function PlaceSearch({
       return;
     }
     timer.current = setTimeout(async () => {
-      setHits(await geocode(v, { maptilerKey: MAPTILER_KEY }));
+      setHits(await geocode(v, { tomtomKey: TOMTOM_KEY || undefined, maptilerKey: MAPTILER_KEY }));
     }, 350);
   }
 

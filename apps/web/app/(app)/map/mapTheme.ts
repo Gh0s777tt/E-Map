@@ -1,10 +1,11 @@
 import type { ReportType, SavedPlaceCategory } from "@e-logistic/core";
-import type { jamSeverity } from "@e-logistic/maps";
+import type { jamSeverity, TrafficSeverity } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import type { StyleSpecification } from "maplibre-gl";
 import type { BasemapKey } from "./mapTypes";
 
 export const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
+export const TOMTOM_KEY = process.env.NEXT_PUBLIC_TOMTOM_KEY ?? "";
 
 /** Promień (km) uznania zgłoszenia za „utrudnienie na trasie". */
 export const DISRUPTION_RADIUS_KM = 5;
@@ -24,6 +25,24 @@ export const TRAFFIC_COLOR: Record<ReturnType<typeof jamSeverity>, string> = {
   moderate: "#eab308",
   heavy: "#f97316",
   blocked: "#ef4444",
+};
+
+/** Kolor incydentu ruchu TomTom wg severity (zamknięcie = czerwień marki). */
+export const INCIDENT_COLOR: Record<TrafficSeverity, string> = {
+  closure: "#E50914",
+  major: "#f97316",
+  moderate: "#eab308",
+  minor: "#3b82f6",
+  unknown: "#9ca3af",
+};
+
+/** Etykiety PL severity incydentu TomTom (popup + legenda). */
+export const INCIDENT_LABEL: Record<TrafficSeverity, string> = {
+  closure: "Zamknięcie",
+  major: "Duże utrudnienie",
+  moderate: "Umiarkowane",
+  minor: "Drobne",
+  unknown: "Nieznane",
 };
 
 export const REPORT_LABEL: Record<ReportType, string> = {

@@ -43,6 +43,9 @@ import {
   type LatLng,
   type Poi,
   type TrafficFlow,
+  type TrafficIncident,
+  tomtomSearchAlongRoute,
+  tomtomTrafficIncidents,
 } from "@e-logistic/maps";
 import { cssPalette, palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker } from "maplibre-gl";
@@ -53,16 +56,19 @@ import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-import { poiFeatures, reportFeatures, routeFeature } from "./mapFeatures";
+import { incidentFeatures, poiFeatures, reportFeatures, routeFeature } from "./mapFeatures";
 import { FuelPricesPanel, RouteSummary, SavedPlacesChips, StopsEditor } from "./mapPanels";
 import {
   BASEMAPS,
   basemapStyle,
   DISRUPTION_RADIUS_KM,
+  INCIDENT_COLOR,
+  INCIDENT_LABEL,
   MAPTILER_KEY,
   POI_LABEL,
   REPORT_LABEL,
   SAVED_CAT_ICON,
+  TOMTOM_KEY,
   TRAFFIC_COLOR,
 } from "./mapTheme";
 import type { BasemapKey, MaplibreModule, Report, RouteResponse, Stop } from "./mapTypes";
@@ -117,6 +123,13 @@ export default function MapPage() {
   const rerouteBusyRef = useRef(false);
   const [trafficOn, setTrafficOn] = useState(false);
   const [trafficMsg, setTrafficMsg] = useState<string | null>(null);
+  // #358: warstwa incydentów TomTom (obok ruchu HERE) — klucz-gated.
+  const [incidentsOn, setIncidentsOn] = useState(false);
+  const [incidentMsg, setIncidentMsg] = useState<string | null>(null);
+  // #358: refy stanu warstw ruchu/incydentów — applyOverlays (po setStyle) odtwarza
+  // je tylko gdy były włączone; bez refów miałby nieświeży stan w domknięciu.
+  const trafficOnRef = useRef(false);
+  const incidentsOnRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
 
   // Koszt paliwa trasy (silnik billing) + zapisane miejsca.
@@ -394,6 +407,73 @@ export default function MapPage() {
     }
   }, [drawTraffic]);
 
+  // #358: warstwa incydentów TomTom — punktowe piny kolorowane wg severity.
+  const drawIncidents = useCallback((incidents: TrafficIncident[]) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const data = incidentFeatures(incidents);
+    const existing = map.getSource("incidents");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+      return;
+    }
+    map.addSource("incidents", { type: "geojson", data });
+    map.addLayer({
+      id: "incidents-layer",
+      type: "circle",
+      source: "incidents",
+      paint: {
+        "circle-radius": 7,
+        "circle-color": [
+          "match",
+          ["get", "severity"],
+          "closure",
+          INCIDENT_COLOR.closure,
+          "major",
+          INCIDENT_COLOR.major,
+          "moderate",
+          INCIDENT_COLOR.moderate,
+          "minor",
+          INCIDENT_COLOR.minor,
+          INCIDENT_COLOR.unknown,
+        ],
+        "circle-stroke-width": 2,
+        "circle-stroke-color": palette.white,
+      },
+    } as import("maplibre-gl").AddLayerObject);
+  }, []);
+
+  const fetchIncidentsForView = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map || !TOMTOM_KEY) return;
+    const b = map.getBounds();
+    let west = b.getWest();
+    let south = b.getSouth();
+    let east = b.getEast();
+    let north = b.getNorth();
+    // Ogranicz bbox do ~2° (jak HERE), by uniknąć zbyt dużego zapytania.
+    const MAX_DEG = 2;
+    if (east - west > MAX_DEG) {
+      const c = (east + west) / 2;
+      west = c - MAX_DEG / 2;
+      east = c + MAX_DEG / 2;
+    }
+    if (north - south > MAX_DEG) {
+      const c = (north + south) / 2;
+      south = c - MAX_DEG / 2;
+      north = c + MAX_DEG / 2;
+    }
+    // bbox TomTom = "minLng,minLat,maxLng,maxLat" (kolejność lng,lat!).
+    const bbox = `${west},${south},${east},${north}`;
+    try {
+      const incidents = await tomtomTrafficIncidents(bbox, TOMTOM_KEY);
+      setIncidentMsg(incidents.length === 0 ? "Brak utrudnień w tym widoku." : null);
+      drawIncidents(incidents);
+    } catch {
+      setIncidentMsg("Nie udało się pobrać utrudnień (TomTom).");
+    }
+  }, [drawIncidents]);
+
   const drawRoute = useCallback((geometry: LatLng[]) => {
     const map = mapRef.current;
     const ml = mlRef.current;
@@ -644,6 +724,28 @@ export default function MapPage() {
         (map as MlMap).getCanvas().style.cursor = "";
       });
 
+      // #358: incydenty ruchu TomTom — popup z opisem na klik.
+      map.on("click", "incidents-layer", (e) => {
+        const f = e.features?.[0];
+        if (f?.geometry.type !== "Point") return;
+        const props = f.properties as { severity?: string; description?: string } | null;
+        const [lng, lat] = f.geometry.coordinates as [number, number];
+        const sev = (props?.severity ?? "unknown") as keyof typeof INCIDENT_LABEL;
+        const title = INCIDENT_LABEL[sev];
+        new ml.Popup()
+          .setLngLat([lng, lat])
+          .setHTML(
+            `<strong>${title}</strong>${props?.description ? `<br/>${props.description}` : ""}`,
+          )
+          .addTo(map as MlMap);
+      });
+      map.on("mouseenter", "incidents-layer", () => {
+        (map as MlMap).getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "incidents-layer", () => {
+        (map as MlMap).getCanvas().style.cursor = "";
+      });
+
       map.on("load", () => {
         applyOverlays();
         setMapReady(true);
@@ -683,6 +785,7 @@ export default function MapPage() {
 
   // ── Warstwa ruchu HERE: pobierz dla widoku + odświeżaj przy przesuwaniu ──
   useEffect(() => {
+    trafficOnRef.current = trafficOn;
     const map = mapRef.current;
     if (!mapReady || !map) return;
     if (!trafficOn) {
@@ -702,6 +805,29 @@ export default function MapPage() {
       map.off("moveend", onMove);
     };
   }, [trafficOn, mapReady, fetchTrafficForView, drawTraffic]);
+
+  // ── Warstwa incydentów TomTom: pobierz dla widoku + odświeżaj przy ruchu mapy ──
+  useEffect(() => {
+    incidentsOnRef.current = incidentsOn;
+    const map = mapRef.current;
+    if (!mapReady || !map) return;
+    if (!incidentsOn) {
+      drawIncidents([]);
+      setIncidentMsg(null);
+      return;
+    }
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const onMove = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => void fetchIncidentsForView(), 600);
+    };
+    void fetchIncidentsForView();
+    map.on("moveend", onMove);
+    return () => {
+      if (t) clearTimeout(t);
+      map.off("moveend", onMove);
+    };
+  }, [incidentsOn, mapReady, fetchIncidentsForView, drawIncidents]);
 
   // ── Znaczniki przystanków (DOM — przetrwają zmianę stylu) ──
   useEffect(() => {
@@ -729,7 +855,10 @@ export default function MapPage() {
       return;
     }
     searchTimer.current = setTimeout(async () => {
-      const results = await geocode(value, { maptilerKey: MAPTILER_KEY });
+      const results = await geocode(value, {
+        tomtomKey: TOMTOM_KEY || undefined,
+        maptilerKey: MAPTILER_KEY,
+      });
       setHits((h) => ({ ...h, [key]: results }));
     }, 350);
   }
@@ -917,7 +1046,12 @@ export default function MapPage() {
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(basemapStyle(key));
-    map.once("style.load", () => applyOverlays());
+    map.once("style.load", () => {
+      applyOverlays();
+      // #358: setStyle wymazuje warstwy ruchu (HERE) i incydentów (TomTom) — odtwórz gdy włączone.
+      if (trafficOnRef.current) void fetchTrafficForView();
+      if (incidentsOnRef.current) void fetchIncidentsForView();
+    });
   }
 
   function toggleTerrain(on: boolean) {
@@ -1026,6 +1160,49 @@ export default function MapPage() {
     }
   }
 
+  /** #358: paliwo/parking WZDŁUŻ trasy (TomTom searchAlongRoute) — próbkowanie ≤100 pkt. */
+  async function loadTomtomAlongRoute(query: "fuel" | "parking", type: "fuel_station" | "parking") {
+    if (!TOMTOM_KEY) return;
+    const geo = routeGeoRef.current;
+    if (!geo || geo.length < 2) {
+      setShareMsg("Najpierw wytycz trasę.");
+      return;
+    }
+    setPoiBusy(true);
+    try {
+      // TomTom zwraca 400 przy zbyt gęstej geometrii — próbkuj do ≤100 pkt (1. i ostatni zawsze).
+      // Dzielnik 99 (nie 100): pętla daje ≤99 punktów, +1 dołożony ostatni = ≤100.
+      const step = Math.max(1, Math.ceil(geo.length / 99));
+      const sampled: LatLng[] = [];
+      for (let i = 0; i < geo.length; i += step) {
+        const pt = geo[i];
+        if (pt) sampled.push(pt);
+      }
+      const last = geo[geo.length - 1];
+      if (last && sampled[sampled.length - 1] !== last) sampled.push(last);
+      const found = await tomtomSearchAlongRoute(sampled, query, TOMTOM_KEY, {
+        maxDetourSec: 600,
+        limit: 20,
+      });
+      // TomTomPoi nie ma pola `type` — dodajemy je ręcznie do kształtu Poi (+ puste tags).
+      const pois: Poi[] = found.map((p) => ({
+        id: p.id,
+        type,
+        name: p.name,
+        lat: p.lat,
+        lng: p.lng,
+        tags: {},
+      }));
+      allPoisRef.current = pois;
+      applyPoiFilter();
+      if (pois.length === 0) setShareMsg("Brak wyników po drodze (TomTom).");
+    } catch {
+      setPoiCount(0);
+    } finally {
+      setPoiBusy(false);
+    }
+  }
+
   /** Ceny paliwa w okolicy środka mapy (Tankerkönig, DE) — wymaga klucza serwerowego. */
   async function loadFuelPrices() {
     const map = mapRef.current;
@@ -1118,8 +1295,12 @@ export default function MapPage() {
     (async () => {
       try {
         const [fh, th] = await Promise.all([
-          from ? geocode(from, { maptilerKey: MAPTILER_KEY }) : Promise.resolve([] as GeoHit[]),
-          to ? geocode(to, { maptilerKey: MAPTILER_KEY }) : Promise.resolve([] as GeoHit[]),
+          from
+            ? geocode(from, { tomtomKey: TOMTOM_KEY || undefined, maptilerKey: MAPTILER_KEY })
+            : Promise.resolve([] as GeoHit[]),
+          to
+            ? geocode(to, { tomtomKey: TOMTOM_KEY || undefined, maptilerKey: MAPTILER_KEY })
+            : Promise.resolve([] as GeoHit[]),
         ]);
         const start = fh[0];
         const end = th[0];
@@ -1469,6 +1650,28 @@ export default function MapPage() {
               🛣️ POI wzdłuż trasy
             </button>
           </div>
+          {TOMTOM_KEY && (
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                type="button"
+                className={styles.ghost}
+                style={{ flex: 1 }}
+                onClick={() => loadTomtomAlongRoute("fuel", "fuel_station")}
+                disabled={poiBusy}
+              >
+                ⛽ Paliwo po drodze
+              </button>
+              <button
+                type="button"
+                className={styles.ghost}
+                style={{ flex: 1 }}
+                onClick={() => loadTomtomAlongRoute("parking", "parking")}
+                disabled={poiBusy}
+              >
+                🅿️ Parking po drodze
+              </button>
+            </div>
+          )}
           {poiCount != null && (
             <div style={{ fontSize: 12, color: cssPalette.smoke }}>
               Znaleziono: <strong>{poiCount}</strong> ·{" "}
@@ -1583,6 +1786,33 @@ export default function MapPage() {
             </div>
           )}
           {trafficMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{trafficMsg}</div>}
+
+          {TOMTOM_KEY && (
+            <>
+              <label className={styles.check}>
+                <input
+                  type="checkbox"
+                  checked={incidentsOn}
+                  onChange={(e) => setIncidentsOn(e.target.checked)}
+                />{" "}
+                🚧 Utrudnienia (TomTom)
+              </label>
+              {incidentsOn && (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
+                  <span style={{ color: INCIDENT_COLOR.closure }}>● {INCIDENT_LABEL.closure}</span>
+                  <span style={{ color: INCIDENT_COLOR.major }}>● {INCIDENT_LABEL.major}</span>
+                  <span style={{ color: INCIDENT_COLOR.moderate }}>
+                    ● {INCIDENT_LABEL.moderate}
+                  </span>
+                  <span style={{ color: INCIDENT_COLOR.minor }}>● {INCIDENT_LABEL.minor}</span>
+                  <span style={{ color: INCIDENT_COLOR.unknown }}>● {INCIDENT_LABEL.unknown}</span>
+                </div>
+              )}
+              {incidentMsg && (
+                <div style={{ fontSize: 12, color: cssPalette.smoke }}>{incidentMsg}</div>
+              )}
+            </>
+          )}
 
           {result && (
             <RouteSummary
