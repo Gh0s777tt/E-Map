@@ -29,6 +29,7 @@
     "production": {
       "autoIncrement": true,
       "channel": "production",
+      "environment": "production",
       "ios": {
         "credentialsSource": "local"
       },

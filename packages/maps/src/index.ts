@@ -16,4 +16,7 @@ export * from "./mock";
 export * from "./multileg";
 export * from "./poi";
 export * from "./toll";
+export * from "./tomtom";
+export * from "./tomtomSearch";
+export * from "./tomtomTraffic";
 export * from "./types";

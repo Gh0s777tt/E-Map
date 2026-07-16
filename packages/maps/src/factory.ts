@@ -1,9 +1,10 @@
 import { GraphHopperRoutingProvider } from "./graphhopper";
 import { HereRoutingProvider } from "./here";
 import { MockRoutingProvider } from "./mock";
+import { TomTomRoutingProvider } from "./tomtom";
 import type { RoutingProvider } from "./types";
 
-export type RoutingProviderName = "mock" | "graphhopper" | "here";
+export type RoutingProviderName = "mock" | "graphhopper" | "here" | "tomtom";
 
 export interface RoutingConfig {
   provider?: RoutingProviderName;
@@ -23,6 +24,9 @@ export function createRoutingProvider(config: RoutingConfig = {}): RoutingProvid
     case "here":
       if (!config.apiKey) throw new Error("HERE wymaga apiKey.");
       return new HereRoutingProvider(config.apiKey);
+    case "tomtom":
+      if (!config.apiKey) throw new Error("TomTom wymaga apiKey.");
+      return new TomTomRoutingProvider(config.apiKey);
     default:
       return new MockRoutingProvider();
   }

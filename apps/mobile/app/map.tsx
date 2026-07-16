@@ -1,7 +1,15 @@
 import { type DriverRoute, listMyDriverRoutes } from "@e-logistic/api";
 import { estimateRouteFuel } from "@e-logistic/core";
 import { createTranslator } from "@e-logistic/i18n";
-import { fetchPois, type GeoHit, geocode, type Poi } from "@e-logistic/maps";
+import {
+  fetchPois,
+  type GeoHit,
+  geocode,
+  type Poi,
+  type TomTomPoi,
+  TomTomRoutingProvider,
+  tomtomSearchAlongRoute,
+} from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import {
   Camera,
@@ -30,6 +38,11 @@ import { EUROPE_CENTER, EUROPE_ZOOM, mapStyle } from "../lib/mapStyle";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 const t = createTranslator("pl");
+
+// #356: klucz TomTom (klient-side, EXPO_PUBLIC). Pusty → mapa działa jak dotąd
+// (geokoder MapTiler/Nominatim, routing przez web /api/route). Ustawiony → lepsze
+// wyszukiwanie, routing TIR z ruchem na żywo po stronie klienta oraz „POI po drodze".
+const TOMTOM_KEY = process.env.EXPO_PUBLIC_TOMTOM_KEY ?? "";
 
 /**
  * Faza M3 (fala 1): render mapy + „moja lokalizacja" + POI TIR (parkingi hgv /
@@ -60,6 +73,10 @@ export default function MapScreen() {
     currency: string;
   } | null>(null);
   const [planning, setPlanning] = useState(false);
+  // #356: POI TomTom wzdłuż wytyczonej trasy (paliwo/parking po drodze).
+  const [alongPois, setAlongPois] = useState<TomTomPoi[]>([]);
+  const [alongBusy, setAlongBusy] = useState(false);
+  const [selectedAlong, setSelectedAlong] = useState<TomTomPoi | null>(null);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -103,7 +120,10 @@ export default function MapScreen() {
     setSearching(true);
     setNotice(null);
     try {
-      const hits = await geocode(query.trim(), { limit: 6 });
+      const hits = await geocode(query.trim(), {
+        limit: 6,
+        tomtomKey: TOMTOM_KEY || undefined,
+      });
       setResults(hits);
       if (hits.length === 0) setNotice(t("mobileMap.noResults"));
     } catch {
@@ -132,14 +152,45 @@ export default function MapScreen() {
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const waypoints = [
+        { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        { lat: dest.lat, lng: dest.lng },
+      ];
+
+      // #356: z kluczem TomTom liczymy trasę TIR z ruchem na żywo bezpośrednio na
+      // urządzeniu (bez zależności od web /api/route). Fallback do web przy błędzie.
+      if (TOMTOM_KEY) {
+        try {
+          const rr = await new TomTomRoutingProvider(TOMTOM_KEY).route({
+            waypoints,
+            profile: { kind: "truck", weightKg: 24000 },
+            currency: "EUR",
+          });
+          if (rr.geometry.length >= 2) {
+            const geometry = rr.geometry.map((g) => [g.lng, g.lat] as [number, number]);
+            setPlanned({
+              geometry,
+              distanceKm: rr.distanceKm,
+              durationMin: rr.durationMin,
+              tollCost: rr.tollCost,
+              currency: rr.currency,
+            });
+            setAlongPois([]);
+            setActiveRoute(null);
+            const mid = geometry[Math.floor(geometry.length / 2)];
+            if (mid) cameraRef.current?.easeTo({ center: mid, zoom: 6, duration: 700 });
+            return;
+          }
+        } catch {
+          // spadamy do web /api/route poniżej
+        }
+      }
+
       const res = await fetch("https://e-logistic-one.vercel.app/api/route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          waypoints: [
-            { lat: pos.coords.latitude, lng: pos.coords.longitude },
-            { lat: dest.lat, lng: dest.lng },
-          ],
+          waypoints,
           profile: { kind: "truck", weightKg: 24000 },
           options: {},
         }),
@@ -156,6 +207,7 @@ export default function MapScreen() {
         return;
       }
       setPlanned(r);
+      setAlongPois([]);
       setActiveRoute(null);
       const mid = r.geometry[Math.floor(r.geometry.length / 2)];
       if (mid) cameraRef.current?.easeTo({ center: mid, zoom: 6, duration: 700 });
@@ -171,7 +223,34 @@ export default function MapScreen() {
     setDest(null);
     setQuery("");
     setResults([]);
+    setAlongPois([]);
+    setSelectedAlong(null);
   }, []);
+
+  // #356: „paliwo po drodze" — POI TomTom wzdłuż wytyczonej trasy (do 10 min objazdu).
+  const findAlongRoute = useCallback(async () => {
+    if (!planned || alongBusy || !TOMTOM_KEY) return;
+    setAlongBusy(true);
+    setNotice(null);
+    try {
+      // TomTom searchAlongRoute ma limit punktów trasy — próbkujemy do ≤100
+      // równomiernie (zachowując pierwszy i ostatni), by nie dostać 400 na długiej trasie.
+      const geo = planned.geometry;
+      const step = Math.max(1, Math.ceil(geo.length / 100));
+      const sampled = geo.filter((_, i) => i % step === 0 || i === geo.length - 1);
+      const routePoints = sampled.map((g) => ({ lat: g[1], lng: g[0] }));
+      const found = await tomtomSearchAlongRoute(routePoints, "fuel", TOMTOM_KEY, {
+        maxDetourSec: 600,
+        limit: 20,
+      });
+      setAlongPois(found);
+      if (found.length === 0) setNotice(t("mobileMap.noResults"));
+    } catch {
+      setNotice(t("mobileMap.poiError"));
+    } finally {
+      setAlongBusy(false);
+    }
+  }, [planned, alongBusy]);
 
   const loadPois = useCallback(async () => {
     const map = mapRef.current;
@@ -202,6 +281,13 @@ export default function MapScreen() {
   const onPoiPress = (e: NativeSyntheticEvent<PressEventWithFeatures>) => {
     const id = e.nativeEvent.features[0]?.properties?.id;
     setSelected(pois.find((p) => p.id === id) ?? null);
+    setSelectedAlong(null);
+  };
+
+  const onAlongPress = (e: NativeSyntheticEvent<PressEventWithFeatures>) => {
+    const id = e.nativeEvent.features[0]?.properties?.id;
+    setSelectedAlong(alongPois.find((p) => p.id === id) ?? null);
+    setSelected(null);
   };
 
   return (
@@ -276,6 +362,33 @@ export default function MapScreen() {
               type="line"
               id="planned-route-line"
               style={{ lineColor: "#3b82f6", lineWidth: 5, lineOpacity: 0.9 }}
+            />
+          </GeoJSONSource>
+        )}
+        {/* #356: POI TomTom wzdłuż trasy (paliwo po drodze) — zielone piny */}
+        {alongPois.length > 0 && (
+          <GeoJSONSource
+            id="along-pois"
+            data={{
+              type: "FeatureCollection",
+              features: alongPois.map((p) => ({
+                type: "Feature",
+                id: p.id,
+                geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+                properties: { id: p.id, name: p.name },
+              })),
+            }}
+            onPress={onAlongPress}
+          >
+            <Layer
+              type="circle"
+              id="along-pois-circle"
+              style={{
+                circleRadius: 6,
+                circleColor: "#22c55e",
+                circleStrokeColor: palette.black,
+                circleStrokeWidth: 1.5,
+              }}
             />
           </GeoJSONSource>
         )}
@@ -361,6 +474,11 @@ export default function MapScreen() {
               return ` · ${eco.fuelLiters} l · 🌿 ${eco.co2Kg} kg CO₂`;
             })()}
           </Text>
+          {TOMTOM_KEY ? (
+            <Pressable onPress={findAlongRoute} disabled={alongBusy} hitSlop={6}>
+              <Text style={styles.alongBtn}>{alongBusy ? "…" : "⛽"}</Text>
+            </Pressable>
+          ) : null}
           <Pressable onPress={clearRoute} hitSlop={8}>
             <Text style={styles.planClose}>✕</Text>
           </Pressable>
@@ -409,6 +527,19 @@ export default function MapScreen() {
             {selected.name || t("mobileMap.poiFuel")}
           </Text>
           <Pressable onPress={() => setSelected(null)} hitSlop={8}>
+            <Text style={styles.infoClose}>✕</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {/* #356: wybrany POI wzdłuż trasy (paliwo po drodze) */}
+      {selectedAlong ? (
+        <View style={styles.infoBar}>
+          <Text style={styles.infoIcon}>⛽</Text>
+          <Text style={styles.infoText} numberOfLines={2}>
+            {selectedAlong.name}
+            {selectedAlong.address ? ` · ${selectedAlong.address}` : ""}
+          </Text>
+          <Pressable onPress={() => setSelectedAlong(null)} hitSlop={8}>
             <Text style={styles.infoClose}>✕</Text>
           </Pressable>
         </View>
@@ -490,6 +621,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   planInfoText: { color: palette.offWhite, flex: 1, fontSize: 13, fontWeight: "600" },
+  alongBtn: { fontSize: 18 },
   planClose: { color: "#3b82f6", fontSize: 16, fontWeight: "800" },
   routesBar: { position: "absolute", top: 66, left: 0, right: 0, maxHeight: 44 },
   routesBarIn: { paddingHorizontal: 12, gap: 8 },

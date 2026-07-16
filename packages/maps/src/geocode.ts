@@ -54,19 +54,28 @@ async function geocodeNominatim(query: string, limit: number): Promise<GeoHit[]>
   return out;
 }
 
-/** Wyszukuje miejsce. Gdy podany klucz MapTiler — używa go; inaczej Nominatim. */
+/**
+ * Wyszukuje miejsce. Priorytet: TomTom (najlepsza jakość, #356) → MapTiler →
+ * Nominatim (OSM, bez klucza). Każde źródło z fallbackiem na Nominatim.
+ */
 export async function geocode(
   query: string,
-  opts?: { maptilerKey?: string; limit?: number },
+  opts?: { tomtomKey?: string; maptilerKey?: string; limit?: number },
 ): Promise<GeoHit[]> {
   const q = query.trim();
   if (q.length < 2) return [];
   const limit = opts?.limit ?? 6;
   try {
+    if (opts?.tomtomKey) {
+      // Import leniwy — pakiet maps nie musi ładować TomTom, gdy klucza brak.
+      const { tomtomGeocode } = await import("./tomtomSearch");
+      const hits = await tomtomGeocode(q, opts.tomtomKey, { limit });
+      if (hits.length > 0) return hits;
+    }
     if (opts?.maptilerKey) return await geocodeMapTiler(q, opts.maptilerKey, limit);
     return await geocodeNominatim(q, limit);
   } catch {
-    // Awaryjnie spróbuj drugiego źródła.
+    // Awaryjnie spróbuj Nominatim (bez klucza).
     try {
       return await geocodeNominatim(q, limit);
     } catch {

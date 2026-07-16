@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-355-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.200.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-356-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.201.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.201.0] — 🗺️ TomTom w aplikacji: geokoder, routing TIR z ruchem na żywo i „paliwo po drodze"
+
+Użytkownik podłączył TomTom w konektorach i poprosił o połączenie aplikacji z funkcjami TomTom oraz rozwinięcie jej o te możliwości. Dodano pełny adapter TomTom w `@e-logistic/maps` i wpięto go w mapę mobilną — **addytywnie**: bez klucza mapa działa jak dotąd (MapTiler/OSM + web `/api/route`), z kluczem `EXPO_PUBLIC_TOMTOM_KEY` włączają się lepsze funkcje.
+
+- `[#356]` 🧭 **Adapter routingu TomTom** ([tomtom.ts](packages/maps/src/tomtom.ts)) — `TomTomRoutingProvider` liczy trasę **TIR** (tryb `truck`, wymiary/tonaż/osie, `vehicleCommercial`) z **ruchem na żywo** (`traffic=true`), zwraca geometrię i odcinki płatne. Dopięte do fabryki ([factory.ts](packages/maps/src/factory.ts)) jako provider `"tomtom"` — web może go wybrać przez env.
+- `[#356]` 🔎 **Search TomTom** ([tomtomSearch.ts](packages/maps/src/tomtomSearch.ts)) — geokoder fuzzy (adres/miasto/POI/marka), reverse-geocode (GPS → kraj/miasto/kod), POI w pobliżu oraz **wyszukiwanie WZDŁUŻ TRASY** (paliwo/parking po drodze, do 10 min objazdu). Geokoder wpięty w [geocode.ts](packages/maps/src/geocode.ts): priorytet TomTom → MapTiler → Nominatim.
+- `[#356]` 🚦 **Incydenty ruchu TomTom** ([tomtomTraffic.ts](packages/maps/src/tomtomTraffic.ts)) — `tomtomTrafficIncidents(bbox)` z mapowaniem powagi (w tym zamknięcia dróg); gotowe pod warstwę ruchu.
+- `[#356]` 📱 **Mapa mobilna wpięta w TomTom** ([map.tsx](apps/mobile/app/map.tsx)) — wyszukiwarka używa geokodera TomTom; „🧭 Wyznacz trasę" liczy trasę TIR **na urządzeniu** z ruchem na żywo (fallback do web `/api/route`); nowy przycisk **⛽ paliwo po drodze** pokazuje stacje wzdłuż wytyczonej trasy (zielone piny + karta POI).
+- `[#356]` ⚙️ **Konfiguracja** — `EXPO_PUBLIC_TOMTOM_KEY` w [eas.json](apps/mobile/eas.json) (3 profile) i `.env.example` ([root](.env.example) + [mobile](apps/mobile/.env.example)); klucz klient-side (jak MapTiler), domenowo restrykcjonowany. Pusty klucz = zachowanie bez zmian.
+- `[#356]` ✅ **Testy** — 12 nowych testów adaptera ([tomtom.test.ts](packages/maps/src/tomtom.test.ts)): budowa URL truck, parsowanie trasy, provider, geokoder, reverse, incydenty, geokoder z kluczem TomTom.
+- **Bramki:** `biome` czysto ✓ · `tsc` (maps + mobile) exit 0 ✓ · testy maps **72** (+12 TomTom) ✓ · docs:check ✓ · bez migracji. **Aktywacja:** wklej klucz TomTom do `EXPO_PUBLIC_TOMTOM_KEY`.
 
 ## [1.200.0] — 🐛 KRYTYCZNE: znaleziona PRAWDZIWA przyczyna „nie da się zapisać" — `newId()` rzucał na telefonie
 
