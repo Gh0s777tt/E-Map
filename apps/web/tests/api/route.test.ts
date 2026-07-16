@@ -8,35 +8,44 @@ vi.mock("next/server", () => ({
 }));
 const rateLimit = vi.fn();
 vi.mock("@/lib/ratelimit", () => ({ rateLimit }));
+const authenticateRequest = vi.fn();
+vi.mock("@/lib/apiAuth", () => ({ authenticateRequest }));
 
 const { POST } = await import("@/app/api/route/route");
 
 const req = (body: unknown) =>
   new Request("http://localhost/api/route", { method: "POST", body: JSON.stringify(body) });
 
-beforeEach(() => rateLimit.mockReset());
+const twoPoints = {
+  waypoints: [
+    { lat: 1, lng: 1 },
+    { lat: 2, lng: 2 },
+  ],
+};
 
-describe("POST /api/route — rate-limit i walidacja", () => {
+beforeEach(() => {
+  rateLimit.mockReset();
+  rateLimit.mockResolvedValue({ ok: true });
+  authenticateRequest.mockReset();
+  authenticateRequest.mockResolvedValue("user-1"); // domyślnie zalogowany
+});
+
+describe("POST /api/route — rate-limit, auth i walidacja", () => {
   it("429 przy przekroczeniu limitu", async () => {
     rateLimit.mockResolvedValue({ ok: false });
-    const res = await POST(
-      req({
-        waypoints: [
-          { lat: 1, lng: 1 },
-          { lat: 2, lng: 2 },
-        ],
-      }),
-    );
-    expect(res.status).toBe(429);
+    expect((await POST(req(twoPoints))).status).toBe(429);
+  });
+
+  it("401 bez sesji (audyt Ś16)", async () => {
+    authenticateRequest.mockResolvedValue(null);
+    expect((await POST(req(twoPoints))).status).toBe(401);
   });
 
   it("400 dla mniej niż 2 punktów", async () => {
-    rateLimit.mockResolvedValue({ ok: true });
     expect((await POST(req({ waypoints: [{ lat: 1, lng: 1 }] }))).status).toBe(400);
   });
 
   it("400 dla pustego/niepoprawnego body", async () => {
-    rateLimit.mockResolvedValue({ ok: true });
     expect((await POST(req(null))).status).toBe(400);
   });
 });

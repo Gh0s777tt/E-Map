@@ -8,19 +8,30 @@ vi.mock("next/server", () => ({
 }));
 const rateLimit = vi.fn();
 vi.mock("@/lib/ratelimit", () => ({ rateLimit }));
+const authenticateRequest = vi.fn();
+vi.mock("@/lib/apiAuth", () => ({ authenticateRequest }));
 
 const { POST } = await import("@/app/api/traffic/route");
 
 const req = (body: unknown) =>
   new Request("http://localhost/api/traffic", { method: "POST", body: JSON.stringify(body) });
 
-beforeEach(() => rateLimit.mockResolvedValue({ ok: true }));
+beforeEach(() => {
+  rateLimit.mockResolvedValue({ ok: true });
+  authenticateRequest.mockReset();
+  authenticateRequest.mockResolvedValue("user-1"); // domyślnie zalogowany
+});
 afterEach(() => vi.unstubAllEnvs());
 
 describe("POST /api/traffic", () => {
   it("429 przy przekroczeniu limitu", async () => {
     rateLimit.mockResolvedValue({ ok: false });
     expect((await POST(req({}))).status).toBe(429);
+  });
+
+  it("401 bez sesji (audyt Ś16)", async () => {
+    authenticateRequest.mockResolvedValue(null);
+    expect((await POST(req({ west: 1, south: 1, east: 1.5, north: 1.5 }))).status).toBe(401);
   });
 
   it("501 bez HERE_API_KEY", async () => {
