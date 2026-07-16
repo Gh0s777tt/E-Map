@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { geocode } from "./geocode";
 import { buildTomTomRouteUrl, parseTomTomRoute, TomTomRoutingProvider } from "./tomtom";
-import { tomtomGeocode, tomtomReverseGeocode } from "./tomtomSearch";
+import {
+  TOMTOM_CATEGORY,
+  tomtomGeocode,
+  tomtomReverseGeocode,
+  tomtomSearchAlongRoute,
+} from "./tomtomSearch";
 import { tomtomTrafficIncidents } from "./tomtomTraffic";
 import type { LatLng } from "./types";
 
@@ -171,6 +176,77 @@ describe("tomtomReverseGeocode", () => {
       postcode: "30-001",
       label: "Rynek, Kraków",
     });
+  });
+});
+
+describe("tomtomSearchAlongRoute", () => {
+  it("zwraca [] dla < 2 punktów trasy", async () => {
+    expect(await tomtomSearchAlongRoute([BERLIN], "paliwo", "KEY")).toEqual([]);
+  });
+
+  it("POST-uje trasę, buduje URL i mapuje POI (pomija wynik bez pozycji)", async () => {
+    const fn = stubFetch({
+      json: {
+        results: [
+          {
+            id: "s1",
+            poi: { name: "Shell A2" },
+            address: { freeformAddress: "A2, PL" },
+            position: { lat: 52.3, lon: 17.0 },
+            dist: 1234.6,
+          },
+          { address: { freeformAddress: "brak pozycji" } },
+        ],
+      },
+    });
+    const pois = await tomtomSearchAlongRoute([BERLIN, WARSAW], "stacja paliw", "KEY", {
+      maxDetourSec: 900,
+      limit: 10,
+      categorySet: String(TOMTOM_CATEGORY.fuel),
+    });
+
+    const url = String(fn.mock.calls[0]?.[0]);
+    expect(url).toContain("/search/2/searchAlongRoute/stacja%20paliw.json");
+    expect(url).toContain("maxDetourTime=900");
+    expect(url).toContain("limit=10");
+    expect(url).toContain(`categorySet=${TOMTOM_CATEGORY.fuel}`);
+    expect(url).toContain("key=KEY");
+
+    const init = fn.mock.calls[0]?.[1];
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      route: {
+        points: [
+          { lat: 52.52, lon: 13.405 },
+          { lat: 52.2297, lon: 21.0122 },
+        ],
+      },
+    });
+
+    expect(pois).toHaveLength(1);
+    expect(pois[0]).toEqual({
+      id: "s1",
+      name: "Shell A2",
+      lat: 52.3,
+      lng: 17.0,
+      address: "A2, PL",
+      distanceM: 1235,
+    });
+  });
+
+  it("domyślne parametry: maxDetourTime=600, limit=20, bez categorySet", async () => {
+    const fn = stubFetch({ json: { results: [] } });
+    await tomtomSearchAlongRoute([BERLIN, WARSAW], "parking", "KEY");
+    const url = String(fn.mock.calls[0]?.[0]);
+    expect(url).toContain("maxDetourTime=600");
+    expect(url).toContain("limit=20");
+    expect(url).not.toContain("categorySet");
+  });
+
+  it("rzuca na błąd HTTP", async () => {
+    stubFetch({ ok: false, status: 429 });
+    const p = tomtomSearchAlongRoute([BERLIN, WARSAW], "paliwo", "KEY");
+    await expect(p).rejects.toThrow(/429/);
   });
 });
 

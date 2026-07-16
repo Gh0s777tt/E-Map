@@ -69,27 +69,3 @@ export async function listMyTachoEvents(
   if (error) throw error;
   return (data ?? []) as TachoEvent[];
 }
-
-/** Dziennik całej firmy (zarząd) — wgląd w czas pracy kierowców. */
-export async function listCompanyTachoEvents(
-  client: SupabaseClient,
-  companyId: string,
-  opts: { from?: string; limit?: number } = {},
-): Promise<TachoEvent[]> {
-  let q = client
-    .from("driver_tacho_events")
-    .select(COLS)
-    .eq("company_id", companyId)
-    .order("at", { ascending: false });
-  if (opts.from) q = q.gte("at", opts.from);
-  q = q.limit(opts.limit ?? 500);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as TachoEvent[];
-}
-
-/** Usuwa zdarzenie (RLS: własne kierowcy). */
-export async function deleteTachoEvent(client: SupabaseClient, id: string): Promise<void> {
-  const { error } = await client.from("driver_tacho_events").delete().eq("id", id);
-  if (error) throw error;
-}

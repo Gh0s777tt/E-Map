@@ -46,11 +46,6 @@ export const VEHICLE_MAKE_GROUPS = [
   },
 ] as const;
 
-/** Płaska, odduplikowana lista marek (np. do walidacji/podpowiedzi). */
-export const VEHICLE_MAKES: string[] = Array.from(
-  new Set(VEHICLE_MAKE_GROUPS.flatMap((g) => g.makes)),
-).sort();
-
 /** Moduły aplikacji, do których właściciel nadaje dostęp członkom. */
 export const APP_MODULES = [
   "vehicles",
@@ -147,14 +142,6 @@ export const ORDER_STATUSES = [
   "cancelled",
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
-export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  new: "Nowe",
-  assigned: "Przypisane",
-  in_progress: "W trakcie",
-  delivered: "Dostarczone",
-  invoiced: "Zafakturowane",
-  cancelled: "Anulowane",
-};
 
 /** Kategorie dokumentów w sejfie (Storage). Wartość = string (rozszerzalne). */
 export const DOCUMENT_CATEGORIES = [
@@ -398,12 +385,6 @@ export const INSURERS = [
 export const PERMISSION_LEVELS = ["none", "view", "edit"] as const;
 export type PermissionLevel = (typeof PERMISSION_LEVELS)[number];
 export type MemberPermissions = Partial<Record<AppModule, PermissionLevel>>;
-
-export const PERMISSION_LEVEL_LABELS: Record<PermissionLevel, string> = {
-  none: "brak",
-  view: "podgląd",
-  edit: "edycja",
-};
 
 /** Efektywny poziom uprawnień członka do modułu. */
 export function effectivePermission(

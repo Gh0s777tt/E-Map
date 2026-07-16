@@ -1,21 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateConsumptionLPer100km,
-  computeTripSettlement,
+  buildSettlement,
   consumptionFullToFull,
   consumptionLPer100km,
   detectFuelAnomalies,
   effectiveFuelPrice,
   fuelConsumptionSeries,
   fuelCost,
+  latestUnitPrice,
   monthlyFleetSummary,
   monthlyFleetTrend,
   monthsEndingAt,
   summarizeFuel,
-  tripCost,
-  tripDistanceKm,
   tripProfit,
-  tripRevenue,
 } from "./billing";
 
 describe("anomalie spalania", () => {
@@ -104,16 +102,6 @@ describe("koszt paliwa", () => {
 });
 
 describe("ekonomia trasy", () => {
-  it("liczy dystans i rzuca gdy koniec < start", () => {
-    expect(tripDistanceKm(1000, 1500)).toBe(500);
-    expect(() => tripDistanceKm(1500, 1000)).toThrow(RangeError);
-  });
-
-  it("liczy przychód i koszt", () => {
-    expect(tripRevenue(500, 1.2)).toBe(600);
-    expect(tripCost({ fuel: 147, adblue: 20 })).toBe(167);
-  });
-
   it("liczy zysk i marżę", () => {
     const p = tripProfit(600, 167);
     expect(p.profit).toBe(433);
@@ -122,16 +110,6 @@ describe("ekonomia trasy", () => {
 
   it("marża = null gdy przychód = 0", () => {
     expect(tripProfit(0, 50).marginPercent).toBeNull();
-  });
-
-  it("składa pełne rozliczenie trasy", () => {
-    const s = computeTripSettlement({
-      startKm: 1000,
-      endKm: 1500,
-      ratePerKm: 1.2,
-      costs: { fuel: 147, adblue: 20 },
-    });
-    expect(s).toMatchObject({ distanceKm: 500, revenue: 600, cost: 167, profit: 433 });
   });
 });
 
@@ -266,5 +244,61 @@ describe("monthlyFleetTrend", () => {
     expect(t).toHaveLength(2);
     expect(t[0]).toMatchObject({ month: "2026-05", revenueEur: 1000, net: 1000 });
     expect(t[1]).toMatchObject({ month: "2026-06", revenueEur: 2000, fuelCost: 300, net: 1700 });
+  });
+});
+
+describe("latestUnitPrice", () => {
+  it("zwraca cenę jednostkową najnowszego wpisu z kwotą", () => {
+    expect(
+      latestUnitPrice([
+        { liters: 0, priceTotal: null },
+        { liters: 100, priceTotal: 165 },
+        { liters: 50, priceTotal: 90 },
+      ]),
+    ).toBe(1.65);
+  });
+  it("zwraca null bez danych", () => {
+    expect(latestUnitPrice([{ liters: 0, priceTotal: 0 }])).toBeNull();
+  });
+});
+
+describe("buildSettlement", () => {
+  it("liczy dystans, koszty, przychód i zysk", () => {
+    const s = buildSettlement({
+      fuel: [
+        { odometerKm: 1000, liters: 0, isFull: true, priceTotal: 0 },
+        { odometerKm: 1500, liters: 400, isFull: true, priceTotal: 600 },
+      ],
+      adblue: [{ liters: 20, priceTotal: 30 }],
+      trips: [
+        { action: "service", amount: 100 },
+        { action: "other", amount: 50 },
+        { action: "load", amount: null },
+      ],
+      ratePerKm: 2,
+      tollCost: 120,
+    });
+    expect(s.distanceKm).toBe(500);
+    expect(s.fuelLiters).toBe(400);
+    expect(s.fuelCost).toBe(600);
+    expect(s.adblueCost).toBe(30);
+    expect(s.serviceCost).toBe(100);
+    expect(s.otherCost).toBe(50);
+    expect(s.tollCost).toBe(120);
+    expect(s.totalCost).toBe(900); // 600+30+100+50+120
+    expect(s.revenue).toBe(1000); // 500 * 2
+    expect(s.profit).toBe(100); // 1000-900
+    expect(s.avgConsumptionLPer100km).toBe(80); // 400L / 500km
+  });
+
+  it("brak stawki → przychód i zysk 0/ujemny", () => {
+    const s = buildSettlement({
+      fuel: [{ odometerKm: 0, liters: 10, priceTotal: 15 }],
+      adblue: [],
+      trips: [],
+    });
+    expect(s.revenue).toBe(0);
+    expect(s.totalCost).toBe(15);
+    expect(s.profit).toBe(-15);
   });
 });

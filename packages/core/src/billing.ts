@@ -166,32 +166,6 @@ export function fuelCost(liters: number, pricePerLiter: number, discountPercent 
 
 // ── Ekonomia trasy ──────────────────────────────────────────────────
 
-/** Dystans trasy z liczników (km). Rzuca, gdy koniec < start. */
-export function tripDistanceKm(startKm: number, endKm: number): number {
-  const distance = endKm - startKm;
-  if (distance < 0) throw new RangeError("endKm nie może być mniejsze niż startKm");
-  return distance;
-}
-
-/** Przychód z trasy = dystans × stawka za km. */
-export function tripRevenue(distanceKm: number, ratePerKm: number): number {
-  if (distanceKm < 0) throw new RangeError("distanceKm nie może być ujemne");
-  if (ratePerKm < 0) throw new RangeError("ratePerKm nie może być ujemne");
-  return round2(distanceKm * ratePerKm);
-}
-
-export interface TripCostBreakdown {
-  fuel?: number;
-  adblue?: number;
-  service?: number;
-  other?: number;
-}
-
-/** Łączny koszt trasy = paliwo + AdBlue + serwis + inne. */
-export function tripCost(b: TripCostBreakdown): number {
-  return round2((b.fuel ?? 0) + (b.adblue ?? 0) + (b.service ?? 0) + (b.other ?? 0));
-}
-
 export interface TripProfit {
   revenue: number;
   cost: number;
@@ -205,25 +179,6 @@ export function tripProfit(revenue: number, cost: number): TripProfit {
   const profit = round2(revenue - cost);
   const marginPercent = revenue > 0 ? round2((profit / revenue) * 100) : null;
   return { revenue: round2(revenue), cost: round2(cost), profit, marginPercent };
-}
-
-export interface TripSettlementInput {
-  startKm: number;
-  endKm: number;
-  ratePerKm: number;
-  costs: TripCostBreakdown;
-}
-
-export interface TripSettlement extends TripProfit {
-  distanceKm: number;
-}
-
-/** Kompletne rozliczenie trasy: dystans → przychód → koszt → zysk. */
-export function computeTripSettlement(input: TripSettlementInput): TripSettlement {
-  const distanceKm = tripDistanceKm(input.startKm, input.endKm);
-  const revenue = tripRevenue(distanceKm, input.ratePerKm);
-  const cost = tripCost(input.costs);
-  return { distanceKm, ...tripProfit(revenue, cost) };
 }
 
 // ── Rozliczenie okresowe (paliwo + AdBlue + trasy → koszt/zysk) ─────

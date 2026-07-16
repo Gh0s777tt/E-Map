@@ -5,6 +5,7 @@
  */
 
 import { dieselCo2Kg } from "./co2";
+import { round2 } from "./money";
 
 export interface RouteFuelInput {
   distanceKm: number;
@@ -25,7 +26,6 @@ export interface RouteFuelEstimate {
 }
 
 const DEFAULT_CONSUMPTION = 30;
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Szacuje paliwo, koszt i CO₂ dla jednej trasy. */
 export function estimateRouteFuel(input: RouteFuelInput): RouteFuelEstimate {

@@ -1,8 +1,11 @@
 /** Warstwa danych: zgłoszenia społecznościowe na mapie (wypadek/policja/waga…). */
-import type { MapReportInput } from "@e-logistic/core";
+import { type MapReportInput, mapReportSchema } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
 export async function insertMapReport(client: SupabaseClient, input: MapReportInput) {
+  // Twarda walidacja runtime kontraktu (typ znika w kompilacji): zakres lat/lng,
+  // dozwolony typ i długość komentarza. Bez tego dane spoza kontraktu trafiały wprost do bazy.
+  const report = mapReportSchema.parse(input);
   const {
     data: { user },
   } = await client.auth.getUser();
@@ -10,12 +13,12 @@ export async function insertMapReport(client: SupabaseClient, input: MapReportIn
   const { data, error } = await client
     .from("map_reports")
     .insert({
-      type: input.type,
-      lat: input.lat,
-      lng: input.lng,
-      geo: `POINT(${input.lng} ${input.lat})`,
+      type: report.type,
+      lat: report.lat,
+      lng: report.lng,
+      geo: `POINT(${report.lng} ${report.lat})`,
       reported_by: user.id,
-      comment: input.comment ?? null,
+      comment: report.comment ?? null,
     })
     .select("id, type, lat, lng, comment")
     .single();

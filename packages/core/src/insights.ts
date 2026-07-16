@@ -5,6 +5,8 @@
  * Czysty silnik — tylko przeliczenie zagregowanych danych.
  */
 
+import { round2 } from "./money";
+
 export interface MonthlyPoint {
   /** Miesiąc „YYYY-MM". */
   month: string;
@@ -47,8 +49,6 @@ export interface FleetInsights {
   /** Suma szacowanych oszczędności, gdyby odstający zeszli do mediany. */
   potentialSavings: number;
 }
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 function median(values: number[]): number {
   if (values.length === 0) return 0;
