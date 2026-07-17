@@ -144,6 +144,14 @@ export default function Home() {
           <Link href="/login" style={s.ctaPrimary}>
             Wejdź do aplikacji →
           </Link>
+          <a
+            href="https://gh0s777tt.gitlab.io/e-logistic/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={s.ctaSecondary}
+          >
+            📖 Dokumentacja →
+          </a>
         </div>
         <p style={s.platforms}>
           📱 iOS · 🤖 Android (Google Play) · 🖥️ macOS / iPad · 🪟 panel PWA na Windows
@@ -197,6 +205,15 @@ export default function Home() {
         <p style={s.footNote}>
           Kierowcy · Spedytorzy · Firmy transportowe — dane odizolowane per firma (RLS), PII
           szyfrowane, 2FA i passkey.{" "}
+          <a
+            href="https://gh0s777tt.gitlab.io/e-logistic/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={s.footLink}
+          >
+            Dokumentacja
+          </a>{" "}
+          ·{" "}
           <Link href="/privacy" style={s.footLink}>
             Prywatność
           </Link>{" "}
@@ -238,6 +255,17 @@ const s: Record<string, CSSProperties> = {
     fontSize: 16,
     textDecoration: "none",
     boxShadow: "0 0 24px rgba(229, 9, 20, 0.33)",
+    display: "inline-block",
+  },
+  ctaSecondary: {
+    background: "transparent",
+    color: palette.offWhite,
+    padding: "14px 30px",
+    borderRadius: 999,
+    fontWeight: 700,
+    fontSize: 16,
+    textDecoration: "none",
+    border: `1px solid ${palette.red}`,
     display: "inline-block",
   },
   platforms: { color: palette.smoke, fontSize: 13, marginTop: 18, lineHeight: 1.7 },
