@@ -6,8 +6,8 @@ import type { NextConfig } from "next";
  * `geolocation=(self)` bo apka używa GPS (mapa „moja lokalizacja", formularze).
  */
 // CSP w trybie Report-Only (audyt #214, P3) — najpierw OBSERWACJA naruszeń (nie blokuje),
-// docelowo zacieśnić i włączyć enforce. Allowlista pod mapę (MapTiler/OSM/Overpass),
-// Supabase (REST + realtime WSS) i routing (HERE/GraphHopper). `'unsafe-inline'` (style inline)
+// docelowo zacieśnić i włączyć enforce. Allowlista pod mapę (MapTiler/TomTom/OSM/Overpass),
+// Supabase (REST + realtime WSS) i routing (HERE/GraphHopper/TomTom). `'unsafe-inline'` (style inline)
 // i `'unsafe-eval'` (Turbopack/MapLibre) — do usunięcia przy przejściu na enforce.
 const cspReportOnly = [
   "default-src 'self'",
@@ -15,7 +15,7 @@ const cspReportOnly = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.maptiler.com https://*.openstreetmap.org https://overpass-api.de https://router.hereapi.com https://graphhopper.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.maptiler.com https://api.tomtom.com https://*.api.tomtom.com https://*.openstreetmap.org https://overpass-api.de https://router.hereapi.com https://graphhopper.com",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
