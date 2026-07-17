@@ -12,11 +12,13 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Card, SectionTitle, wide } from "../components/ui";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 const zl = (n: number) => `${n.toFixed(2).replace(".", ",")} zł`;
 
 export default function SettlementScreen() {
+  const t = useT();
   const [settings, setSettings] = useState<SettlementSettings>(DEFAULT_SETTLEMENT_SETTINGS);
   const [days, setDays] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -40,11 +42,11 @@ export default function SettlementScreen() {
       const month = new Date().toISOString().slice(0, 7);
       setDays(entries.filter((e) => e.work_date.startsWith(month)).length);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać rozliczenia.");
+      setErr(e instanceof Error ? e.message : t("m.settle.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
@@ -62,28 +64,26 @@ export default function SettlementScreen() {
     >
       {err && <Text style={s.err}>{err}</Text>}
 
-      <SectionTitle>Szacunek — bieżący miesiąc</SectionTitle>
+      <SectionTitle>{t("m.settle.estimate")}</SectionTitle>
       <Card style={s.total}>
-        <Text style={s.totalLabel}>{days} dni służby (z ewidencji)</Text>
+        <Text style={s.totalLabel}>{t("m.settle.dutyDays", { n: days })}</Text>
         <Text style={s.totalValue}>{zl(est.total)}</Text>
         <Text style={s.totalHint}>
-          podstawa {zl(est.base)} · premie {zl(est.bonusTotal)} · telefon {zl(est.phone)}
+          {t("m.settle.base")} {zl(est.base)} · {t("m.settle.bonuses")} {zl(est.bonusTotal)} ·{" "}
+          {t("m.settle.phone")} {zl(est.phone)}
         </Text>
       </Card>
-      <Text style={s.note}>
-        To podgląd wg stawek Twojej firmy — bez premii kilometrowych i potrąceń, które firma dolicza
-        przy zamknięciu miesiąca. Pełne rozliczenie z PDF-em znajdziesz w panelu firmy.
-      </Text>
+      <Text style={s.note}>{t("m.settle.note")}</Text>
 
-      <SectionTitle>Stawki mojej firmy</SectionTitle>
+      <SectionTitle>{t("m.settle.myRates")}</SectionTitle>
       <Card style={s.rates}>
         {[
-          ["Stawka dzienna", zl(settings.dailyRate)],
-          ["Norma km / dzień", `${settings.kmNormPerDay} km`],
-          ["Stawka za km ponad normę", zl(settings.kmRate)],
-          ["Ubezpieczenie / dzień", zl(settings.insurancePerDay)],
-          ["Ryczałt telefoniczny / mies.", zl(settings.phoneMonthly)],
-          ["Premia dokumentacyjna / mies.", zl(settings.docBonusMonthly)],
+          [t("m.settle.dailyRate"), zl(settings.dailyRate)],
+          [t("m.settle.kmNorm"), `${settings.kmNormPerDay} km`],
+          [t("m.settle.kmRate"), zl(settings.kmRate)],
+          [t("m.settle.insurancePerDay"), zl(settings.insurancePerDay)],
+          [t("m.settle.phoneMonthly"), zl(settings.phoneMonthly)],
+          [t("m.settle.docBonus"), zl(settings.docBonusMonthly)],
         ].map(([label, value], i, arr) => (
           <View key={label} style={[s.rateRow, i < arr.length - 1 && s.rateSep]}>
             <Text style={s.rateLabel}>{label}</Text>
