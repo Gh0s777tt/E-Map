@@ -1,0 +1,16 @@
+# lefthook — hooki git (instalowane przez `pnpm install` → skrypt `prepare`).
+# pre-commit: Biome na plikach w indeksie (auto-fix + ponowne dodanie).
+# pre-push:  spójność dokumentacji z kodem (ta sama bramka co w CI).
+
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: pnpm exec biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+pre-push:
+  commands:
+    docs-check:
+      run: node scripts/docs-check.mjs

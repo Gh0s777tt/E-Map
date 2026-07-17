@@ -11,6 +11,8 @@ nodeLinker: hoisted
 allowBuilds:
   # sentry-cli: postinstall zbędny — nie uploadujemy sourcemap (decyzja #306)
   '@sentry/cli': false
+  # lefthook: postinstall instaluje hooki git (dubluje skrypt `prepare`) — dozwolony
+  lefthook: true
   sharp: true
 
 # Override bezpieczeństwa (audyt #216): postcss (XSS via next) — next przypina postcss@8.4.31,

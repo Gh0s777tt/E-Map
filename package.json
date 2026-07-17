@@ -20,11 +20,13 @@
     "docs:check": "node scripts/docs-check.mjs",
     "docs:api": "typedoc",
     "e2e": "playwright test",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm docs:check"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm docs:check",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.2",
     "@playwright/test": "^1.61.1",
+    "lefthook": "^2.1.10",
     "pg": "8.22.0",
     "sharp": "^0.35.3",
     "turbo": "2.10.3",
