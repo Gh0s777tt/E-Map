@@ -1,0 +1,26 @@
+# ══════════════════════════════════════════════════════════════════
+#  E-Logistic — GitLab CI/CD
+#  Na razie: publikacja dokumentacji (MkDocs Material) na GitLab Pages.
+#  Pełne bramki (biome · tsc · testy · docs:check · build) dojdą w ETAPIE 4.
+#
+#  Referencja API (docs/api/) jest generowana TypeDoc-iem i commitowana
+#  (`pnpm docs:api`), więc job Pages buduje wyłącznie MkDocs (Python) —
+#  szybko i bez zależności od Node w pipeline.
+# ══════════════════════════════════════════════════════════════════
+stages:
+  - deploy
+
+# GitLab Pages: job MUSI nazywać się „pages" i wystawić katalog „public/".
+# Publikacja tylko z gałęzi domyślnej (main). URL: https://gh0s777tt.gitlab.io/e-logistic/
+pages:
+  stage: deploy
+  image: python:3.12-slim
+  before_script:
+    - pip install --no-cache-dir -r docs/requirements.txt
+  script:
+    - mkdocs build --site-dir public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
