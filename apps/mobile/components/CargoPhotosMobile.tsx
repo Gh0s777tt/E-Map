@@ -28,6 +28,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { SignaturePadMobile } from "./SignaturePadMobile";
 
@@ -40,6 +41,7 @@ function extFromMime(mime: string): string {
 
 /** Załączniki zlecenia na telefonie — zdjęcia towaru + podpis odbiorcy (POD). */
 export function CargoPhotosMobile({ orderId }: { orderId: string }) {
+  const t = useT();
   const [photos, setPhotos] = useState<OrderPhoto[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -66,9 +68,9 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
       );
       setUrls(Object.fromEntries(entries));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać zdjęć.");
+      setErr(e instanceof Error ? e.message : t("m.cargo.loadError"));
     }
-  }, [orderId]);
+  }, [orderId, t]);
 
   useEffect(() => {
     load();
@@ -77,7 +79,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
   async function addFrom(source: "camera" | "library") {
     setErr(null);
     if (!companyId) {
-      setErr("Brak firmy.");
+      setErr(t("m.cargo.noCompany"));
       return;
     }
     try {
@@ -86,7 +88,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
           ? await ImagePicker.requestCameraPermissionsAsync()
           : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        setErr("Brak zgody na dostęp do aparatu/zdjęć.");
+        setErr(t("m.cargo.permDenied"));
         return;
       }
       const result =
@@ -96,7 +98,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
       if (result.canceled) return;
       const asset = result.assets[0];
       if (!asset?.uri) {
-        setErr("Nie udało się odczytać zdjęcia.");
+        setErr(t("m.cargo.readFail"));
         return;
       }
       setBusy(true);
@@ -113,7 +115,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
       });
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd wgrywania zdjęcia.");
+      setErr(e instanceof Error ? e.message : t("m.cargo.uploadFail"));
     } finally {
       setBusy(false);
     }
@@ -122,7 +124,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
   /** Zapis podpisu odbiorcy (POD) jako wektorowy SVG z podpisem w `caption`. */
   async function savePod(svg: string) {
     if (!companyId) {
-      setErr("Brak firmy.");
+      setErr(t("m.cargo.noCompany"));
       return;
     }
     setBusy(true);
@@ -140,7 +142,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
       setRecipient("");
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zapisu podpisu.");
+      setErr(e instanceof Error ? e.message : t("m.cargo.signSaveFail"));
     } finally {
       setBusy(false);
     }
@@ -152,9 +154,9 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
   return (
     <View style={styles.wrap}>
       <View style={styles.head}>
-        <Text style={styles.title}>📸 Załączniki</Text>
+        <Text style={styles.title}>{t("m.cargo.attachments")}</Text>
         <Text style={styles.count}>
-          {photos.length > 0 ? `${photos.length} szt.` : "zdjęcia / podpis"}
+          {photos.length > 0 ? t("m.cargo.count", { n: photos.length }) : t("m.cargo.countHint")}
         </Text>
       </View>
 
@@ -180,7 +182,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
           {busy ? (
             <ActivityIndicator color={palette.white} />
           ) : (
-            <Text style={styles.btnText}>📷 Zdjęcie</Text>
+            <Text style={styles.btnText}>{t("m.cargo.photo")}</Text>
           )}
         </Pressable>
         <Pressable
@@ -188,26 +190,24 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
           disabled={busy}
           onPress={() => addFrom("library")}
         >
-          <Text style={styles.btnGhostText}>🖼️ Galeria</Text>
+          <Text style={styles.btnGhostText}>{t("m.cargo.gallery")}</Text>
         </Pressable>
         <Pressable
           style={[styles.btnGhost, busy && styles.btnDisabled]}
           disabled={busy}
           onPress={() => setPodOpen((v) => !v)}
         >
-          <Text style={styles.btnGhostText}>✍️ Podpis</Text>
+          <Text style={styles.btnGhostText}>{t("m.cargo.signature")}</Text>
         </Pressable>
       </View>
 
       {podOpen && (
         <View style={styles.podBox}>
-          <Text style={styles.podHint}>
-            🧾 Dowód dostawy (e-CMR) — podpis odbiorcy potwierdza odbiór towaru.
-          </Text>
+          <Text style={styles.podHint}>{t("m.cargo.podHint")}</Text>
           <TextInput
             value={recipient}
             onChangeText={setRecipient}
-            placeholder="Imię i nazwisko odbiorcy (opcjonalnie)"
+            placeholder={t("m.cargo.recipientPh")}
             placeholderTextColor={palette.smoke}
             style={styles.input}
           />
@@ -224,7 +224,7 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
             onPress={() => setFilterKind("all")}
           >
             <Text style={filterKind === "all" ? styles.catChipTextActive : styles.catChipText}>
-              Wszystkie ({photos.length})
+              {t("m.cargo.all", { n: photos.length })}
             </Text>
           </Pressable>
           {presentKinds.map((k) => (
@@ -249,9 +249,9 @@ export function CargoPhotosMobile({ orderId }: { orderId: string }) {
               const info = parsePodCaption(p.caption);
               return (
                 <View key={p.id} style={styles.podChip}>
-                  <Text style={styles.podChipTitle}>✍️ POD</Text>
+                  <Text style={styles.podChipTitle}>{t("m.cargo.pod")}</Text>
                   <Text style={styles.podChipText} numberOfLines={2}>
-                    {info.recipient ?? "podpis"}
+                    {info.recipient ?? t("m.cargo.signFallback")}
                   </Text>
                   {info.when && (
                     <Text style={styles.podChipWhen} numberOfLines={1}>

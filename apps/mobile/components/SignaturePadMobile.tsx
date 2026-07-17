@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useT } from "../lib/i18n";
 
 interface Point {
   x: number;
@@ -55,6 +56,7 @@ export function SignaturePadMobile({
   onCancel: () => void;
   busy?: boolean;
 }) {
+  const t = useT();
   const strokesRef = useRef<Point[][]>([]);
   const currentRef = useRef<Point[]>([]);
   const sizeRef = useRef<{ w: number; h: number }>({ w: 1, h: 1 });
@@ -150,21 +152,21 @@ export function SignaturePadMobile({
       </View>
       <View style={styles.row}>
         <Pressable style={styles.ghost} onPress={clear} disabled={busy}>
-          <Text style={styles.ghostText}>🧹 Wyczyść</Text>
+          <Text style={styles.ghostText}>{t("m.sign.clear")}</Text>
         </Pressable>
         <View style={{ flex: 1 }} />
         <Pressable style={styles.ghost} onPress={onCancel} disabled={busy}>
-          <Text style={styles.ghostText}>Anuluj</Text>
+          <Text style={styles.ghostText}>{t("m.sign.cancel")}</Text>
         </Pressable>
         <Pressable
           style={[styles.primary, (busy || !hasInk) && styles.disabled]}
           onPress={save}
           disabled={busy || !hasInk}
         >
-          <Text style={styles.primaryText}>{busy ? "Zapisuję…" : "✔️ Zapisz"}</Text>
+          <Text style={styles.primaryText}>{busy ? t("m.sign.saving") : t("m.sign.save")}</Text>
         </Pressable>
       </View>
-      {!hasInk && <Text style={styles.hint}>Złóż podpis w polu powyżej.</Text>}
+      {!hasInk && <Text style={styles.hint}>{t("m.sign.prompt")}</Text>}
     </View>
   );
 }

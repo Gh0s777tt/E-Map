@@ -8,9 +8,11 @@ import { palette } from "@e-logistic/ui";
 import { useState } from "react";
 import { Modal, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { useT } from "../lib/i18n";
 import { getSupabase } from "../lib/supabase";
 
 export function TrackingQrButton({ orderId, label }: { orderId: string; label: string }) {
+  const t = useT();
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export function TrackingQrButton({ orderId, label }: { orderId: string; label: s
       const token = await getOrderTrackingToken(getSupabase(), orderId);
       setUrl(trackingUrl(token));
     } catch {
-      setErr("Nie udało się pobrać kodu (sprawdź zasięg).");
+      setErr(t("m.track.loadError"));
     } finally {
       setBusy(false);
     }
@@ -31,29 +33,26 @@ export function TrackingQrButton({ orderId, label }: { orderId: string; label: s
   return (
     <>
       <Pressable style={s.btn} onPress={open} disabled={busy}>
-        <Text style={s.btnText}>{busy ? "Wczytuję…" : "📱 QR dla odbiorcy"}</Text>
+        <Text style={s.btnText}>{busy ? t("m.track.loading") : t("m.track.qrButton")}</Text>
       </Pressable>
       {err && <Text style={s.err}>{err}</Text>}
 
       <Modal visible={url !== null} transparent animationType="fade">
         <View style={s.backdrop}>
           <View style={s.sheet}>
-            <Text style={s.title}>Potwierdzenie dostawy</Text>
+            <Text style={s.title}>{t("m.track.title")}</Text>
             <Text style={s.subtitle}>{label}</Text>
             <View style={s.qrBox}>{url && <QRCode value={url} size={220} />}</View>
-            <Text style={s.hint}>
-              Odbiorca skanuje kod telefonem i widzi status przesyłki. Ten sam link możesz wysłać
-              klientowi.
-            </Text>
+            <Text style={s.hint}>{t("m.track.hint")}</Text>
             <View style={s.row}>
               <Pressable
                 style={s.share}
                 onPress={() => url && Share.share({ message: url }).catch(() => {})}
               >
-                <Text style={s.shareText}>Udostępnij link</Text>
+                <Text style={s.shareText}>{t("m.track.share")}</Text>
               </Pressable>
               <Pressable style={s.close} onPress={() => setUrl(null)}>
-                <Text style={s.closeText}>Zamknij</Text>
+                <Text style={s.closeText}>{t("m.track.close")}</Text>
               </Pressable>
             </View>
           </View>
