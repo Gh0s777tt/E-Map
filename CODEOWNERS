@@ -1,0 +1,11 @@
+# CODEOWNERS — automatyczne przypisanie recenzenta do MR (GitLab).
+# Właściciel repo odpowiada domyślnie za całość; sekcje na przyszłość (zespół).
+
+* @Gh0s777tt
+
+# Obszary krytyczne — wymagają uwagi właściciela (bezpieczeństwo, dane, CI).
+/supabase/                @Gh0s777tt
+/.gitlab-ci.yml           @Gh0s777tt
+/apps/web/lib/            @Gh0s777tt
+/apps/web/app/api/        @Gh0s777tt
+/packages/core/           @Gh0s777tt
