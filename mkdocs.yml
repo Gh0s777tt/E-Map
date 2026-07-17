@@ -14,6 +14,15 @@ edit_uri: edit/main/docs/
 
 docs_dir: docs
 
+# Wykluczenia z PUBLICZNEGO buildu (pliki pozostają w repo, poza stroną):
+# raporty audytowe (opisy podatności) i wewnętrzne analizy Discovery/QA.
+# NIE publikujemy szczegółów bezpieczeństwa na publicznej stronie.
+exclude_docs: |
+  AUDIT-*.md
+  audit/
+  DISCOVERY_REPORT.md
+  TEST_REPORT.md
+
 theme:
   name: material
   language: pl
@@ -111,12 +120,4 @@ nav:
       - Microsoft Store: MICROSOFT-STORE.md
   - API:
       - Referencja pakietów: api/index.md
-  - Audyty i raporty:
-      - Discovery (produkt): DISCOVERY_REPORT.md
-      - QA / testy: TEST_REPORT.md
-      - Audyt 2026-07-16: audit/AUDIT-2026-07-16.md
-      - Audyt 2026-06-28: audit/AUDIT-2026-06-28.md
-      - Audyt 2026-06-22: AUDIT-2026-06-22.md
-      - Audyt 2026-06-21: AUDIT-2026-06-21.md
-      - Audyt v1.18: AUDIT-v1.18.md
   - Changelog: CHANGELOG.md
