@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Card, SectionTitle, wide } from "../components/ui";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 interface VehicleExpiry {
@@ -32,6 +33,7 @@ function expiryColor(days: number | null): string {
 
 export default function VehicleScreen() {
   const router = useRouter();
+  const t = useT();
   const [mine, setMine] = useState<VehicleExpiry | null>(null);
   const [fleet, setFleet] = useState<VehicleExpiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,20 +62,20 @@ export default function VehicleScreen() {
         setMine(vehicles[0] ?? null);
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać pojazdu.");
+      setErr(e instanceof Error ? e.message : t("m.vehicle.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
 
   const terms = (v: VehicleExpiry) =>
     [
-      ["Przegląd techniczny", v.inspection_expiry],
-      ["Ubezpieczenie OC", v.insurance_expiry],
-      ["Koniec leasingu", v.leasing_end],
+      [t("m.schedule.inspection"), v.inspection_expiry],
+      [t("m.schedule.insurance"), v.insurance_expiry],
+      [t("m.schedule.leasing"), v.leasing_end],
     ] as const;
 
   return (
@@ -85,32 +87,30 @@ export default function VehicleScreen() {
       }
     >
       {err && <Text style={s.err}>{err}</Text>}
-      {!loading && !err && !mine && (
-        <Text style={s.note}>Brak pojazdów w firmie — dodaje je właściciel w panelu.</Text>
-      )}
+      {!loading && !err && !mine && <Text style={s.note}>{t("m.vehicle.empty")}</Text>}
 
       {mine && (
         <>
           <Card style={s.hero}>
             <Text style={s.heroGlyph}>🚛</Text>
             <Text style={s.heroReg}>{mine.registration}</Text>
-            <Text style={s.heroHint}>pojazd z Twojego aktywnego zlecenia</Text>
+            <Text style={s.heroHint}>{t("m.vehicle.heroHint")}</Text>
           </Card>
 
           {/* Rząd akcji jak w mockupie 15: Rozpocznij Trip / Tankuj / Zgłoś problem */}
           <View style={s.actions}>
             <Pressable style={s.actionBtn} onPress={() => router.push("/trip")}>
-              <Text style={s.actionText}>Rozpocznij Trip</Text>
+              <Text style={s.actionText}>{t("m.home.startTrip")}</Text>
             </Pressable>
             <Pressable style={s.actionBtn} onPress={() => router.push("/fuel")}>
-              <Text style={s.actionText}>Tankuj</Text>
+              <Text style={s.actionText}>{t("m.home.fuelAction")}</Text>
             </Pressable>
             <Pressable style={s.actionBtn} onPress={() => router.push("/defects")}>
-              <Text style={s.actionText}>Zgłoś problem</Text>
+              <Text style={s.actionText}>{t("m.vehicle.reportProblem")}</Text>
             </Pressable>
           </View>
 
-          <SectionTitle>Terminy</SectionTitle>
+          <SectionTitle>{t("m.vehicle.terms")}</SectionTitle>
           <Card style={s.terms}>
             {terms(mine).map(([label, date], i, arr) => {
               const d = daysLeft(date);
@@ -121,7 +121,9 @@ export default function VehicleScreen() {
                     <Text style={s.termDate}>{date ?? "—"}</Text>
                     {d !== null && (
                       <Text style={[s.termDays, { color: expiryColor(d) }]}>
-                        {d < 0 ? `po terminie ${-d} dni` : `za ${d} dni`}
+                        {d < 0
+                          ? t("m.vehicle.overdueDays", { n: -d })
+                          : t("m.vehicle.inDays", { n: d })}
                       </Text>
                     )}
                   </View>
@@ -134,7 +136,7 @@ export default function VehicleScreen() {
 
       {fleet.length > 1 && (
         <>
-          <SectionTitle>Flota firmy</SectionTitle>
+          <SectionTitle>{t("m.vehicle.companyFleet")}</SectionTitle>
           {fleet
             .filter((v) => v.id !== mine?.id)
             .map((v) => {
@@ -143,7 +145,9 @@ export default function VehicleScreen() {
                 <Card key={v.id} style={s.fleetRow}>
                   <Text style={s.fleetReg}>{v.registration}</Text>
                   <Text style={[s.fleetTerm, { color: expiryColor(d) }]}>
-                    {d === null ? "brak terminu przeglądu" : `przegląd za ${d} dni`}
+                    {d === null
+                      ? t("m.vehicle.noInspectionTerm")
+                      : t("m.vehicle.inspectionInDays", { n: d })}
                   </Text>
                 </Card>
               );
