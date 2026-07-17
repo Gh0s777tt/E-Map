@@ -59,6 +59,8 @@ const pl = {
   "m.settings.languageAuto": "Systemowy",
 
   "m.fuel.vehicle": "Pojazd",
+  "m.vpick.loading": "Ładowanie floty…",
+  "m.vpick.empty": "Brak pojazdów — dodaj je w aplikacji web.",
   "m.fuel.repeatLast": "↺ Powtórz ostatni",
   "m.fuel.repeatFirst": "↺ Powtórz ostatni — po pierwszym wpisie",
   "m.fuel.repeatNone": "Brak wcześniejszych wpisów.",
@@ -893,6 +895,8 @@ const en: Record<MobileMessageKey, string> = {
   "m.settings.languageAuto": "System",
 
   "m.fuel.vehicle": "Vehicle",
+  "m.vpick.loading": "Loading fleet…",
+  "m.vpick.empty": "No vehicles — add them in the web app.",
   "m.fuel.repeatLast": "↺ Repeat last",
   "m.fuel.repeatFirst": "↺ Repeat last — after your first entry",
   "m.fuel.repeatNone": "No previous entries.",
@@ -1719,6 +1723,8 @@ const de: Record<MobileMessageKey, string> = {
   "m.settings.languageAuto": "System",
 
   "m.fuel.vehicle": "Fahrzeug",
+  "m.vpick.loading": "Flotte wird geladen…",
+  "m.vpick.empty": "Keine Fahrzeuge — füge sie in der Web-App hinzu.",
   "m.fuel.repeatLast": "↺ Letzten wiederholen",
   "m.fuel.repeatFirst": "↺ Letzten wiederholen — nach dem ersten Eintrag",
   "m.fuel.repeatNone": "Keine früheren Einträge.",
@@ -2548,6 +2554,8 @@ const uk: Record<MobileMessageKey, string> = {
   "m.settings.languageAuto": "Системна",
 
   "m.fuel.vehicle": "Транспорт",
+  "m.vpick.loading": "Завантаження автопарку…",
+  "m.vpick.empty": "Немає транспорту — додайте його у вебзастосунку.",
   "m.fuel.repeatLast": "↺ Повторити останній",
   "m.fuel.repeatFirst": "↺ Повторити останній — після першого запису",
   "m.fuel.repeatNone": "Немає попередніх записів.",

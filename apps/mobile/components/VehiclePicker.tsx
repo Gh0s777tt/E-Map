@@ -1,5 +1,6 @@
 import { palette } from "@e-logistic/ui";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useT } from "../lib/i18n";
 import type { FleetVehicle } from "../lib/useFleet";
 
 /** Wybór pojazdu (chipy rejestracji) — wspólny dla formularzy mobilnych. */
@@ -14,9 +15,10 @@ export function VehiclePicker({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  if (loading) return <Text style={styles.note}>Ładowanie floty…</Text>;
+  const t = useT();
+  if (loading) return <Text style={styles.note}>{t("m.vpick.loading")}</Text>;
   if (vehicles.length === 0) {
-    return <Text style={styles.note}>Brak pojazdów — dodaj je w aplikacji web.</Text>;
+    return <Text style={styles.note}>{t("m.vpick.empty")}</Text>;
   }
   return (
     <View style={styles.row}>
