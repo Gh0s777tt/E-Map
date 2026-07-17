@@ -175,6 +175,24 @@ export default function DocumentsPage() {
     }
   }
 
+  // #audyt B6: „Pobierz" wymusza pobranie pliku (Content-Disposition przez &download=),
+  // zamiast otwierać podgląd w nowej karcie jak klik w nazwę.
+  async function downloadDoc(d: DocumentMeta) {
+    try {
+      const url = await getDocumentUrl(getBrowserSupabase(), d.path, 120);
+      const dl = `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(d.name)}`;
+      const a = document.createElement("a");
+      a.href = dl;
+      a.download = d.name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Nie udało się pobrać dokumentu.", "error");
+    }
+  }
+
   async function remove(d: DocumentMeta) {
     if (!(await confirm(`Usunąć dokument „${d.name}"?`))) return;
     try {
@@ -351,11 +369,22 @@ export default function DocumentsPage() {
                     value={d.visibility}
                     title="Kto widzi dokument"
                     onChange={async (e) => {
+                      const next = e.target.value as DocumentMeta["visibility"];
+                      // #audyt B5: „wybrane osoby" bez wskazanych osób ukryłoby dokument
+                      // wszystkim (listę osób ustawia się przy wgrywaniu) — blokujemy zmianę.
+                      if (next === "selected" && (d.allowed_user_ids?.length ?? 0) === 0) {
+                        toast(
+                          "Widoczność „wybrane osoby” ustaw przy wgrywaniu — inaczej dokument zniknąłby wszystkim.",
+                          "error",
+                        );
+                        await load();
+                        return;
+                      }
                       try {
                         await setDocumentVisibility(
                           getBrowserSupabase(),
                           d.id,
-                          e.target.value as DocumentMeta["visibility"],
+                          next,
                           d.allowed_user_ids,
                         );
                         await load();
@@ -386,7 +415,7 @@ export default function DocumentsPage() {
                   {regOf(d.vehicle_id) && <span style={styles.dim}>🚚 {regOf(d.vehicle_id)}</span>}
                   <span style={styles.dim}>{formatBytes(d.size_bytes)}</span>
                   <span style={styles.dim}>dodano {d.created_at.slice(0, 10)}</span>
-                  <Button variant="ghost" onClick={() => openDoc(d)}>
+                  <Button variant="ghost" onClick={() => downloadDoc(d)}>
                     ⬇️ Pobierz
                   </Button>
                 </div>

@@ -2,6 +2,7 @@
 
 import {
   type ChecklistSubmission,
+  type DriverRow,
   insertWorkTimeEntry,
   listChecklistSubmissions,
 } from "@e-logistic/api";
@@ -43,10 +44,13 @@ function toTachoEntries(subs: ChecklistSubmission[]): TachoEntry[] {
 
 export function TachoAutoSection({
   companyId,
+  roster,
   savedKeys,
   onImported,
 }: {
   companyId: string;
+  /** #271: kartoteka firmy — dopasowanie driver_id po nazwie (spójnie z ręcznym formularzem). */
+  roster: DriverRow[];
   /** Zbiór `${driver_name}|${work_date}` istniejących wpisów (dedup importu). */
   savedKeys: Set<string>;
   onImported: () => void;
@@ -98,11 +102,19 @@ export function TachoAutoSection({
     if (!driver || missing.length === 0) return;
     setBusy(true);
     try {
+      // #271 · B4: dopasuj kierowcę po nazwie do kartoteki → driver_id (jak ręczny formularz),
+      // żeby auto-import nie zostawiał wpisów z driver_id=null.
+      const driverId =
+        roster.find(
+          (d) =>
+            `${d.first_name} ${d.last_name}`.trim().toLowerCase() === driver.trim().toLowerCase(),
+        )?.id ?? null;
       for (const d of missing) {
         await insertWorkTimeEntry(
           getBrowserSupabase(),
           {
             driverName: driver,
+            driverId,
             workDate: d.date,
             driving: round2((d.workMinutes ?? 0) / 60),
             otherWork: 0,

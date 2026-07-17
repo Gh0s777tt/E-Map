@@ -4,6 +4,8 @@ import type { TypedSupabaseClient as SupabaseClient } from "../client";
 export interface WorkTimeRecord {
   id: string;
   driver_name: string | null;
+  /** #271: FK do kartoteki (obok driver_name) — realny filtr zestawień po kierowcy. */
+  driver_id: string | null;
   work_date: string;
   driving: number;
   other_work: number;
@@ -23,7 +25,7 @@ export interface WorkTimeInput {
   note?: string | null;
 }
 
-const COLS = "id, driver_name, work_date, driving, other_work, rest, note, created_at";
+const COLS = "id, driver_name, driver_id, work_date, driving, other_work, rest, note, created_at";
 
 /** Wpisy czasu pracy firmy (wg daty malejąco). Filtr: kierowca. RLS: członek czyta. */
 export async function listWorkTimeEntries(

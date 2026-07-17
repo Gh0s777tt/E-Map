@@ -123,8 +123,18 @@ export default function CardsPage() {
     try {
       const value = await getFuelCardPin(getBrowserSupabase(), cardId);
       setPins((p) => ({ ...p, [cardId]: value || "(brak PIN-u)" }));
+      // #audyt: re-maskuj po 30 s — odsłonięty PIN nie zostaje trwale w stanie/DOM.
+      window.setTimeout(
+        () =>
+          setPins((p) => {
+            const { [cardId]: _drop, ...rest } = p;
+            return rest;
+          }),
+        30_000,
+      );
     } catch (e) {
-      setPins((p) => ({ ...p, [cardId]: e instanceof Error ? e.message : "Błąd" }));
+      // #audyt: błąd NIE może renderować się jak PIN (czerwony strong) — osobny toast.
+      toast(e instanceof Error ? e.message : "Nie udało się odczytać PIN-u.", "error");
     }
   }
 
@@ -230,9 +240,11 @@ export default function CardsPage() {
             <Field label="PIN (4–6 cyfr)" error={errors.pin}>
               <input
                 style={input}
+                type="password"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 inputMode="numeric"
+                autoComplete="off"
                 placeholder={editingId ? "bez zmian" : ""}
               />
             </Field>

@@ -39,6 +39,12 @@ function urgencyColor(days: number | null): string {
   if (days <= 14) return palette.warning;
   return palette.success;
 }
+// #audyt B2: „po terminie" obejmuje też pozycje km-owe (serwis wg przebiegu),
+// gdzie date===null — przeterminowane, gdy przejechano ponad interwał (kmLeft<=0).
+function isOverdue(d: Deadline): boolean {
+  if (d.date) return (daysLeft(d.date) ?? 1) < 0;
+  return d.kmLeft != null && d.kmLeft <= 0;
+}
 
 export default function SchedulePage() {
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
@@ -143,10 +149,7 @@ export default function SchedulePage() {
     load();
   }, [load]);
 
-  const overdue = useMemo(
-    () => deadlines.filter((d) => (daysLeft(d.date) ?? 1) < 0).length,
-    [deadlines],
-  );
+  const overdue = useMemo(() => deadlines.filter(isOverdue).length, [deadlines]);
 
   return (
     <div>
@@ -168,7 +171,9 @@ export default function SchedulePage() {
           const days = daysLeft(d.date);
           const color = d.date
             ? urgencyColor(days)
-            : urgencyColor((d.kmLeft ?? 99999) < 1000 ? 7 : 60);
+            : urgencyColor(
+                d.kmLeft != null && d.kmLeft <= 0 ? -1 : (d.kmLeft ?? 99999) < 1000 ? 7 : 60,
+              );
           return (
             <div key={d.key} style={{ ...s.row, borderLeft: `4px solid ${color}` }}>
               <div style={s.rowMain}>

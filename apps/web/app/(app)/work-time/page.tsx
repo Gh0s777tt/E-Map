@@ -41,7 +41,8 @@ function toEntry(r: WorkTimeRecord): WorkTimeEntry {
 
 export default function WorkTimePage() {
   const confirm = useConfirm();
-  const [driver, setDriver] = useState("");
+  // #271 · B3: wybór kierowcy steruje zestawieniem (filtr po driver_id) i etykietą zapisu ("" = wszyscy).
+  const [filterDriverId, setFilterDriverId] = useState("");
   // #271: kartoteka do podpowiedzi + FK driver_id przy zapisie.
   const [driversList, setDriversList] = useState<DriverRow[]>([]);
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
@@ -81,7 +82,16 @@ export default function WorkTimePage() {
     () => summarizeWorkTime(rows.filter((r) => r.driving > 0 || r.otherWork > 0 || r.rest > 0)),
     [rows],
   );
-  const report = useMemo(() => summarizeWorkTime(saved.map(toEntry)), [saved]);
+  const selectedDriver = useMemo(
+    () => driversList.find((d) => d.id === filterDriverId) ?? null,
+    [driversList, filterDriverId],
+  );
+  // #271 · B3: realny filtr po driver_id — zestawienie/CSV/statystyki liczą tylko wybranego kierowcę.
+  const filteredSaved = useMemo(
+    () => (filterDriverId ? saved.filter((r) => r.driver_id === filterDriverId) : saved),
+    [saved, filterDriverId],
+  );
+  const report = useMemo(() => summarizeWorkTime(filteredSaved.map(toEntry)), [filteredSaved]);
 
   function patch(id: string, p: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
@@ -102,13 +112,10 @@ export default function WorkTimePage() {
         await insertWorkTimeEntry(
           sb,
           {
-            driverName: driver,
-            driverId:
-              driversList.find(
-                (d) =>
-                  `${d.first_name} ${d.last_name}`.trim().toLowerCase() ===
-                  driver.trim().toLowerCase(),
-              )?.id ?? null,
+            driverName: selectedDriver
+              ? `${selectedDriver.first_name} ${selectedDriver.last_name}`.trim()
+              : null,
+            driverId: selectedDriver?.id ?? null,
             workDate: r.date,
             driving: r.driving,
             otherWork: r.otherWork,
@@ -146,7 +153,7 @@ export default function WorkTimePage() {
       "Praca łącznie (h)",
       "Przekroczenie",
     ];
-    const body: (string | number)[][] = [...saved]
+    const body: (string | number)[][] = [...filteredSaved]
       .sort((a, b) => a.work_date.localeCompare(b.work_date))
       .map((rec) => [
         rec.driver_name ?? "",
@@ -206,25 +213,26 @@ export default function WorkTimePage() {
       {companyId && (
         <TachoAutoSection
           companyId={companyId}
+          roster={driversList}
           savedKeys={new Set(saved.map((r) => `${r.driver_name ?? ""}|${r.work_date}`))}
           onImported={load}
         />
       )}
 
       <div style={{ ...f.field, maxWidth: 320, marginBottom: 14 }}>
-        <span style={f.label}>Kierowca (do zestawienia)</span>
-        <input
+        <span style={f.label}>Kierowca (zestawienie i zapis)</span>
+        <select
           style={f.input}
-          value={driver}
-          list="drivers-dl"
-          onChange={(e) => setDriver(e.target.value)}
-          placeholder="Imię i nazwisko"
-        />
-        <datalist id="drivers-dl">
+          value={filterDriverId}
+          onChange={(e) => setFilterDriverId(e.target.value)}
+        >
+          <option value="">— wszyscy —</option>
           {driversList.map((d) => (
-            <option key={d.id} value={`${d.first_name} ${d.last_name}`.trim()} />
+            <option key={d.id} value={d.id}>
+              {`${d.first_name} ${d.last_name}`.trim()}
+            </option>
           ))}
-        </datalist>
+        </select>
       </div>
 
       <div style={f.card}>
@@ -312,17 +320,17 @@ export default function WorkTimePage() {
       <div style={{ display: "flex", alignItems: "center", marginTop: 28, marginBottom: 8 }}>
         <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Ewidencja</h2>
         <span style={{ color: palette.smoke, fontSize: 13, marginLeft: 8 }}>
-          {saved.length > 0 ? `${saved.length} dni` : "brak zapisanych"}
+          {filteredSaved.length > 0 ? `${filteredSaved.length} dni` : "brak zapisanych"}
         </span>
         <span style={{ flex: 1 }} />
-        <Button variant="ghost" onClick={exportCsv} disabled={saved.length === 0}>
+        <Button variant="ghost" onClick={exportCsv} disabled={filteredSaved.length === 0}>
           ⬇️ CSV
         </Button>
       </div>
 
-      {saved.length > 0 ? (
+      {filteredSaved.length > 0 ? (
         <div style={f.card}>
-          {saved.map((rec) => {
+          {filteredSaved.map((rec) => {
             const over = rec.driving > 10;
             return (
               <div key={rec.id} style={f.listRow}>
@@ -350,7 +358,9 @@ export default function WorkTimePage() {
         </div>
       ) : (
         <p style={{ color: palette.smoke }}>
-          Brak zapisanych dni — dodaj powyżej i zapisz do ewidencji.
+          {filterDriverId
+            ? "Brak zapisanych dni dla wybranego kierowcy."
+            : "Brak zapisanych dni — dodaj powyżej i zapisz do ewidencji."}
         </p>
       )}
 
