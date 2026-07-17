@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { VehiclePicker } from "../components/VehiclePicker";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
@@ -30,19 +31,32 @@ interface DefectRow {
   created_at: string;
 }
 
-const SEVERITIES: { key: DefectSeverity; label: string; color: string }[] = [
-  { key: "low", label: "Drobna", color: palette.success },
-  { key: "medium", label: "Średnia", color: palette.warning },
-  { key: "high", label: "Poważna", color: palette.red },
+// #audyt i18n: kolory wag zostają na module; etykiety wag/statusów przez t() w komponencie.
+const SEVERITIES: { key: DefectSeverity; color: string }[] = [
+  { key: "low", color: palette.success },
+  { key: "medium", color: palette.warning },
+  { key: "high", color: palette.red },
 ];
-const STATUS_LABEL: Record<DefectStatus, string> = {
-  open: "zgłoszona",
-  in_progress: "w naprawie",
-  resolved: "naprawiona",
-};
 
 export default function DefectsScreen() {
   const { vehicles, loading: fleetLoading } = useFleet();
+  const t = useT();
+  const sevLabel = (k: DefectSeverity) =>
+    t(
+      k === "low"
+        ? "m.defects.sevLow"
+        : k === "medium"
+          ? "m.defects.sevMedium"
+          : "m.defects.sevHigh",
+    );
+  const statusLabel = (st: DefectStatus) =>
+    t(
+      st === "open"
+        ? "m.defects.statusOpen"
+        : st === "in_progress"
+          ? "m.defects.statusProgress"
+          : "m.defects.statusResolved",
+    );
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [part, setPart] = useState<string>(DEFECT_PARTS[0]);
   const [severity, setSeverity] = useState<DefectSeverity>("medium");
@@ -72,11 +86,11 @@ export default function DefectsScreen() {
   async function submit() {
     setMsg(null);
     if (!vehicleId) {
-      setMsg("Wybierz pojazd.");
+      setMsg(t("m.defects.pickVehicle"));
       return;
     }
     if (description.trim().length < 3) {
-      setMsg("Opisz usterkę (min. 3 znaki).");
+      setMsg(t("m.defects.descMin"));
       return;
     }
     setBusy(true);
@@ -84,7 +98,7 @@ export default function DefectsScreen() {
       const sb = getSupabase();
       const [m, user] = await Promise.all([getActiveMembership(sb), sb.auth.getUser()]);
       const uid = user.data.user?.id;
-      if (!m || !uid) throw new Error("Brak aktywnej firmy.");
+      if (!m || !uid) throw new Error(t("m.defects.noCompany"));
       await insertDefect(
         sb,
         {
@@ -98,10 +112,10 @@ export default function DefectsScreen() {
         { companyId: m.companyId, reportedBy: uid },
       );
       setDescription("");
-      setMsg("✅ Usterka zgłoszona — mechanik dostanie ją w panelu.");
+      setMsg(t("m.defects.reported"));
       load();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Nie udało się zgłosić usterki.");
+      setMsg(e instanceof Error ? e.message : t("m.defects.reportFail"));
     } finally {
       setBusy(false);
     }
@@ -117,7 +131,7 @@ export default function DefectsScreen() {
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }
     >
-      <SectionTitle>Zgłoś usterkę</SectionTitle>
+      <SectionTitle>{t("m.defects.title")}</SectionTitle>
       <Card style={{ gap: 12 }}>
         <VehiclePicker
           vehicles={vehicles}
@@ -125,7 +139,7 @@ export default function DefectsScreen() {
           selectedId={vehicleId}
           onSelect={setVehicleId}
         />
-        <Text style={s.label}>Część / układ</Text>
+        <Text style={s.label}>{t("m.defects.part")}</Text>
         <View style={s.chips}>
           {DEFECT_PARTS.map((p) => (
             <Pressable key={p} onPress={() => setPart(p)} style={[s.chip, part === p && s.chipOn]}>
@@ -133,23 +147,23 @@ export default function DefectsScreen() {
             </Pressable>
           ))}
         </View>
-        <Text style={s.label}>Waga usterki</Text>
+        <Text style={s.label}>{t("m.defects.severity")}</Text>
         <View style={s.chips}>
-          {SEVERITIES.map(({ key, label, color }) => (
+          {SEVERITIES.map(({ key, color }) => (
             <Pressable
               key={key}
               onPress={() => setSeverity(key)}
               style={[s.chip, severity === key && { backgroundColor: color, borderColor: color }]}
             >
               <Text style={[s.chipText, severity === key && { color: palette.black }]}>
-                {label}
+                {sevLabel(key)}
               </Text>
             </Pressable>
           ))}
         </View>
         <TextInput
           style={s.input}
-          placeholder="Opis — co się dzieje, od kiedy, przy jakiej prędkości…"
+          placeholder={t("m.defects.descPh")}
           placeholderTextColor={palette.smoke}
           multiline
           value={description}
@@ -157,16 +171,14 @@ export default function DefectsScreen() {
         />
         {msg && <Text style={s.msg}>{msg}</Text>}
         <PrimaryButton
-          label={busy ? "Wysyłanie…" : "Zgłoś usterkę"}
+          label={busy ? t("m.defects.sending") : t("m.defects.title")}
           onPress={submit}
           disabled={busy}
         />
       </Card>
 
-      <SectionTitle>Ostatnie zgłoszenia</SectionTitle>
-      {!loading && defects.length === 0 && (
-        <Text style={s.note}>Brak zgłoszeń — oby tak dalej. 🔧</Text>
-      )}
+      <SectionTitle>{t("m.defects.recent")}</SectionTitle>
+      {!loading && defects.length === 0 && <Text style={s.note}>{t("m.defects.none")}</Text>}
       {defects.map((d) => {
         const sev = SEVERITIES.find((x) => x.key === d.severity);
         return (
@@ -176,14 +188,14 @@ export default function DefectsScreen() {
                 {d.part} · {regOf(d.vehicle_id)}
               </Text>
               <Text style={[s.rowStatus, d.status === "resolved" && { color: palette.success }]}>
-                {STATUS_LABEL[d.status]}
+                {statusLabel(d.status)}
               </Text>
             </View>
             <Text style={s.rowDesc} numberOfLines={2}>
               {d.description}
             </Text>
             <Text style={[s.rowSev, { color: sev?.color ?? palette.smoke }]}>
-              {sev?.label ?? d.severity} · {d.created_at.slice(0, 10)}
+              {sevLabel(d.severity)} · {d.created_at.slice(0, 10)}
             </Text>
           </Card>
         );
