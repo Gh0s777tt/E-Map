@@ -24,6 +24,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { AppHeader } from "../../components/AppHeader";
 import { Card, ListRow, PrimaryButton, SectionTitle, wide } from "../../components/ui";
 import { useT } from "../../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
@@ -96,102 +97,110 @@ export default function ChatListScreen() {
   }
 
   return (
-    <ScrollView
-      style={s.screen}
-      contentContainerStyle={[s.content, wide]}
-      refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
-      }
-    >
-      {err && <Text style={s.err}>{err}</Text>}
+    <View style={s.screen}>
+      <AppHeader subtitle={t("m.screen.chat")} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[s.content, wide]}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
+        }
+      >
+        {err && <Text style={s.err}>{err}</Text>}
 
-      <SectionTitle>{t("m.chat.channels")}</SectionTitle>
-      <Card style={{ paddingVertical: 4 }}>
-        <ListRow
-          glyph="📢"
-          title={t("m.chat.general")}
-          subtitle={t("m.chat.generalSub")}
-          onPress={() =>
-            router.push({ pathname: "/chat-thread", params: { id: "", name: t("m.chat.general") } })
-          }
-          last={threads.length === 0}
-        />
-        {threads.map((th, i) => (
+        <SectionTitle>{t("m.chat.channels")}</SectionTitle>
+        <Card style={{ paddingVertical: 4 }}>
           <ListRow
-            key={th.id}
-            glyph="💬"
-            title={th.name}
-            subtitle={t("m.chat.privateSub")}
+            glyph="📢"
+            title={t("m.chat.general")}
+            subtitle={t("m.chat.generalSub")}
             onPress={() =>
-              router.push({ pathname: "/chat-thread", params: { id: th.id, name: th.name } })
+              router.push({
+                pathname: "/chat-thread",
+                params: { id: "", name: t("m.chat.general") },
+              })
             }
-            last={i === threads.length - 1}
+            last={threads.length === 0}
           />
-        ))}
-      </Card>
-
-      {manage && (
-        <View style={{ marginTop: 14 }}>
-          <PrimaryButton label={t("m.chat.new")} onPress={openCreate} />
-          <Text style={s.hint}>{t("m.chat.newHint")}</Text>
-        </View>
-      )}
-
-      <Modal visible={creating} transparent animationType="slide">
-        <View style={s.backdrop}>
-          <View style={s.sheet}>
-            <Text style={s.sheetTitle}>{t("m.chat.newTitle")}</Text>
-            <TextInput
-              style={s.input}
-              value={name}
-              onChangeText={setName}
-              placeholder={t("m.chat.namePh")}
-              placeholderTextColor={palette.smoke}
+          {threads.map((th, i) => (
+            <ListRow
+              key={th.id}
+              glyph="💬"
+              title={th.name}
+              subtitle={t("m.chat.privateSub")}
+              onPress={() =>
+                router.push({ pathname: "/chat-thread", params: { id: th.id, name: th.name } })
+              }
+              last={i === threads.length - 1}
             />
-            <Text style={s.sheetLabel}>{t("m.chat.members")}</Text>
-            <ScrollView style={{ maxHeight: 260 }}>
-              {members.map((m) => {
-                const on = selected.has(m.user_id);
-                return (
-                  <Pressable
-                    key={m.user_id}
-                    style={s.memberRow}
-                    onPress={() =>
-                      setSelected((set) => {
-                        const next = new Set(set);
-                        if (on) next.delete(m.user_id);
-                        else next.add(m.user_id);
-                        return next;
-                      })
-                    }
-                  >
-                    <View style={[s.check, on && s.checkOn]}>
-                      {on && <Text style={s.checkTick}>✓</Text>}
-                    </View>
-                    <Text style={s.memberText} numberOfLines={1}>
-                      {m.email} · {m.role}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-              {members.length === 0 && <Text style={s.hint}>{t("m.chat.membersFail")}</Text>}
-            </ScrollView>
-            <View style={s.sheetRow}>
-              <Pressable style={s.cancel} onPress={() => setCreating(false)}>
-                <Text style={s.cancelText}>{t("m.chat.cancel")}</Text>
-              </Pressable>
-              <Pressable
-                style={[s.create, (!name.trim() || busy) && { opacity: 0.5 }]}
-                onPress={submitCreate}
-                disabled={!name.trim() || busy}
-              >
-                <Text style={s.createText}>{busy ? t("m.chat.creating") : t("m.chat.create")}</Text>
-              </Pressable>
+          ))}
+        </Card>
+
+        {manage && (
+          <View style={{ marginTop: 14 }}>
+            <PrimaryButton label={t("m.chat.new")} onPress={openCreate} />
+            <Text style={s.hint}>{t("m.chat.newHint")}</Text>
+          </View>
+        )}
+
+        <Modal visible={creating} transparent animationType="slide">
+          <View style={s.backdrop}>
+            <View style={s.sheet}>
+              <Text style={s.sheetTitle}>{t("m.chat.newTitle")}</Text>
+              <TextInput
+                style={s.input}
+                value={name}
+                onChangeText={setName}
+                placeholder={t("m.chat.namePh")}
+                placeholderTextColor={palette.smoke}
+              />
+              <Text style={s.sheetLabel}>{t("m.chat.members")}</Text>
+              <ScrollView style={{ maxHeight: 260 }}>
+                {members.map((m) => {
+                  const on = selected.has(m.user_id);
+                  return (
+                    <Pressable
+                      key={m.user_id}
+                      style={s.memberRow}
+                      onPress={() =>
+                        setSelected((set) => {
+                          const next = new Set(set);
+                          if (on) next.delete(m.user_id);
+                          else next.add(m.user_id);
+                          return next;
+                        })
+                      }
+                    >
+                      <View style={[s.check, on && s.checkOn]}>
+                        {on && <Text style={s.checkTick}>✓</Text>}
+                      </View>
+                      <Text style={s.memberText} numberOfLines={1}>
+                        {m.email} · {m.role}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                {members.length === 0 && <Text style={s.hint}>{t("m.chat.membersFail")}</Text>}
+              </ScrollView>
+              <View style={s.sheetRow}>
+                <Pressable style={s.cancel} onPress={() => setCreating(false)}>
+                  <Text style={s.cancelText}>{t("m.chat.cancel")}</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.create, (!name.trim() || busy) && { opacity: 0.5 }]}
+                  onPress={submitCreate}
+                  disabled={!name.trim() || busy}
+                >
+                  <Text style={s.createText}>
+                    {busy ? t("m.chat.creating") : t("m.chat.create")}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </View>
   );
 }
 

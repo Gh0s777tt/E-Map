@@ -13,9 +13,9 @@ import {
 import { palette } from "@e-logistic/ui";
 import { decode } from "base64-arraybuffer";
 import * as ImagePicker from "expo-image-picker";
-import { Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppHeader } from "../../components/AppHeader";
 import { VehiclePicker } from "../../components/VehiclePicker";
 import { useT } from "../../lib/i18n";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../../lib/outbox";
@@ -155,181 +155,184 @@ export default function ChecklistsScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Stack.Screen options={{ title: t("m.screen.checklists") }} />
+    <View style={styles.screen}>
+      <AppHeader subtitle={t("m.screen.checklists")} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {!tpl && (
+          <>
+            <Text style={styles.label}>{t("m.fuel.vehicle")}</Text>
+            <VehiclePicker
+              vehicles={vehicles}
+              loading={loading}
+              selectedId={vehicleId}
+              onSelect={setVehicleId}
+            />
 
-      {!tpl && (
-        <>
-          <Text style={styles.label}>{t("m.fuel.vehicle")}</Text>
-          <VehiclePicker
-            vehicles={vehicles}
-            loading={loading}
-            selectedId={vehicleId}
-            onSelect={setVehicleId}
-          />
-
-          <Text style={styles.label}>{t("m.chk.pickTemplate")}</Text>
-          {templates.length === 0 && <Text style={styles.hint}>{t("m.chk.none")}</Text>}
-          {templates.map((template) => (
-            <Pressable
-              key={template.id}
-              style={styles.tplBtn}
-              onPress={() => openTemplate(template)}
-            >
-              <Text style={styles.tplText}>📋 {template.name}</Text>
-              <Text style={styles.tplSub}>
-                {t("m.chk.itemsCount", { n: template.items.length })}
-              </Text>
-            </Pressable>
-          ))}
-        </>
-      )}
-
-      {tpl && (
-        <>
-          <Text style={styles.header}>
-            📋 {tpl.name}
-            {vehicleId ? ` — ${vehicles.find((v) => v.id === vehicleId)?.registration ?? ""}` : ""}
-          </Text>
-          {(() => {
-            // Postęp: pozycja „odpowiedziana" = yesno z decyzją lub multi z ≥1 wyborem.
-            const done = tpl.items.filter((it) => {
-              const v = answers[it.key]?.value;
-              return it.type === "yesno"
-                ? typeof v === "boolean"
-                : Array.isArray(v) && v.length > 0;
-            }).length;
-            const pct = tpl.items.length ? done / tpl.items.length : 0;
-            return (
-              <View style={styles.progressWrap}>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%` }]} />
-                </View>
-                <Text style={styles.progressText}>
-                  {done}/{tpl.items.length} · {Math.round(pct * 100)}%
+            <Text style={styles.label}>{t("m.chk.pickTemplate")}</Text>
+            {templates.length === 0 && <Text style={styles.hint}>{t("m.chk.none")}</Text>}
+            {templates.map((template) => (
+              <Pressable
+                key={template.id}
+                style={styles.tplBtn}
+                onPress={() => openTemplate(template)}
+              >
+                <Text style={styles.tplText}>📋 {template.name}</Text>
+                <Text style={styles.tplSub}>
+                  {t("m.chk.itemsCount", { n: template.items.length })}
                 </Text>
-              </View>
-            );
-          })()}
-          {tpl.items.map((it) => {
-            const a = answers[it.key];
-            return (
-              <View key={it.key} style={styles.item}>
-                <Text style={styles.itemLabel}>{it.label}</Text>
+              </Pressable>
+            ))}
+          </>
+        )}
 
-                {it.type === "yesno" && (
-                  <View style={styles.row}>
-                    {[true, false].map((v) => (
-                      <Pressable
-                        key={String(v)}
-                        style={[styles.chip, a?.value === v && styles.chipActive]}
-                        onPress={() => setAns(it.key, { value: v })}
-                      >
-                        <Text style={a?.value === v ? styles.chipTextActive : styles.chipText}>
-                          {v ? t("m.chk.yes") : t("m.chk.no")}
-                        </Text>
-                      </Pressable>
-                    ))}
+        {tpl && (
+          <>
+            <Text style={styles.header}>
+              📋 {tpl.name}
+              {vehicleId
+                ? ` — ${vehicles.find((v) => v.id === vehicleId)?.registration ?? ""}`
+                : ""}
+            </Text>
+            {(() => {
+              // Postęp: pozycja „odpowiedziana" = yesno z decyzją lub multi z ≥1 wyborem.
+              const done = tpl.items.filter((it) => {
+                const v = answers[it.key]?.value;
+                return it.type === "yesno"
+                  ? typeof v === "boolean"
+                  : Array.isArray(v) && v.length > 0;
+              }).length;
+              const pct = tpl.items.length ? done / tpl.items.length : 0;
+              return (
+                <View style={styles.progressWrap}>
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%` }]} />
                   </View>
-                )}
+                  <Text style={styles.progressText}>
+                    {done}/{tpl.items.length} · {Math.round(pct * 100)}%
+                  </Text>
+                </View>
+              );
+            })()}
+            {tpl.items.map((it) => {
+              const a = answers[it.key];
+              return (
+                <View key={it.key} style={styles.item}>
+                  <Text style={styles.itemLabel}>{it.label}</Text>
 
-                {it.type === "multi" && (
-                  <View style={styles.rowWrap}>
-                    {(it.options ?? []).map((opt) => {
-                      const sel = Array.isArray(a?.value) && a.value.includes(opt);
-                      return (
+                  {it.type === "yesno" && (
+                    <View style={styles.row}>
+                      {[true, false].map((v) => (
                         <Pressable
-                          key={opt}
-                          style={[styles.chip, sel && styles.chipActive]}
-                          onPress={() => {
-                            const cur = Array.isArray(a?.value) ? a.value : [];
-                            setAns(it.key, {
-                              value: sel ? cur.filter((o) => o !== opt) : [...cur, opt],
-                            });
-                          }}
+                          key={String(v)}
+                          style={[styles.chip, a?.value === v && styles.chipActive]}
+                          onPress={() => setAns(it.key, { value: v })}
                         >
-                          <Text style={sel ? styles.chipTextActive : styles.chipText}>{opt}</Text>
+                          <Text style={a?.value === v ? styles.chipTextActive : styles.chipText}>
+                            {v ? t("m.chk.yes") : t("m.chk.no")}
+                          </Text>
                         </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
+                      ))}
+                    </View>
+                  )}
 
-                {it.time && (
-                  <View style={styles.row}>
-                    <Text style={styles.timeLabel}>{t("m.chk.timeLabel")}</Text>
-                    <TextInput
-                      style={styles.timeInput}
-                      value={a?.time ?? nowHHMM()}
-                      onChangeText={(v) => setAns(it.key, { time: v })}
-                      placeholder="HH:MM"
-                      placeholderTextColor={palette.smoke}
-                      keyboardType="numbers-and-punctuation"
-                      maxLength={5}
-                    />
-                  </View>
-                )}
+                  {it.type === "multi" && (
+                    <View style={styles.rowWrap}>
+                      {(it.options ?? []).map((opt) => {
+                        const sel = Array.isArray(a?.value) && a.value.includes(opt);
+                        return (
+                          <Pressable
+                            key={opt}
+                            style={[styles.chip, sel && styles.chipActive]}
+                            onPress={() => {
+                              const cur = Array.isArray(a?.value) ? a.value : [];
+                              setAns(it.key, {
+                                value: sel ? cur.filter((o) => o !== opt) : [...cur, opt],
+                              });
+                            }}
+                          >
+                            <Text style={sel ? styles.chipTextActive : styles.chipText}>{opt}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
 
-                {it.photo && (
-                  <Pressable
-                    style={styles.photoBtn}
-                    onPress={() => attachPhoto(it)}
-                    disabled={photoBusy === it.key}
-                  >
-                    <Text style={styles.photoText}>
-                      {photoBusy === it.key
-                        ? t("m.exp.photoBusy")
-                        : a?.photo
-                          ? t("m.chk.photoChange")
-                          : t("m.chk.photoAdd")}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            );
-          })}
+                  {it.time && (
+                    <View style={styles.row}>
+                      <Text style={styles.timeLabel}>{t("m.chk.timeLabel")}</Text>
+                      <TextInput
+                        style={styles.timeInput}
+                        value={a?.time ?? nowHHMM()}
+                        onChangeText={(v) => setAns(it.key, { time: v })}
+                        placeholder="HH:MM"
+                        placeholderTextColor={palette.smoke}
+                        keyboardType="numbers-and-punctuation"
+                        maxLength={5}
+                      />
+                    </View>
+                  )}
 
-          {perm === "view" ? (
-            <Text style={styles.viewOnly}>{t("m.chk.viewOnly")}</Text>
-          ) : (
-            <Pressable
-              style={[styles.btn, busy && styles.btnBusy]}
-              onPress={submit}
-              disabled={busy}
-            >
-              <Text style={styles.btnText}>{busy ? t("m.fuel.saving") : t("m.chk.submit")}</Text>
+                  {it.photo && (
+                    <Pressable
+                      style={styles.photoBtn}
+                      onPress={() => attachPhoto(it)}
+                      disabled={photoBusy === it.key}
+                    >
+                      <Text style={styles.photoText}>
+                        {photoBusy === it.key
+                          ? t("m.exp.photoBusy")
+                          : a?.photo
+                            ? t("m.chk.photoChange")
+                            : t("m.chk.photoAdd")}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
+
+            {perm === "view" ? (
+              <Text style={styles.viewOnly}>{t("m.chk.viewOnly")}</Text>
+            ) : (
+              <Pressable
+                style={[styles.btn, busy && styles.btnBusy]}
+                onPress={submit}
+                disabled={busy}
+              >
+                <Text style={styles.btnText}>{busy ? t("m.fuel.saving") : t("m.chk.submit")}</Text>
+              </Pressable>
+            )}
+            <Pressable style={styles.cancelBtn} onPress={() => setTpl(null)}>
+              <Text style={styles.cancelText}>← {t("m.minv.backToList")}</Text>
             </Pressable>
-          )}
-          <Pressable style={styles.cancelBtn} onPress={() => setTpl(null)}>
-            <Text style={styles.cancelText}>← {t("m.minv.backToList")}</Text>
-          </Pressable>
-        </>
-      )}
+          </>
+        )}
 
-      {msg && <Text style={styles.msg}>{msg}</Text>}
+        {msg && <Text style={styles.msg}>{msg}</Text>}
 
-      {!tpl && items.length > 0 && (
-        <View style={styles.queue}>
-          <Text style={styles.queueHead}>
-            {t("m.chk.recent")} ({items.length})
-          </Text>
-          {items.slice(0, 10).map((it) => {
-            const input = it.input as { templateName?: string };
-            return (
-              <Text key={it.id} style={styles.queueRow}>
-                {STATUS_ICON[it.status]} {input.templateName ?? t("m.chk.fallback")} ·{" "}
-                {it.createdAt.slice(0, 16).replace("T", " ")}
-                {it.status === "error" && it.error ? ` — ${it.error}` : ""}
-              </Text>
-            );
-          })}
-        </View>
-      )}
-    </ScrollView>
+        {!tpl && items.length > 0 && (
+          <View style={styles.queue}>
+            <Text style={styles.queueHead}>
+              {t("m.chk.recent")} ({items.length})
+            </Text>
+            {items.slice(0, 10).map((it) => {
+              const input = it.input as { templateName?: string };
+              return (
+                <Text key={it.id} style={styles.queueRow}>
+                  {STATUS_ICON[it.status]} {input.templateName ?? t("m.chk.fallback")} ·{" "}
+                  {it.createdAt.slice(0, 16).replace("T", " ")}
+                  {it.status === "error" && it.error ? ` — ${it.error}` : ""}
+                </Text>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
