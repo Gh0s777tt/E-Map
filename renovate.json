@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chore)",
+    "group:monorepos",
+    "schedule:weekly"
+  ],
+  "labels": ["dependencies"],
+  "timezone": "Europe/Warsaw",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": { "enabled": true },
+  "packageRules": [
+    {
+      "description": "Grupuj niełamiące aktualizacje (minor+patch) w jednym MR",
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "zależności (minor + patch)"
+    },
+    {
+      "description": "Ostrożnie z rdzeniem frameworków — osobne MR",
+      "matchPackageNames": ["next", "react", "react-dom", "expo", "typescript", "turbo"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "framework (major)",
+      "labels": ["dependencies", "framework"]
+    },
+    {
+      "description": "Poprawki bezpieczeństwa priorytetowo",
+      "matchDatasources": ["npm"],
+      "vulnerabilityAlerts": { "labels": ["security"], "automerge": false }
+    }
+  ]
+}

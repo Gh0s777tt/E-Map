@@ -1,17 +1,77 @@
 # ══════════════════════════════════════════════════════════════════
-#  E-Logistic — GitLab CI/CD
-#  Na razie: publikacja dokumentacji (MkDocs Material) na GitLab Pages.
-#  Pełne bramki (biome · tsc · testy · docs:check · build) dojdą w ETAPIE 4.
-#
-#  Referencja API (docs/api/) jest generowana TypeDoc-iem i commitowana
-#  (`pnpm docs:api`), więc job Pages buduje wyłącznie MkDocs (Python) —
-#  szybko i bez zależności od Node w pipeline.
+#  E-Logistic — GitLab CI/CD (źródło prawdy; GitHub = mirror, Actions OFF)
+#  Bramki jakości + skan bezpieczeństwa + wydanie + publikacja dokumentacji.
 # ══════════════════════════════════════════════════════════════════
 stages:
+  - test
+  - security
   - deploy
 
-# GitLab Pages: job MUSI nazywać się „pages" i wystawić katalog „public/".
-# Publikacja tylko z gałęzi domyślnej (main). URL: https://gh0s777tt.gitlab.io/e-logistic/
+# Statyczna analiza kodu (Semgrep) — zarządzana przez GitLab.
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
+# ── Wspólny setup dla jobów Node (NIE dla SAST/gitleaks/pages) ──
+.node:
+  image: node:26-bookworm-slim
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store
+  before_script:
+    - corepack enable
+    - pnpm config set store-dir .pnpm-store
+    - pnpm install --frozen-lockfile
+
+# ── Bramka jakości: Biome · tsc (web+mobile) · testy · docs:check ──
+quality:
+  extends: .node
+  stage: test
+  script:
+    - pnpm check
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# ── Skan sekretów (pełna historia, konfiguracja .gitleaks.toml) ──
+gitleaks:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  script:
+    - gitleaks detect --source . --config .gitleaks.toml --redact --verbose
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# ── Audyt podatności zależności (doradczy) ──
+audit:
+  extends: .node
+  stage: security
+  script:
+    - pnpm audit --audit-level=high
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# ── Wydanie: semantic-release (RĘCZNIE; wymaga zmiennej CI: GITLAB_TOKEN) ──
+# Tworzy tag vX.Y.Z + GitLab Release z Conventional Commits. Patrz .releaserc.json.
+release:
+  stage: deploy
+  image: node:26-bookworm-slim
+  before_script:
+    - corepack enable
+  script:
+    - pnpm dlx --package semantic-release --package @semantic-release/gitlab semantic-release
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true
+
+# ── GitLab Pages: dokumentacja MkDocs (docs/api generowane wcześniej, commitowane) ──
 pages:
   stage: deploy
   image: python:3.12-slim

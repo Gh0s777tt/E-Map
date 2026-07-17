@@ -1,0 +1,29 @@
+# gitleaks — konfiguracja skanu sekretów (CI: job „secret_detection" + lokalnie).
+# Rozszerza reguły domyślne; allowlista ogranicza fałszywe alarmy (szablony/przykłady).
+title = "E-Logistic gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ścieżki i wzorce bezpieczne — NIE dodawać tu prawdziwych sekretów"
+paths = [
+  '''\.env\.example$''',        # szablon zmiennych (same nazwy, bez wartości)
+  '''pnpm-lock\.yaml$''',       # hashe integralności wyglądają jak sekrety
+  '''docs/api/.*\.md$''',       # generowana referencja API (TypeDoc)
+  '''\.gitleaks\.toml$''',
+]
+regexes = [
+  # Publiczne z założenia klucze klienckie (deklaracje w szablonach/dokumentacji).
+  '''(NEXT|EXPO)_PUBLIC_[A-Z0-9_]+\s*=''',
+  # Adresy mailto w konfiguracji (VAPID_SUBJECT itp.).
+  '''mailto:[a-z0-9.@-]+''',
+]
+# Placeholdery w przykładach.
+stopwords = [
+  "example",
+  "changeme",
+  "your-",
+  "placeholder",
+  "onboarding@resend.dev",
+]

@@ -1,0 +1,18 @@
+{
+  "//": "semantic-release — wersjonowanie + GitLab Release z Conventional Commits.",
+  "//2": "Tryb bezpieczny: tworzy tag vX.Y.Z i GitLab Release (bez commitów do repo),",
+  "//3": "więc nie koliduje z bramką docs:check (wersja w package.json/README zostaje ręczna).",
+  "//4": "Uruchamiany jobem `release` w .gitlab-ci.yml; wymaga zmiennej CI: GITLAB_TOKEN.",
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/gitlab",
+      {
+        "gitlabUrl": "https://gitlab.com"
+      }
+    ]
+  ]
+}
