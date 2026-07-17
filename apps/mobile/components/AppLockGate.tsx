@@ -14,6 +14,8 @@ export function AppLockGate({ children }: { children: ReactNode }) {
   const t = useT();
   const [locked, setLocked] = useState(false);
   const [checking, setChecking] = useState(false);
+  // #audyt: dopóki nie rozstrzygnięto isAppLockEnabled — zasłaniaj (anty-migotanie treści).
+  const [checked, setChecked] = useState(false);
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
   const tryUnlock = useCallback(async () => {
@@ -36,6 +38,7 @@ export function AppLockGate({ children }: { children: ReactNode }) {
         const ok = await authenticate(t("m.lock.prompt"));
         setLocked(!ok);
       }
+      setChecked(true);
     })();
   }, []);
 
@@ -58,16 +61,21 @@ export function AppLockGate({ children }: { children: ReactNode }) {
   return (
     <View style={{ flex: 1 }}>
       {children}
-      {locked && (
+      {(!checked || locked) && (
         <View style={s.overlay}>
           <Text style={s.logo}>
             E-<Text style={{ color: palette.red }}>Logistic</Text>
           </Text>
-          <Text style={s.lockIcon}>🔒</Text>
-          <Text style={s.title}>{t("m.lock.title")}</Text>
-          <Pressable style={s.btn} onPress={tryUnlock} disabled={checking}>
-            <Text style={s.btnText}>{checking ? "…" : t("m.lock.unlock")}</Text>
-          </Pressable>
+          {/* Ikona/tytuł/przycisk dopiero po sprawdzeniu — przed nim overlay tylko zasłania. */}
+          {checked && (
+            <>
+              <Text style={s.lockIcon}>🔒</Text>
+              <Text style={s.title}>{t("m.lock.title")}</Text>
+              <Pressable style={s.btn} onPress={tryUnlock} disabled={checking}>
+                <Text style={s.btnText}>{checking ? "…" : t("m.lock.unlock")}</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       )}
     </View>
