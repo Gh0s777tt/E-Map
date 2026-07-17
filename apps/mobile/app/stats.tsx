@@ -7,6 +7,7 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Card, SectionTitle, wide } from "../components/ui";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
@@ -24,6 +25,7 @@ const DAYS = 14;
 
 export default function StatsScreen() {
   const { vehicles } = useFleet();
+  const t = useT();
   const [logs, setLogs] = useState<FuelRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -38,11 +40,11 @@ export default function StatsScreen() {
       const from = new Date(Date.now() - 30 * 86_400_000).toISOString();
       setLogs((await listFuelLogs(getSupabase(), { from, limit: 100 })) as FuelRow[]);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać statystyk.");
+      setErr(e instanceof Error ? e.message : t("m.stats.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
@@ -73,23 +75,23 @@ export default function StatsScreen() {
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={palette.red} />
       }
     >
-      <SectionTitle>Ostatnie 30 dni</SectionTitle>
+      <SectionTitle>{t("m.stats.last30")}</SectionTitle>
       <View style={s.row}>
         <Card style={s.kpi}>
-          <Text style={s.kpiLabel}>Tankowania</Text>
+          <Text style={s.kpiLabel}>{t("m.stats.refuels")}</Text>
           <Text style={s.kpiValue}>{logs.length}</Text>
         </Card>
         <Card style={s.kpi}>
-          <Text style={s.kpiLabel}>Litry</Text>
+          <Text style={s.kpiLabel}>{t("m.stats.liters")}</Text>
           <Text style={s.kpiValueRed}>{Math.round(liters)}</Text>
         </Card>
         <Card style={s.kpi}>
-          <Text style={s.kpiLabel}>Koszt</Text>
+          <Text style={s.kpiLabel}>{t("m.stats.cost")}</Text>
           <Text style={s.kpiValueRed}>{Math.round(cost)}</Text>
         </Card>
       </View>
 
-      <SectionTitle>Litry dziennie (14 dni)</SectionTitle>
+      <SectionTitle>{t("m.stats.litersDaily")}</SectionTitle>
       <Card style={s.chartCard}>
         <View style={s.chart}>
           {days.map((d) => (
@@ -110,11 +112,9 @@ export default function StatsScreen() {
       </Card>
 
       {err && <Text style={s.err}>{err}</Text>}
-      {!loading && !err && logs.length === 0 && (
-        <Text style={s.note}>Brak tankowań w ostatnich 30 dniach.</Text>
-      )}
+      {!loading && !err && logs.length === 0 && <Text style={s.note}>{t("m.stats.empty")}</Text>}
 
-      <SectionTitle>Tankowania</SectionTitle>
+      <SectionTitle>{t("m.stats.refuels")}</SectionTitle>
       {logs.slice(0, 30).map((l) => (
         <Card key={l.id} style={s.entry}>
           <View style={s.entryHead}>

@@ -8,6 +8,7 @@ import { palette } from "@e-logistic/ui";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 /**
@@ -16,6 +17,7 @@ import { getSupabase, supabaseConfigured } from "../lib/supabase";
  * Otwarcie = podpisany URL → systemowa przeglądarka PDF (podgląd/druk).
  */
 export default function DocumentsScreen() {
+  const t = useT();
   const [docs, setDocs] = useState<DocumentMeta[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,32 +35,27 @@ export default function DocumentsScreen() {
         if (!m) return;
         setDocs(await listDocuments(sb, m.companyId));
       } catch {
-        setMsg("Nie udało się pobrać dokumentów — spróbuj przy zasięgu.");
+        setMsg(t("m.docs.loadError"));
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [t]);
 
   async function open(doc: DocumentMeta) {
     try {
       const url = await getDocumentUrl(getSupabase(), doc.path);
       if (url) await Linking.openURL(url);
     } catch {
-      setMsg("Nie udało się otworzyć dokumentu.");
+      setMsg(t("m.docs.openError"));
     }
   }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Stack.Screen options={{ title: "Dokumenty" }} />
-      {loading && <Text style={styles.note}>Ładowanie…</Text>}
-      {!loading && docs.length === 0 && (
-        <Text style={styles.note}>
-          Brak udostępnionych dokumentów — właściciel udostępnia je w panelu web (Dokumenty →
-          widoczność).
-        </Text>
-      )}
+      <Stack.Screen options={{ title: t("m.screen.documents") }} />
+      {loading && <Text style={styles.note}>{t("m.docs.loading")}</Text>}
+      {!loading && docs.length === 0 && <Text style={styles.note}>{t("m.docs.empty")}</Text>}
       {docs.map((d) => (
         <Pressable key={d.id} style={styles.row} onPress={() => open(d)}>
           <Text style={styles.icon}>{d.mime?.includes("pdf") ? "📕" : "📄"}</Text>
@@ -67,10 +64,10 @@ export default function DocumentsScreen() {
               {d.name}
             </Text>
             <Text style={styles.sub}>
-              {d.category ?? "dokument"} · {d.created_at.slice(0, 10)}
+              {d.category ?? t("m.docs.fallbackCategory")} · {d.created_at.slice(0, 10)}
             </Text>
           </View>
-          <Text style={styles.open}>otwórz ↗</Text>
+          <Text style={styles.open}>{t("m.docs.open")}</Text>
         </Pressable>
       ))}
       {msg && <Text style={styles.note}>{msg}</Text>}
