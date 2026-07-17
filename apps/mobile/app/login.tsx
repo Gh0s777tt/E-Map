@@ -82,7 +82,7 @@ export default function Login() {
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
-      if (!credential.identityToken) throw new Error("Apple nie zwróciło tokenu.");
+      if (!credential.identityToken) throw new Error(t("m.login.appleNoToken"));
       const { error: e } = await getSupabase().auth.signInWithIdToken({
         provider: "apple",
         token: credential.identityToken,
@@ -117,7 +117,7 @@ export default function Login() {
         setError(friendlyOAuthError(e.message));
         return;
       }
-      if (!data?.url) throw new Error("Brak adresu logowania.");
+      if (!data?.url) throw new Error(t("m.login.noAuthUrl"));
       const res = await WebBrowser.openAuthSessionAsync(data.url, REDIRECT);
       if (res.type !== "success" || !res.url) return; // anulowane
       const code = new URL(res.url).searchParams.get("code");
@@ -139,7 +139,7 @@ export default function Login() {
       <Text style={styles.title}>
         <Text style={styles.accent}>E</Text>-Logistic
       </Text>
-      <Text style={styles.subtitle}>Zaloguj się do konta firmy</Text>
+      <Text style={styles.subtitle}>{t("m.login.subtitle")}</Text>
 
       {!supabaseConfigured ? (
         <Text style={styles.error}>

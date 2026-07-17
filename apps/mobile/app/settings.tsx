@@ -98,39 +98,34 @@ export default function SettingsScreen() {
     setPushMsg(null);
     const uid = session?.user?.id;
     if (!uid) {
-      setPushMsg("Zaloguj się, aby włączyć powiadomienia.");
+      setPushMsg(t("m.settings.pushLoginFirst"));
       return;
     }
     try {
       await registerForPush(uid);
-      setPushMsg("✅ Powiadomienia włączone (token zapisany).");
+      setPushMsg(t("m.settings.pushEnabled"));
     } catch (e) {
-      setPushMsg(e instanceof Error ? e.message : "Nie udało się włączyć powiadomień.");
+      setPushMsg(e instanceof Error ? e.message : t("m.settings.pushFail"));
     }
   }
 
   return (
     <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
-      <SectionTitle>Konto</SectionTitle>
+      <SectionTitle>{t("m.settings.account")}</SectionTitle>
       <Card style={{ gap: 8 }}>
         <View style={s.kv}>
-          <Text style={s.k}>E-mail</Text>
+          <Text style={s.k}>{t("m.settings.email")}</Text>
           <Text style={s.v} numberOfLines={1}>
             {session?.user?.email ?? "—"}
           </Text>
         </View>
-        <Text style={s.hint}>
-          Hasło i dane konta zmienisz w panelu web: e-logistic-one.vercel.app
-        </Text>
+        <Text style={s.hint}>{t("m.settings.accountHint")}</Text>
       </Card>
 
-      <SectionTitle>Powiadomienia</SectionTitle>
+      <SectionTitle>{t("m.settings.notifications")}</SectionTitle>
       <Card style={{ gap: 10 }}>
-        <Text style={s.hint}>
-          Push o nowych zleceniach i terminach. Jeśli nie dostajesz powiadomień, dotknij poniżej i
-          zaakceptuj zgodę systemową.
-        </Text>
-        <PrimaryButton label="🔔 Włącz / odśwież powiadomienia" onPress={enablePush} />
+        <Text style={s.hint}>{t("m.settings.notificationsHint")}</Text>
+        <PrimaryButton label={t("m.settings.pushButton")} onPress={enablePush} />
         {pushMsg && <Text style={s.msg}>{pushMsg}</Text>}
       </Card>
 
@@ -192,42 +187,46 @@ export default function SettingsScreen() {
 
       {powersyncConfigured() && (
         <>
-          <SectionTitle>Synchronizacja offline</SectionTitle>
+          <SectionTitle>{t("m.settings.syncOffline")}</SectionTitle>
           <Card style={{ gap: 8 }}>
             <View style={s.kv}>
               <Text style={s.k}>PowerSync</Text>
               <Text style={[s.v, { color: ps?.connected ? palette.success : palette.warning }]}>
-                {ps ? (ps.connected ? "● połączony" : "○ łączenie…") : "—"}
+                {ps
+                  ? ps.connected
+                    ? t("m.settings.syncConnected")
+                    : t("m.settings.syncConnecting")
+                  : "—"}
               </Text>
             </View>
             <View style={s.kv}>
-              <Text style={s.k}>Ostatnia synchronizacja</Text>
+              <Text style={s.k}>{t("m.settings.lastSync")}</Text>
               <Text style={s.v}>
                 {ps?.lastSyncedAt ? ps.lastSyncedAt.slice(0, 16).replace("T", " ") : "—"}
               </Text>
             </View>
             <View style={s.kv}>
-              <Text style={s.k}>Wiersze lokalnie</Text>
+              <Text style={s.k}>{t("m.settings.rowsLocal")}</Text>
               <Text style={s.v}>{ps?.rows ?? "—"}</Text>
             </View>
           </Card>
         </>
       )}
 
-      <SectionTitle>Aplikacja</SectionTitle>
+      <SectionTitle>{t("m.settings.app")}</SectionTitle>
       <Card style={{ gap: 8 }}>
         <View style={s.kv}>
-          <Text style={s.k}>Wersja</Text>
+          <Text style={s.k}>{t("m.settings.version")}</Text>
           <Text style={s.v}>{version}</Text>
         </View>
         <View style={s.kv}>
-          <Text style={s.k}>Wsparcie</Text>
+          <Text style={s.k}>{t("m.settings.support")}</Text>
           <Text style={s.v}>e-logistic-one.vercel.app/support</Text>
         </View>
       </Card>
 
       <View style={{ marginTop: 18 }}>
-        <GhostButton label="🚪 Wyloguj" onPress={() => signOut()} />
+        <GhostButton label={t("m.settings.logout")} onPress={() => signOut()} />
       </View>
     </ScrollView>
   );
