@@ -89,10 +89,10 @@ export default function ScoringPage() {
           (o) => o.status === "delivered" || o.status === "invoiced",
         ).length;
         const onTimePct = due.length > 0 ? onTime / due.length : null;
-        // #audyt B1: złącz po driver_id (dopinany triggerem z auth.uid()), NIE po
-        // driver_label — to imię/nazwisko, nie e-mail, więc email≡label nigdy nie pasował
-        // i składnik checklist (30% wyniku) wychodził 0.
-        const myChecklists = subs.filter((c) => c.driver_id === d.user_id).length;
+        // #audyt B1: złącz po driver_user_id (= auth.uid wypełniającego = user_id członka).
+        // NIE po driver_label (to imię/nazwisko, nie e-mail) ani driver_id (to FK do
+        // drivers(id), inna przestrzeń niż user_id) — inaczej składnik checklist (30%) = 0.
+        const myChecklists = subs.filter((c) => c.driver_user_id === d.user_id).length;
 
         const cScore = Math.min(1, myChecklists / 20);
         const vScore = finished.length / maxDelivered;

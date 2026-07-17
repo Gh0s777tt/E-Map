@@ -14,7 +14,10 @@ export interface ChecklistTemplate {
 export interface ChecklistSubmission {
   id: string;
   template_name: string;
+  /** FK do kartoteki `drivers(id)` (trigger: po user_id wypełniającego). */
   driver_id: string | null;
+  /** #audyt B1: `auth.uid()` wypełniającego (user_id) — do złączeń po użytkowniku (scoring). */
+  driver_user_id: string | null;
   driver_label: string;
   vehicle_id: string | null;
   answers: ChecklistAnswers;
@@ -147,7 +150,9 @@ export async function listChecklistSubmissions(
 ): Promise<ChecklistSubmission[]> {
   let q = client
     .from("checklist_submissions")
-    .select("id, template_name, driver_id, driver_label, vehicle_id, answers, created_at")
+    .select(
+      "id, template_name, driver_id, driver_user_id, driver_label, vehicle_id, answers, created_at",
+    )
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
     .limit(opts.limit ?? 200);
@@ -160,6 +165,7 @@ export async function listChecklistSubmissions(
     id: r.id,
     template_name: r.template_name,
     driver_id: r.driver_id,
+    driver_user_id: r.driver_user_id,
     driver_label: r.driver_label,
     vehicle_id: r.vehicle_id,
     answers: (r.answers as unknown as ChecklistAnswers) ?? {},

@@ -102,13 +102,16 @@ export function TachoAutoSection({
     if (!driver || missing.length === 0) return;
     setBusy(true);
     try {
-      // #271 · B4: dopasuj kierowcę po nazwie do kartoteki → driver_id (jak ręczny formularz),
-      // żeby auto-import nie zostawiał wpisów z driver_id=null.
+      // #271 · B4: ustaw driver_id, żeby auto-import nie zostawiał wpisów z driver_id=null.
+      // 1) preferuj FK z samego zgłoszenia (trigger checklisty wiąże je z kartoteką),
+      // 2) fallback: dopasowanie po nazwie do kartoteki (spójnie z ręcznym formularzem).
       const driverId =
+        subs.find((s) => s.driver_label === driver && s.driver_id)?.driver_id ??
         roster.find(
           (d) =>
             `${d.first_name} ${d.last_name}`.trim().toLowerCase() === driver.trim().toLowerCase(),
-        )?.id ?? null;
+        )?.id ??
+        null;
       for (const d of missing) {
         await insertWorkTimeEntry(
           getBrowserSupabase(),
