@@ -147,13 +147,11 @@ export default function TachoScreen() {
   useEffect(() => {
     loadKmToday().then(setKmToday);
   }, []);
-  const liveOn = segments.length > 0;
+  // #audyt tacho: GPS startuje przy WEJŚCIU na ekran (nie dopiero po ręcznym tapnięciu czynności).
+  // Dzięki temu km liczą się automatycznie po ruszeniu, a auto-przełączenie >15 km/h samo otwiera
+  // sesję „jazda". (Licznik km w tle — przy zgaszonym ekranie — dokłada osobny natywny serwis.)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: watcher raz na montowanie ekranu
   useEffect(() => {
-    if (!liveOn) {
-      setSpeed(null);
-      lastFix.current = null;
-      return;
-    }
     let sub: Location.LocationSubscription | null = null;
     let cancelled = false;
     (async () => {
@@ -184,7 +182,7 @@ export default function TachoScreen() {
       cancelled = true;
       sub?.remove();
     };
-  }, [liveOn]);
+  }, []);
 
   async function switchActivity(a: LiveActivity) {
     const segs = await setLiveActivity(a);
