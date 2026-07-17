@@ -1,0 +1,4 @@
+# Zależności budowy dokumentacji (MkDocs Material) — używane lokalnie i w CI (GitLab Pages).
+# Instalacja: python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
+# Budowa:     .venv/bin/mkdocs build      Podgląd: .venv/bin/mkdocs serve
+mkdocs-material==9.7.6

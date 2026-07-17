@@ -44,6 +44,11 @@ Thumbs.db
 # Testy / coverage
 coverage/
 
+# Dokumentacja (MkDocs Material) — build lokalny + venv (docs/api generowane TypeDoc-iem jest commitowane)
+site/
+.cache/
+/.venv/
+
 # Mobile
 *.keystore
 ios/Pods/

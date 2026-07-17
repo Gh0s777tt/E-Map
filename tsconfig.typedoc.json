@@ -1,0 +1,17 @@
+{
+  "//": "tsconfig wyłącznie dla TypeDoc (docs:api). Program = publiczne entry-pointy pakietów,",
+  "//2": "BEZ plików testowych (nie są importowane przez index.ts) → brak błędów TS z testów.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "packages/core/src/index.ts",
+    "packages/api/src/index.ts",
+    "packages/maps/src/index.ts",
+    "packages/i18n/src/index.ts"
+  ],
+  "exclude": ["**/*.test.ts", "**/*.spec.ts"]
+}

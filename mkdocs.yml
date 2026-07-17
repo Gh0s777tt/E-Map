@@ -1,0 +1,122 @@
+# ══════════════════════════════════════════════════════════════════
+#  E-Logistic — konfiguracja dokumentacji (MkDocs Material)
+#  Budowa/podgląd: docs/requirements.txt · publikacja: GitLab Pages (CI, ETAP 4)
+# ══════════════════════════════════════════════════════════════════
+site_name: E-Logistic — dokumentacja
+site_description: Platforma dla kierowców, spedytorów i firm transportowych (Web · iOS · Android · macOS, offline-first).
+site_author: E-Logistic
+site_url: https://gh0s777tt.gitlab.io/e-logistic/
+copyright: E-Logistic — oprogramowanie własnościowe (UNLICENSED)
+
+repo_name: Gh0s777tt/e-logistic
+repo_url: https://gitlab.com/Gh0s777tt/e-logistic
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: pl
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  icon:
+    repo: fontawesome/brands/gitlab
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Przełącz na tryb nocny
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Przełącz na tryb dzienny
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+
+extra_css:
+  - stylesheets/brand.css
+
+plugins:
+  # 'pl' nie jest w zestawie stemmerów mkdocs-material 9.7.x — 'en' działa poprawnie
+  # na polskim tekście (alfabet łaciński), bez wprowadzającego w błąd ostrzeżenia.
+  - search:
+      lang: en
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+# Nie zmieniamy fizycznego położenia plików — porządkujemy w nawigacji.
+validation:
+  nav:
+    omitted_files: ignore
+    not_found: warn
+  links:
+    absolute_links: ignore
+    unrecognized_links: ignore
+
+nav:
+  - Start: index.md
+  - Architektura:
+      - Przegląd: ARCHITECTURE.md
+      - Model danych: DATA-MODEL.md
+      - Bezpieczeństwo / RLS: SECURITY-RLS.md
+      - Integracje: INTEGRATIONS.md
+  - Produkt:
+      - Roadmapa: ROADMAP.md
+      - Analiza / Right-sizing: ANALIZA.md
+      - Backlog: BACKLOG.md
+      - Plan mobilny: MOBILE-PLAN.md
+  - Wdrożenie:
+      - Deploy (web + mobile): DEPLOY.md
+      - Zmienne środowiskowe (Vercel): VERCEL-ENV.md
+      - Google Play — listing: PLAY-STORE-LISTING.md
+      - Google Play — testy zamknięte: PLAY-CLOSED-TEST.md
+      - Microsoft Store: MICROSOFT-STORE.md
+  - API:
+      - Referencja pakietów: api/index.md
+  - Audyty i raporty:
+      - Discovery (produkt): DISCOVERY_REPORT.md
+      - QA / testy: TEST_REPORT.md
+      - Audyt 2026-07-16: audit/AUDIT-2026-07-16.md
+      - Audyt 2026-06-28: audit/AUDIT-2026-06-28.md
+      - Audyt 2026-06-22: AUDIT-2026-06-22.md
+      - Audyt 2026-06-21: AUDIT-2026-06-21.md
+      - Audyt v1.18: AUDIT-v1.18.md
+  - Changelog: CHANGELOG.md
