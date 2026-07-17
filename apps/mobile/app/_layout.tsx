@@ -23,14 +23,14 @@ function useNotificationTap() {
 
 /** Bramka: bez sesji → /login; z sesją na /login → pulpit. Decyzja w `guardRedirect`. */
 function useProtectedRoute() {
-  const { session, loading, configured } = useAuth();
+  const { session, hasCachedSession, loading, configured } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    const target = guardRedirect({ session, loading, configured, segments });
+    const target = guardRedirect({ session, hasCachedSession, loading, configured, segments });
     if (target) router.replace(target);
-  }, [session, loading, configured, segments, router]);
+  }, [session, hasCachedSession, loading, configured, segments, router]);
 }
 
 function RootNav() {

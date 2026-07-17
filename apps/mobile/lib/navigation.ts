@@ -12,13 +12,16 @@
  */
 export function guardRedirect(s: {
   session: unknown;
+  /** #offline: marker zapisanej sesji — wpuszcza bez sieci, gdy JWT wygasł (~1 h),
+   *  a refresh token żyje. Bez niego kierowca po godzinie offline lądował na /login. */
+  hasCachedSession?: boolean;
   loading: boolean;
   configured: boolean;
   segments: readonly string[];
 }): "/login" | "/" | null {
   if (s.loading) return null;
   const onLogin = s.segments[0] === "login";
-  const authed = Boolean(s.session) && s.configured;
+  const authed = (Boolean(s.session) || Boolean(s.hasCachedSession)) && s.configured;
   if (!authed && !onLogin) return "/login";
   if (authed && onLogin) return "/";
   return null;
