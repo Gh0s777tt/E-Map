@@ -27,6 +27,13 @@ export interface OutboxItem {
   status: "queued" | "synced" | "error";
   createdAt: string;
   error?: string;
+  /**
+   * #per-user (współdzielony telefon): auth.uid właściciela wpisu, stemplowany
+   * przy `enqueue`. Chroni przed zsynchronizowaniem wpisu kierowcy A pod kontem
+   * kierowcy B (patrz `syncItem`). `null`/undefined = zakolejkowane bez sesji
+   * (głęboki offline) — „niczyje", claimuje pierwszy zalogowany.
+   */
+  userId?: string | null;
 }
 
 async function read(): Promise<OutboxItem[]> {
@@ -106,13 +113,39 @@ export async function removeOutbox(itemId: string): Promise<void> {
   });
 }
 
+/**
+ * Bieżący auth.uid do stempla właściciela wpisu. Czyta LOKALNĄ sesję
+ * (`getSession` bierze ją ze storage — bez sieci); świadomie NIE `getUser`, które
+ * bije po sieci i przy zerwanym łączu wisiałoby do timeoutu, blokując „Zapisz"
+ * (regres #354). Dodatkowo ograniczamy czekanie krótkim wyścigiem, bo przy
+ * wygasłym tokenie offline `getSession` mógłby próbować cichego refreshu.
+ * `null` → brak sesji: wpis zostaje „niczyj" i zsynchronizuje się pod pierwszym
+ * zalogowanym (backfill w `syncItem`), nie tracąc danych.
+ */
+async function currentUserId(): Promise<string | null> {
+  if (!supabaseConfigured) return null;
+  try {
+    const session = await Promise.race([
+      getSupabase()
+        .auth.getSession()
+        .then((r) => r.data.session),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3_000)),
+    ]);
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Dodaje wpis do outboxu (zawsze lokalnie) i próbuje od razu zsynchronizować. */
 export async function enqueue(
   kind: OutboxKind,
   input: FuelLogInput | TripEventInput | ChecklistSubmissionInput | DriverExpenseInput,
   createdAt: string,
 ): Promise<OutboxItem> {
-  const item: OutboxItem = { id: newId(), kind, input, status: "queued", createdAt };
+  // #per-user: stempel właściciela z lokalnej sesji (offline-safe, patrz helper).
+  const userId = await currentUserId();
+  const item: OutboxItem = { id: newId(), kind, input, status: "queued", createdAt, userId };
   await withOutboxLock(async () => {
     const items = await read();
     items.unshift(item);
@@ -154,6 +187,15 @@ async function syncItem(itemId: string): Promise<void> {
       data: { user },
     } = await sb.auth.getUser();
     if (!user) throw new Error("Brak sesji — wpis czeka w kolejce.");
+
+    // #per-user (współdzielony telefon): wpis kierowcy A NIE MOŻE trafić na konto
+    // kierowcy B. Ma właściciela (userId) i to NIE bieżący user → pomiń: zostaw w
+    // kolejce BEZ oznaczania błędu (return omija patchItem, status bez zmian),
+    // zsynchronizuje się gdy zaloguje się właściciel. Wpisy `userId==null`
+    // (zakolejkowane bez sesji) NIE mają znanego właściciela — przechodzą dalej i
+    // synchronizują się pod bieżącym userem (insert i tak stemplem jest jego
+    // auth.uid jako driver_id), więc claimuje je pierwszy zalogowany. Nie tracimy danych.
+    if (item.userId && item.userId !== user.id) return;
 
     const membership = await getActiveMembership(sb);
     if (!membership) throw new Error("Brak firmy — wpis czeka w kolejce.");

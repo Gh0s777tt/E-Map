@@ -18,6 +18,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { AppHeader } from "../../components/AppHeader";
 import { VehiclePicker } from "../../components/VehiclePicker";
 import { useT } from "../../lib/i18n";
+import { getCache, setCache } from "../../lib/offlineCache";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 import { useFleet } from "../../lib/useFleet";
@@ -70,11 +71,27 @@ export default function ChecklistsScreen() {
         const {
           data: { user },
         } = await sb.auth.getUser();
-        setEmail(user?.email ?? "");
+        const mail = user?.email ?? "";
+        setEmail(mail);
         // #338: tylko checklisty przypisane do tego kierowcy (lub dla wszystkich)
-        setTemplates(await listVisibleChecklistTemplates(sb));
+        const tpls = await listVisibleChecklistTemplates(sb);
+        setTemplates(tpls);
+        // #offline: zapisz słowniki, by ekran działał bez sieci (patrz catch).
+        await setCache("chk-companyId", m.companyId);
+        await setCache("chk-email", mail);
+        await setCache("chk-templates", tpls);
       } catch {
-        setMsg(t("m.chk.loadError"));
+        // #offline: brak sieci → odtwórz z cache zamiast pustego ekranu. Błąd
+        // pokazujemy tylko gdy naprawdę nie ma czego wyświetlić (brak szablonów).
+        const [cId, cMail, cTpls] = await Promise.all([
+          getCache<string>("chk-companyId"),
+          getCache<string>("chk-email"),
+          getCache<ChecklistTemplate[]>("chk-templates"),
+        ]);
+        if (cId) setCompanyId(cId);
+        if (cMail) setEmail(cMail);
+        if (cTpls) setTemplates(cTpls);
+        else setMsg(t("m.chk.loadError"));
       }
     })();
   }, [refresh, t]);
