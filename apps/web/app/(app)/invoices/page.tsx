@@ -71,11 +71,11 @@ export default function InvoicesPage() {
       setInvoices(inv);
       setContractors(contr);
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać faktur.");
+      setLoadErr(e instanceof Error ? e.message : t("invoices.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -99,12 +99,17 @@ export default function InvoicesPage() {
   }, [invoices]);
 
   async function cancel(inv: Invoice) {
-    if (!(await confirm(`Anulować fakturę ${inv.number}? (numer zostanie zachowany)`))) return;
+    if (
+      !(await confirm(
+        `${t("invoices.cancelConfirmPrefix")}${inv.number}${t("invoices.cancelConfirmSuffix")}`,
+      ))
+    )
+      return;
     try {
       await setInvoiceStatus(getBrowserSupabase(), inv.id, "cancelled");
       await load();
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Błąd anulowania.");
+      setLoadErr(e instanceof Error ? e.message : t("invoices.cancelError"));
     }
   }
 
@@ -113,18 +118,18 @@ export default function InvoicesPage() {
       await setInvoicePaid(getBrowserSupabase(), inv.id, !inv.paid_at);
       await load();
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Błąd zmiany płatności.");
+      setLoadErr(e instanceof Error ? e.message : t("invoices.payToggleError"));
     }
   }
 
   async function duplicate(id: string) {
-    if (!(await confirm("Utworzyć duplikat faktury (nowy numer, te same pozycje)?"))) return;
+    if (!(await confirm(t("invoices.duplicateConfirm")))) return;
     try {
       const r = await duplicateInvoice(getBrowserSupabase(), id);
-      toast(`Utworzono duplikat: ${r.number}`, "success");
+      toast(`${t("invoices.duplicatedPrefix")}${r.number}`, "success");
       await load();
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Błąd duplikowania.");
+      setLoadErr(e instanceof Error ? e.message : t("invoices.duplicateError"));
     }
   }
 
@@ -200,14 +205,14 @@ export default function InvoicesPage() {
 
   async function createNew() {
     if (!buyerName.trim()) {
-      toast("Podaj nabywcę.", "error");
+      toast(t("invoices.buyerRequired"), "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        toast("Brak firmy.", "error");
+        toast(t("invoices.noCompany"), "error");
         return;
       }
       const r = await createBlankInvoice(sb, m.companyId, {
@@ -232,7 +237,7 @@ export default function InvoicesPage() {
       const created = list.find((i) => i.id === r.id);
       if (created) setSelected(created); // otwórz dokument, by dodać pozycje
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd tworzenia faktury.", "error");
+      toast(e instanceof Error ? e.message : t("invoices.createError"), "error");
     }
   }
 
@@ -283,15 +288,12 @@ export default function InvoicesPage() {
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <PageHeader
-        title="Faktury"
-        subtitle="Faktury ze zleceń lub wystawione ręcznie. Kliknij, aby otworzyć dokument (pozycje, druk/PDF, duplikat)."
-      />
+      <PageHeader title={t("nav.invoices")} subtitle={t("invoices.subtitle")} />
 
       <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
         {canManage && (
           <Button variant="ghost" onClick={() => setShowNew((s) => !s)}>
-            {showNew ? "Anuluj" : "➕ Nowa faktura (ręczna)"}
+            {showNew ? t("common.cancel") : t("invoices.newManual")}
           </Button>
         )}
         {invoices.length > 0 && (
@@ -306,10 +308,10 @@ export default function InvoicesPage() {
               value={vatMonth}
               onChange={(e) => setVatMonth(e.target.value)}
               style={styles.monthInput}
-              title="Miesiąc rejestru VAT"
+              title={t("invoices.vatMonthTitle")}
             />
             <Button variant="ghost" onClick={exportVatRegister}>
-              🧮 Rejestr VAT (księgowość)
+              🧮 {t("invoices.vatRegister")}
             </Button>
           </div>
         )}
@@ -318,7 +320,7 @@ export default function InvoicesPage() {
         <div style={styles.newForm}>
           <input
             style={styles.nfInput}
-            placeholder="Nabywca (nazwa)"
+            placeholder={t("invoices.buyerNamePlaceholder")}
             value={buyerName}
             list="contractors-dl"
             onChange={(e) => pickBuyer(e.target.value)}
@@ -330,36 +332,38 @@ export default function InvoicesPage() {
           </datalist>
           <input
             style={styles.nfInput}
-            placeholder="NIP nabywcy"
+            placeholder={t("invoices.buyerTaxIdPlaceholder")}
             value={buyerTaxId}
             onChange={(e) => setBuyerTaxId(e.target.value)}
           />
           <input
             style={styles.nfInput}
-            placeholder="Adres nabywcy"
+            placeholder={t("invoices.buyerAddressPlaceholder")}
             value={buyerAddress}
             onChange={(e) => setBuyerAddress(e.target.value)}
           />
           <input
             style={{ ...styles.nfInput, maxWidth: 90 }}
-            placeholder="Waluta"
+            placeholder={t("orders.csv.currency")}
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
           />
-          <Button onClick={createNew}>Utwórz i dodaj pozycje</Button>
+          <Button onClick={createNew}>{t("invoices.createAndAddItems")}</Button>
         </div>
       )}
 
       {invoices.length > 0 && (
         <div style={styles.bandRow}>
           <span>
-            💶 Zafakturowane (EUR): <strong>{summary.invoicedEur}</strong>
+            {t("invoices.summaryInvoiced")} <strong>{summary.invoicedEur}</strong>
           </span>
           <span>
-            ✅ Opłacone: <strong style={{ color: "#22c55e" }}>{summary.paidEur}</strong>
+            {t("invoices.summaryPaid")}{" "}
+            <strong style={{ color: "#22c55e" }}>{summary.paidEur}</strong>
           </span>
           <span>
-            ⏰ Przeterminowane: <strong style={{ color: palette.red }}>{summary.overdueEur}</strong>
+            {t("invoices.summaryOverdue")}{" "}
+            <strong style={{ color: palette.red }}>{summary.overdueEur}</strong>
           </span>
         </div>
       )}
@@ -373,19 +377,19 @@ export default function InvoicesPage() {
               style={payFilter === f ? styles.chipActive : styles.chip}
             >
               {f === "all"
-                ? "Wszystkie"
+                ? t("common.all")
                 : f === "unpaid"
-                  ? "Nieopłacone"
+                  ? t("invoices.filterUnpaid")
                   : f === "overdue"
-                    ? "Przeterminowane"
+                    ? t("invoices.filterOverdue")
                     : f === "paid"
-                      ? "Opłacone"
-                      : "Anulowane"}
+                      ? t("invoices.filterPaid")
+                      : t("invoices.filterCancelled")}
             </button>
           ))}
           <span style={{ flex: 1 }} />
           <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
-            {filtered.length} z {invoices.length}
+            {filtered.length} {t("invoices.countOf")} {invoices.length}
           </span>
         </div>
       )}
@@ -394,12 +398,12 @@ export default function InvoicesPage() {
         loading={loading}
         error={loadErr}
         empty={invoices.length === 0}
-        emptyText="Brak faktur. Wystaw fakturę z dostarczonego zlecenia (zakładka Zlecenia)."
+        emptyText={t("invoices.empty")}
         onRetry={load}
       />
       {!loading && !loadErr && invoices.length > 0 && filtered.length === 0 && (
         <p style={{ color: palette.smoke, fontSize: 13, marginTop: 12 }}>
-          Brak faktur w tym filtrze.
+          {t("invoices.emptyFilter")}
         </p>
       )}
       {!loading && !loadErr && filtered.length > 0 && (
@@ -417,7 +421,7 @@ export default function InvoicesPage() {
                   {inv.order_id && (
                     <a
                       href={`/orders?focus=${inv.order_id}`}
-                      title="Pokaż zlecenie źródłowe"
+                      title={t("invoices.showSourceOrder")}
                       onClick={(e) => e.stopPropagation()}
                     >
                       📦
@@ -425,13 +429,13 @@ export default function InvoicesPage() {
                   )}
                   <span style={styles.dim}>{inv.issue_date}</span>
                   {cancelled ? (
-                    <Badge color={palette.red}>Anulowana</Badge>
+                    <Badge color={palette.red}>{t("invoices.statusCancelled")}</Badge>
                   ) : pay === "paid" ? (
-                    <Badge color="#22c55e">Opłacona</Badge>
+                    <Badge color="#22c55e">{t("invoices.statusPaid")}</Badge>
                   ) : pay === "overdue" ? (
-                    <Badge color={palette.red}>Przeterminowana</Badge>
+                    <Badge color={palette.red}>{t("invoices.statusOverdue")}</Badge>
                   ) : (
-                    <Badge color={palette.smoke}>Nieopłacona</Badge>
+                    <Badge color={palette.smoke}>{t("invoices.statusUnpaid")}</Badge>
                   )}
                   <span style={{ flex: 1 }} />
                   <span style={styles.dim}>{inv.buyer_name ?? "—"}</span>
@@ -441,7 +445,7 @@ export default function InvoicesPage() {
                 </button>
                 {canManage && !cancelled && (
                   <Button variant="ghost" onClick={() => togglePaid(inv)}>
-                    {inv.paid_at ? "↩︎ Cofnij" : "💰 Opłacona"}
+                    {inv.paid_at ? t("invoices.undoPaid") : t("invoices.markPaid")}
                   </Button>
                 )}
                 {canManage && (
@@ -451,7 +455,7 @@ export default function InvoicesPage() {
                     </Button>
                     {!cancelled && (
                       <Button variant="danger" onClick={() => cancel(inv)}>
-                        ✖ Anuluj
+                        ✖ {t("common.cancel")}
                       </Button>
                     )}
                   </>
@@ -483,6 +487,7 @@ function InvoiceDoc({
   const [vat, setVat] = useState(String(inv.vat_rate ?? 23));
   const [fakBusy, setFakBusy] = useState(false);
   const toast = useToast();
+  const t = useT();
   const [fakMsg, setFakMsg] = useState<string | null>(null);
 
   async function exportToFakturownia() {
@@ -500,13 +505,15 @@ function InvoiceDoc({
         error?: string;
       };
       if (!res.ok) {
-        setFakMsg(`⚠️ ${data.error ?? "Eksport nieudany."}`);
+        setFakMsg(`⚠️ ${data.error ?? t("invoices.fakExportFailed")}`);
         return;
       }
-      setFakMsg(`✅ Wyeksportowano do Fakturowni${data.number ? ` (nr ${data.number})` : ""}.`);
+      setFakMsg(
+        `${t("invoices.fakExported")}${data.number ? `${t("invoices.fakExportedNr")}${data.number})` : ""}.`,
+      );
       if (data.pdfUrl) window.open(data.pdfUrl, "_blank", "noopener");
     } catch {
-      setFakMsg("⚠️ Błąd połączenia z Fakturownią.");
+      setFakMsg(t("invoices.fakConnError"));
     } finally {
       setFakBusy(false);
     }
@@ -581,7 +588,7 @@ function InvoiceDoc({
     const q = Number(qty);
     const u = Number(unit);
     if (!desc.trim() || !Number.isFinite(q) || !Number.isFinite(u)) {
-      toast("Uzupełnij opis, ilość i cenę.", "error");
+      toast(t("invoices.fillItemFields"), "error");
       return;
     }
     try {
@@ -598,7 +605,7 @@ function InvoiceDoc({
       await reload();
       onChanged();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd dodawania pozycji.", "error");
+      toast(e instanceof Error ? e.message : t("invoices.addItemError"), "error");
     }
   }
 
@@ -608,7 +615,7 @@ function InvoiceDoc({
       await reload();
       onChanged();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania pozycji.", "error");
+      toast(e instanceof Error ? e.message : t("invoices.removeItemError"), "error");
     }
   }
 
@@ -619,26 +626,26 @@ function InvoiceDoc({
         className="no-print"
       >
         <Button variant="ghost" onClick={onBack}>
-          ← Faktury
+          ← {t("nav.invoices")}
         </Button>
         {fakMsg && <span style={{ fontSize: 13, color: palette.smoke }}>{fakMsg}</span>}
         <span style={{ flex: 1 }} />
         {canManage && inv.status !== "cancelled" && (
           <Button variant="ghost" onClick={exportToFakturownia} disabled={fakBusy}>
-            {fakBusy ? "Eksport…" : "📤 Fakturownia"}
+            {fakBusy ? t("invoices.fakExporting") : "📤 Fakturownia"}
           </Button>
         )}
         <Button variant="ghost" onClick={downloadKsefXml}>
           ⬇️ XML KSeF
         </Button>
-        <Button onClick={() => window.print()}>🖨️ Drukuj / PDF</Button>
+        <Button onClick={() => window.print()}>🖨️ {t("invoices.print")}</Button>
       </div>
 
       <div style={styles.doc}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <div style={{ fontSize: 24, fontWeight: 800 }}>
-              Faktura {inv.number}
+              {t("invoices.docTitle")} {inv.number}
               {inv.status === "cancelled" && (
                 <span
                   style={{
@@ -650,29 +657,51 @@ function InvoiceDoc({
                     padding: "1px 8px",
                   }}
                 >
-                  ANULOWANA
+                  {t("invoices.cancelledStamp")}
                 </span>
               )}
             </div>
-            <div style={styles.muted}>Data wystawienia: {inv.issue_date}</div>
-            {inv.due_date && <div style={styles.muted}>Termin płatności: {inv.due_date}</div>}
+            <div style={styles.muted}>
+              {t("invoices.issueDate")} {inv.issue_date}
+            </div>
+            {inv.due_date && (
+              <div style={styles.muted}>
+                {t("invoices.dueDate")} {inv.due_date}
+              </div>
+            )}
           </div>
           <div style={{ textAlign: "right", fontWeight: 800, color: palette.red }}>E-Logistic</div>
         </div>
 
         <div style={styles.parties}>
           <div style={styles.party}>
-            <div style={styles.partyLabel}>Sprzedawca</div>
+            <div style={styles.partyLabel}>{t("invoices.seller")}</div>
             <div style={{ fontWeight: 700 }}>{inv.seller_name ?? "—"}</div>
-            {inv.seller_tax_id && <div style={styles.muted}>NIP: {inv.seller_tax_id}</div>}
+            {inv.seller_tax_id && (
+              <div style={styles.muted}>
+                {t("invoices.csv.taxId")}: {inv.seller_tax_id}
+              </div>
+            )}
             {inv.seller_address && <div style={styles.muted}>{inv.seller_address}</div>}
-            {inv.seller_bank && <div style={styles.muted}>Bank: {inv.seller_bank}</div>}
-            {inv.seller_account && <div style={styles.muted}>Nr konta: {inv.seller_account}</div>}
+            {inv.seller_bank && (
+              <div style={styles.muted}>
+                {t("invoices.bank")}: {inv.seller_bank}
+              </div>
+            )}
+            {inv.seller_account && (
+              <div style={styles.muted}>
+                {t("invoices.account")}: {inv.seller_account}
+              </div>
+            )}
           </div>
           <div style={styles.party}>
-            <div style={styles.partyLabel}>Nabywca</div>
+            <div style={styles.partyLabel}>{t("invoices.csv.buyer")}</div>
             <div style={{ fontWeight: 700 }}>{inv.buyer_name ?? "—"}</div>
-            {inv.buyer_tax_id && <div style={styles.muted}>NIP: {inv.buyer_tax_id}</div>}
+            {inv.buyer_tax_id && (
+              <div style={styles.muted}>
+                {t("invoices.csv.taxId")}: {inv.buyer_tax_id}
+              </div>
+            )}
             {inv.buyer_address && <div style={styles.muted}>{inv.buyer_address}</div>}
           </div>
         </div>
@@ -680,12 +709,12 @@ function InvoiceDoc({
         <table style={styles.table}>
           <thead>
             <tr>
-              <th style={styles.th}>Opis</th>
-              <th style={styles.thR}>Ilość</th>
-              <th style={styles.thR}>Cena</th>
-              <th style={styles.thR}>Netto</th>
-              <th style={styles.thR}>VAT</th>
-              <th style={styles.thR}>Brutto</th>
+              <th style={styles.th}>{t("invoices.colDesc")}</th>
+              <th style={styles.thR}>{t("invoices.colQty")}</th>
+              <th style={styles.thR}>{t("invoices.colPrice")}</th>
+              <th style={styles.thR}>{t("invoices.csv.net")}</th>
+              <th style={styles.thR}>{t("invoices.csv.vat")}</th>
+              <th style={styles.thR}>{t("invoices.csv.gross")}</th>
               {canManage && <th className="no-print" style={styles.thR} />}
             </tr>
           </thead>
@@ -712,7 +741,7 @@ function InvoiceDoc({
               ))
             ) : (
               <tr>
-                <td style={styles.td}>{inv.description ?? "Usługa transportowa"}</td>
+                <td style={styles.td}>{inv.description ?? t("invoices.defaultServiceDesc")}</td>
                 <td style={styles.tdR}>1</td>
                 <td style={styles.tdR}>{formatMoney(inv.net)}</td>
                 <td style={styles.tdR}>{formatMoney(inv.net)}</td>
@@ -726,7 +755,7 @@ function InvoiceDoc({
           </tbody>
           <tfoot>
             <tr>
-              <td style={{ ...styles.td, fontWeight: 800 }}>Razem</td>
+              <td style={{ ...styles.td, fontWeight: 800 }}>{t("invoices.totalRow")}</td>
               <td style={styles.tdR} />
               <td style={styles.tdR} />
               <td style={{ ...styles.tdR, fontWeight: 700 }}>{formatMoney(totals.net)}</td>
@@ -740,14 +769,14 @@ function InvoiceDoc({
         </table>
 
         <div style={styles.vatBox}>
-          <div style={styles.partyLabel}>Podsumowanie VAT</div>
+          <div style={styles.partyLabel}>{t("invoices.vatSummary")}</div>
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>Stawka</th>
-                <th style={styles.thR}>Netto</th>
-                <th style={styles.thR}>VAT</th>
-                <th style={styles.thR}>Brutto</th>
+                <th style={styles.th}>{t("orders.csv.rate")}</th>
+                <th style={styles.thR}>{t("invoices.csv.net")}</th>
+                <th style={styles.thR}>{t("invoices.csv.vat")}</th>
+                <th style={styles.thR}>{t("invoices.csv.gross")}</th>
               </tr>
             </thead>
             <tbody>
@@ -767,7 +796,7 @@ function InvoiceDoc({
           <div className="no-print" style={styles.addRow}>
             <input
               style={{ ...styles.input, flex: 2, minWidth: 160 }}
-              placeholder="Opis pozycji"
+              placeholder={t("invoices.itemDescPlaceholder")}
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
             />
@@ -775,7 +804,7 @@ function InvoiceDoc({
               style={{ ...styles.input, width: 64 }}
               type="number"
               step="0.01"
-              placeholder="Ilość"
+              placeholder={t("invoices.colQty")}
               value={qty}
               onChange={(e) => setQty(e.target.value)}
             />
@@ -783,7 +812,7 @@ function InvoiceDoc({
               style={{ ...styles.input, width: 90 }}
               type="number"
               step="0.01"
-              placeholder="Cena"
+              placeholder={t("invoices.colPrice")}
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
             />
@@ -791,18 +820,15 @@ function InvoiceDoc({
               style={{ ...styles.input, width: 64 }}
               type="number"
               step="1"
-              placeholder="VAT %"
+              placeholder={t("invoices.vatPercent")}
               value={vat}
               onChange={(e) => setVat(e.target.value)}
             />
-            <Button onClick={addLine}>＋ Pozycja</Button>
+            <Button onClick={addLine}>＋ {t("invoices.addItem")}</Button>
           </div>
         )}
 
-        <p style={styles.muted}>
-          Dokument uproszczony wygenerowany w E-Logistic. Zgodność z przepisami (stawki VAT,
-          odwrotne obciążenie, dane nabywcy) potwierdza wystawca.
-        </p>
+        <p style={styles.muted}>{t("invoices.docFooter")}</p>
       </div>
 
       <style>{`@media print { .no-print { display: none !important; } .app-sidebar { display: none !important; } }`}</style>

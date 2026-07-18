@@ -233,11 +233,11 @@ export default function OrdersPage() {
       setFuelRows(fuel as FuelRow[]);
       setAdblueRows(adblue as FuelRow[]);
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zleceń.");
+      setLoadErr(e instanceof Error ? e.message : t("orders.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -377,14 +377,14 @@ export default function OrdersPage() {
       notes: notes.trim() || undefined,
     });
     if (!parsed.success) {
-      toast("Sprawdź dane zlecenia.", "error");
+      toast(t("orders.checkData"), "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        toast("Brak firmy.", "error");
+        toast(t("orders.noCompany"), "error");
         return;
       }
       // Czy przypisanie kierowcy faktycznie się zmieniło (do natychmiastowego push).
@@ -406,11 +406,11 @@ export default function OrdersPage() {
           body: JSON.stringify({ orderId: id }),
         }).catch(() => {});
       }
-      toast(editingId ? "Zlecenie zaktualizowane." : "Zlecenie dodane.", "success");
+      toast(editingId ? t("orders.updated") : t("orders.added"), "success");
       resetForm();
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+      toast(e instanceof Error ? e.message : t("orders.saveError"), "error");
     }
   }
 
@@ -440,9 +440,12 @@ export default function OrdersPage() {
           failed.includes(o.id) ? { ...o, status: prevById.get(o.id) ?? o.status } : o,
         ),
       );
-      toast(`Zmieniono ${ids.length - failed.length}/${ids.length} — reszta bez zmian.`, "error");
+      toast(
+        `${t("orders.bulkPartialPrefix")}${ids.length - failed.length}/${ids.length}${t("orders.bulkPartialSuffix")}`,
+        "error",
+      );
     } else {
-      toast(`Status zmieniony dla ${ids.length} zleceń.`, "success");
+      toast(`${t("orders.bulkDonePrefix")}${ids.length}${t("orders.bulkDoneSuffix")}`, "success");
     }
   }
 
@@ -452,41 +455,41 @@ export default function OrdersPage() {
     setOrders((list) => list.map((o) => (o.id === id ? { ...o, status: s } : o)));
     try {
       await setOrderStatus(getBrowserSupabase(), id, s);
-      toast("Status zaktualizowany.", "success");
+      toast(t("orders.statusUpdated"), "success");
     } catch (e) {
       if (prev) setOrders((list) => list.map((o) => (o.id === id ? { ...o, status: prev } : o)));
-      toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
+      toast(e instanceof Error ? e.message : t("orders.statusError"), "error");
     }
   }
 
   async function invoice(o: Order) {
     if (
       !(await confirm(
-        `Wystawić fakturę za zlecenie ${o.reference_no || "(bez numeru)"} (VAT wg ustawień firmy)?`,
+        `${t("orders.invoiceConfirmPrefix")}${o.reference_no || t("common.noNumber")}${t("orders.invoiceConfirmSuffix")}`,
       ))
     )
       return;
     try {
       const r = await createInvoiceFromOrder(getBrowserSupabase(), o.id);
       toast(
-        `Faktura ${r.number} (brutto ${r.gross} ${o.currency}) — patrz zakładka Faktury.`,
+        `${t("orders.invoiceBtn")} ${r.number} (${t("orders.grossWord")} ${r.gross} ${o.currency})${t("orders.invoiceCreatedTail")}`,
         "success",
       );
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd wystawiania faktury.", "error");
+      toast(e instanceof Error ? e.message : t("orders.invoiceError"), "error");
     }
   }
 
   async function remove(id: string) {
-    if (!(await confirm("Usunąć zlecenie?"))) return;
+    if (!(await confirm(t("orders.deleteConfirm")))) return;
     try {
       await deleteOrder(getBrowserSupabase(), id);
       if (editingId === id) resetForm();
-      toast("Zlecenie usunięte.", "success");
+      toast(t("orders.deleted"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
+      toast(e instanceof Error ? e.message : t("orders.deleteError"), "error");
     }
   }
 
@@ -566,7 +569,7 @@ export default function OrdersPage() {
         return {
           inserted: 0,
           failed: rows.length,
-          errors: ["Brak firmy — utwórz ją na Pulpicie."],
+          errors: [t("vehicles.noCompanyImport")],
         };
       }
       const regMap = new Map(vehicles.map((v) => [v.registration.toUpperCase(), v.id]));
@@ -583,13 +586,13 @@ export default function OrdersPage() {
         if (ref && existingRefs.has(ref)) {
           failed++;
           if (errors.length < 8)
-            errors.push(`${input.referenceNo}: zlecenie już istnieje (pominięto)`);
+            errors.push(`${input.referenceNo}: ${t("orders.importDuplicate")}`);
           continue;
         }
         const vehicleId = registration ? regMap.get(registration.toUpperCase()) : undefined;
         if (registration && !vehicleId && errors.length < 8) {
           errors.push(
-            `${input.referenceNo || "zlecenie"}: pojazd „${registration}" nierozpoznany (zapis bez pojazdu)`,
+            `${input.referenceNo || t("orders.importRowFallback")}: ${t("orders.importVehicleUnknownPrefix")}${registration}${t("orders.importVehicleUnknownSuffix")}`,
           );
         }
         try {
@@ -600,14 +603,14 @@ export default function OrdersPage() {
           failed++;
           if (errors.length < 8) {
             errors.push(
-              `${input.referenceNo || "zlecenie"}: ${e instanceof Error ? e.message : "błąd"}`,
+              `${input.referenceNo || t("orders.importRowFallback")}: ${e instanceof Error ? e.message : t("common.error")}`,
             );
           }
         }
       }
       return { inserted, failed, errors };
     },
-    [vehicles],
+    [vehicles, t],
   );
 
   /** Eksport zleceń do publikacji na giełdzie transportowej (uniwersalny CSV frachtu). */
@@ -653,30 +656,42 @@ export default function OrdersPage() {
 
   return (
     <div style={{ maxWidth: 920 }}>
-      <PageHeader
-        title="Zlecenia / ładunki"
-        subtitle="Zlecenia transportowe: trasa, ładunek, stawka i status (Nowe → W trakcie → Dostarczone → Zafakturowane)."
-      />
+      <PageHeader title={t("orders.title")} subtitle={t("orders.subtitle")} />
 
-      <SetupNotice source={source} noVehicles="Dodaj pojazd, aby przypisywać zlecenia." />
+      <SetupNotice source={source} noVehicles={t("orders.noVehicles")} />
 
       {canManage && (
         <div style={styles.form}>
           {editingId && (
-            <div style={{ color: palette.red, fontWeight: 700 }}>✏️ Edycja zlecenia</div>
+            <div style={{ color: palette.red, fontWeight: 700 }}>{t("orders.editingBanner")}</div>
           )}
           <div style={styles.grid}>
             <Field
-              label="Nr referencyjny"
+              label={t("orders.fieldReference")}
               v={referenceNo}
               set={setReferenceNo}
-              ph="np. ZL/2026/123"
+              ph={t("orders.referencePlaceholder")}
             />
-            <Field label="Ładunek" v={cargo} set={setCargo} ph="np. palety EUR ×33" />
+            <Field
+              label={t("orders.csv.cargo")}
+              v={cargo}
+              set={setCargo}
+              ph={t("orders.cargoPlaceholder")}
+            />
           </div>
           <div style={styles.grid}>
-            <Field label="Nadawca" v={shipper} set={setShipper} list="contractors-dl" />
-            <Field label="Odbiorca" v={consignee} set={setConsignee} list="contractors-dl" />
+            <Field
+              label={t("orders.csv.shipper")}
+              v={shipper}
+              set={setShipper}
+              list="contractors-dl"
+            />
+            <Field
+              label={t("orders.csv.consignee")}
+              v={consignee}
+              set={setConsignee}
+              list="contractors-dl"
+            />
           </div>
           <datalist id="contractors-dl">
             {contractors.map((c) => (
@@ -684,12 +699,12 @@ export default function OrdersPage() {
             ))}
           </datalist>
           <div style={styles.grid}>
-            <Field label="Załadunek (skąd)" v={origin} set={setOrigin} />
-            <Field label="Rozładunek (dokąd)" v={destination} set={setDestination} />
+            <Field label={t("orders.fieldOrigin")} v={origin} set={setOrigin} />
+            <Field label={t("orders.fieldDestination")} v={destination} set={setDestination} />
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={f.label}>Data załadunku</span>
+              <span style={f.label}>{t("orders.fieldLoadDate")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -698,7 +713,7 @@ export default function OrdersPage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Data rozładunku</span>
+              <span style={f.label}>{t("orders.fieldUnloadDate")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -709,7 +724,7 @@ export default function OrdersPage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={f.label}>Waga (kg)</span>
+              <span style={f.label}>{t("orders.csv.weight")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -718,7 +733,7 @@ export default function OrdersPage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Stawka</span>
+              <span style={f.label}>{t("orders.csv.rate")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -728,7 +743,7 @@ export default function OrdersPage() {
               />
             </label>
             <label style={{ ...styles.field, maxWidth: 90 }}>
-              <span style={f.label}>Waluta</span>
+              <span style={f.label}>{t("orders.csv.currency")}</span>
               <input
                 style={f.input}
                 value={currency}
@@ -736,13 +751,13 @@ export default function OrdersPage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Pojazd</span>
+              <span style={f.label}>{t("common.vehicle")}</span>
               <select
                 style={f.input}
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
               >
-                <option value="">— brak —</option>
+                <option value="">{t("orders.vehicleNone")}</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.registration}
@@ -751,13 +766,13 @@ export default function OrdersPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Kierowca</span>
+              <span style={f.label}>{t("orders.fieldDriver")}</span>
               <select
                 style={f.input}
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
               >
-                <option value="">— nieprzypisane —</option>
+                <option value="">{t("orders.driverUnassigned")}</option>
                 {drivers.map((d) => (
                   <option key={d.user_id} value={d.user_id}>
                     {d.email}
@@ -767,7 +782,7 @@ export default function OrdersPage() {
             </label>
           </div>
           <label style={styles.field}>
-            <span style={f.label}>Notatki</span>
+            <span style={f.label}>{t("orders.fieldNotes")}</span>
             <textarea
               style={{ ...f.input, minHeight: 50 }}
               value={notes}
@@ -775,10 +790,10 @@ export default function OrdersPage() {
             />
           </label>
           <div style={{ display: "flex", gap: 10 }}>
-            <Button onClick={save}>{editingId ? "Zapisz" : "Dodaj zlecenie"}</Button>
+            <Button onClick={save}>{editingId ? t("common.save") : t("orders.add")}</Button>
             {editingId && (
               <Button variant="ghost" onClick={resetForm}>
-                Anuluj
+                {t("common.cancel")}
               </Button>
             )}
           </div>
@@ -788,13 +803,14 @@ export default function OrdersPage() {
       {orders.length > 0 && (
         <div style={styles.summary}>
           <span>
-            📦 Zleceń: <strong>{summary.count}</strong>
+            {t("orders.summaryCount")} <strong>{summary.count}</strong>
           </span>
           <span>
-            💶 Wartość (EUR): <strong style={{ color: palette.red }}>{summary.valueEur}</strong>
+            {t("orders.summaryValue")}{" "}
+            <strong style={{ color: palette.red }}>{summary.valueEur}</strong>
           </span>
           <span>
-            📤 Do zafakturowania: <strong>{summary.deliveredCount}</strong> (
+            {t("orders.summaryToInvoice")} <strong>{summary.deliveredCount}</strong> (
             {summary.deliveredValueEur} EUR)
           </span>
         </div>
@@ -805,18 +821,18 @@ export default function OrdersPage() {
           style={styles.search}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="🔎 Szukaj: nadawca, odbiorca, trasa, nr…"
+          placeholder={t("orders.searchPlaceholder")}
         />
         <select
           style={styles.sortSel}
           value={sort}
           onChange={(e) => setSort(e.target.value as OrderSort)}
-          aria-label="Sortowanie"
+          aria-label={t("orders.sortAria")}
         >
-          <option value="date_desc">Data ↓ (najnowsze)</option>
-          <option value="date_asc">Data ↑ (najstarsze)</option>
-          <option value="price_desc">Stawka ↓</option>
-          <option value="price_asc">Stawka ↑</option>
+          <option value="date_desc">{t("orders.sortDateDesc")}</option>
+          <option value="date_asc">{t("orders.sortDateAsc")}</option>
+          <option value="price_desc">{t("orders.sortPriceDesc")}</option>
+          <option value="price_asc">{t("orders.sortPriceAsc")}</option>
         </select>
       </div>
 
@@ -833,7 +849,7 @@ export default function OrdersPage() {
         ))}
         <span style={{ flex: 1 }} />
         <Button variant="ghost" onClick={exportFreight}>
-          📤 Giełda (CSV)
+          {t("orders.exportFreight")}
         </Button>
         <Button variant="ghost" onClick={exportCsv}>
           ⬇️ CSV
@@ -842,7 +858,7 @@ export default function OrdersPage() {
           ⬇️ XLSX
         </Button>
         <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
-          {filtered.length} z {orders.length}
+          {filtered.length} {t("orders.countOf")} {orders.length}
         </span>
       </div>
 
@@ -856,8 +872,7 @@ export default function OrdersPage() {
             onDone={load}
           />
           <p style={{ fontSize: 12, color: palette.smoke, marginTop: 6 }}>
-            Kolumna „Pojazd" = rejestracja (mapowana na pojazd; nierozpoznana → zapis bez
-            przypisania). Kierowcę i status ustawisz po imporcie. Dedup po numerze zlecenia.
+            {t("orders.importNote")}
           </p>
         </div>
       )}
@@ -866,7 +881,7 @@ export default function OrdersPage() {
         loading={loading}
         error={loadErr}
         empty={orders.length === 0}
-        emptyText="Brak zleceń — dodaj pierwsze formularzem powyżej."
+        emptyText={t("orders.empty")}
         emptyIcon="package"
         onRetry={load}
       />
@@ -880,11 +895,11 @@ export default function OrdersPage() {
                     type="checkbox"
                     checked={selected.has(o.id)}
                     onChange={() => toggleSelect(o.id)}
-                    aria-label={`Zaznacz zlecenie ${o.reference_no || o.id}`}
+                    aria-label={`${t("orders.selectAriaPrefix")}${o.reference_no || o.id}`}
                     style={styles.selectBox}
                   />
                 )}
-                <strong>{o.reference_no || "(bez numeru)"}</strong>
+                <strong>{o.reference_no || t("common.noNumber")}</strong>
                 <Badge color={STATUS_COLOR[o.status]}>{orderStatusLabel(t, o.status)}</Badge>
                 <span style={{ flex: 1 }} />
                 {o.price != null && (
@@ -906,13 +921,17 @@ export default function OrdersPage() {
                   <Link
                     href={`/vehicles/${o.vehicle_id}`}
                     style={{ ...styles.dim, textDecoration: "underline dotted" }}
-                    title="Otwórz kartę pojazdu"
+                    title={t("orders.openVehicleCard")}
                   >
                     🚚 {regOf(o.vehicle_id)}
                   </Link>
                 )}
                 {o.assigned_to && <span style={styles.dim}>👤 {emailOf(o.assigned_to)}</span>}
-                {o.load_date && <span style={styles.dim}>zał. {o.load_date}</span>}
+                {o.load_date && (
+                  <span style={styles.dim}>
+                    {t("orders.loadedShort")} {o.load_date}
+                  </span>
+                )}
               </div>
               <TransportCostLine tc={costByOrder.get(o.id)} />
               <div style={styles.cardActions}>
@@ -924,7 +943,7 @@ export default function OrdersPage() {
                 </Button>
                 {(o.origin || o.destination) && (
                   <Button variant="ghost" onClick={() => showOnMap(o)}>
-                    🗺️ Mapa
+                    🗺️ {t("nav.map")}
                   </Button>
                 )}
               </div>
@@ -932,7 +951,7 @@ export default function OrdersPage() {
                 <div style={styles.cardActions}>
                   {o.status === "delivered" && (
                     <Button variant="ghost" onClick={() => invoice(o)}>
-                      🧾 Faktura
+                      🧾 {t("orders.invoiceBtn")}
                     </Button>
                   )}
                   <select
@@ -951,7 +970,7 @@ export default function OrdersPage() {
                     return inv ? (
                       <a
                         href={`/invoices?focus=${inv.id}`}
-                        title={`Faktura ${inv.number}`}
+                        title={`${t("orders.invoiceBtn")} ${inv.number}`}
                         style={{ alignSelf: "center" }}
                       >
                         🧾
@@ -975,14 +994,16 @@ export default function OrdersPage() {
       {/* #297: pływający pasek akcji zbiorczych */}
       {canManage && selected.size > 0 && (
         <div style={styles.bulkBar}>
-          <strong>{selected.size} zazn.</strong>
+          <strong>
+            {selected.size} {t("orders.selectedShort")}
+          </strong>
           <select
             style={styles.statusSel}
             value=""
             onChange={(e) => bulkChangeStatus(e.target.value as OrderStatus)}
           >
             <option value="" disabled>
-              Zmień status…
+              {t("orders.bulkChangeStatus")}
             </option>
             {ORDER_STATUSES.map((st) => (
               <option key={st} value={st}>
@@ -991,10 +1012,10 @@ export default function OrdersPage() {
             ))}
           </select>
           <Button variant="ghost" onClick={() => setSelected(new Set(filtered.map((o) => o.id)))}>
-            Wszystkie ({filtered.length})
+            {t("common.all")} ({filtered.length})
           </Button>
           <Button variant="ghost" onClick={() => setSelected(new Set())}>
-            Wyczyść
+            {t("orders.clear")}
           </Button>
         </div>
       )}
@@ -1004,19 +1025,20 @@ export default function OrdersPage() {
 
 /** #246: linia kosztu transportu na karcie zlecenia (dystans · koszt · zysk/marża). */
 function TransportCostLine({ tc }: { tc: OrderTransportCost | undefined }) {
+  const t = useT();
   if (!tc || tc.distanceKm == null) return null;
   return (
     <div style={styles.costLine}>
-      🧭 Transport: <strong>{tc.distanceKm} km</strong>
+      🧭 {t("orders.transportLabel")}: <strong>{tc.distanceKm} km</strong>
       {tc.cost != null ? (
         <>
-          {" · koszt "}
+          {` · ${t("orders.costLabel")} `}
           <strong>
             {tc.cost} {tc.currency}
           </strong>
           {tc.profit != null && (
             <>
-              {" · zysk "}
+              {` · ${t("orders.profitLabel")} `}
               <strong style={{ color: tc.profit >= 0 ? "#22c55e" : palette.red }}>
                 {tc.profit} {tc.currency}
               </strong>
@@ -1025,7 +1047,7 @@ function TransportCostLine({ tc }: { tc: OrderTransportCost | undefined }) {
           )}
         </>
       ) : (
-        <span style={styles.dim}> · koszt/km pojazdu nieznany (brak historii tankowań)</span>
+        <span style={styles.dim}>{t("orders.costUnknown")}</span>
       )}
     </div>
   );
