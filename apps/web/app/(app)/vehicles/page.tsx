@@ -193,11 +193,11 @@ export default function VehiclesPage() {
       const vs = await listVehicles(supabase, membership.companyId);
       setDbVehicles(vs);
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać floty.");
+      setLoadErr(e instanceof Error ? e.message : t("vehicles.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadVehicles();
@@ -327,37 +327,37 @@ export default function VehiclesPage() {
       const supabase = getBrowserSupabase();
       const membership = await getCachedMembership(supabase);
       if (!membership) {
-        toast("Brak firmy — utwórz firmę w panelu, by zapisać w bazie.", "error");
+        toast(t("vehicles.noCompanySave"), "error");
         return;
       }
       if (editingId) {
         await updateVehicle(supabase, editingId, parsed.data, membership.companyId);
-        toast("Zmiany zapisane.", "success");
+        toast(t("vehicles.saved"), "success");
       } else {
         await insertVehicle(supabase, parsed.data, membership.companyId);
-        toast("Dodano pojazd.", "success");
+        toast(t("vehicles.added"), "success");
       }
       resetForm();
       await loadVehicles();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu pojazdu.", "error");
+      toast(e instanceof Error ? e.message : t("vehicles.saveError"), "error");
     }
   }
 
   async function removeVehicle(v: DbVehicle) {
     if (
       !(await confirm(
-        `Usunąć pojazd ${v.registration}? Usunie też powiązane wpisy paliwa/AdBlue/trasy. Tej operacji nie można cofnąć.`,
+        `${t("vehicles.deleteConfirmPrefix")}${v.registration}${t("vehicles.deleteConfirmSuffix")}`,
       ))
     )
       return;
     try {
       await deleteVehicle(getBrowserSupabase(), v.id);
       if (editingId === v.id) resetForm();
-      toast("Pojazd usunięty.", "success");
+      toast(t("vehicles.deleted"), "success");
       await loadVehicles();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania pojazdu.", "error");
+      toast(e instanceof Error ? e.message : t("vehicles.deleteError"), "error");
     }
   }
 
@@ -425,61 +425,63 @@ export default function VehiclesPage() {
     await downloadXlsx(`pojazdy_${csvDateStamp()}.xlsx`, headers, rows);
   }
 
-  const importVehicles = useCallback(async (values: VehicleInput[]) => {
-    const supabase = getBrowserSupabase();
-    const membership = await getCachedMembership(supabase);
-    if (!membership) {
-      return {
-        inserted: 0,
-        failed: values.length,
-        errors: ["Brak firmy — utwórz ją na Pulpicie."],
-      };
-    }
-    // Dedup po rejestracji (insertVehicle nie jest upsertem) — ponowny import nie duplikuje.
-    const existing = new Set(
-      (await listVehicles(supabase, membership.companyId)).map((v) => v.registration.toUpperCase()),
-    );
-    let inserted = 0;
-    let failed = 0;
-    const errors: string[] = [];
-    for (const v of values) {
-      const key = v.registration.toUpperCase();
-      if (existing.has(key)) {
-        failed++;
-        if (errors.length < 8) errors.push(`${v.registration}: pojazd już istnieje (pominięto)`);
-        continue;
+  const importVehicles = useCallback(
+    async (values: VehicleInput[]) => {
+      const supabase = getBrowserSupabase();
+      const membership = await getCachedMembership(supabase);
+      if (!membership) {
+        return {
+          inserted: 0,
+          failed: values.length,
+          errors: [t("vehicles.noCompanyImport")],
+        };
       }
-      try {
-        await insertVehicle(supabase, v, membership.companyId);
-        existing.add(key);
-        inserted++;
-      } catch (e) {
-        failed++;
-        if (errors.length < 8) {
-          errors.push(`${v.registration}: ${e instanceof Error ? e.message : "błąd"}`);
+      // Dedup po rejestracji (insertVehicle nie jest upsertem) — ponowny import nie duplikuje.
+      const existing = new Set(
+        (await listVehicles(supabase, membership.companyId)).map((v) =>
+          v.registration.toUpperCase(),
+        ),
+      );
+      let inserted = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      for (const v of values) {
+        const key = v.registration.toUpperCase();
+        if (existing.has(key)) {
+          failed++;
+          if (errors.length < 8) errors.push(`${v.registration}: ${t("vehicles.importDuplicate")}`);
+          continue;
+        }
+        try {
+          await insertVehicle(supabase, v, membership.companyId);
+          existing.add(key);
+          inserted++;
+        } catch (e) {
+          failed++;
+          if (errors.length < 8) {
+            errors.push(`${v.registration}: ${e instanceof Error ? e.message : t("common.error")}`);
+          }
         }
       }
-    }
-    return { inserted, failed, errors };
-  }, []);
+      return { inserted, failed, errors };
+    },
+    [t],
+  );
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <PageHeader
-        title={t("nav.vehicles")}
-        subtitle="Dodawaj, edytuj i usuwaj pojazdy. Kliknij auto na liście, by zobaczyć szczegóły i przypisane karty."
-      />
+      <PageHeader title={t("nav.vehicles")} subtitle={t("vehicles.subtitle")} />
 
       {canManage && (
         <div style={f.formWrap}>
           {editingId && (
             <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
-              ✏️ Edytujesz pojazd.
+              {t("vehicles.editingBanner")}
             </div>
           )}
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Rejestracja *</span>
+              <span style={f.label}>{t("vehicles.fieldRegistration")}</span>
               <input
                 style={f.input}
                 value={registration}
@@ -489,9 +491,9 @@ export default function VehiclesPage() {
               {errors.registration && <span style={styles.err}>{errors.registration}</span>}
             </label>
             <label style={f.field}>
-              <span style={f.label}>Marka</span>
+              <span style={f.label}>{t("vehicles.fieldMake")}</span>
               <select style={f.input} value={make} onChange={(e) => setMake(e.target.value)}>
-                <option value="">— wybierz —</option>
+                <option value="">{t("vehicles.selectPlaceholder")}</option>
                 {VEHICLE_MAKE_GROUPS.map((g) => (
                   <optgroup key={g.group} label={g.group}>
                     {g.makes.map((m) => (
@@ -501,14 +503,14 @@ export default function VehiclesPage() {
                     ))}
                   </optgroup>
                 ))}
-                <option value={OTHER}>Inna…</option>
+                <option value={OTHER}>{t("vehicles.makeOther")}</option>
               </select>
               {make === OTHER && (
                 <input
                   style={{ ...f.input, marginTop: 6 }}
                   value={makeOther}
                   onChange={(e) => setMakeOther(e.target.value)}
-                  placeholder="Wpisz markę"
+                  placeholder={t("vehicles.makeOtherPlaceholder")}
                 />
               )}
             </label>
@@ -516,7 +518,7 @@ export default function VehiclesPage() {
 
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Model *</span>
+              <span style={f.label}>{t("vehicles.fieldModel")}</span>
               <input
                 style={f.input}
                 value={model}
@@ -526,12 +528,12 @@ export default function VehiclesPage() {
               {errors.model && <span style={styles.err}>{errors.model}</span>}
             </label>
             <label style={f.field}>
-              <span style={f.label}>VIN</span>
+              <span style={f.label}>{t("vehicles.fieldVin")}</span>
               <input
                 style={f.input}
                 value={vin}
                 onChange={(e) => setVin(e.target.value)}
-                placeholder="17 znaków (z dowodu)"
+                placeholder={t("vehicles.vinPlaceholder")}
                 maxLength={17}
               />
               {errors.vin && <span style={styles.err}>{errors.vin}</span>}
@@ -540,7 +542,7 @@ export default function VehiclesPage() {
 
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Rocznik *</span>
+              <span style={f.label}>{t("vehicles.fieldYear")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -551,7 +553,7 @@ export default function VehiclesPage() {
               {errors.year && <span style={styles.err}>{errors.year}</span>}
             </label>
             <label style={f.field}>
-              <span style={f.label}>Typ</span>
+              <span style={f.label}>{t("vehicles.fieldType")}</span>
               <select
                 style={f.input}
                 value={vehicleType}
@@ -568,17 +570,17 @@ export default function VehiclesPage() {
 
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Waga własna / na pusto (kg)</span>
+              <span style={f.label}>{t("vehicles.fieldCurbWeight")}</span>
               <input
                 style={f.input}
                 type="number"
                 value={curbWeightKg}
                 onChange={(e) => setCurbWeightKg(e.target.value)}
-                placeholder="np. 7500 (z dowodu)"
+                placeholder={t("vehicles.curbWeightPlaceholder")}
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Maks. ładunek (kg)</span>
+              <span style={f.label}>{t("vehicles.fieldMaxPayload")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -591,7 +593,7 @@ export default function VehiclesPage() {
 
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Zbiornik paliwa (L)</span>
+              <span style={f.label}>{t("vehicles.fieldFuelTank")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -601,7 +603,7 @@ export default function VehiclesPage() {
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Zbiornik AdBlue (L)</span>
+              <span style={f.label}>{t("vehicles.fieldAdblueTank")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -614,7 +616,7 @@ export default function VehiclesPage() {
 
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Przegląd ważny do</span>
+              <span style={f.label}>{t("vehicles.fieldInspectionExpiry")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -623,7 +625,7 @@ export default function VehiclesPage() {
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Wysokość (cm)</span>
+              <span style={f.label}>{t("vehicles.fieldHeight")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -636,7 +638,7 @@ export default function VehiclesPage() {
 
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>OC ważne do</span>
+              <span style={f.label}>{t("vehicles.fieldInsuranceExpiry")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -645,7 +647,7 @@ export default function VehiclesPage() {
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Licencja transportowa ważna do</span>
+              <span style={f.label}>{t("vehicles.fieldLicenseExpiry")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -654,34 +656,34 @@ export default function VehiclesPage() {
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Ubezpieczyciel</span>
+              <span style={f.label}>{t("vehicles.fieldInsurer")}</span>
               <select style={f.input} value={insurer} onChange={(e) => setInsurer(e.target.value)}>
-                <option value="">— wybierz —</option>
+                <option value="">{t("vehicles.selectPlaceholder")}</option>
                 {INSURERS.map((ins) => (
                   <option key={ins} value={ins}>
                     {ins}
                   </option>
                 ))}
-                <option value={OTHER}>Inny…</option>
+                <option value={OTHER}>{t("vehicles.insurerOther")}</option>
               </select>
               {insurer === OTHER && (
                 <input
                   style={{ ...f.input, marginTop: 6 }}
                   value={insurerOther}
                   onChange={(e) => setInsurerOther(e.target.value)}
-                  placeholder="Wpisz ubezpieczyciela"
+                  placeholder={t("vehicles.insurerOtherPlaceholder")}
                 />
               )}
             </label>
           </div>
 
           <label style={f.field}>
-            <span style={f.label}>Numer licencji (przypisanej do auta)</span>
+            <span style={f.label}>{t("vehicles.fieldLicenseNumber")}</span>
             <input
               style={f.input}
               value={licenseNumber}
               onChange={(e) => setLicenseNumber(e.target.value)}
-              placeholder="np. GITD / licencja wspólnotowa"
+              placeholder={t("vehicles.licenseNumberPlaceholder")}
             />
           </label>
 
@@ -689,21 +691,21 @@ export default function VehiclesPage() {
           {(vehicleType === "tractor" || vehicleType === "truck") && (
             <div style={f.grid}>
               <label style={f.field}>
-                <span style={f.label}>Naczepa — rejestracja</span>
+                <span style={f.label}>{t("vehicles.fieldTrailerRegistration")}</span>
                 <input
                   style={f.input}
                   value={trailerRegistration}
                   onChange={(e) => setTrailerRegistration(e.target.value)}
-                  placeholder="np. WPR1234 (jeśli posiada)"
+                  placeholder={t("vehicles.trailerRegistrationPlaceholder")}
                 />
               </label>
               <label style={f.field}>
-                <span style={f.label}>Naczepa — typ</span>
+                <span style={f.label}>{t("vehicles.fieldTrailerType")}</span>
                 <input
                   style={f.input}
                   value={trailerType}
                   onChange={(e) => setTrailerType(e.target.value)}
-                  placeholder="Plandeka / Chłodnia…"
+                  placeholder={t("vehicles.trailerTypePlaceholder")}
                   list="trailer-types-dl"
                 />
                 <datalist id="trailer-types-dl">
@@ -716,10 +718,12 @@ export default function VehiclesPage() {
           )}
 
           <div style={{ display: "flex", gap: 10 }}>
-            <Button onClick={save}>{editingId ? "Zapisz zmiany" : t("common.save")}</Button>
+            <Button onClick={save}>
+              {editingId ? t("vehicles.saveChanges") : t("common.save")}
+            </Button>
             {editingId && (
               <Button variant="ghost" onClick={resetForm}>
-                Anuluj
+                {t("common.cancel")}
               </Button>
             )}
           </div>
@@ -736,14 +740,13 @@ export default function VehiclesPage() {
             onDone={loadVehicles}
           />
           <p style={{ fontSize: 12, color: palette.smoke, marginTop: 6 }}>
-            Kolumna „Typ": truck / tractor / van / trailer / other (lub po polsku: ciężarówka /
-            ciągnik / dostawczy / naczepa / inny). Wymagane: Rejestracja, Model, Typ, Rok.
+            {t("vehicles.importNote")}
           </p>
         </div>
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Flota</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{t("vehicles.fleetHeading")}</h2>
         <span style={{ flex: 1 }} />
         {dbVehicles.length > 0 && (
           <>
@@ -761,7 +764,7 @@ export default function VehiclesPage() {
         loading={loading}
         error={loadErr}
         empty={dbVehicles.length === 0}
-        emptyText="Brak pojazdów — dodaj powyżej."
+        emptyText={t("vehicles.empty")}
         emptyIcon="truck"
         onRetry={loadVehicles}
       />
@@ -777,7 +780,7 @@ export default function VehiclesPage() {
                     type="button"
                     style={styles.expandBtn}
                     onClick={() => toggleExpand(v.id)}
-                    aria-label="Szczegóły"
+                    aria-label={t("vehicles.detailsAria")}
                   >
                     {open ? "▾" : "▸"}
                   </button>
@@ -787,7 +790,7 @@ export default function VehiclesPage() {
                   {v.trailer_registration && (
                     <span
                       style={f.meta}
-                      title={`Naczepa${v.trailer_type ? ` · ${v.trailer_type}` : ""}`}
+                      title={`${t("vehicles.detailTrailer")}${v.trailer_type ? ` · ${v.trailer_type}` : ""}`}
                     >
                       🛻 {v.trailer_registration}
                     </span>
@@ -796,7 +799,7 @@ export default function VehiclesPage() {
                   <span style={f.meta}>🔧 {v.inspection_expiry ?? "—"}</span>
                   <span style={f.meta}>🛡️ {v.insurance_expiry ?? "—"}</span>
                   <Link href={`/vehicles/${v.id}`} className="app-navlink" style={styles.cardLink}>
-                    📇 Karta
+                    {t("vehicles.cardLink")}
                   </Link>
                   {canManage && (
                     <>
@@ -813,27 +816,33 @@ export default function VehiclesPage() {
                 {open && (
                   <div style={styles.details}>
                     <div style={styles.detailGrid}>
-                      <Detail k="VIN" v={v.vin} />
-                      <Detail k="Rocznik" v={v.year ? String(v.year) : null} />
+                      <Detail k={t("vehicles.fieldVin")} v={v.vin} />
+                      <Detail k={t("vehicles.detailYear")} v={v.year ? String(v.year) : null} />
                       <Detail
-                        k="Waga na pusto"
+                        k={t("vehicles.detailCurbWeight")}
                         v={v.curb_weight_kg ? `${v.curb_weight_kg} kg` : null}
                       />
                       <Detail
-                        k="Maks. ładunek"
+                        k={t("vehicles.detailMaxPayload")}
                         v={v.max_payload_kg ? `${v.max_payload_kg} kg` : null}
                       />
-                      <Detail k="Zbiornik paliwa" v={v.fuel_tank_l ? `${v.fuel_tank_l} L` : null} />
                       <Detail
-                        k="Zbiornik AdBlue"
+                        k={t("vehicles.detailFuelTank")}
+                        v={v.fuel_tank_l ? `${v.fuel_tank_l} L` : null}
+                      />
+                      <Detail
+                        k={t("vehicles.detailAdblueTank")}
                         v={v.adblue_tank_l ? `${v.adblue_tank_l} L` : null}
                       />
-                      <Detail k="Wysokość" v={v.height_cm ? `${v.height_cm} cm` : null} />
-                      <Detail k="Ubezpieczyciel" v={v.insurer} />
-                      <Detail k="Licencja" v={v.license_number} />
-                      <Detail k="Leasing do" v={v.leasing_end} />
                       <Detail
-                        k="Naczepa"
+                        k={t("vehicles.detailHeight")}
+                        v={v.height_cm ? `${v.height_cm} cm` : null}
+                      />
+                      <Detail k={t("vehicles.fieldInsurer")} v={v.insurer} />
+                      <Detail k={t("vehicles.detailLicense")} v={v.license_number} />
+                      <Detail k={t("vehicles.detailLeasingTo")} v={v.leasing_end} />
+                      <Detail
+                        k={t("vehicles.detailTrailer")}
                         v={
                           v.trailer_registration
                             ? `${v.trailer_registration}${v.trailer_type ? ` · ${v.trailer_type}` : ""}`
@@ -844,11 +853,11 @@ export default function VehiclesPage() {
 
                     <div style={{ marginTop: 10 }}>
                       <div style={{ fontSize: 13, color: palette.smoke, marginBottom: 6 }}>
-                        Karty przypisane do pojazdu:
+                        {t("vehicles.assignedCards")}
                       </div>
                       {cards.length === 0 ? (
                         <div style={{ fontSize: 13, color: palette.smoke }}>
-                          Brak — przypisz w zakładce „Karty".
+                          {t("vehicles.noCardsAssigned")}
                         </div>
                       ) : (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
