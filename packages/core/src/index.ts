@@ -27,6 +27,7 @@ export * from "./fuelTrend";
 export * from "./gamification";
 export * from "./ids";
 export * from "./insights";
+export * from "./inspector";
 export * from "./invoice";
 export * from "./journeys";
 export * from "./ksef";
