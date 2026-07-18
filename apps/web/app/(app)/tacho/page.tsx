@@ -13,6 +13,9 @@ import {
   aetrStatus,
   type DddParseResult,
   formatTachoMin,
+  type InfringementKind,
+  type InfringementSeverity,
+  inspectAetr,
   parseDddDriverCard,
   planWeeklyRest,
   round2,
@@ -24,6 +27,24 @@ import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 const PDF = "/tacho/rozporzadzenie-561-2006.pdf";
+
+// Wirtualny inspektor 561 — etykiety naruszeń i skala wagi (2006/22/WE zał. III).
+const INFRINGEMENT_LABEL: Record<InfringementKind, string> = {
+  "continuous-driving": "Jazda ciągła bez przerwy (4 h 30)",
+  "daily-driving": "Jazda dobowa",
+  "weekly-driving": "Jazda tygodniowa (56 h)",
+  "two-week-driving": "Jazda w dwa tygodnie (90 h)",
+};
+const SEVERITY_LABEL: Record<InfringementSeverity, string> = {
+  minor: "drobne",
+  serious: "poważne",
+  very_serious: "bardzo poważne",
+};
+const SEVERITY_COLOR: Record<InfringementSeverity, string> = {
+  minor: "#f59e0b",
+  serious: "#f97316",
+  very_serious: "#ef4444",
+};
 
 const DRIVING_SHOTS = [
   {
@@ -341,6 +362,15 @@ export default function TachoPage() {
     extendedDrivesUsed: extUsed,
     reducedRestsUsed: redUsed,
   });
+  const insp = inspectAetr({
+    continuousDrivingMin: continuous,
+    breakTakenMin: breakTaken,
+    dailyDrivingMin: daily,
+    weeklyDrivingMin: weekly,
+    prevWeekDrivingMin: prevWeek,
+    extendedDrivesUsed: extUsed,
+    reducedRestsUsed: redUsed,
+  });
   const colorFor = (min: number) => (min <= 0 ? "#ef4444" : min <= 30 ? "#f59e0b" : "#22c55e");
 
   const results = [
@@ -462,11 +492,79 @@ export default function TachoPage() {
           ))}
         </div>
       </div>
-      {s.alerts.length > 0 && (
-        <p style={{ color: "#ef4444", fontWeight: 700 }}>
-          ⚠️ Przekroczony limit — wymagana przerwa/odpoczynek!
+      <div
+        style={{
+          marginTop: 12,
+          border: `1px solid ${insp.clean ? "#22c55e55" : `${SEVERITY_COLOR[insp.worst ?? "very_serious"]}88`}`,
+          borderRadius: 10,
+          padding: 12,
+          background: "rgba(127,127,127,0.06)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <strong style={{ fontSize: 14 }}>🚔 Wirtualna kontrola (561)</strong>
+          {insp.clean ? (
+            <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 13 }}>✅ bez naruszeń</span>
+          ) : (
+            <span
+              style={{
+                color: SEVERITY_COLOR[insp.worst ?? "very_serious"],
+                fontWeight: 700,
+                fontSize: 13,
+              }}
+            >
+              {insp.infringements.length}{" "}
+              {insp.infringements.length === 1 ? "naruszenie" : "naruszeń"}
+            </span>
+          )}
+        </div>
+        {!insp.clean && (
+          <ul
+            style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "grid", gap: 6 }}
+          >
+            {insp.infringements.map((i) => (
+              <li
+                key={i.kind}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 13,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    background: SEVERITY_COLOR[i.severity],
+                    color: "#0a0a0a",
+                    fontWeight: 700,
+                    fontSize: 11,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {SEVERITY_LABEL[i.severity]}
+                </span>
+                <span style={{ flex: 1, minWidth: 160 }}>{INFRINGEMENT_LABEL[i.kind]}</span>
+                <span style={{ color: palette.smoke }}>
+                  +{formatTachoMin(i.byMin)} (limit {formatTachoMin(i.limitMin)})
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p style={{ color: palette.smoke, fontSize: 11, margin: "10px 0 0" }}>
+          Skala wg dyrektywy 2006/22/WE zał. III — pomoc orientacyjna, nie zastępuje kontroli.
         </p>
-      )}
+      </div>
       <p style={{ color: palette.smoke, fontSize: 13 }}>
         Pomoc orientacyjna na wzór licznika VDO — wiążący jest zapis tachografu i karty kierowcy.
       </p>
