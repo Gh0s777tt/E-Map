@@ -13,12 +13,14 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export default function TeamPage() {
+  const t = useT();
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -34,11 +36,11 @@ export default function TeamPage() {
       setCompanyId(m?.companyId ?? null);
       if (m) setMembers(await listCompanyMembers(sb));
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zespołu.");
+      setLoadErr(e instanceof Error ? e.message : t("team.loadError"));
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -46,15 +48,10 @@ export default function TeamPage() {
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <PageHeader
-        title="Zespół i uprawnienia"
-        subtitle="Nadawaj rolę i moduły. Spedytor ma pełny wgląd w dane firmy; kierowca widzi tylko swoje auto i formularze. Moduły decydują, które panele widzi dana osoba."
-      />
+      <PageHeader title={t("team.title")} subtitle={t("team.subtitle")} />
 
       {loaded && !isOwner && (
-        <p style={{ color: palette.smoke, marginTop: 16 }}>
-          Tylko właściciel może zarządzać zespołem.
-        </p>
+        <p style={{ color: palette.smoke, marginTop: 16 }}>{t("team.onlyOwner")}</p>
       )}
 
       {isOwner && companyId && (
@@ -63,7 +60,7 @@ export default function TeamPage() {
             loading={!loaded}
             error={loadErr}
             empty={members.length === 0}
-            emptyText="Brak członków."
+            emptyText={t("team.empty")}
             onRetry={load}
           />
           {members.map((m) => (
@@ -84,6 +81,7 @@ function MemberRow({
   companyId: string;
   onSaved: () => void;
 }) {
+  const t = useT();
   const isOwnerRow = member.role === "owner";
   const [role, setRole] = useState<string>(member.role);
   // #276: matryca uprawnień — poziom per moduł (klik cyklicznie brak→podgląd→edycja).
@@ -117,10 +115,10 @@ function MemberRow({
         modules: APP_MODULES.filter((m) => (perms[m] ?? "none") !== "none"),
         permissions: perms,
       });
-      toast("Zapisano.", "success");
+      toast(t("team.saved"), "success");
       onSaved();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+      toast(e instanceof Error ? e.message : t("team.saveError"), "error");
     } finally {
       setBusy(false);
     }
@@ -131,11 +129,11 @@ function MemberRow({
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <strong style={{ minWidth: 220 }}>{member.email}</strong>
         {isOwnerRow ? (
-          <span style={styles.ownerTag}>Właściciel — pełny dostęp</span>
+          <span style={styles.ownerTag}>{t("team.ownerFull")}</span>
         ) : (
           <select style={styles.select} value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="dispatcher">Spedytor / Manager (pełny wgląd)</option>
-            <option value="driver">Kierowca (tylko swoje)</option>
+            <option value="dispatcher">{t("team.roleDispatcher")}</option>
+            <option value="driver">{t("team.roleDriver")}</option>
           </select>
         )}
       </div>
@@ -150,7 +148,7 @@ function MemberRow({
                   key={mod}
                   type="button"
                   onClick={() => cycle(mod)}
-                  title="Klikaj: brak → podgląd → edycja"
+                  title={t("team.permHint")}
                   style={{
                     ...styles.chip,
                     ...(lvl === "edit" ? styles.chipOn : lvl === "view" ? styles.chipView : {}),
@@ -163,7 +161,7 @@ function MemberRow({
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
             <Button onClick={save} disabled={busy}>
-              Zapisz
+              {t("common.save")}
             </Button>
           </div>
         </>

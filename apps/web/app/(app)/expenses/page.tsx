@@ -16,20 +16,22 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-const STATUS_META: Record<DriverExpense["status"], { label: string; color: string }> = {
-  submitted: { label: "do rozliczenia", color: palette.warning },
-  approved: { label: "zatwierdzony", color: palette.success },
-  rejected: { label: "odrzucony", color: palette.danger },
-};
-
 export default function ExpensesPage() {
+  const t = useT();
   const toast = useToast();
   const qc = useQueryClient();
+  // #288: etykiety statusów przez t() (kolor bez zmian); mapa lokalna, bo używa tłumacza.
+  const STATUS_META: Record<DriverExpense["status"], { label: string; color: string }> = {
+    submitted: { label: t("expenses.status.submitted"), color: palette.warning },
+    approved: { label: t("expenses.status.approved"), color: palette.success },
+    rejected: { label: t("expenses.status.rejected"), color: palette.danger },
+  };
   const [filter, setFilter] = useState<"all" | DriverExpense["status"]>("all");
   // #297: zaznaczanie zgłoszeń „do rozliczenia" → hurtowe Zatwierdź/Odrzuć
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -47,7 +49,7 @@ export default function ExpensesPage() {
   const rows = expensesQuery.data ?? [];
   const loading = expensesQuery.isPending;
   const error = expensesQuery.error
-    ? (expensesQuery.error.message ?? "Nie udało się pobrać wydatków.")
+    ? (expensesQuery.error.message ?? t("expenses.loadError"))
     : null;
   const load = () => void expensesQuery.refetch();
   /** Optymistyczna aktualizacja cache (ten sam kształt co dawne setRows). */
@@ -60,23 +62,27 @@ export default function ExpensesPage() {
     try {
       await setDriverExpenseStatus(getBrowserSupabase(), row.id, status);
       // #295: decyzja odwracalna z toasta — „Cofnij" przywraca „do rozliczenia".
-      toast(status === "approved" ? "Wydatek zatwierdzony." : "Wydatek odrzucony.", "success", {
-        label: "Cofnij",
-        onClick: () => {
-          void (async () => {
-            try {
-              await setDriverExpenseStatus(getBrowserSupabase(), row.id, prev);
-              setRows((list) => list.map((x) => (x.id === row.id ? { ...x, status: prev } : x)));
-              toast("Przywrócono do rozliczenia.", "info");
-            } catch {
-              toast("Nie udało się cofnąć decyzji.", "error");
-            }
-          })();
+      toast(
+        status === "approved" ? t("expenses.approvedToast") : t("expenses.rejectedToast"),
+        "success",
+        {
+          label: t("expenses.undo"),
+          onClick: () => {
+            void (async () => {
+              try {
+                await setDriverExpenseStatus(getBrowserSupabase(), row.id, prev);
+                setRows((list) => list.map((x) => (x.id === row.id ? { ...x, status: prev } : x)));
+                toast(t("expenses.restoredOne"), "info");
+              } catch {
+                toast(t("expenses.undoError"), "error");
+              }
+            })();
+          },
         },
-      });
+      );
     } catch (e) {
       setRows((list) => list.map((x) => (x.id === row.id ? { ...x, status: prev } : x)));
-      toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
+      toast(e instanceof Error ? e.message : t("expenses.statusError"), "error");
     }
   }
 
@@ -106,15 +112,15 @@ export default function ExpensesPage() {
         list.map((x) => (failed.includes(x.id) ? { ...x, status: "submitted" } : x)),
       );
     }
-    const verb = status === "approved" ? "Zatwierdzono" : "Odrzucono";
+    const verb = status === "approved" ? t("expenses.bulkApproved") : t("expenses.bulkRejected");
     toast(
       failed.length > 0
-        ? `${verb} ${ok.length}/${ids.length} — reszta bez zmian.`
-        : `${verb} ${ok.length} zgłoszeń.`,
+        ? `${verb} ${ok.length}/${ids.length}${t("expenses.bulkPartialSuffix")}`
+        : `${verb} ${ok.length} ${t("expenses.bulkDoneSuffix")}`,
       failed.length > 0 ? "error" : "success",
       ok.length > 0
         ? {
-            label: "Cofnij",
+            label: t("expenses.undo"),
             onClick: () => {
               void (async () => {
                 const back = await Promise.allSettled(
@@ -124,7 +130,10 @@ export default function ExpensesPage() {
                 setRows((list) =>
                   list.map((x) => (restored.includes(x.id) ? { ...x, status: "submitted" } : x)),
                 );
-                toast(`Przywrócono ${restored.length} do rozliczenia.`, "info");
+                toast(
+                  `${t("expenses.restoredBulkPrefix")}${restored.length}${t("expenses.restoredBulkSuffix")}`,
+                  "info",
+                );
               })();
             },
           }
@@ -137,7 +146,7 @@ export default function ExpensesPage() {
       const url = await expensePhotoUrl(getBrowserSupabase(), path);
       window.open(url, "_blank", "noopener");
     } catch {
-      toast("Nie udało się otworzyć paragonu.", "error");
+      toast(t("expenses.photoError"), "error");
     }
   }
 
@@ -155,8 +164,8 @@ export default function ExpensesPage() {
   return (
     <div>
       <PageHeader
-        title="Rejestr wydatków"
-        subtitle={`Zgłoszenia kierowców z aplikacji — do rozliczenia: ${pendingSum}`}
+        title={t("nav.expenses")}
+        subtitle={`${t("expenses.subtitlePrefix")}${pendingSum}`}
       />
 
       <div style={s.filters}>
@@ -167,7 +176,7 @@ export default function ExpensesPage() {
             onClick={() => setFilter(k)}
             style={{ ...s.filterBtn, ...(filter === k ? s.filterOn : {}) }}
           >
-            {k === "all" ? "Wszystkie" : STATUS_META[k].label}
+            {k === "all" ? t("common.all") : STATUS_META[k].label}
             {k === "submitted" && rows.some((r) => r.status === "submitted")
               ? ` (${rows.filter((r) => r.status === "submitted").length})`
               : ""}
@@ -179,7 +188,7 @@ export default function ExpensesPage() {
         loading={loading}
         error={error}
         empty={!loading && visible.length === 0}
-        emptyText="Brak wydatków w tym widoku."
+        emptyText={t("expenses.empty")}
         emptyIcon="receipt"
         onRetry={load}
       />
@@ -196,7 +205,7 @@ export default function ExpensesPage() {
                       type="checkbox"
                       checked={selected.has(r.id)}
                       onChange={() => toggleSelect(r.id)}
-                      aria-label="Zaznacz zgłoszenie"
+                      aria-label={t("expenses.selectAria")}
                       style={s.selectBox}
                     />
                   )}
@@ -215,14 +224,14 @@ export default function ExpensesPage() {
               <div style={s.actions}>
                 {r.photo_path && (
                   <Button variant="ghost" onClick={() => openPhoto(r.photo_path as string)}>
-                    📷 Paragon
+                    {t("expenses.receipt")}
                   </Button>
                 )}
                 {manage && r.status === "submitted" && (
                   <>
-                    <Button onClick={() => decide(r, "approved")}>✓ Zatwierdź</Button>
+                    <Button onClick={() => decide(r, "approved")}>{t("expenses.approve")}</Button>
                     <Button variant="ghost" onClick={() => decide(r, "rejected")}>
-                      ✗ Odrzuć
+                      {t("expenses.reject")}
                     </Button>
                   </>
                 )}
@@ -235,10 +244,12 @@ export default function ExpensesPage() {
       {/* #297: pływający pasek akcji zbiorczych */}
       {manage && selected.size > 0 && (
         <div style={s.bulkBar}>
-          <strong>{selected.size} zazn.</strong>
-          <Button onClick={() => bulkDecide("approved")}>✓ Zatwierdź</Button>
+          <strong>
+            {selected.size} {t("expenses.selectedShort")}
+          </strong>
+          <Button onClick={() => bulkDecide("approved")}>{t("expenses.approve")}</Button>
           <Button variant="ghost" onClick={() => bulkDecide("rejected")}>
-            ✗ Odrzuć
+            {t("expenses.reject")}
           </Button>
           <Button
             variant="ghost"
@@ -246,10 +257,10 @@ export default function ExpensesPage() {
               setSelected(new Set(rows.filter((r) => r.status === "submitted").map((r) => r.id)))
             }
           >
-            Wszystkie
+            {t("common.all")}
           </Button>
           <Button variant="ghost" onClick={() => setSelected(new Set())}>
-            Wyczyść
+            {t("expenses.clear")}
           </Button>
         </div>
       )}

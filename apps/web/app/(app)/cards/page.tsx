@@ -82,11 +82,11 @@ export default function CardsPage() {
       setCards(cs as Card[]);
       setVehicles(vs.map((v) => ({ id: v.id, registration: v.registration })));
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać kart.");
+      setLoadErr(e instanceof Error ? e.message : t("cards.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -122,7 +122,7 @@ export default function CardsPage() {
   async function reveal(cardId: string) {
     try {
       const value = await getFuelCardPin(getBrowserSupabase(), cardId);
-      setPins((p) => ({ ...p, [cardId]: value || "(brak PIN-u)" }));
+      setPins((p) => ({ ...p, [cardId]: value || t("cards.pinEmpty") }));
       // #audyt: re-maskuj po 30 s — odsłonięty PIN nie zostaje trwale w stanie/DOM.
       window.setTimeout(
         () =>
@@ -134,7 +134,7 @@ export default function CardsPage() {
       );
     } catch (e) {
       // #audyt: błąd NIE może renderować się jak PIN (czerwony strong) — osobny toast.
-      toast(e instanceof Error ? e.message : "Nie udało się odczytać PIN-u.", "error");
+      toast(e instanceof Error ? e.message : t("cards.pinReadError"), "error");
     }
   }
 
@@ -157,27 +157,27 @@ export default function CardsPage() {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        toast("Brak firmy — nie można zapisać.", "error");
+        toast(t("cards.noCompany"), "error");
         return;
       }
       if (editingId) {
         await updateFuelCard(sb, editingId, parsed.data);
         if (parsed.data.pin) await setFuelCardPin(sb, editingId, parsed.data.pin);
-        toast("Zmiany zapisane.", "success");
+        toast(t("cards.updated"), "success");
       } else {
         const cardId = await insertFuelCard(sb, parsed.data, m.companyId);
         if (parsed.data.pin) await setFuelCardPin(sb, cardId, parsed.data.pin);
-        toast("Karta dodana.", "success");
+        toast(t("cards.added"), "success");
       }
       resetForm();
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu karty.", "error");
+      toast(e instanceof Error ? e.message : t("cards.saveError"), "error");
     }
   }
 
   async function remove(cardId: string) {
-    if (!(await confirm("Usunąć tę kartę? Tej operacji nie można cofnąć."))) return;
+    if (!(await confirm(t("cards.deleteConfirm")))) return;
     try {
       await deleteFuelCard(getBrowserSupabase(), cardId);
       setPins((p) => {
@@ -186,35 +186,28 @@ export default function CardsPage() {
         return next;
       });
       if (editingId === cardId) resetForm();
-      toast("Karta usunięta.", "success");
+      toast(t("cards.deleted"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania karty.", "error");
+      toast(e instanceof Error ? e.message : t("cards.deleteError"), "error");
     }
   }
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <PageHeader
-        title={t("nav.cards")}
-        subtitle="PIN-y szyfrowane (Vault); kierowca może je odsłonić, by zapłacić w automacie. Każdy odczyt jest audytowany. Kartę można przypisać do pojazdu."
-      />
+      <PageHeader title={t("nav.cards")} subtitle={t("cards.subtitle")} />
 
-      {offline && (
-        <p style={{ color: palette.smoke, marginTop: 16 }}>
-          Zaloguj się i utwórz firmę, aby zarządzać kartami.
-        </p>
-      )}
+      {offline && <p style={{ color: palette.smoke, marginTop: 16 }}>{t("cards.offline")}</p>}
 
       {isOwner && (
         <div style={styles.form}>
           {editingId && (
             <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
-              ✏️ Edytujesz kartę — zostaw PIN pusty, by go nie zmieniać.
+              {t("cards.editingHint")}
             </div>
           )}
           <div style={{ display: "flex", gap: 12 }}>
-            <Field label="Dostawca" error={errors.provider}>
+            <Field label={t("cards.fieldProvider")} error={errors.provider}>
               <select
                 style={input}
                 value={provider}
@@ -227,7 +220,7 @@ export default function CardsPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Numer (zamaskowany)" error={errors.cardNumberMasked}>
+            <Field label={t("cards.fieldMasked")} error={errors.cardNumberMasked}>
               <input
                 style={input}
                 value={masked}
@@ -237,7 +230,7 @@ export default function CardsPage() {
             </Field>
           </div>
           <div style={{ display: "flex", gap: 12 }}>
-            <Field label="PIN (4–6 cyfr)" error={errors.pin}>
+            <Field label={t("cards.fieldPin")} error={errors.pin}>
               <input
                 style={input}
                 type="password"
@@ -245,19 +238,19 @@ export default function CardsPage() {
                 onChange={(e) => setPin(e.target.value)}
                 inputMode="numeric"
                 autoComplete="off"
-                placeholder={editingId ? "bez zmian" : ""}
+                placeholder={editingId ? t("cards.pinUnchangedPlaceholder") : ""}
               />
             </Field>
-            <Field label="Ważna do (mies./rok)" error={errors.validUntil}>
+            <Field label={t("cards.fieldValidUntil")} error={errors.validUntil}>
               <input
                 style={input}
                 type="month"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
-                placeholder="MM/RRRR np. 03/2027"
+                placeholder={t("cards.validUntilPlaceholder")}
               />
             </Field>
-            <Field label="Rabat %" error={errors.discountPercent}>
+            <Field label={t("cards.fieldDiscount")} error={errors.discountPercent}>
               <input
                 style={input}
                 type="number"
@@ -266,9 +259,9 @@ export default function CardsPage() {
               />
             </Field>
           </div>
-          <Field label="Przypisz do pojazdu" error={errors.vehicleId}>
+          <Field label={t("cards.fieldVehicle")} error={errors.vehicleId}>
             <select style={input} value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-              <option value="">— brak —</option>
+              <option value="">{t("cards.vehicleNone")}</option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.registration}
@@ -278,23 +271,23 @@ export default function CardsPage() {
           </Field>
           <div style={{ display: "flex", gap: 10 }}>
             <Button onClick={save} style={{ minWidth: 140 }}>
-              {editingId ? "Zapisz zmiany" : t("common.save")}
+              {editingId ? t("cards.saveChanges") : t("common.save")}
             </Button>
             {editingId && (
               <Button variant="ghost" onClick={resetForm}>
-                Anuluj
+                {t("common.cancel")}
               </Button>
             )}
           </div>
         </div>
       )}
 
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>Karty</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32 }}>{t("cards.listHeading")}</h2>
       <ListStatus
         loading={loading && !offline}
         error={loadErr}
         empty={!offline && cards.length === 0}
-        emptyText="Brak kart."
+        emptyText={t("cards.empty")}
         onRetry={load}
       />
       {!loading && !loadErr && cards.length > 0 && (
@@ -322,7 +315,7 @@ export default function CardsPage() {
               {isOwner && (
                 <>
                   <Button variant="ghost" onClick={() => startEdit(c)}>
-                    ✏️ Edytuj
+                    ✏️ {t("common.edit")}
                   </Button>
                   <Button variant="danger" onClick={() => remove(c.id)}>
                     🗑️
