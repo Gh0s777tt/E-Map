@@ -15,6 +15,7 @@ import { type ChecklistItem, DEFAULT_CHECKLIST_TEMPLATES } from "@e-logistic/cor
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -29,6 +30,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 type VehicleOpt = { id: string; registration: string };
 
 export default function ChecklistsPage() {
+  const t = useT();
   const toast = useToast();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
@@ -68,9 +70,9 @@ export default function ChecklistsPage() {
         );
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Nie udało się pobrać checklist.", "error");
+      toast(e instanceof Error ? e.message : t("checklists.loadError"), "error");
     }
-  }, [vehicleFilter, toast]);
+  }, [vehicleFilter, toast, t]);
 
   useEffect(() => {
     load();
@@ -80,16 +82,16 @@ export default function ChecklistsPage() {
     if (!companyId) return;
     setBusy(true);
     try {
-      const existing = new Set(templates.map((t) => t.name));
+      const existing = new Set(templates.map((tpl) => tpl.name));
       for (const tpl of DEFAULT_CHECKLIST_TEMPLATES) {
         if (!existing.has(tpl.name)) {
           await saveChecklistTemplate(getBrowserSupabase(), companyId, tpl);
         }
       }
-      toast("Dodano domyślne szablony.", "success");
+      toast(t("checklists.defaultsAdded"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu szablonów.", "error");
+      toast(e instanceof Error ? e.message : t("checklists.saveTemplatesError"), "error");
     } finally {
       setBusy(false);
     }
@@ -98,17 +100,17 @@ export default function ChecklistsPage() {
   async function saveEditing() {
     if (!companyId || !editing) return;
     if (!editing.name.trim() || editing.items.length === 0) {
-      toast("Szablon musi mieć nazwę i co najmniej jedną pozycję.", "error");
+      toast(t("checklists.templateValidation"), "error");
       return;
     }
     setBusy(true);
     try {
       await saveChecklistTemplate(getBrowserSupabase(), companyId, editing);
-      toast("Szablon zapisany.", "success");
+      toast(t("checklists.templateSaved"), "success");
       setEditing(null);
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+      toast(e instanceof Error ? e.message : t("checklists.saveError"), "error");
     } finally {
       setBusy(false);
     }
@@ -129,17 +131,18 @@ export default function ChecklistsPage() {
 
   return (
     <div style={{ maxWidth: 980 }}>
-      <PageHeader
-        title="Checklisty kierowców"
-        subtitle="Procedury (np. wjazd do UK, tachograf) — kierowca wypełnia w aplikacji, zgłoszenie przypina się do niego i pojazdu."
-      />
+      <PageHeader title={t("checklists.title")} subtitle={t("checklists.subtitle")} />
 
       {canManage && (
         <div style={styles.card}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <strong>Szablony firmy ({templates.length})</strong>
+            <strong>
+              {t("checklists.templatesPrefix")}
+              {templates.length}
+              {t("checklists.countSuffix")}
+            </strong>
             <Button onClick={addDefaults} disabled={busy}>
-              ➕ Dodaj domyślne (UK + Tachograf)
+              {t("checklists.addDefaults")}
             </Button>
             <Button
               onClick={() =>
@@ -152,19 +155,19 @@ export default function ChecklistsPage() {
                 })
               }
             >
-              🆕 Nowy szablon
+              {t("checklists.newTemplate")}
             </Button>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-            {templates.map((t) => (
+            {templates.map((tpl) => (
               <button
-                key={t.id}
+                key={tpl.id}
                 type="button"
-                style={{ ...styles.tplChip, opacity: t.active ? 1 : 0.5 }}
-                onClick={() => setEditing({ ...t, items: t.items.map((i) => ({ ...i })) })}
+                style={{ ...styles.tplChip, opacity: tpl.active ? 1 : 0.5 }}
+                onClick={() => setEditing({ ...tpl, items: tpl.items.map((i) => ({ ...i })) })}
               >
-                📋 {t.name} ({t.items.length}){!t.active && " · wyłączony"}
-                {t.assignedDrivers.length > 0 && ` · 👤${t.assignedDrivers.length}`}
+                📋 {tpl.name} ({tpl.items.length}){!tpl.active && t("checklists.disabled")}
+                {tpl.assignedDrivers.length > 0 && ` · 👤${tpl.assignedDrivers.length}`}
               </button>
             ))}
           </div>
@@ -176,7 +179,7 @@ export default function ChecklistsPage() {
                   style={{ ...f.input, maxWidth: 320 }}
                   value={editing.name}
                   onChange={(e) => setEditing((t) => (t ? { ...t, name: e.target.value } : t))}
-                  placeholder="Nazwa checklisty"
+                  placeholder={t("checklists.namePlaceholder")}
                 />
                 <label style={{ color: palette.smoke, fontSize: 13 }}>
                   <input
@@ -186,22 +189,22 @@ export default function ChecklistsPage() {
                       setEditing((t) => (t ? { ...t, active: e.target.checked } : t))
                     }
                   />{" "}
-                  aktywny
+                  {t("checklists.active")}
                 </label>
               </div>
 
               {/* #338: przypisanie do kierowców — puste = dla wszystkich */}
               <div style={styles.assignBox}>
                 <div style={{ color: palette.smoke, fontSize: 13, marginBottom: 6 }}>
-                  Przypisz do kierowców{" "}
+                  {t("checklists.assignDrivers")}{" "}
                   <span style={{ color: palette.offWhite }}>
                     {editing.assignedDrivers.length === 0
-                      ? "(pusto = dla wszystkich)"
-                      : `(${editing.assignedDrivers.length} wybranych)`}
+                      ? t("checklists.assignedNone")
+                      : `${t("checklists.assignedCountPrefix")}${editing.assignedDrivers.length}${t("checklists.assignedCountSuffix")}`}
                   </span>
                 </div>
                 {drivers.length === 0 ? (
-                  <span style={styles.dim}>Brak kierowców w kartotece.</span>
+                  <span style={styles.dim}>{t("checklists.noDrivers")}</span>
                 ) : (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {drivers.map((d) => {
@@ -244,15 +247,15 @@ export default function ChecklistsPage() {
                     style={{ ...f.input, flex: 2 }}
                     value={it.label}
                     onChange={(e) => setItem(i, { label: e.target.value })}
-                    placeholder="Pytanie"
+                    placeholder={t("checklists.itemQuestionPlaceholder")}
                   />
                   <select
                     style={f.input}
                     value={it.type}
                     onChange={(e) => setItem(i, { type: e.target.value as ChecklistItem["type"] })}
                   >
-                    <option value="yesno">Tak / Nie</option>
-                    <option value="multi">Wielokrotny wybór</option>
+                    <option value="yesno">{t("checklists.typeYesNo")}</option>
+                    <option value="multi">{t("checklists.typeMulti")}</option>
                   </select>
                   {it.type === "multi" && (
                     <input
@@ -266,7 +269,7 @@ export default function ChecklistsPage() {
                             .filter(Boolean),
                         })
                       }
-                      placeholder="Opcje po przecinku"
+                      placeholder={t("checklists.optionsPlaceholder")}
                     />
                   )}
                   <label style={styles.flag}>
@@ -317,13 +320,13 @@ export default function ChecklistsPage() {
                     )
                   }
                 >
-                  + pozycja
+                  {t("checklists.addItem")}
                 </Button>
                 <Button onClick={saveEditing} disabled={busy}>
-                  {busy ? "Zapisuję…" : "💾 Zapisz szablon"}
+                  {busy ? t("checklists.saving") : t("checklists.saveTemplate")}
                 </Button>
                 <Button variant="ghost" onClick={() => setEditing(null)}>
-                  Anuluj
+                  {t("common.cancel")}
                 </Button>
               </div>
             </div>
@@ -333,13 +336,17 @@ export default function ChecklistsPage() {
 
       <div style={styles.card}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <strong>Zgłoszenia ({subs.length})</strong>
+          <strong>
+            {t("checklists.submissionsPrefix")}
+            {subs.length}
+            {t("checklists.countSuffix")}
+          </strong>
           <select
             style={{ ...f.input, maxWidth: 220 }}
             value={vehicleFilter}
             onChange={(e) => setVehicleFilter(e.target.value)}
           >
-            <option value="">wszystkie pojazdy</option>
+            <option value="">{t("checklists.allVehicles")}</option>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.registration}
@@ -349,10 +356,7 @@ export default function ChecklistsPage() {
         </div>
 
         {subs.length === 0 && (
-          <p style={{ color: palette.smoke, fontSize: 14 }}>
-            Brak zgłoszeń — kierowcy wypełniają checklisty w aplikacji mobilnej (kafel „📋
-            Checklisty").
-          </p>
+          <p style={{ color: palette.smoke, fontSize: 14 }}>{t("checklists.submissionsEmpty")}</p>
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>

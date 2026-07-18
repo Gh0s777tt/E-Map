@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { PayoutDoc } from "@/components/PayoutDoc";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -44,6 +45,7 @@ function emptyRow(): Row {
 }
 
 export default function PayoutsPage() {
+  const t = useT();
   const confirm = useConfirm();
   const [driver, setDriver] = useState("");
   // #271: kartoteka do podpowiedzi + FK driver_id przy zapisie.
@@ -73,11 +75,11 @@ export default function PayoutsPage() {
       if (manage)
         setSaved(await listDriverPayouts(sb, m.companyId, driver ? { driverName: driver } : {}));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać rozliczeń.");
+      setErr(e instanceof Error ? e.message : t("payouts.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [driver]);
+  }, [driver, t]);
 
   useEffect(() => {
     load();
@@ -99,7 +101,7 @@ export default function PayoutsPage() {
     if (!companyId) return;
     const valid = rows.filter((r) => r.amount > 0);
     if (valid.length === 0) {
-      setErr("Podaj kwotę co najmniej jednej pozycji.");
+      setErr(t("payouts.amountRequired"));
       return;
     }
     setBusy(true);
@@ -128,19 +130,19 @@ export default function PayoutsPage() {
       setRows([emptyRow()]);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zapisu.");
+      setErr(e instanceof Error ? e.message : t("payouts.saveError"));
     } finally {
       setBusy(false);
     }
   }
 
   async function removeSaved(r: DriverPayoutRecord) {
-    if (!(await confirm("Usunąć tę pozycję rozliczenia?"))) return;
+    if (!(await confirm(t("payouts.deleteConfirm")))) return;
     try {
       await deleteDriverPayout(getBrowserSupabase(), r.id);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd usuwania.");
+      setErr(e instanceof Error ? e.message : t("payouts.deleteError"));
     }
   }
 
@@ -164,10 +166,7 @@ export default function PayoutsPage() {
   if (loading) {
     return (
       <div style={{ maxWidth: 980 }}>
-        <PageHeader
-          title="Rozliczenia kierowcy"
-          subtitle="Zaliczki, potrącenia i saldo do wypłaty."
-        />
+        <PageHeader title={t("payouts.title")} subtitle={t("payouts.subtitleShort")} />
         <ListStatus loading error={null} />
       </div>
     );
@@ -175,11 +174,8 @@ export default function PayoutsPage() {
   if (!canManage) {
     return (
       <div style={{ maxWidth: 980 }}>
-        <PageHeader
-          title="Rozliczenia kierowcy"
-          subtitle="Zaliczki, potrącenia i saldo do wypłaty."
-        />
-        <p style={{ color: palette.smoke }}>Dostęp tylko dla właściciela / spedytora.</p>
+        <PageHeader title={t("payouts.title")} subtitle={t("payouts.subtitleShort")} />
+        <p style={{ color: palette.smoke }}>{t("payouts.onlyOwnerDispatcher")}</p>
       </div>
     );
   }
@@ -197,19 +193,16 @@ export default function PayoutsPage() {
 
   return (
     <div style={{ maxWidth: 980 }}>
-      <PageHeader
-        title="Rozliczenia kierowcy"
-        subtitle="Ewidencja należności, zaliczek, potrąceń i wypłat. Saldo do wypłaty = należność − zaliczki − potrącenia − wypłaty (osobno per waluta)."
-      />
+      <PageHeader title={t("payouts.title")} subtitle={t("payouts.subtitle")} />
 
       <div style={{ ...f.field, maxWidth: 320, marginBottom: 14 }}>
-        <span style={f.label}>Kierowca (filtr + zapis)</span>
+        <span style={f.label}>{t("payouts.fieldDriver")}</span>
         <input
           style={f.input}
           value={driver}
           list="drivers-dl"
           onChange={(e) => setDriver(e.target.value)}
-          placeholder="Imię i nazwisko"
+          placeholder={t("payouts.driverPlaceholder")}
         />
         <datalist id="drivers-dl">
           {driversList.map((d) => (
@@ -220,10 +213,10 @@ export default function PayoutsPage() {
 
       <div style={f.card}>
         <div style={{ ...f.listRow, color: palette.smoke, fontSize: 12, fontWeight: 700 }}>
-          <span style={{ width: 140 }}>Data</span>
-          <span style={{ width: 150 }}>Typ</span>
-          <span style={{ width: 120 }}>Kwota</span>
-          <span style={{ width: 90 }}>Waluta</span>
+          <span style={{ width: 140 }}>{t("common.date")}</span>
+          <span style={{ width: 150 }}>{t("payouts.colKind")}</span>
+          <span style={{ width: 120 }}>{t("payouts.colAmount")}</span>
+          <span style={{ width: 90 }}>{t("payouts.colCurrency")}</span>
           <span style={{ flex: 1 }} />
           <span style={{ width: 36 }} />
         </div>
@@ -266,7 +259,7 @@ export default function PayoutsPage() {
                 setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : rs))
               }
               style={styles.del}
-              aria-label="Usuń wiersz"
+              aria-label={t("payouts.removeRowAria")}
             >
               ✕
             </button>
@@ -278,21 +271,27 @@ export default function PayoutsPage() {
 
       <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <Button variant="ghost" onClick={() => setRows((rs) => [...rs, emptyRow()])}>
-          ➕ Dodaj pozycję
+          {t("payouts.addRow")}
         </Button>
         <span style={{ flex: 1 }} />
         <Button onClick={saveDrafts} disabled={busy || rows.every((r) => r.amount <= 0)}>
-          {busy ? "Zapisuję…" : "💾 Zapisz"}
+          {busy ? t("payouts.saving") : t("payouts.save")}
         </Button>
       </div>
 
       {balances.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>💸 Saldo do wypłaty</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("payouts.balanceHeading")}</div>
           {balances.map((b) => (
             <div key={b.currency} style={{ ...f.listRow, ...styles.totalRow }}>
               <span style={{ flex: 1, color: palette.smoke, fontSize: 13 }}>
-                należność {b.due} · zaliczki {b.advance} · potrącenia {b.deduction} · wypłaty{" "}
+                {t("payouts.balDuePrefix")}
+                {b.due}
+                {t("payouts.balAdvancePrefix")}
+                {b.advance}
+                {t("payouts.balDeductionPrefix")}
+                {b.deduction}
+                {t("payouts.balPayoutPrefix")}
                 {b.payout}
               </span>
               <span
@@ -310,9 +309,9 @@ export default function PayoutsPage() {
       )}
 
       <div style={{ display: "flex", alignItems: "center", marginTop: 24, marginBottom: 8 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Ewidencja</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{t("payouts.ledgerHeading")}</h2>
         <span style={{ color: palette.smoke, fontSize: 13, marginLeft: 8 }}>
-          {saved.length > 0 ? `${saved.length} pozycji` : "brak"}
+          {saved.length > 0 ? `${saved.length}${t("payouts.itemsCountSuffix")}` : t("payouts.none")}
         </span>
         <span style={{ flex: 1 }} />
         <Button
@@ -320,10 +319,10 @@ export default function PayoutsPage() {
           onClick={() => setPrintDriver(driver.trim())}
           disabled={!driver.trim()}
         >
-          🖨️ Rozliczenie (PDF)
+          {t("payouts.printPdf")}
         </Button>
         <Button variant="ghost" onClick={exportCsv} disabled={saved.length === 0}>
-          ⬇️ CSV
+          {t("payouts.exportCsv")}
         </Button>
       </div>
 
@@ -344,7 +343,7 @@ export default function PayoutsPage() {
                 type="button"
                 onClick={() => removeSaved(r)}
                 style={styles.del}
-                aria-label="Usuń"
+                aria-label={t("common.delete")}
               >
                 🗑️
               </button>
@@ -352,7 +351,7 @@ export default function PayoutsPage() {
           ))}
         </div>
       ) : (
-        <p style={{ color: palette.smoke }}>Brak pozycji — dodaj powyżej i zapisz.</p>
+        <p style={{ color: palette.smoke }}>{t("payouts.empty")}</p>
       )}
     </div>
   );

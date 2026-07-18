@@ -14,21 +14,22 @@ import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-const PRESETS = [
-  "Wymiana oleju",
-  "Opony (rotacja/wymiana)",
-  "Filtry",
-  "Klocki/tarcze",
-  "Serwis ogólny",
-];
-
 export default function ServicePage() {
+  const t = useT();
+  const PRESETS = [
+    t("service.presetOil"),
+    t("service.presetTires"),
+    t("service.presetFilters"),
+    t("service.presetPads"),
+    t("service.presetGeneral"),
+  ];
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
   const [tasks, setTasks] = useState<ServiceTask[]>([]);
@@ -57,18 +58,18 @@ export default function ServicePage() {
         return;
       }
       setCanManage(m.role === "owner" || m.role === "dispatcher");
-      const [t, o] = await Promise.all([
+      const [tks, o] = await Promise.all([
         listServiceTasks(sb, m.companyId),
         latestOdometers(sb, m.companyId),
       ]);
-      setTasks(t);
+      setTasks(tks);
       setOdo(o);
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać planu serwisowego.");
+      setLoadErr(e instanceof Error ? e.message : t("service.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -101,14 +102,14 @@ export default function ServicePage() {
 
   async function save() {
     if (!vehicleId || !name.trim()) {
-      toast("Podaj pojazd i nazwę zadania.", "error");
+      toast(t("service.nameRequired"), "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        toast("Brak firmy.", "error");
+        toast(t("service.noCompany"), "error");
         return;
       }
       await saveServiceTask(
@@ -124,53 +125,57 @@ export default function ServicePage() {
         },
         editingId ?? undefined,
       );
-      toast(editingId ? "Zaktualizowano." : "Dodano zadanie.", "success");
+      toast(editingId ? t("service.updated") : t("service.taskAdded"), "success");
       resetForm();
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+      toast(e instanceof Error ? e.message : t("service.saveError"), "error");
     }
   }
 
   async function done(tk: ServiceTask) {
     const km = odo[tk.vehicle_id] ?? null;
-    if (!(await confirm(`Oznaczyć „${tk.name}" jako wykonane przy ${km ?? "—"} km?`))) return;
+    if (
+      !(await confirm(
+        `${t("service.doneConfirmPrefix")}${tk.name}${t("service.doneConfirmMid")}${km ?? "—"}${t("service.doneConfirmSuffix")}`,
+      ))
+    )
+      return;
     try {
       await markServiceDone(getBrowserSupabase(), tk.id, km, new Date().toISOString().slice(0, 10));
-      toast("Oznaczono jako wykonane.", "success");
+      toast(t("service.markedDone"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd.", "error");
+      toast(e instanceof Error ? e.message : t("common.error"), "error");
     }
   }
 
   async function remove(id: string) {
-    if (!(await confirm("Usunąć zadanie serwisowe?"))) return;
+    if (!(await confirm(t("service.deleteConfirm")))) return;
     try {
       await deleteServiceTask(getBrowserSupabase(), id);
       if (editingId === id) resetForm();
-      toast("Zadanie usunięte.", "success");
+      toast(t("service.deleted"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
+      toast(e instanceof Error ? e.message : t("service.deleteError"), "error");
     }
   }
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <PageHeader
-        title="Plan serwisowy"
-        subtitle="Interwały serwisowe wg przebiegu (i/lub czasu). Status liczony z bieżącego licznika pojazdu; przypomnienia trafiają do powiadomień."
-      />
+      <PageHeader title={t("service.title")} subtitle={t("service.subtitle")} />
 
-      <SetupNotice source={source} noVehicles="Dodaj pojazd, aby zaplanować serwis." />
+      <SetupNotice source={source} noVehicles={t("service.noVehicles")} />
 
       {canManage && (
         <div style={styles.form}>
-          {editingId && <div style={{ color: palette.red, fontWeight: 700 }}>✏️ Edycja zadania</div>}
+          {editingId && (
+            <div style={{ color: palette.red, fontWeight: 700 }}>{t("service.editingBanner")}</div>
+          )}
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={f.label}>Pojazd</span>
+              <span style={f.label}>{t("form.field.vehicle")}</span>
               <select
                 style={f.input}
                 value={vehicleId}
@@ -184,13 +189,13 @@ export default function ServicePage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Zadanie</span>
+              <span style={f.label}>{t("service.fieldTask")}</span>
               <input
                 style={f.input}
                 list="svc-presets"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="np. Wymiana oleju"
+                placeholder={t("service.taskPlaceholder")}
               />
               <datalist id="svc-presets">
                 {PRESETS.map((p) => (
@@ -201,29 +206,29 @@ export default function ServicePage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={f.label}>Interwał (km)</span>
+              <span style={f.label}>{t("service.fieldIntervalKm")}</span>
               <input
                 style={f.input}
                 type="number"
                 value={intervalKm}
                 onChange={(e) => setIntervalKm(e.target.value)}
-                placeholder="np. 60000"
+                placeholder={t("service.intervalKmPlaceholder")}
               />
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Interwał (mies.)</span>
+              <span style={f.label}>{t("service.fieldIntervalMonths")}</span>
               <input
                 style={f.input}
                 type="number"
                 value={intervalMonths}
                 onChange={(e) => setIntervalMonths(e.target.value)}
-                placeholder="np. 12"
+                placeholder={t("service.intervalMonthsPlaceholder")}
               />
             </label>
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={f.label}>Ostatni serwis (km)</span>
+              <span style={f.label}>{t("service.fieldLastKm")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -232,7 +237,7 @@ export default function ServicePage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Ostatni serwis (data)</span>
+              <span style={f.label}>{t("service.fieldLastDate")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -242,22 +247,22 @@ export default function ServicePage() {
             </label>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <Button onClick={save}>{editingId ? "Zapisz" : "Dodaj zadanie"}</Button>
+            <Button onClick={save}>{editingId ? t("common.save") : t("service.addTask")}</Button>
             {editingId && (
               <Button variant="ghost" onClick={resetForm}>
-                Anuluj
+                {t("common.cancel")}
               </Button>
             )}
           </div>
         </div>
       )}
 
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 28 }}>Zadania</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 28 }}>{t("service.tasksHeading")}</h2>
       <ListStatus
         loading={loading}
         error={loadErr}
         empty={tasks.length === 0}
-        emptyText="Brak zaplanowanych zadań serwisowych."
+        emptyText={t("service.empty")}
         onRetry={load}
       />
       {!loading && !loadErr && tasks.length > 0 && (
@@ -273,19 +278,23 @@ export default function ServicePage() {
                 {tk.interval_km != null && (
                   <Badge color={color}>
                     {st.kmLeft == null
-                      ? `co ${tk.interval_km} km`
+                      ? `${t("service.everyPrefix")}${tk.interval_km}${t("service.kmSuffix")}`
                       : st.kmLeft < 0
-                        ? `po przebiegu o ${-st.kmLeft} km`
-                        : `za ${st.kmLeft} km`}
+                        ? `${t("service.overduePrefix")}${-st.kmLeft}${t("service.kmSuffix")}`
+                        : `${t("service.leftPrefix")}${st.kmLeft}${t("service.kmSuffix")}`}
                   </Badge>
                 )}
                 {tk.interval_months != null && (
-                  <span style={styles.dim}>co {tk.interval_months} mies.</span>
+                  <span style={styles.dim}>
+                    {t("service.everyPrefix")}
+                    {tk.interval_months}
+                    {t("service.monthsSuffix")}
+                  </span>
                 )}
                 {canManage && (
                   <>
                     <Button variant="ghost" onClick={() => done(tk)}>
-                      ✓ Wykonano
+                      {t("service.markDone")}
                     </Button>
                     <Button variant="ghost" onClick={() => startEdit(tk)}>
                       ✏️
