@@ -79,11 +79,11 @@ export default function ContractorsPage() {
       setCanManage(m.role === "owner" || m.role === "dispatcher");
       setContractors(await listContractors(sb, m.companyId));
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać kontrahentów.");
+      setLoadErr(e instanceof Error ? e.message : t("contractors.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -109,14 +109,14 @@ export default function ContractorsPage() {
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      toast("Podaj nazwę kontrahenta.", "error");
+      toast(t("contractors.nameRequired"), "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        toast("Brak firmy — utwórz ją na Pulpicie.", "error");
+        toast(t("vehicles.noCompanyImport"), "error");
         return;
       }
       const input = {
@@ -127,27 +127,32 @@ export default function ContractorsPage() {
       };
       if (editingId) {
         await updateContractor(sb, editingId, input);
-        toast("Kontrahent zaktualizowany.", "success");
+        toast(t("contractors.updated"), "success");
       } else {
         await upsertContractor(sb, m.companyId, input);
-        toast("Kontrahent dodany.", "success");
+        toast(t("contractors.added"), "success");
       }
       resetForm();
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+      toast(e instanceof Error ? e.message : t("contractors.saveError"), "error");
     }
   }
 
   async function remove(c: Contractor) {
-    if (!(await confirm(`Usunąć kontrahenta „${c.name}"?`))) return;
+    if (
+      !(await confirm(
+        `${t("contractors.deleteConfirmPrefix")}${c.name}${t("contractors.deleteConfirmSuffix")}`,
+      ))
+    )
+      return;
     try {
       await deleteContractor(getBrowserSupabase(), c.id);
       if (editingId === c.id) resetForm();
-      toast("Kontrahent usunięty.", "success");
+      toast(t("contractors.deleted"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
+      toast(e instanceof Error ? e.message : t("contractors.deleteError"), "error");
     }
   }
 
@@ -163,44 +168,64 @@ export default function ContractorsPage() {
     await downloadXlsx(`kontrahenci_${csvDateStamp()}.xlsx`, headers, rows);
   }
 
-  const importContractors = useCallback(async (values: ContractorInput[]) => {
-    const sb = getBrowserSupabase();
-    const m = await getCachedMembership(sb);
-    if (!m) {
-      return {
-        inserted: 0,
-        failed: values.length,
-        errors: ["Brak firmy — utwórz ją na Pulpicie."],
-      };
-    }
-    // Audyt Ś14: jeden batch upsert zamiast N sekwencyjnych round-tripów.
-    // Dedup po nazwie (klucz konfliktu company_id,name) — ostatni wiersz wygrywa,
-    // jak przy sekwencyjnym upsert, i unika błędu „ON CONFLICT … a second time".
-    const byName = new Map<string, ContractorInput>();
-    for (const v of values) {
-      const name = v.name.trim();
-      if (name) byName.set(name, { ...v, name });
-    }
-    const rows = [...byName.values()].map((v) => ({
-      company_id: m.companyId,
-      name: v.name,
-      tax_id: v.taxId?.trim() || null,
-      address: v.address?.trim() || null,
-      country: v.country?.trim() || null,
-    }));
-    if (rows.length === 0) return { inserted: 0, failed: 0, errors: [] };
-    const { error } = await sb.from("contractors").upsert(rows, { onConflict: "company_id,name" });
-    if (error) {
-      return { inserted: 0, failed: rows.length, errors: [error.message] };
-    }
-    return { inserted: rows.length, failed: 0, errors: [] };
-  }, []);
+  const importContractors = useCallback(
+    async (values: ContractorInput[]) => {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) {
+        return {
+          inserted: 0,
+          failed: values.length,
+          errors: [t("vehicles.noCompanyImport")],
+        };
+      }
+      // Audyt Ś14: jeden batch upsert zamiast N sekwencyjnych round-tripów.
+      // Dedup po nazwie (klucz konfliktu company_id,name) — ostatni wiersz wygrywa,
+      // jak przy sekwencyjnym upsert, i unika błędu „ON CONFLICT … a second time".
+      const byName = new Map<string, ContractorInput>();
+      for (const v of values) {
+        const name = v.name.trim();
+        if (name) byName.set(name, { ...v, name });
+      }
+      const rows = [...byName.values()].map((v) => ({
+        company_id: m.companyId,
+        name: v.name,
+        tax_id: v.taxId?.trim() || null,
+        address: v.address?.trim() || null,
+        country: v.country?.trim() || null,
+      }));
+      if (rows.length === 0) return { inserted: 0, failed: 0, errors: [] };
+      const { error } = await sb
+        .from("contractors")
+        .upsert(rows, { onConflict: "company_id,name" });
+      if (error) {
+        return { inserted: 0, failed: rows.length, errors: [error.message] };
+      }
+      return { inserted: rows.length, failed: 0, errors: [] };
+    },
+    [t],
+  );
 
   const cols: Column<Contractor>[] = [
-    { key: "name", header: "Nazwa", sort: (c) => c.name, cell: (c) => <strong>{c.name}</strong> },
-    { key: "tax_id", header: "NIP / VAT", sort: (c) => c.tax_id, cell: (c) => c.tax_id ?? "—" },
-    { key: "address", header: "Adres", cell: (c) => c.address ?? "—" },
-    { key: "country", header: "Kraj", sort: (c) => c.country, cell: (c) => c.country ?? "—" },
+    {
+      key: "name",
+      header: t("contractors.colName"),
+      sort: (c) => c.name,
+      cell: (c) => <strong>{c.name}</strong>,
+    },
+    {
+      key: "tax_id",
+      header: t("contractors.colTaxId"),
+      sort: (c) => c.tax_id,
+      cell: (c) => c.tax_id ?? "—",
+    },
+    { key: "address", header: t("contractors.fieldAddress"), cell: (c) => c.address ?? "—" },
+    {
+      key: "country",
+      header: t("form.field.country"),
+      sort: (c) => c.country,
+      cell: (c) => c.country ?? "—",
+    },
     ...(canManage
       ? [
           {
@@ -224,20 +249,17 @@ export default function ContractorsPage() {
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <PageHeader
-        title={t("nav.contractors")}
-        subtitle="Rejestr nabywców i nadawców. Używany do autouzupełniania na fakturach i zleceniach — uzupełnia się też automatycznie przy zapisie zlecenia."
-      />
+      <PageHeader title={t("nav.contractors")} subtitle={t("contractors.subtitle")} />
 
       {canManage && (
         <div style={styles.form}>
           {editingId && (
             <div style={{ fontSize: 13, color: palette.red, fontWeight: 700 }}>
-              ✏️ Edytujesz kontrahenta.
+              {t("contractors.editingBanner")}
             </div>
           )}
           <label style={styles.field}>
-            <span style={styles.label}>Nazwa *</span>
+            <span style={styles.label}>{t("contractors.fieldName")}</span>
             <input
               style={styles.input}
               value={name}
@@ -247,7 +269,7 @@ export default function ContractorsPage() {
           </label>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>NIP / VAT ID</span>
+              <span style={styles.label}>{t("contractors.fieldTaxId")}</span>
               <input
                 style={styles.input}
                 value={taxId}
@@ -256,7 +278,7 @@ export default function ContractorsPage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Kraj</span>
+              <span style={styles.label}>{t("form.field.country")}</span>
               <input
                 style={styles.input}
                 value={country}
@@ -266,20 +288,22 @@ export default function ContractorsPage() {
             </label>
           </div>
           <label style={styles.field}>
-            <span style={styles.label}>Adres</span>
+            <span style={styles.label}>{t("contractors.fieldAddress")}</span>
             <input
               style={styles.input}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="ul. Przykładowa 1, 00-000 Miasto"
+              placeholder={t("contractors.addressPlaceholder")}
             />
           </label>
 
           <div style={{ display: "flex", gap: 10 }}>
-            <Button onClick={save}>{editingId ? "Zapisz zmiany" : t("common.save")}</Button>
+            <Button onClick={save}>
+              {editingId ? t("vehicles.saveChanges") : t("common.save")}
+            </Button>
             {editingId && (
               <Button variant="ghost" onClick={resetForm}>
-                Anuluj
+                {t("common.cancel")}
               </Button>
             )}
           </div>
@@ -299,7 +323,7 @@ export default function ContractorsPage() {
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Rejestr</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{t("contractors.registry")}</h2>
         <span style={{ flex: 1 }} />
         {contractors.length > 0 && (
           <>
@@ -317,7 +341,7 @@ export default function ContractorsPage() {
         loading={loading}
         error={loadErr}
         empty={contractors.length === 0}
-        emptyText="Brak kontrahentów — dodaj powyżej lub wystaw zlecenie/fakturę."
+        emptyText={t("contractors.empty")}
         onRetry={load}
       />
       {!loading && !loadErr && contractors.length > 0 && (

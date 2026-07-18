@@ -22,6 +22,7 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { DamagePhotos } from "@/components/DamagePhotos";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -38,6 +39,7 @@ const STATUS_COLOR: Record<DamageStatus, string> = {
 
 export default function DamageClaimsPage() {
   const confirm = useConfirm();
+  const t = useT();
   const { vehicles } = useFleet();
   const [claims, setClaims] = useState<DamageClaim[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -67,11 +69,11 @@ export default function DamageClaimsPage() {
       setCompanyId(m.companyId);
       setClaims(await listDamageClaims(sb, m.companyId));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać szkód.");
+      setErr(e instanceof Error ? e.message : t("damages.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -113,7 +115,7 @@ export default function DamageClaimsPage() {
       setClaimNumber("");
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zapisu szkody.");
+      setErr(e instanceof Error ? e.message : t("damages.saveError"));
     }
   }
 
@@ -122,17 +124,17 @@ export default function DamageClaimsPage() {
       await setDamageClaimStatus(getBrowserSupabase(), id, s);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zmiany statusu.");
+      setErr(e instanceof Error ? e.message : t("damages.statusError"));
     }
   }
 
   async function remove(c: DamageClaim) {
-    if (!(await confirm("Usunąć tę szkodę z rejestru?"))) return;
+    if (!(await confirm(t("damages.deleteConfirm")))) return;
     try {
       await deleteDamageClaim(getBrowserSupabase(), c.id);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd usuwania.");
+      setErr(e instanceof Error ? e.message : t("damages.deleteError"));
     }
   }
 
@@ -166,22 +168,19 @@ export default function DamageClaimsPage() {
 
   return (
     <div style={{ maxWidth: 980 }}>
-      <PageHeader
-        title="Rejestr szkód / OC"
-        subtitle="Zgłoszenia szkód pojazdów: rodzaj, status, koszt, ubezpieczyciel i numer szkody."
-      />
+      <PageHeader title={t("damages.title")} subtitle={t("damages.subtitle")} />
 
       {canManage && (
         <div style={f.formWrap}>
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Pojazd</span>
+              <span style={f.label}>{t("common.vehicle")}</span>
               <select
                 style={f.input}
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
               >
-                <option value="">— bez pojazdu —</option>
+                <option value="">{t("drivers.noVehicle")}</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.registration}
@@ -190,7 +189,7 @@ export default function DamageClaimsPage() {
               </select>
             </label>
             <label style={f.field}>
-              <span style={f.label}>Data szkody</span>
+              <span style={f.label}>{t("damages.fieldClaimDate")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -201,7 +200,7 @@ export default function DamageClaimsPage() {
           </div>
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Rodzaj</span>
+              <span style={f.label}>{t("damages.fieldKind")}</span>
               <select
                 style={f.input}
                 value={kind}
@@ -215,7 +214,7 @@ export default function DamageClaimsPage() {
               </select>
             </label>
             <label style={f.field}>
-              <span style={f.label}>Status</span>
+              <span style={f.label}>{t("common.status")}</span>
               <select
                 style={f.input}
                 value={status}
@@ -231,7 +230,7 @@ export default function DamageClaimsPage() {
           </div>
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Koszt</span>
+              <span style={f.label}>{t("damages.fieldCost")}</span>
               <input
                 style={f.input}
                 type="number"
@@ -239,11 +238,11 @@ export default function DamageClaimsPage() {
                 step="0.01"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                placeholder="kwota"
+                placeholder={t("damages.costPlaceholder")}
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Waluta</span>
+              <span style={f.label}>{t("damages.fieldCurrency")}</span>
               <input
                 style={f.input}
                 value={currency}
@@ -251,46 +250,46 @@ export default function DamageClaimsPage() {
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Kierowca</span>
+              <span style={f.label}>{t("damages.fieldDriver")}</span>
               <input
                 style={f.input}
                 value={driver}
                 onChange={(e) => setDriver(e.target.value)}
-                placeholder="opcjonalnie"
+                placeholder={t("damages.optionalPlaceholder")}
               />
             </label>
           </div>
           <div style={f.grid}>
             <label style={f.field}>
-              <span style={f.label}>Ubezpieczyciel</span>
+              <span style={f.label}>{t("vehicles.fieldInsurer")}</span>
               <input
                 style={f.input}
                 value={insurer}
                 onChange={(e) => setInsurer(e.target.value)}
-                placeholder="opcjonalnie"
+                placeholder={t("damages.optionalPlaceholder")}
               />
             </label>
             <label style={f.field}>
-              <span style={f.label}>Nr szkody</span>
+              <span style={f.label}>{t("damages.fieldClaimNumber")}</span>
               <input
                 style={f.input}
                 value={claimNumber}
                 onChange={(e) => setClaimNumber(e.target.value)}
-                placeholder="opcjonalnie"
+                placeholder={t("damages.optionalPlaceholder")}
               />
             </label>
           </div>
           <label style={f.field}>
-            <span style={f.label}>Opis</span>
+            <span style={f.label}>{t("damages.fieldDescription")}</span>
             <input
               style={f.input}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="okoliczności, zakres uszkodzeń…"
+              placeholder={t("damages.descriptionPlaceholder")}
             />
           </label>
           <div>
-            <Button onClick={save}>➕ Dodaj szkodę</Button>
+            <Button onClick={save}>{t("damages.add")}</Button>
           </div>
           {err && <p style={{ color: palette.red, fontSize: 13 }}>{err}</p>}
         </div>
@@ -298,16 +297,16 @@ export default function DamageClaimsPage() {
 
       {summary.total > 0 && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 20 }}>
-          <Stat label="Szkody łącznie" value={String(summary.total)} />
+          <Stat label={t("damages.statTotal")} value={String(summary.total)} />
           <Stat
-            label="Otwarte"
+            label={t("damages.statOpen")}
             value={String(summary.open)}
             accent={summary.open > 0 ? palette.red : "#22c55e"}
           />
           {summary.costByCurrency.map((c) => (
             <Stat
               key={c.currency}
-              label={`Koszt (${c.currency})`}
+              label={`${t("damages.statCostPrefix")}${c.currency})`}
               value={`${c.amount} ${c.currency}`}
             />
           ))}
@@ -315,7 +314,7 @@ export default function DamageClaimsPage() {
       )}
 
       <div style={{ display: "flex", alignItems: "center", marginTop: 24, marginBottom: 8 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Rejestr</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{t("damages.registry")}</h2>
         <span style={{ flex: 1 }} />
         <Button variant="ghost" onClick={exportCsv} disabled={claims.length === 0}>
           ⬇️ CSV
@@ -326,7 +325,7 @@ export default function DamageClaimsPage() {
         loading={loading}
         error={err}
         empty={!loading && claims.length === 0}
-        emptyText="Brak szkód w rejestrze."
+        emptyText={t("damages.empty")}
         onRetry={load}
       />
 
@@ -370,7 +369,12 @@ export default function DamageClaimsPage() {
                 <div style={{ ...f.meta, padding: "0 14px 10px" }}>
                   {c.driver_name && <>👤 {c.driver_name} · </>}
                   {c.insurer && <>🛡️ {c.insurer} · </>}
-                  {c.claim_number && <>nr {c.claim_number} · </>}
+                  {c.claim_number && (
+                    <>
+                      {t("damages.numberShort")}
+                      {c.claim_number} ·{" "}
+                    </>
+                  )}
                   {c.description}
                 </div>
               )}

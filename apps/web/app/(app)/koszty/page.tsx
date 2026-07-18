@@ -19,6 +19,7 @@ import { DataImport, type ImportColumn } from "@/components/DataImport";
 import { type Column, DataTable } from "@/components/DataTable";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -98,6 +99,7 @@ const catLabel = (c: string) => VEHICLE_COST_CATEGORY_LABELS[c as VehicleCostCat
 export default function CostsPage() {
   const confirm = useConfirm();
   const toast = useToast();
+  const t = useT();
   const { vehicles } = useFleet();
   const [costs, setCosts] = useState<VehicleCost[]>([]);
   const [canManage, setCanManage] = useState(false);
@@ -124,11 +126,11 @@ export default function CostsPage() {
       setCanManage(m.role === "owner" || m.role === "dispatcher");
       setCosts(await listVehicleCosts(sb, m.companyId));
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać kosztów.");
+      setLoadErr(e instanceof Error ? e.message : t("costs.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -145,19 +147,19 @@ export default function CostsPage() {
 
   async function save() {
     if (!vehicleId) {
-      toast("Wybierz pojazd.", "error");
+      toast(t("costs.selectVehicle"), "error");
       return;
     }
     const val = Number(amount);
     if (!Number.isFinite(val) || val < 0) {
-      toast("Podaj poprawną kwotę (≥ 0).", "error");
+      toast(t("costs.invalidAmount"), "error");
       return;
     }
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        toast("Brak firmy — utwórz ją na Pulpicie.", "error");
+        toast(t("vehicles.noCompanyImport"), "error");
         return;
       }
       await insertVehicleCost(
@@ -172,24 +174,28 @@ export default function CostsPage() {
         },
         m.companyId,
       );
-      toast("Koszt dodany.", "success");
+      toast(t("costs.added"), "success");
       setAmount("");
       setDescription("");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+      toast(e instanceof Error ? e.message : t("costs.saveError"), "error");
     }
   }
 
   async function remove(c: VehicleCost) {
-    if (!(await confirm(`Usunąć koszt ${catLabel(c.category)} (${c.amount} ${c.currency})?`)))
+    if (
+      !(await confirm(
+        `${t("costs.deleteConfirmPrefix")}${catLabel(c.category)} (${c.amount} ${c.currency})?`,
+      ))
+    )
       return;
     try {
       await deleteVehicleCost(getBrowserSupabase(), c.id);
-      toast("Koszt usunięty.", "success");
+      toast(t("costs.deleted"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
+      toast(e instanceof Error ? e.message : t("costs.deleteError"), "error");
     }
   }
 
@@ -227,7 +233,7 @@ export default function CostsPage() {
         return {
           inserted: 0,
           failed: rows.length,
-          errors: ["Brak firmy — utwórz ją na Pulpicie."],
+          errors: [t("vehicles.noCompanyImport")],
         };
       }
       const regMap = new Map(vehicles.map((v) => [v.registration.toUpperCase(), v.id]));
@@ -245,7 +251,7 @@ export default function CostsPage() {
         const vehicleIdMapped = regMap.get(registration.toUpperCase());
         if (!vehicleIdMapped) {
           failed++;
-          if (errors.length < 8) errors.push(`${registration}: pojazd nierozpoznany (pominięto)`);
+          if (errors.length < 8) errors.push(`${registration}: ${t("costs.importVehicleUnknown")}`);
           continue;
         }
         const key = keyOf(
@@ -258,7 +264,7 @@ export default function CostsPage() {
         if (existing.has(key)) {
           failed++;
           if (errors.length < 8)
-            errors.push(`${registration} ${input.category}: duplikat (pominięto)`);
+            errors.push(`${registration} ${input.category}: ${t("costs.importDuplicate")}`);
           continue;
         }
         try {
@@ -268,37 +274,42 @@ export default function CostsPage() {
         } catch (e) {
           failed++;
           if (errors.length < 8) {
-            errors.push(`${registration}: ${e instanceof Error ? e.message : "błąd"}`);
+            errors.push(`${registration}: ${e instanceof Error ? e.message : t("common.error")}`);
           }
         }
       }
       return { inserted, failed, errors };
     },
-    [vehicles],
+    [vehicles, t],
   );
 
   const cols: Column<VehicleCost>[] = [
     {
       key: "vehicle",
-      header: "Pojazd",
+      header: t("common.vehicle"),
       sort: (c) => regOf(c.vehicle_id),
       cell: (c) => regOf(c.vehicle_id),
     },
     {
       key: "category",
-      header: "Kategoria",
+      header: t("costs.fieldCategory"),
       sort: (c) => c.category,
       cell: (c) => catLabel(c.category),
     },
     {
       key: "amount",
-      header: "Kwota",
+      header: t("form.field.amount"),
       align: "right",
       sort: (c) => c.amount,
       cell: (c) => `${c.amount} ${c.currency}`,
     },
-    { key: "cost_date", header: "Data", sort: (c) => c.cost_date, cell: (c) => c.cost_date },
-    { key: "description", header: "Opis", cell: (c) => c.description ?? "—" },
+    {
+      key: "cost_date",
+      header: t("common.date"),
+      sort: (c) => c.cost_date,
+      cell: (c) => c.cost_date,
+    },
+    { key: "description", header: t("costs.fieldDescription"), cell: (c) => c.description ?? "—" },
     ...(canManage
       ? [
           {
@@ -317,16 +328,13 @@ export default function CostsPage() {
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <PageHeader
-        title="Koszty pojazdów"
-        subtitle="Koszty inne niż paliwo (naprawy, leasing, ubezpieczenie, podatki…). Zasilają zysk floty. Import/eksport CSV i Excel."
-      />
+      <PageHeader title={t("nav.costs")} subtitle={t("costs.subtitle")} />
 
       {canManage && (
         <div style={styles.form}>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Pojazd</span>
+              <span style={styles.label}>{t("common.vehicle")}</span>
               <select
                 style={styles.input}
                 value={vehicleId}
@@ -340,7 +348,7 @@ export default function CostsPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Kategoria</span>
+              <span style={styles.label}>{t("costs.fieldCategory")}</span>
               <select
                 style={styles.input}
                 value={category}
@@ -356,7 +364,7 @@ export default function CostsPage() {
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={styles.label}>Kwota</span>
+              <span style={styles.label}>{t("form.field.amount")}</span>
               <input
                 style={styles.input}
                 type="number"
@@ -367,7 +375,7 @@ export default function CostsPage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Waluta</span>
+              <span style={styles.label}>{t("costs.fieldCurrency")}</span>
               <input
                 style={{ ...styles.input, maxWidth: 120 }}
                 value={currency}
@@ -375,7 +383,7 @@ export default function CostsPage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={styles.label}>Data</span>
+              <span style={styles.label}>{t("common.date")}</span>
               <input
                 style={styles.input}
                 type="date"
@@ -385,16 +393,16 @@ export default function CostsPage() {
             </label>
           </div>
           <label style={styles.field}>
-            <span style={styles.label}>Opis</span>
+            <span style={styles.label}>{t("costs.fieldDescription")}</span>
             <input
               style={styles.input}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="np. wymiana rozrządu"
+              placeholder={t("costs.descriptionPlaceholder")}
             />
           </label>
           <div>
-            <Button onClick={save}>Dodaj koszt</Button>
+            <Button onClick={save}>{t("costs.add")}</Button>
           </div>
         </div>
       )}
@@ -409,15 +417,13 @@ export default function CostsPage() {
             onDone={load}
           />
           <p style={{ fontSize: 12, color: palette.smoke, marginTop: 6 }}>
-            Kolumna „Pojazd" = rejestracja. „Kategoria": naprawa / leasing / ubezpieczenie / podatek
-            / mandat / parking / opony / inne (lub klucze EN). Duplikaty (ten sam
-            pojazd+kategoria+kwota+data+opis) są pomijane.
+            {t("costs.importNote")}
           </p>
         </div>
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Rejestr kosztów</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{t("costs.registryHeading")}</h2>
         <span style={{ flex: 1 }} />
         {costs.length > 0 && (
           <>
@@ -435,7 +441,7 @@ export default function CostsPage() {
         loading={loading}
         error={loadErr}
         empty={costs.length === 0}
-        emptyText="Brak kosztów — dodaj powyżej lub zaimportuj (albo dopisz koszt na karcie pojazdu)."
+        emptyText={t("costs.empty")}
         onRetry={load}
       />
       {!loading && !loadErr && costs.length > 0 && (
