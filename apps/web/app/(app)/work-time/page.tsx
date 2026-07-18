@@ -8,7 +8,13 @@ import {
   listWorkTimeEntries,
   type WorkTimeRecord,
 } from "@e-logistic/api";
-import { summarizeWorkTime, type WorkTimeEntry } from "@e-logistic/core";
+import {
+  summarizeWorkTime,
+  type WorkTimeEntry,
+  WTD_LIMITS,
+  weeklyWorkingFromEntries,
+  wtdStatus,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -92,6 +98,11 @@ export default function WorkTimePage() {
     [saved, filterDriverId],
   );
   const report = useMemo(() => summarizeWorkTime(filteredSaved.map(toEntry)), [filteredSaved]);
+  // WTD 2002/15/WE — średnia tygodniowa ≤ 48 h z zapisanej ewidencji (okno 17 tyg.).
+  const wtd = useMemo(
+    () => wtdStatus(weeklyWorkingFromEntries(filteredSaved.map(toEntry))),
+    [filteredSaved],
+  );
 
   function patch(id: string, p: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
@@ -380,6 +391,60 @@ export default function WorkTimePage() {
             value={String(s.overDrivingDays)}
             accent={s.overDrivingDays > 0 ? palette.red : "#22c55e"}
           />
+        </div>
+      )}
+
+      {wtd.weeksCounted > 0 && (
+        <div
+          style={{
+            marginTop: 20,
+            border: `1px solid ${wtd.avgOk && wtd.weeksOver60.length === 0 ? "#22c55e55" : "#ef444488"}`,
+            borderRadius: 10,
+            padding: 14,
+            background: "rgba(127,127,127,0.06)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <strong style={{ fontSize: 14 }}>⏱️ Czas pracy WTD (2002/15/WE)</strong>
+            <span
+              style={{ color: wtd.avgOk ? "#22c55e" : palette.red, fontWeight: 800, fontSize: 15 }}
+            >
+              śr. {wtd.avgWeeklyH} h / {WTD_LIMITS.weeklyAvg} h
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
+            <Stat
+              label={`Okres (${wtd.weeksCounted}/${wtd.referenceWeeks} tyg.)`}
+              value={`${wtd.totalWorkingH} h`}
+            />
+            <Stat
+              label="Najwyższy tydzień"
+              value={`${wtd.maxWeeklyH} h`}
+              accent={wtd.weeksOver60.length ? palette.red : undefined}
+            />
+            <Stat
+              label="Tygodnie > 60 h"
+              value={String(wtd.weeksOver60.length)}
+              accent={wtd.weeksOver60.length ? palette.red : "#22c55e"}
+            />
+            <Stat
+              label="Budżet do średniej 48 h"
+              value={`${wtd.budgetToAvgH} h`}
+              accent={wtd.budgetToAvgH < 0 ? palette.red : "#22c55e"}
+            />
+          </div>
+          <p style={{ color: palette.smoke, fontSize: 11, margin: "12px 0 0" }}>
+            Reżim ODRĘBNY od 561/2006: średnia ≤ 48 h/tydz. w okresie 17 tyg., max 60 h/tydz. Pomoc
+            orientacyjna.
+          </p>
         </div>
       )}
     </div>
