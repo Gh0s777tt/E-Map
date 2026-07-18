@@ -25,6 +25,7 @@ import { useState } from "react";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { TachoDownloadsSection } from "./TachoDownloadsSection";
 
 const PDF = "/tacho/rozporzadzenie-561-2006.pdf";
 
@@ -570,6 +571,8 @@ export default function TachoPage() {
       </p>
 
       <WeeklyRestPlanner />
+
+      <TachoDownloadsSection />
 
       <h3 style={st.h3}>🚛 Co pokazuje tachograf — podczas jazdy</h3>
       {gallery(DRIVING_SHOTS)}

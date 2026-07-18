@@ -1797,6 +1797,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      tacho_downloads: {
+        Row: {
+          id: string;
+          company_id: string;
+          kind: string;
+          driver_id: string | null;
+          vehicle_id: string | null;
+          last_download: string;
+          note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          kind: string;
+          driver_id?: string | null;
+          vehicle_id?: string | null;
+          last_download: string;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          kind?: string;
+          driver_id?: string | null;
+          vehicle_id?: string | null;
+          last_download?: string;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       trip_event_revisions: {
         Row: {
           id: string;
