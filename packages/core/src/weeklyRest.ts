@@ -144,6 +144,34 @@ export function restCompensationLedger(
   };
 }
 
+export interface TachoRestBoundary {
+  /** true = start odpoczynku tygodniowego, false = jego koniec. */
+  start: boolean;
+  /** Znacznik czasu zdarzenia (epoch ms). */
+  atMs: number;
+}
+
+/**
+ * Z chronologicznych zdarzeń start/koniec odpoczynku tygodniowego buduje listę
+ * UKOŃCZONYCH odpoczynków (koniec + faktyczna długość) do `restCompensationLedger`.
+ * Paruje każdy start z najbliższym późniejszym końcem; niesparowane (trwający
+ * odpoczynek bez końca, koniec bez startu) pomija.
+ */
+export function weeklyRestsFromBoundaries(events: TachoRestBoundary[]): WeeklyRestEvent[] {
+  const sorted = [...events].sort((a, b) => a.atMs - b.atMs);
+  const out: WeeklyRestEvent[] = [];
+  let startMs: number | null = null;
+  for (const e of sorted) {
+    if (e.start) {
+      startMs = e.atMs;
+    } else if (startMs != null) {
+      out.push({ endMs: e.atMs, durationH: Math.round(((e.atMs - startMs) / H_MS) * 10) / 10 });
+      startMs = null;
+    }
+  }
+  return out;
+}
+
 /**
  * #330: Parser liczników z OCR zdjęcia wyświetlacza tacho — wyłuskuje
  * wartości „XXhYY" (np. 04h30, 129h1 → 129h10 traktujemy ostrożnie: tylko

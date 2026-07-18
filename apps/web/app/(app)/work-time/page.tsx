@@ -5,13 +5,17 @@ import {
   deleteWorkTimeEntry,
   insertWorkTimeEntry,
   listDrivers,
+  listMyTachoEvents,
   listWorkTimeEntries,
+  type TachoEvent,
   type WorkTimeRecord,
 } from "@e-logistic/api";
 import {
+  restCompensationLedger,
   summarizeWorkTime,
   type WorkTimeEntry,
   WTD_LIMITS,
+  weeklyRestsFromBoundaries,
   weeklyWorkingFromEntries,
   wtdStatus,
 } from "@e-logistic/core";
@@ -53,6 +57,8 @@ export default function WorkTimePage() {
   const [driversList, setDriversList] = useState<DriverRow[]>([]);
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [saved, setSaved] = useState<WorkTimeRecord[]>([]);
+  // #345 zdarzenia dziennika tacho (odpoczynki) — owner/dyspozytor czyta firmę (RLS).
+  const [tachoEvents, setTachoEvents] = useState<TachoEvent[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -72,7 +78,12 @@ export default function WorkTimePage() {
       listDrivers(sb, m.companyId)
         .then(setDriversList)
         .catch(() => {});
-      if (manage) setSaved(await listWorkTimeEntries(sb, m.companyId));
+      if (manage) {
+        setSaved(await listWorkTimeEntries(sb, m.companyId));
+        listMyTachoEvents(sb, { limit: 500 })
+          .then(setTachoEvents)
+          .catch(() => {});
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Nie udało się pobrać ewidencji.");
     } finally {
@@ -103,6 +114,20 @@ export default function WorkTimePage() {
     () => wtdStatus(weeklyWorkingFromEntries(filteredSaved.map(toEntry))),
     [filteredSaved],
   );
+  // #4 Faza 2 — saldo kompensacji skróconych odpoczynków dla WYBRANEGO kierowcy.
+  const comp = useMemo(() => {
+    const uid = selectedDriver?.user_id;
+    if (!uid) return null;
+    const boundaries = tachoEvents
+      .filter(
+        (e) =>
+          e.driver_user_id === uid &&
+          (e.kind === "weekly_rest_start" || e.kind === "weekly_rest_end"),
+      )
+      .map((e) => ({ start: e.kind === "weekly_rest_start", atMs: Date.parse(e.at) }));
+    if (boundaries.length === 0) return null;
+    return restCompensationLedger(weeklyRestsFromBoundaries(boundaries), Date.now());
+  }, [tachoEvents, selectedDriver]);
 
   function patch(id: string, p: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
@@ -444,6 +469,82 @@ export default function WorkTimePage() {
           <p style={{ color: palette.smoke, fontSize: 11, margin: "12px 0 0" }}>
             Reżim ODRĘBNY od 561/2006: średnia ≤ 48 h/tydz. w okresie 17 tyg., max 60 h/tydz. Pomoc
             orientacyjna.
+          </p>
+        </div>
+      )}
+
+      {comp && (
+        <div
+          style={{
+            marginTop: 16,
+            border: `1px solid ${
+              comp.overdueCount > 0
+                ? "#ef444488"
+                : comp.outstandingH > 0
+                  ? "#f59e0b88"
+                  : "#22c55e55"
+            }`,
+            borderRadius: 10,
+            padding: 14,
+            background: "rgba(127,127,127,0.06)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <strong style={{ fontSize: 14 }}>🛏 Saldo kompensacji odpoczynków</strong>
+            <span
+              style={{
+                color:
+                  comp.outstandingH > 0
+                    ? comp.overdueCount > 0
+                      ? palette.red
+                      : "#f59e0b"
+                    : "#22c55e",
+                fontWeight: 800,
+                fontSize: 15,
+              }}
+            >
+              {comp.outstandingH > 0 ? `${comp.outstandingH} h do oddania` : "✅ brak długów"}
+            </span>
+          </div>
+          {comp.debts.filter((d) => !d.settled).length > 0 && (
+            <ul
+              style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "grid", gap: 6 }}
+            >
+              {comp.debts
+                .filter((d) => !d.settled)
+                .map((d) => (
+                  <li
+                    key={d.fromEndMs}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 13,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, minWidth: 44 }}>{d.owedH} h</span>
+                    <span style={{ flex: 1, color: palette.smoke }}>
+                      termin oddania {new Date(d.deadlineMs).toLocaleDateString("pl-PL")}
+                    </span>
+                    {d.overdue && (
+                      <span style={{ color: palette.red, fontWeight: 700 }}>⚠️ po terminie</span>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          )}
+          <p style={{ color: palette.smoke, fontSize: 11, margin: "12px 0 0" }}>
+            561/2006 art. 8.6 — skrócony odpoczynek tygodniowy (&lt; 45 h) oddaje się en bloc do
+            końca 3. tygodnia. Dane z dziennika tacho kierowcy. Pomoc orientacyjna.
           </p>
         </div>
       )}
