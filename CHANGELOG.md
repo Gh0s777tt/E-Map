@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-359-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.203.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-360-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.204.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.204.0] — 🕹️ Tacho Faza 2: cztery silniki wpięte w panel (widoczne dla użytkownika)
+
+Silniki z Fazy 1 stały się **realnymi ekranami** owner panelu — bez rebuildu (deploy Vercel). 3 z 4 **bez migracji** (dane już były); #3 dokłada osobną tabelę. Każdy panel z bramką web `tsc` 0.
+
+- `[#360]` 🚔 **Wirtualna kontrola 561** na [`/tacho`](apps/web/app/(app)/tacho/page.tsx) — panel z `inspectAetr`: naruszenia jazdy z **wagą** (drobne/poważne/bardzo poważne, 2006/22/WE zał. III) + o ile przekroczono; zastępuje ogólny alert konkretną listą.
+- `[#360]` ⏱ **WTD 48 h** na [`/work-time`](apps/web/app/(app)/work-time/page.tsx) — panel z `wtdStatus`: średnia tygodniowa vs 48 h, budżet do średniej, najwyższy tydzień, liczba tygodni > 60 h; respektuje filtr kierowcy.
+- `[#360]` 🛏 **Saldo kompensacji** na `/work-time` — dla wybranego kierowcy z jego dziennika tacho (`driver_tacho_events` via RLS): długi za skrócone odpoczynki + terminy oddania + oznaczenie po terminie. Nowy helper core [`weeklyRestsFromBoundaries`](packages/core/src/weeklyRest.ts) (**+7 testów** → 398).
+- `[#360]` 🗓 **Terminy sczytań** na `/tacho` (owner) — dashboard z `checkDownloads`: karta 28 dni / tachograf 90 dni, status **ok/wkrótce/po terminie**, formularz dat, usuwanie. Migracja [0081](supabase/migrations/0081_tacho_downloads.sql) `tacho_downloads` (osobna tabela — `drivers`/`vehicles` nietknięte; RLS owner/dyspozytor zarządza, członek czyta). Sekcja **ukryta dopóki migracja nie nałożona** (flaga `available` — zero błędu przed).
+
+**Bramki:** vitest core **398/398** · api `tsc` 0 · web `tsc` 0 · biome czysto. **Wymaga:** nałożenie migracji **0081** na prod (dla #3; pozostałe działają od razu po deployu).
 
 ## [1.203.0] — 🕹️ Tacho Faza 1: cztery silniki zgodności kierowcy (A–D)
 
