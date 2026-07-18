@@ -56,7 +56,7 @@ export default function DriversPage() {
       const QR = (await import("qrcode")).default;
       setQr(await QR.toDataURL(url, { width: 220, margin: 1 }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się utworzyć zaproszenia.");
+      setError(e instanceof Error ? e.message : t("drivers.inviteFail"));
     } finally {
       setBusy(false);
     }
@@ -68,15 +68,10 @@ export default function DriversPage() {
 
   return (
     <div style={{ maxWidth: 640 }}>
-      <PageHeader
-        title={t("nav.drivers")}
-        subtitle="Zaproś kierowcę linkiem lub kodem QR — dołączy do firmy po zalogowaniu."
-      />
+      <PageHeader title={t("nav.drivers")} subtitle={t("drivers.inviteSubtitle")} />
 
       {!canInvite ? (
-        <p style={{ color: palette.smoke, marginTop: 16 }}>
-          Tylko właściciel lub spedytor może generować zaproszenia.
-        </p>
+        <p style={{ color: palette.smoke, marginTop: 16 }}>{t("drivers.onlyOwnerDispatcher")}</p>
       ) : (
         <div
           style={{
@@ -88,15 +83,13 @@ export default function DriversPage() {
           }}
         >
           <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 12, color: palette.smoke }}>
-              Przypisz pojazd (opcjonalnie)
-            </span>
+            <span style={{ fontSize: 12, color: palette.smoke }}>{t("drivers.assignVehicle")}</span>
             <select
               style={f.input}
               value={vehicleId}
               onChange={(e) => setVehicleId(e.target.value)}
             >
-              <option value="">— bez pojazdu —</option>
+              <option value="">{t("drivers.noVehicle")}</option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.registration}
@@ -106,14 +99,11 @@ export default function DriversPage() {
           </label>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 12, color: palette.smoke }}>
-              Uprawnienia zapraszanego (🚫 brak → 👁 podgląd → ✏️ edycja) — zmienisz też później w
-              Zespole
-            </span>
+            <span style={{ fontSize: 12, color: palette.smoke }}>{t("drivers.invitePerms")}</span>
             <PermissionsMatrix value={invPerms} onChange={setInvPerms} />
           </div>
           <Button onClick={generate} disabled={busy}>
-            {busy ? "Generuję…" : "Generuj zaproszenie"}
+            {busy ? t("drivers.generating") : t("drivers.generate")}
           </Button>
           {error && <p style={{ color: palette.red, fontSize: 13 }}>{error}</p>}
         </div>
@@ -121,12 +111,12 @@ export default function DriversPage() {
 
       {link && (
         <div style={{ ...f.card, marginTop: 24, padding: 16, maxWidth: 360 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Zaproszenie gotowe (ważne 7 dni)</div>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>{t("drivers.inviteReady")}</div>
           {qr && (
             // biome-ignore lint/performance/noImgElement: data-URL QR, nie wymaga next/image
             <img
               src={qr}
-              alt="Kod QR zaproszenia"
+              alt={t("drivers.qrAlt")}
               width={220}
               height={220}
               style={{ borderRadius: 8, background: palette.white, padding: 8 }}
@@ -135,7 +125,7 @@ export default function DriversPage() {
           <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
             <input style={{ ...f.input, flex: 1 }} readOnly value={link} />
             <Button variant="ghost" onClick={copy}>
-              Kopiuj
+              {t("common.copy")}
             </Button>
           </div>
         </div>

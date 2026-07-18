@@ -308,6 +308,19 @@ export const pl = {
   "sync.error": "Błąd synchronizacji",
   "sync.offline": "Tryb offline",
 
+  "drivers.inviteSubtitle":
+    "Zaproś kierowcę linkiem lub kodem QR — dołączy do firmy po zalogowaniu.",
+  "drivers.onlyOwnerDispatcher": "Tylko właściciel lub spedytor może generować zaproszenia.",
+  "drivers.assignVehicle": "Przypisz pojazd (opcjonalnie)",
+  "drivers.noVehicle": "— bez pojazdu —",
+  "drivers.invitePerms":
+    "Uprawnienia zapraszanego (🚫 brak → 👁 podgląd → ✏️ edycja) — zmienisz też później w Zespole",
+  "drivers.generating": "Generuję…",
+  "drivers.generate": "Generuj zaproszenie",
+  "drivers.inviteFail": "Nie udało się utworzyć zaproszenia.",
+  "drivers.inviteReady": "Zaproszenie gotowe (ważne 7 dni)",
+  "drivers.qrAlt": "Kod QR zaproszenia",
+
   "common.save": "Zapisz",
   "common.cancel": "Anuluj",
   "common.edit": "Edytuj",
@@ -322,6 +335,7 @@ export const pl = {
   "common.saving": "Zapisywanie…",
   "common.error": "Błąd",
   "common.retry": "Ponów",
+  "common.copy": "Kopiuj",
   "common.status": "Status",
   "common.vehicle": "Pojazd",
   "common.date": "Data",

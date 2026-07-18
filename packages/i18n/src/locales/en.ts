@@ -309,6 +309,19 @@ export const en: Record<MessageKey, string> = {
   "sync.error": "Sync error",
   "sync.offline": "Offline mode",
 
+  "drivers.inviteSubtitle":
+    "Invite a driver with a link or QR code — they join the company after signing in.",
+  "drivers.onlyOwnerDispatcher": "Only an owner or dispatcher can generate invitations.",
+  "drivers.assignVehicle": "Assign a vehicle (optional)",
+  "drivers.noVehicle": "— no vehicle —",
+  "drivers.invitePerms":
+    "Invitee permissions (🚫 none → 👁 view → ✏️ edit) — you can change them later in Team",
+  "drivers.generating": "Generating…",
+  "drivers.generate": "Generate invitation",
+  "drivers.inviteFail": "Failed to create the invitation.",
+  "drivers.inviteReady": "Invitation ready (valid for 7 days)",
+  "drivers.qrAlt": "Invitation QR code",
+
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.edit": "Edit",
@@ -323,6 +336,7 @@ export const en: Record<MessageKey, string> = {
   "common.saving": "Saving…",
   "common.error": "Error",
   "common.retry": "Retry",
+  "common.copy": "Copy",
   "common.status": "Status",
   "common.vehicle": "Vehicle",
   "common.date": "Date",
