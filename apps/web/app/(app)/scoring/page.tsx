@@ -13,9 +13,11 @@ import {
   listOrders,
 } from "@e-logistic/api";
 import { computeDriverGamification } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -32,14 +34,14 @@ interface Score {
   points: number;
 }
 
-// #334: nazwy rang (klucz silnika gamifikacji → etykieta PL).
-const RANK_LABEL: Record<string, string> = {
-  rookie: "Nowicjusz",
-  driver: "Kierowca",
-  pro: "Zawodowiec",
-  veteran: "Weteran",
-  master: "Mistrz",
-  legend: "Legenda",
+// #334: nazwy rang (klucz silnika gamifikacji → klucz i18n).
+const RANK_LABEL: Record<string, MessageKey> = {
+  rookie: "scoring.rank.rookie",
+  driver: "scoring.rank.driver",
+  pro: "scoring.rank.pro",
+  veteran: "scoring.rank.veteran",
+  master: "scoring.rank.master",
+  legend: "scoring.rank.legend",
 };
 
 function stars(n: number): string {
@@ -48,9 +50,15 @@ function stars(n: number): string {
 }
 
 export default function ScoringPage() {
+  const t = useT();
   const [rows, setRows] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const rankLabel = (r: string) => {
+    const key = RANK_LABEL[r];
+    return key ? t(key) : r;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,7 +66,7 @@ export default function ScoringPage() {
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
-      if (!m) throw new Error("Brak aktywnej firmy.");
+      if (!m) throw new Error(t("scoring.noCompany"));
       const from = new Date(Date.now() - 90 * 86_400_000).toISOString();
       const [members, orders, subs] = await Promise.all([
         listCompanyMembers(sb),
@@ -124,27 +132,24 @@ export default function ScoringPage() {
       scored.sort((a, b) => b.points - a.points || b.stars - a.stars);
       setRows(scored);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się policzyć rankingu.");
+      setError(e instanceof Error ? e.message : t("scoring.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
 
   return (
     <div>
-      <PageHeader
-        title="Scoring kierowców"
-        subtitle="Ranking z ostatnich 90 dni: poziomy i punkty, terminowość dostaw, checklisty i aktywność"
-      />
+      <PageHeader title={t("scoring.title")} subtitle={t("scoring.subtitle")} />
 
       <ListStatus
         loading={loading}
         error={error}
         empty={!loading && rows.length === 0}
-        emptyText="Brak kierowców do oceny — zaproś zespół i przypisuj zlecenia."
+        emptyText={t("scoring.empty")}
         onRetry={load}
       />
 
@@ -155,13 +160,13 @@ export default function ScoringPage() {
               <tr>
                 {[
                   "#",
-                  "Kierowca",
-                  "Poziom",
-                  "Punkty",
-                  "Dostawy",
-                  "Terminowość",
-                  "Checklisty",
-                  "Ocena",
+                  t("scoring.colDriver"),
+                  t("scoring.colLevel"),
+                  t("scoring.colPoints"),
+                  t("scoring.colDeliveries"),
+                  t("scoring.colOnTime"),
+                  t("scoring.colChecklists"),
+                  t("scoring.colRating"),
                 ].map((h) => (
                   <th key={h} style={s.th}>
                     {h}
@@ -179,7 +184,7 @@ export default function ScoringPage() {
                   </td>
                   <td style={s.td}>
                     <span style={s.rankPill}>
-                      {r.level} · {RANK_LABEL[r.rank] ?? r.rank}
+                      {r.level} · {rankLabel(r.rank)}
                     </span>
                   </td>
                   <td style={{ ...s.td, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
@@ -200,11 +205,7 @@ export default function ScoringPage() {
         </div>
       )}
 
-      <p style={s.note}>
-        Wynik = 60% terminowość (dostarczone do planowanej daty rozładunku) + 30% dyscyplina
-        checklist + 10% liczba dostaw. Kierowcy bez mierzalnej terminowości startują z neutralnym
-        70%.
-      </p>
+      <p style={s.note}>{t("scoring.note")}</p>
     </div>
   );
 }

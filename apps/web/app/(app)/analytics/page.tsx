@@ -15,6 +15,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { BarChart, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -30,6 +31,7 @@ interface FuelRow {
 const zl = (n: number) => `${n.toLocaleString("pl-PL", { maximumFractionDigits: 0 })} zł`;
 
 export default function AnalyticsPage() {
+  const t = useT();
   const [insights, setInsights] = useState<FleetInsights | null>(null);
   const [series, setSeries] = useState<MonthlyPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export default function AnalyticsPage() {
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
-      if (!m) throw new Error("Brak aktywnej firmy.");
+      if (!m) throw new Error(t("analytics.noCompany"));
       const from = new Date(Date.now() - 190 * 86_400_000).toISOString();
       const [logs, vehicles] = await Promise.all([
         listFuelLogs(sb, { from, limit: 5000 }) as Promise<FuelRow[]>,
@@ -88,11 +90,11 @@ export default function AnalyticsPage() {
         buildFleetInsights({ monthlyFuelCost, vehicles: vehicleConsumption, fuelPricePerL }),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się policzyć analityki.");
+      setError(e instanceof Error ? e.message : t("analytics.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
@@ -115,16 +117,13 @@ export default function AnalyticsPage() {
 
   return (
     <div style={{ maxWidth: 860 }}>
-      <PageHeader
-        title="Analityka floty"
-        subtitle="Trend i prognoza kosztu paliwa, pojazdy odstające spalaniem i szacunek oszczędności — liczone z Twoich danych."
-      />
+      <PageHeader title={t("analytics.title")} subtitle={t("analytics.subtitle")} />
 
       <ListStatus
         loading={loading}
         error={error}
         empty={!loading && !error && series.length === 0}
-        emptyText="Za mało danych paliwowych — dodaj tankowania z kwotami i przebiegiem."
+        emptyText={t("analytics.empty")}
         onRetry={load}
       />
 
@@ -135,11 +134,11 @@ export default function AnalyticsPage() {
               <div style={{ ...s.kpiVal, color: trendColor }}>
                 {trendIcon} {trend ? `${trend.changePct > 0 ? "+" : ""}${trend.changePct}%` : "—"}
               </div>
-              <div style={s.kpiLbl}>Trend kosztu paliwa (okno)</div>
+              <div style={s.kpiLbl}>{t("analytics.kpiTrend")}</div>
             </div>
             <div style={s.kpi}>
               <div style={s.kpiVal}>{trend ? zl(trend.forecastNext) : "—"}</div>
-              <div style={s.kpiLbl}>Prognoza na kolejny miesiąc</div>
+              <div style={s.kpiLbl}>{t("analytics.kpiForecast")}</div>
             </div>
             <div style={s.kpi}>
               <div
@@ -150,35 +149,40 @@ export default function AnalyticsPage() {
               >
                 {zl(insights.potentialSavings)}
               </div>
-              <div style={s.kpiLbl}>Potencjalne oszczędności / okres</div>
+              <div style={s.kpiLbl}>{t("analytics.kpiSavings")}</div>
             </div>
           </div>
 
-          <h3 style={s.h3}>Miesięczny koszt paliwa</h3>
+          <h3 style={s.h3}>{t("analytics.monthlyFuelCost")}</h3>
           <BarChart
             data={series.map((p) => ({ label: p.month.slice(5), value: p.value }))}
             unit=" zł"
             color={palette.red}
           />
 
-          <h3 style={s.h3}>Pojazdy odstające spalaniem</h3>
+          <h3 style={s.h3}>{t("analytics.outliersHeading")}</h3>
           {insights.outliers.length === 0 ? (
             <p style={s.dim}>
-              ✅ Brak pojazdów znacząco powyżej mediany floty
-              {insights.outliers.length === 0 && series.length > 0 ? "." : ""} Flota jednorodna.
+              ✅ {t("analytics.noOutliers")}
+              {insights.outliers.length === 0 && series.length > 0 ? "." : ""}{" "}
+              {t("analytics.fleetUniform")}
             </p>
           ) : (
             <div style={s.tableWrap}>
               <table style={s.table}>
                 <thead>
                   <tr>
-                    {["Pojazd", "Spalanie", "Mediana floty", "Powyżej", "Dod. koszt / okres"].map(
-                      (h) => (
-                        <th key={h} style={s.th}>
-                          {h}
-                        </th>
-                      ),
-                    )}
+                    {[
+                      t("analytics.colVehicle"),
+                      t("analytics.colConsumption"),
+                      t("analytics.colFleetMedian"),
+                      t("analytics.colAbove"),
+                      t("analytics.colExtraCost"),
+                    ].map((h) => (
+                      <th key={h} style={s.th}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -200,11 +204,7 @@ export default function AnalyticsPage() {
             </div>
           )}
 
-          <p style={s.note}>
-            Prognoza to regresja liniowa z ostatnich miesięcy — orientacyjna, nie gwarancja.
-            „Dodatkowy koszt" zakłada zejście pojazdu do mediany spalania floty przy tym samym
-            przebiegu. Cena paliwa liczona z Twoich tankowań (kwota ÷ litry).
-          </p>
+          <p style={s.note}>{t("analytics.note")}</p>
         </>
       )}
     </div>

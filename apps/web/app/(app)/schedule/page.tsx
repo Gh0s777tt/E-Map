@@ -16,6 +16,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -47,6 +48,7 @@ function isOverdue(d: Deadline): boolean {
 }
 
 export default function SchedulePage() {
+  const t = useT();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export default function SchedulePage() {
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
-      if (!m) throw new Error("Brak aktywnej firmy.");
+      if (!m) throw new Error(t("schedule.noCompany"));
       const out: Deadline[] = [];
 
       // Pojazdy: przegląd / OC / leasing.
@@ -70,9 +72,9 @@ export default function SchedulePage() {
       }[];
       for (const v of vehicles) {
         for (const [what, date] of [
-          ["Przegląd techniczny", v.inspection_expiry],
-          ["Ubezpieczenie OC", v.insurance_expiry],
-          ["Koniec leasingu", v.leasing_end],
+          [t("schedule.vehicleInspection"), v.inspection_expiry],
+          [t("schedule.vehicleInsurance"), v.insurance_expiry],
+          [t("schedule.vehicleLeasingEnd"), v.leasing_end],
         ] as const) {
           if (date) {
             out.push({
@@ -92,11 +94,11 @@ export default function SchedulePage() {
         for (const d of drivers) {
           const who = `${d.first_name} ${d.last_name}`;
           for (const [what, date] of [
-            ["Prawo jazdy", d.license_expiry],
-            ["Kod 95", d.code95_expiry],
-            ["Badania lekarskie", d.medical_expiry],
-            ["Psychotesty", d.psychotech_expiry],
-            ["ADR", d.adr_expiry],
+            [t("schedule.driverLicense"), d.license_expiry],
+            [t("schedule.driverCode95"), d.code95_expiry],
+            [t("schedule.driverMedical"), d.medical_expiry],
+            [t("schedule.driverPsych"), d.psychotech_expiry],
+            [t("schedule.driverAdr"), d.adr_expiry],
           ] as const) {
             if (date) {
               out.push({ key: `${d.id}-${what}`, date, what, who, kind: "kierowca" });
@@ -114,16 +116,16 @@ export default function SchedulePage() {
           latestOdometers(sb, m.companyId),
         ]);
         const reg = new Map(vehicles.map((v) => [v.id, v.registration]));
-        for (const t of tasks) {
-          if (t.interval_km && t.last_done_km != null) {
-            const cur = odos[t.vehicle_id];
+        for (const task of tasks) {
+          if (task.interval_km && task.last_done_km != null) {
+            const cur = odos[task.vehicle_id];
             if (cur != null) {
               out.push({
-                key: `srv-${t.id}`,
+                key: `srv-${task.id}`,
                 date: null,
-                kmLeft: t.last_done_km + t.interval_km - cur,
-                what: t.name,
-                who: reg.get(t.vehicle_id) ?? "—",
+                kmLeft: task.last_done_km + task.interval_km - cur,
+                what: task.name,
+                who: reg.get(task.vehicle_id) ?? "—",
                 kind: "serwis",
               });
             }
@@ -140,11 +142,11 @@ export default function SchedulePage() {
       });
       setDeadlines(out);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zbudować harmonogramu.");
+      setError(e instanceof Error ? e.message : t("schedule.buildError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
@@ -154,15 +156,15 @@ export default function SchedulePage() {
   return (
     <div>
       <PageHeader
-        title="Harmonogram serwisów"
-        subtitle={`Wszystkie terminy floty i kierowców w jednym miejscu${overdue ? ` — ${overdue} po terminie!` : ""}`}
+        title={t("schedule.title")}
+        subtitle={`${t("schedule.subtitle")}${overdue ? ` — ${overdue} ${t("schedule.overdueSuffix")}` : ""}`}
       />
 
       <ListStatus
         loading={loading}
         error={error}
         empty={!loading && deadlines.length === 0}
-        emptyText="Brak terminów — uzupełnij daty przy pojazdach i kierowcach."
+        emptyText={t("schedule.empty")}
         onRetry={load}
       />
 
@@ -185,12 +187,12 @@ export default function SchedulePage() {
               <div style={{ ...s.when, color }}>
                 {d.date
                   ? days != null && days < 0
-                    ? `${d.date} · ${-days} dni po terminie`
-                    : `${d.date} · za ${days} dni`
+                    ? `${d.date} · ${-days} ${t("schedule.daysOverdue")}`
+                    : `${d.date} · ${t("schedule.inPrefix")} ${days} ${t("schedule.daysSuffix")}`
                   : d.kmLeft != null
                     ? d.kmLeft <= 0
-                      ? `przejechano ${-d.kmLeft} km ponad interwał`
-                      : `za ${d.kmLeft} km`
+                      ? `${t("schedule.drovePrefix")} ${-d.kmLeft} ${t("schedule.kmOverInterval")}`
+                      : `${t("schedule.inPrefix")} ${d.kmLeft} km`
                     : "—"}
               </div>
             </div>
