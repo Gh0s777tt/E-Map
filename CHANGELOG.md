@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-362-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.206.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-363-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.207.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.207.0] — 🍏 Mobile: przegląd jakości pod Apple 5.6 (crash + stabilność + polish)
+
+Aplikacja iOS dostała od Apple odmowę **Guideline 5.6** (jakość/stabilność). Dwuetapowy **audyt** (2 subagentów: crashe + placeholdery) → naprawa realnych blokerów. Mobile **1.90.1**. Audyt potwierdził też, że apka jest treściowo zdrowa: **bez stubów, placeholderów, martwych przycisków**, wszystkie `Info.plist` obecne.
+
+- `[#363]` 💥 **Crash ekranu Ustawień (iOS)** — PowerSync (natywny SQLite, faza M5) inicjował się na mount, a `EXPO_PUBLIC_POWERSYNC_URL` był włączony we wszystkich buildach → **hard crash**. Wyłączony w buildach + [leniwy import](apps/mobile/lib/powersync.ts) + try/catch. To był objaw zgłoszony przez właściciela („Ustawienia wyłączają apkę").
+- `[#363]` 📍 **Lokalizacja w tle bez implementacji → auto-reject 2.5.4** — [app.json](apps/mobile/app.json) deklarował `UIBackgroundModes:location` + „Always" + Android background/foreground-service, ale żaden kod tego nie używał. Usunięte (zostaje „when in use"). + zbędny `RECORD_AUDIO`.
+- `[#363]` 🛡 **Error Boundary** ([ErrorBoundary.tsx](apps/mobile/components/ErrorBoundary.tsx)) — nieuchwycony błąd renderu pokazuje markowy ekran „spróbuj ponownie" (+Sentry.captureException) zamiast ubijać apkę. +klucze `m.error.*` (4 języki).
+- `[#363]` 🧹 **Wyciek env + polish** — hardcoded „Ustaw EXPO_PUBLIC_…" w login/orders → generyczny `m.error.serviceUnavailable`; GPS-watcher tacho w try/catch; **10 fixów UX**: klikalny link wsparcia, stany loading/empty (fuel-prices, schedule), i18n czatu (w tym „📷 Zdjęcie" zapisywane do bazy), fallbacki obrazków/PDF poradnika, guard pustego formularza kosztów, wyciszony błąd usterek → komunikat, empty-state w manage-cards/vehicles, disabled przycisku oceny, etykiety a11y. +8 kluczy (4 języki).
+
+**Bramki:** biome ✓ (1 warning prexistujący) · parytet i18n **5/5** (4 języki) · mobile `tsc` 0 (×3 batche) · bez migracji. **Wymaga rebuildu EAS** + (osobno) **odwołania do App Review** — 5.6 „Review Suspended" nie da się odblokować samym resubmitem.
 
 ## [1.206.0] — 📱 Tacho na mobile: 4 panele zgodności na ekranie aplikacji (+ fix jednostki)
 
