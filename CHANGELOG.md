@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-360-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.204.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-361-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.205.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,17 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.205.0] — 🌍 Web i18n: WSZYSTKIE strony panelu przez `t()` (PL/EN, parytet)
+
+Domknięcie internacjonalizacji panelu web — **każda strona `(app)` renderuje teksty przez `t()`** z pełnym parytetem PL/EN (bramka testowa). W tej rundzie zlokalizowano **15 stron** i dodano **~590 kluczy** do [pl.ts](packages/i18n/src/locales/pl.ts) / [en.ts](packages/i18n/src/locales/en.ts).
+
+- `[#361]` 🌍 **15 stron przez `t()`** — Ceny diesla, Audyt, Harmonogram, Scoring, Analityka, Rozliczenia (+kierowcy), Diety, Wyjazdy, Dokumenty, Usterki, Czat, Mapa (plik strony), Tacho, Czas pracy. Wzorzec: `useT` (klient) / `createTranslator` (serwer — dashboard), klucze płaskie `namespace.key`, **bez interpolacji** (dynamika w JSX, splity prefix/suffix), mapy etykiet `kod→MessageKey` w komponencie (jak `SEV_LABEL`/`RANK_LABEL`).
+- `[#361]` ✅ **Parytet pl/en wymuszony compile-time** — `en: Record<MessageKey, string>` + test parytetu (5/5); brak/nadmiar klucza = błąd `tsc`.
+- `[#361]` 🧩 **Panele Fazy 2 tacho** (inspektor, WTD, kompensacja, sczytania) też przez `t()` — spójne z resztą.
+- `[#361]` 📌 **Świadome follow-upy** (współdzielone komponenty, nie strony): `DEFECT_PARTS/SIDES` (Usterki + diagram pojazdu), komponenty panelu Mapy (`mapPanels`/`mapTheme` + enumy core), `TachoAutoSection`. Eksporty **CSV zostają PL** (konwencja: nazwy plików/nagłówki).
+
+**Bramki:** `biome` ✓ · parytet i18n **5/5** ✓ · web `tsc` exit 0 (weryfikowany po każdym z 8 batchy) ✓ · bez migracji. Deploy przez Vercel.
 
 ## [1.204.0] — 🕹️ Tacho Faza 2: cztery silniki wpięte w panel (widoczne dla użytkownika)
 
