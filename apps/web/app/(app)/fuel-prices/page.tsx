@@ -3,11 +3,13 @@
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Badge, BarChart, PageHeader } from "@/components/ui";
 
 type Row = { cc: string; name: string; dieselEur: number; dieselLocal: number; currency: string };
 
 export default function FuelPricesPage() {
+  const t = useT();
   const [rows, setRows] = useState<Row[]>([]);
   const [updated, setUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,15 +21,15 @@ export default function FuelPricesPage() {
     try {
       const res = await fetch("/api/fuel-eu");
       const data = (await res.json()) as { countries?: Row[]; updated?: string; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? "Nie udało się pobrać cen.");
+      if (!res.ok || data.error) throw new Error(data.error ?? t("fuelPrices.loadError"));
       setRows(data.countries ?? []);
       setUpdated(data.updated ?? null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Błąd.");
+      setError(e instanceof Error ? e.message : t("fuelPrices.error"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -37,16 +39,13 @@ export default function FuelPricesPage() {
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <PageHeader
-        title="Ceny diesla — Europa"
-        subtitle="Średnia krajowa cena oleju napędowego, przeliczona na €/L. Porównaj, gdzie zatankować taniej w trasie."
-      />
+      <PageHeader title={t("fuelPrices.title")} subtitle={t("fuelPrices.subtitle")} />
 
       <ListStatus
         loading={loading}
         error={error}
         empty={rows.length === 0}
-        emptyText="Brak danych o cenach."
+        emptyText={t("fuelPrices.empty")}
         onRetry={load}
       />
 
@@ -54,7 +53,7 @@ export default function FuelPricesPage() {
         <>
           <div style={{ marginTop: 24 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px" }}>
-              ⛽ 12 najtańszych krajów (€/L)
+              {t("fuelPrices.chartTitle")}
             </h3>
             <BarChart data={chart} unit=" €" color="#22c55e" />
           </div>
@@ -64,7 +63,7 @@ export default function FuelPricesPage() {
               <div key={r.cc} style={styles.row}>
                 <span style={styles.rank}>{i + 1}</span>
                 <span style={{ fontWeight: 700 }}>{r.name}</span>
-                {i === 0 && <Badge color="#22c55e">najtaniej</Badge>}
+                {i === 0 && <Badge color="#22c55e">{t("fuelPrices.cheapest")}</Badge>}
                 <span style={{ flex: 1 }} />
                 {r.currency !== "EUR" && (
                   <span style={styles.dim}>
@@ -81,7 +80,7 @@ export default function FuelPricesPage() {
           </div>
 
           <p style={{ color: palette.smoke, fontSize: 12, marginTop: 20 }}>
-            Dane:{" "}
+            {t("fuelPrices.sourceLabel")}{" "}
             <a
               href="https://openvan.camp"
               target="_blank"
@@ -90,8 +89,10 @@ export default function FuelPricesPage() {
             >
               OpenVan.camp
             </a>{" "}
-            · CC BY 4.0 · ceny orientacyjne (średnie krajowe)
-            {updated ? ` · akt. ${new Date(updated).toLocaleDateString("pl-PL")}` : ""}
+            {t("fuelPrices.license")}
+            {updated
+              ? ` · ${t("fuelPrices.updatedPrefix")} ${new Date(updated).toLocaleDateString("pl-PL")}`
+              : ""}
           </p>
         </>
       )}

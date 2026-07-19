@@ -1,30 +1,38 @@
 "use client";
 
 import { type AuditEntry, listAuditLog } from "@e-logistic/api";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-/** Czytelne etykiety znanych akcji audytu (reszta wyświetlana surowo). */
-const ACTION_LABEL: Record<string, string> = {
-  "fuel_card.read_pin": "🔓 Odczyt PIN karty",
-  "fuel_card.set_pin": "🔑 Ustawienie PIN karty",
-  "invoice.create": "🧾 Wystawienie faktury",
-  "invoice.duplicate": "📄 Duplikat faktury",
-  "driver.save": "🧑‍✈️ Zapis kierowcy",
-  "driver.read_documents": "🔓 Odczyt dokumentów kierowcy",
-  "driver.set_documents": "🔒 Zapis dokumentów kierowcy",
+/** Kod akcji audytu → klucz i18n (reszta wyświetlana surowo). */
+const ACTION_LABEL: Record<string, MessageKey> = {
+  "fuel_card.read_pin": "audit.action.fuelCardReadPin",
+  "fuel_card.set_pin": "audit.action.fuelCardSetPin",
+  "invoice.create": "audit.action.invoiceCreate",
+  "invoice.duplicate": "audit.action.invoiceDuplicate",
+  "driver.save": "audit.action.driverSave",
+  "driver.read_documents": "audit.action.driverReadDocuments",
+  "driver.set_documents": "audit.action.driverSetDocuments",
 };
 
 export default function AuditPage() {
+  const t = useT();
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
+
+  const actionLabel = (a: string) => {
+    const key = ACTION_LABEL[a];
+    return key ? t(key) : a;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,11 +47,11 @@ export default function AuditPage() {
       setAllowed(true);
       setEntries(await listAuditLog(sb, m.companyId, { limit: 200 }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Błąd ładowania.");
+      setError(e instanceof Error ? e.message : t("audit.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -52,10 +60,8 @@ export default function AuditPage() {
   if (allowed === false) {
     return (
       <div style={{ maxWidth: 900 }}>
-        <PageHeader title="Dziennik audytu" />
-        <p style={{ color: palette.smoke, marginTop: 16 }}>
-          Brak dostępu — dziennik audytu widzi wyłącznie właściciel firmy.
-        </p>
+        <PageHeader title={t("audit.title")} />
+        <p style={{ color: palette.smoke, marginTop: 16 }}>{t("audit.noAccess")}</p>
       </div>
     );
   }
@@ -65,22 +71,21 @@ export default function AuditPage() {
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <PageHeader
-        title="Dziennik audytu"
-        subtitle="Dostępy do danych wrażliwych (PIN kart, dane kierowców) i akcje krytyczne. Widoczny tylko dla właściciela."
-      />
+      <PageHeader title={t("audit.title")} subtitle={t("audit.subtitle")} />
 
       {entries.length > 0 && (
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           style={selectStyle}
-          aria-label="Filtr akcji"
+          aria-label={t("audit.filterLabel")}
         >
-          <option value="all">Wszystkie akcje ({entries.length})</option>
+          <option value="all">
+            {t("audit.allActions")} ({entries.length})
+          </option>
           {actions.map((a) => (
             <option key={a} value={a}>
-              {ACTION_LABEL[a] ?? a}
+              {actionLabel(a)}
             </option>
           ))}
         </select>
@@ -90,7 +95,7 @@ export default function AuditPage() {
         loading={loading}
         error={error}
         empty={!loading && entries.length === 0}
-        emptyText="Brak wpisów audytu."
+        emptyText={t("audit.empty")}
         onRetry={load}
       />
 
@@ -101,18 +106,16 @@ export default function AuditPage() {
               <span style={{ color: palette.smoke, fontSize: 12, minWidth: 150 }}>
                 {new Date(e.created_at).toLocaleString("pl-PL")}
               </span>
-              <span style={{ fontWeight: 700, minWidth: 220 }}>
-                {ACTION_LABEL[e.action] ?? e.action}
-              </span>
+              <span style={{ fontWeight: 700, minWidth: 220 }}>{actionLabel(e.action)}</span>
               <span
                 style={{ color: palette.smoke, fontSize: 13, flex: 1, fontFamily: "monospace" }}
-                title="Cel akcji"
+                title={t("audit.targetTitle")}
               >
                 {e.target ?? "—"}
               </span>
               <span
                 style={{ color: palette.smoke, fontSize: 11, fontFamily: "monospace" }}
-                title="ID użytkownika (actor)"
+                title={t("audit.actorTitle")}
               >
                 {e.actor_id ? `${e.actor_id.slice(0, 8)}…` : "—"}
               </span>
