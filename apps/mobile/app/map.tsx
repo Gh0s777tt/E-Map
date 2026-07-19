@@ -589,7 +589,9 @@ export default function MapScreen() {
           <Text style={styles.planInfoText} numberOfLines={2}>
             {planned.distanceKm} km · ~{Math.round(planned.durationMin / 60)} h{" "}
             {Math.round(planned.durationMin % 60)} min
-            {planned.tollCost > 0 ? ` · myto ${planned.tollCost} ${planned.currency}` : ""}
+            {planned.tollCost > 0
+              ? ` · ${t("m.map.toll")} ${planned.tollCost} ${planned.currency}`
+              : ""}
             {(() => {
               const eco = estimateRouteFuel({ distanceKm: planned.distanceKm, fuelPricePerL: 0 });
               return ` · ${eco.fuelLiters} l · 🌿 ${eco.co2Kg} kg CO₂`;
@@ -651,7 +653,7 @@ export default function MapScreen() {
             {activeRoute.summary.durationMin != null &&
               `  ·  ~${Math.round((activeRoute.summary.durationMin ?? 0) / 60)} h ${Math.round((activeRoute.summary.durationMin ?? 0) % 60)} min`}
             {activeRoute.summary.tollCost != null &&
-              `  ·  myto ${activeRoute.summary.tollCost} ${activeRoute.summary.currency ?? ""}`}
+              `  ·  ${t("m.map.toll")} ${activeRoute.summary.tollCost} ${activeRoute.summary.currency ?? ""}`}
           </Text>
         </View>
       )}

@@ -232,9 +232,11 @@ export default function StartScreen() {
           <Pressable style={s.task} onPress={() => router.push("/orders")}>
             <View style={[s.dot, { backgroundColor: palette.success }]} />
             <View style={{ flex: 1 }}>
-              <Text style={s.taskTitle} numberOfLines={1}>
-                {active.origin || "?"} → {active.destination || "?"}
-              </Text>
+              {active.origin || active.destination ? (
+                <Text style={s.taskTitle} numberOfLines={1}>
+                  {active.origin || "—"} → {active.destination || "—"}
+                </Text>
+              ) : null}
               <Text style={s.taskSub} numberOfLines={1}>
                 {[
                   active.reference_no,

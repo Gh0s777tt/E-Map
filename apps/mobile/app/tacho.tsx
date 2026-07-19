@@ -63,6 +63,29 @@ import { useFleet } from "../lib/useFleet";
 const BASE = "https://e-logistic-one.vercel.app/tacho";
 const PDF_URL = `${BASE}/rozporzadzenie-561-2006.pdf`;
 
+/** Zdjęcie poradnika z Vercela — po błędzie sieci/404 pokazuje dyskretny
+ *  placeholder zamiast pustej ramki (podpis zostaje na miejscu). */
+function TachoShot({ file, aspect, caption }: { file: string; aspect: number; caption: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <Card style={{ gap: 8, padding: 10 }}>
+      {failed ? (
+        <View style={[s.shotFallback, { aspectRatio: aspect }]}>
+          <Text style={s.shotFallbackGlyph}>🖼</Text>
+        </View>
+      ) : (
+        <Image
+          source={{ uri: `${BASE}/${file}` }}
+          style={{ width: "100%", aspectRatio: aspect, borderRadius: 8 }}
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
+      )}
+      <Text style={s.caption}>{caption}</Text>
+    </Card>
+  );
+}
+
 interface Shot {
   file: string;
   aspect: number;
@@ -475,14 +498,7 @@ export default function TachoScreen() {
 
   const shotBlock = (shots: Shot[]) =>
     shots.map(({ file, aspect, captionKey }) => (
-      <Card key={file} style={{ gap: 8, padding: 10 }}>
-        <Image
-          source={{ uri: `${BASE}/${file}` }}
-          style={{ width: "100%", aspectRatio: aspect, borderRadius: 8 }}
-          resizeMode="contain"
-        />
-        <Text style={s.caption}>{t(captionKey)}</Text>
-      </Card>
+      <TachoShot key={file} file={file} aspect={aspect} caption={t(captionKey)} />
     ));
 
   const currentMin = current ? Math.max(0, Math.round((now - current.start) / 60_000)) : 0;
@@ -490,7 +506,7 @@ export default function TachoScreen() {
   return (
     <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
       {/* Rozporządzenie — zawsze na wierzchu */}
-      <Pressable style={s.regBtn} onPress={() => Linking.openURL(PDF_URL)}>
+      <Pressable style={s.regBtn} onPress={() => Linking.openURL(PDF_URL).catch(() => {})}>
         <Text style={s.regBtnText}>📜 {t("m.tacho.regulation")}</Text>
       </Pressable>
       <Text style={s.hint}>{t("m.tacho.regulationHint")}</Text>
@@ -807,6 +823,16 @@ const s = StyleSheet.create({
   hint: { color: palette.smoke, fontSize: 12.5, lineHeight: 18 },
   subTitle: { color: palette.offWhite, fontSize: 14, fontWeight: "800", marginTop: 4 },
   caption: { color: palette.smoke, fontSize: 12.5, lineHeight: 18 },
+  shotFallback: {
+    width: "100%",
+    borderRadius: 8,
+    backgroundColor: palette.nearBlack,
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shotFallbackGlyph: { fontSize: 28, opacity: 0.4 },
   liveRow: { flexDirection: "row", gap: 8 },
   liveBtn: {
     flex: 1,

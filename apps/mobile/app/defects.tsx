@@ -74,11 +74,11 @@ export default function DefectsScreen() {
     try {
       setDefects((await listDefects(getSupabase(), { limit: 30 })) as DefectRow[]);
     } catch {
-      // offline — lista zostaje pusta
+      setMsg(t("m.defects.listOffline"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);

@@ -16,7 +16,7 @@ import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Card, wide } from "../components/ui";
+import { Card, Skeleton, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
@@ -199,6 +199,13 @@ export default function ScheduleScreen() {
       }
     >
       {err && <Text style={s.err}>{err}</Text>}
+      {loading && groups.length === 0 && (
+        <View style={{ gap: 10 }}>
+          <Skeleton height={92} />
+          <Skeleton height={92} style={{ opacity: 0.6 }} />
+          <Skeleton height={92} style={{ opacity: 0.35 }} />
+        </View>
+      )}
       {groups.length === 0 && !loading && !err && (
         <Text style={s.dim}>{t("m.schedule.empty")}</Text>
       )}

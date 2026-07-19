@@ -6,7 +6,7 @@ import { palette } from "@e-logistic/ui";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
 import { Card, GhostButton, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import {
@@ -221,7 +221,14 @@ export default function SettingsScreen() {
         </View>
         <View style={s.kv}>
           <Text style={s.k}>{t("m.settings.support")}</Text>
-          <Text style={s.v}>e-logistic-one.vercel.app/support</Text>
+          <Pressable
+            onPress={() =>
+              Linking.openURL("https://e-logistic-one.vercel.app/support").catch(() => {})
+            }
+            accessibilityRole="link"
+          >
+            <Text style={[s.v, { color: palette.red }]}>e-logistic-one.vercel.app/support</Text>
+          </Pressable>
         </View>
       </Card>
 

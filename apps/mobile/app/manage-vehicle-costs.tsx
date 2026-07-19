@@ -252,6 +252,11 @@ export default function ManageVehicleCostsScreen() {
         <Pressable
           style={s.addBtn}
           onPress={() => {
+            if (vehicles.length === 0) {
+              warn();
+              setMsg(t("m.msvc.noVehicles"));
+              return;
+            }
             setMsg(null);
             setForm({ ...empty, costDate: todayISO() });
           }}
@@ -262,6 +267,7 @@ export default function ManageVehicleCostsScreen() {
 
       {!form && (
         <>
+          {msg && <Text style={s.err}>{msg}</Text>}
           <SectionTitle>
             {t("m.mvc.costs")} ({rows.length})
           </SectionTitle>
@@ -272,7 +278,11 @@ export default function ManageVehicleCostsScreen() {
                 <Text style={s.name}>
                   {catLabel(r.category)} · {r.amount} {r.currency}
                 </Text>
-                <Pressable onPress={() => confirmDelete(r)} hitSlop={8}>
+                <Pressable
+                  onPress={() => confirmDelete(r)}
+                  hitSlop={8}
+                  accessibilityLabel={t("m.manage.delete")}
+                >
                   <Text style={s.delLink}>🗑</Text>
                 </Pressable>
               </View>

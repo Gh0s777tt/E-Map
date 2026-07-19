@@ -152,7 +152,11 @@ export function ParkingReviewCard({ poi, onClose }: { poi: Poi; onClose: () => v
             placeholderTextColor={palette.smoke}
             multiline
           />
-          <Pressable style={[s.saveBtn, rating < 1 && { opacity: 0.5 }]} onPress={save}>
+          <Pressable
+            style={[s.saveBtn, (busy || rating < 1) && { opacity: 0.5 }]}
+            onPress={save}
+            disabled={busy || rating < 1}
+          >
             <Text style={s.saveBtnText}>{busy ? "…" : t("m.parking.save")}</Text>
           </Pressable>
         </ScrollView>

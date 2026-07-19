@@ -57,22 +57,26 @@ export default function ManageCardsScreen() {
 
   const load = useCallback(async () => {
     if (!supabaseConfigured) return;
-    const sb = getSupabase();
-    const m = await getActiveMembership(sb);
-    if (!m) return;
-    setCompanyId(m.companyId);
-    const [cards, veh] = await Promise.all([
-      listFuelCardsSafe(sb, m.companyId),
-      listVehicles(sb, m.companyId),
-    ]);
-    setRows(cards as unknown as Row[]);
-    setVehicles(
-      (veh as { id: string; registration: string }[]).map((v) => ({
-        id: v.id,
-        registration: v.registration,
-      })),
-    );
-  }, []);
+    try {
+      const sb = getSupabase();
+      const m = await getActiveMembership(sb);
+      if (!m) return;
+      setCompanyId(m.companyId);
+      const [cards, veh] = await Promise.all([
+        listFuelCardsSafe(sb, m.companyId),
+        listVehicles(sb, m.companyId),
+      ]);
+      setRows(cards as unknown as Row[]);
+      setVehicles(
+        (veh as { id: string; registration: string }[]).map((v) => ({
+          id: v.id,
+          registration: v.registration,
+        })),
+      );
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : t("m.manage.loadError"));
+    }
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
@@ -117,6 +121,7 @@ export default function ManageCardsScreen() {
       else cardId = await insertFuelCard(sb, parsed.data, companyId);
       if (form.pin.trim() && cardId) await setFuelCardPin(sb, cardId, form.pin.trim());
       success();
+      setMsg(null);
       setForm(null);
       await load();
     } catch (e) {
@@ -247,9 +252,11 @@ export default function ManageCardsScreen() {
 
       {!form && (
         <>
+          {msg && <Text style={s.err}>{msg}</Text>}
           <SectionTitle>
             {t("m.manage.cards")} ({rows.length})
           </SectionTitle>
+          {rows.length === 0 && <Text style={s.dim}>{t("m.manage.cardsEmpty")}</Text>}
           {rows.map((r) => (
             <Card key={r.id} style={{ gap: 6 }}>
               <View style={s.rowTop}>
@@ -257,10 +264,18 @@ export default function ManageCardsScreen() {
                   💳 {FUEL_CARD_PROVIDER_LABELS[r.provider]} {r.card_number_masked ?? ""}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 14 }}>
-                  <Pressable onPress={() => openEdit(r)} hitSlop={8}>
+                  <Pressable
+                    onPress={() => openEdit(r)}
+                    hitSlop={8}
+                    accessibilityLabel={t("m.manage.editCard")}
+                  >
                     <Text style={s.editLink}>✏️</Text>
                   </Pressable>
-                  <Pressable onPress={() => confirmDelete(r)} hitSlop={8}>
+                  <Pressable
+                    onPress={() => confirmDelete(r)}
+                    hitSlop={8}
+                    accessibilityLabel={t("m.manage.delete")}
+                  >
                     <Text style={s.delLink}>🗑</Text>
                   </Pressable>
                 </View>

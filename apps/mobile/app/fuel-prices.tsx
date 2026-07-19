@@ -5,7 +5,14 @@
  */
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Card, Chip, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 
@@ -60,6 +67,12 @@ export default function FuelPricesScreen() {
         </Text>
       )}
       {err && <Text style={s.err}>{err}</Text>}
+      {loading && rows.length === 0 && (
+        <ActivityIndicator color={palette.red} style={{ marginTop: 24 }} />
+      )}
+      {!loading && !err && rows.length === 0 && (
+        <Text style={s.empty}>{t("m.fuelPrices.empty")}</Text>
+      )}
 
       {rows.map((r, i) => (
         <Card key={r.cc} style={s.row}>
@@ -92,4 +105,5 @@ const s = StyleSheet.create({
   name: { color: palette.offWhite, fontSize: 15, fontWeight: "700" },
   price: { color: palette.red, fontSize: 15, fontWeight: "800" },
   dim: { color: palette.smoke, fontSize: 12 },
+  empty: { color: palette.smoke, fontSize: 14, textAlign: "center", marginTop: 24, lineHeight: 20 },
 });

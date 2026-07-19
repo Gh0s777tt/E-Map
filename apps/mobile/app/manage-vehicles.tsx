@@ -65,12 +65,16 @@ export default function ManageVehiclesScreen() {
 
   const load = useCallback(async () => {
     if (!supabaseConfigured) return;
-    const sb = getSupabase();
-    const m = await getActiveMembership(sb);
-    if (!m) return;
-    setCompanyId(m.companyId);
-    setRows((await listVehicles(sb, m.companyId)) as unknown as Row[]);
-  }, []);
+    try {
+      const sb = getSupabase();
+      const m = await getActiveMembership(sb);
+      if (!m) return;
+      setCompanyId(m.companyId);
+      setRows((await listVehicles(sb, m.companyId)) as unknown as Row[]);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : t("m.manage.loadError"));
+    }
+  }, [t]);
   useEffect(() => {
     load();
   }, [load]);
@@ -117,6 +121,7 @@ export default function ManageVehiclesScreen() {
       if (form.id) await updateVehicle(sb, form.id, parsed.data, companyId);
       else await insertVehicle(sb, parsed.data, companyId);
       success();
+      setMsg(null);
       setForm(null);
       await load();
     } catch (e) {
@@ -214,18 +219,28 @@ export default function ManageVehiclesScreen() {
 
       {!form && (
         <>
+          {msg && <Text style={s.err}>{msg}</Text>}
           <SectionTitle>
             {t("m.manage.fleet")} ({rows.length})
           </SectionTitle>
+          {rows.length === 0 && <Text style={s.dim}>{t("m.manage.fleetEmpty")}</Text>}
           {rows.map((r) => (
             <Card key={r.id} style={{ gap: 6 }}>
               <View style={s.rowTop}>
                 <Text style={s.reg}>{r.registration}</Text>
                 <View style={{ flexDirection: "row", gap: 14 }}>
-                  <Pressable onPress={() => openEdit(r)} hitSlop={8}>
+                  <Pressable
+                    onPress={() => openEdit(r)}
+                    hitSlop={8}
+                    accessibilityLabel={t("m.manage.editVehicle")}
+                  >
                     <Text style={s.editLink}>✏️</Text>
                   </Pressable>
-                  <Pressable onPress={() => confirmDelete(r)} hitSlop={8}>
+                  <Pressable
+                    onPress={() => confirmDelete(r)}
+                    hitSlop={8}
+                    accessibilityLabel={t("m.manage.delete")}
+                  >
                     <Text style={s.delLink}>🗑</Text>
                   </Pressable>
                 </View>

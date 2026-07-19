@@ -43,13 +43,15 @@ import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 /** Zdjęcie w dymku — pobiera podpisany URL raz i cache'uje w stanie. */
 function ChatImage({ path }: { path: string }) {
+  const t = useT();
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     chatPhotoUrl(getSupabase(), path)
       .then(setUrl)
       .catch(() => {});
   }, [path]);
-  if (!url) return <Text style={{ color: palette.smoke, fontSize: 12 }}>📷 wczytywanie…</Text>;
+  if (!url)
+    return <Text style={{ color: palette.smoke, fontSize: 12 }}>{t("m.chat.loadingPhoto")}</Text>;
   return <Image source={{ uri: url }} style={{ width: 200, height: 200, borderRadius: 12 }} />;
 }
 
@@ -60,7 +62,7 @@ export default function ChatThreadScreen() {
   const [title, setTitle] = useState(params.name ? String(params.name) : t("m.chat.general"));
   const { session } = useAuth();
   const me = session?.user?.id;
-  const myLabel = session?.user?.email ?? "ja";
+  const myLabel = session?.user?.email ?? t("m.chat.me");
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
@@ -133,12 +135,12 @@ export default function ChatThreadScreen() {
       const path = await uploadChatPhotoBinary(sb, companyId, decode(asset.base64), {
         mime: asset.mimeType ?? "image/jpeg",
       });
-      const msg = await sendMessage(sb, companyId, "📷 Zdjęcie", myLabel, {
+      const msg = await sendMessage(sb, companyId, t("m.chat.photo"), myLabel, {
         threadId,
         photoPath: path,
       });
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-      notifyChat(threadId, "📷 Zdjęcie");
+      notifyChat(threadId, t("m.chat.photo"));
     } catch {
       setErr(t("m.chat.photoFail"));
     } finally {
