@@ -50,6 +50,7 @@ import {
 import { cssPalette, palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -75,6 +76,7 @@ import type { BasemapKey, MaplibreModule, Report, RouteResponse, Stop } from "./
 import { styles } from "./mapUi";
 
 export default function MapPage() {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const mlRef = useRef<MaplibreModule | null>(null);
@@ -213,58 +215,61 @@ export default function MapPage() {
 
   // #324: auta live — aktualne pozycje kierowców, którzy włączyli udostępnianie
   // w aplikacji (driver_positions, upsert per kierowca). Kolor = świeżość.
-  const drawTrucks = useCallback((rows: DriverPosition[]) => {
-    const map = mapRef.current;
-    if (!map) return;
-    const now = Date.now();
-    const data = {
-      type: "FeatureCollection" as const,
-      features: rows.map((r) => {
-        const ageMin = Math.round((now - new Date(r.updated_at).getTime()) / 60_000);
-        return {
-          type: "Feature" as const,
-          properties: {
-            color: ageMin <= 5 ? "#22c55e" : ageMin <= 30 ? "#f59e0b" : "#6b7280",
-            label: `🚛 ${ageMin < 1 ? "teraz" : `${ageMin} min temu`}${r.speed_kmh != null ? ` · ${r.speed_kmh} km/h` : ""}`,
-          },
-          geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] },
-        };
-      }),
-    };
-    const existing = map.getSource("trucks");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-      return;
-    }
-    map.addSource("trucks", { type: "geojson", data });
-    map.addLayer({
-      id: "trucks-layer",
-      type: "circle",
-      source: "trucks",
-      paint: {
-        "circle-radius": 8,
-        "circle-color": ["get", "color"],
-        "circle-stroke-width": 2.5,
-        "circle-stroke-color": palette.white,
-      },
-    } as import("maplibre-gl").AddLayerObject);
-    try {
+  const drawTrucks = useCallback(
+    (rows: DriverPosition[]) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const now = Date.now();
+      const data = {
+        type: "FeatureCollection" as const,
+        features: rows.map((r) => {
+          const ageMin = Math.round((now - new Date(r.updated_at).getTime()) / 60_000);
+          return {
+            type: "Feature" as const,
+            properties: {
+              color: ageMin <= 5 ? "#22c55e" : ageMin <= 30 ? "#f59e0b" : "#6b7280",
+              label: `🚛 ${ageMin < 1 ? t("mapPage.now") : `${ageMin} ${t("mapPage.minAgo")}`}${r.speed_kmh != null ? ` · ${r.speed_kmh} km/h` : ""}`,
+            },
+            geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] },
+          };
+        }),
+      };
+      const existing = map.getSource("trucks");
+      if (existing) {
+        (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+        return;
+      }
+      map.addSource("trucks", { type: "geojson", data });
       map.addLayer({
-        id: "trucks-labels",
-        type: "symbol",
+        id: "trucks-layer",
+        type: "circle",
         source: "trucks",
-        layout: {
-          "text-field": ["get", "label"],
-          "text-size": 11,
-          "text-offset": [0, 1.4],
-          "text-anchor": "top",
+        paint: {
+          "circle-radius": 8,
+          "circle-color": ["get", "color"],
+          "circle-stroke-width": 2.5,
+          "circle-stroke-color": palette.white,
         },
-        paint: { "text-color": "#ffffff", "text-halo-color": "#0a0a0a", "text-halo-width": 1.2 },
       } as import("maplibre-gl").AddLayerObject);
-    } catch {
-      // styl bez glyphów (fallback OSM) — same kropki wystarczą
-    }
-  }, []);
+      try {
+        map.addLayer({
+          id: "trucks-labels",
+          type: "symbol",
+          source: "trucks",
+          layout: {
+            "text-field": ["get", "label"],
+            "text-size": 11,
+            "text-offset": [0, 1.4],
+            "text-anchor": "top",
+          },
+          paint: { "text-color": "#ffffff", "text-halo-color": "#0a0a0a", "text-halo-width": 1.2 },
+        } as import("maplibre-gl").AddLayerObject);
+      } catch {
+        // styl bez glyphów (fallback OSM) — same kropki wystarczą
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!companyId) return;
@@ -324,12 +329,15 @@ export default function MapPage() {
     for (const d of near) knownDisruptionIdsRef.current.add(d.id);
     if (fresh.length > 0 && autoRerouteRef.current && !rerouteBusyRef.current && planRef.current) {
       rerouteBusyRef.current = true;
-      toast(`🚧 Nowe utrudnienie na trasie (${fresh.length}) — przeliczam objazd…`, "info");
+      toast(
+        `🚧 ${t("mapPage.newDisruptionOnRoute")} (${fresh.length}) — ${t("mapPage.recomputingDetour")}`,
+        "info",
+      );
       Promise.resolve(planRef.current()).finally(() => {
         rerouteBusyRef.current = false;
       });
     }
-  }, [toast]);
+  }, [toast, t]);
 
   // Warstwa natężenia ruchu (HERE Traffic) — kolorowe odcinki wg jamFactor.
   const drawTraffic = useCallback((flows: TrafficFlow[]) => {
@@ -386,26 +394,26 @@ export default function MapPage() {
       } | null;
       if (!data) return;
       if (res.status === 501 || data.configured === false) {
-        setTrafficMsg("Ruch na żywo wymaga klucza HERE (plan z Traffic).");
+        setTrafficMsg(t("mapPage.trafficNeedsKey"));
         drawTraffic([]);
         return;
       }
       if (data.tooLarge) {
-        setTrafficMsg("Przybliż mapę, by pobrać ruch.");
+        setTrafficMsg(t("mapPage.trafficZoomIn"));
         drawTraffic([]);
         return;
       }
       if (data.unavailable) {
-        setTrafficMsg("Ruch HERE chwilowo niedostępny (plan/limit).");
+        setTrafficMsg(t("mapPage.trafficUnavailable"));
         drawTraffic([]);
         return;
       }
       setTrafficMsg(null);
       drawTraffic(data.flows ?? []);
     } catch {
-      setTrafficMsg("Nie udało się pobrać ruchu.");
+      setTrafficMsg(t("mapPage.trafficError"));
     }
-  }, [drawTraffic]);
+  }, [drawTraffic, t]);
 
   // #358: warstwa incydentów TomTom — punktowe piny kolorowane wg severity.
   const drawIncidents = useCallback((incidents: TrafficIncident[]) => {
@@ -467,12 +475,12 @@ export default function MapPage() {
     const bbox = `${west},${south},${east},${north}`;
     try {
       const incidents = await tomtomTrafficIncidents(bbox, TOMTOM_KEY);
-      setIncidentMsg(incidents.length === 0 ? "Brak utrudnień w tym widoku." : null);
+      setIncidentMsg(incidents.length === 0 ? t("mapPage.noIncidentsInView") : null);
       drawIncidents(incidents);
     } catch {
-      setIncidentMsg("Nie udało się pobrać utrudnień (TomTom).");
+      setIncidentMsg(t("mapPage.incidentsError"));
     }
-  }, [drawIncidents]);
+  }, [drawIncidents, t]);
 
   const drawRoute = useCallback((geometry: LatLng[]) => {
     const map = mapRef.current;
@@ -604,7 +612,7 @@ export default function MapPage() {
           type: reportTypeRef.current,
           lat: e.lngLat.lat,
           lng: e.lngLat.lng,
-        }).catch(() => setReportMsg("Nie udało się zgłosić (zaloguj się)."));
+        }).catch(() => setReportMsg(t("mapPage.reportFailed")));
       });
 
       // Handlery warstw — rejestrowane RAZ (działają, gdy warstwa istnieje).
@@ -616,7 +624,7 @@ export default function MapPage() {
         new ml.Popup()
           .setLngLat([lng, lat])
           .setHTML(
-            `<strong>${p?.label ?? "Zgłoszenie"}</strong>${p?.comment ? `<br/>${p.comment}` : ""}`,
+            `<strong>${p?.label ?? t("mapPage.reportPopupFallback")}</strong>${p?.comment ? `<br/>${p.comment}` : ""}`,
           )
           .addTo(map as MlMap);
       });
@@ -626,17 +634,17 @@ export default function MapPage() {
         if (f?.geometry.type !== "Point") return;
         const props = f.properties as { id?: string; name?: string; type?: string } | null;
         const [lng, lat] = f.geometry.coordinates as [number, number];
-        const kindLabel = POI_LABEL[props?.type ?? ""] ?? "Punkt";
+        const kindLabel = POI_LABEL[props?.type ?? ""] ?? t("mapPage.poiFallback");
         const name = props?.name || kindLabel;
         const coords = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         const popup = new ml.Popup()
           .setLngLat([lng, lat])
           .setHTML(
             `<strong>${name}</strong><br/>${kindLabel}<br/>📍 <code>${coords}</code>` +
-              `<br/><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noreferrer">Nawiguj ↗</a>` +
-              `<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ Dodaj jako przystanek</button>` +
+              `<br/><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noreferrer">${t("mapPage.navigate")} ↗</a>` +
+              `<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ ${t("mapPage.addAsStop")}</button>` +
               (props?.type === "parking" && props?.id
-                ? `<div data-rating style="margin-top:8px;border-top:1px solid #444;padding-top:6px;min-width:220px">⏳ Oceny parkingu…</div>`
+                ? `<div data-rating style="margin-top:8px;border-top:1px solid #444;padding-top:6px;min-width:220px">⏳ ${t("mapPage.parkingRatingsLoading")}</div>`
                 : ""),
           )
           .addTo(map as MlMap);
@@ -651,7 +659,7 @@ export default function MapPage() {
               const sum = (await parkingSummaries(sb, [poiId]).catch(() => new Map())).get(poiId);
               const head = sum
                 ? `★ <strong>${sum.avg}</strong>/5 (${sum.count}) · 🚿${sum.shower} 🚻${sum.wc} 🍽${sum.food} 🛡${sum.security}`
-                : "Brak ocen — bądź pierwszy!";
+                : t("mapPage.noRatingsBeFirst");
               box.innerHTML =
                 `<div>${head}</div>` +
                 `<div style="margin-top:4px">${[1, 2, 3, 4, 5]
@@ -664,7 +672,7 @@ export default function MapPage() {
                 `<label style="font-size:11px;margin-right:6px"><input type="checkbox" data-am="wc"/>🚻</label>` +
                 `<label style="font-size:11px;margin-right:6px"><input type="checkbox" data-am="food"/>🍽</label>` +
                 `<label style="font-size:11px"><input type="checkbox" data-am="security"/>🛡</label>` +
-                `<button type="button" data-save-review style="display:block;margin-top:6px;cursor:pointer">💾 Zapisz ocenę</button>`;
+                `<button type="button" data-save-review style="display:block;margin-top:6px;cursor:pointer">💾 ${t("mapPage.saveRating")}</button>`;
               let rating = 0;
               const stars = [...box.querySelectorAll<HTMLButtonElement>("[data-star]")];
               for (const btn of stars) {
@@ -695,7 +703,7 @@ export default function MapPage() {
                 } catch {
                   box.insertAdjacentHTML(
                     "beforeend",
-                    `<div style="color:#e50914">Nie zapisano — zaloguj się.</div>`,
+                    `<div style="color:#e50914">${t("mapPage.notSavedLogin")}</div>`,
                   );
                 }
               });
@@ -781,7 +789,7 @@ export default function MapPage() {
       for (const m of markersRef.current) m.remove();
       map?.remove();
     };
-  }, [applyOverlays, drawReports, recomputeDisruptions]);
+  }, [applyOverlays, drawReports, recomputeDisruptions, t]);
 
   // ── Warstwa ruchu HERE: pobierz dla widoku + odświeżaj przy przesuwaniu ──
   useEffect(() => {
@@ -838,13 +846,18 @@ export default function MapPage() {
     for (const m of markersRef.current) m.remove();
     markersRef.current = stops.map((st, i) => {
       const color = i === 0 ? "#22c55e" : i === stops.length - 1 ? palette.red : "#f59e0b";
-      const role = i === 0 ? "Start" : i === stops.length - 1 ? "Cel" : `Przystanek ${i}`;
+      const role =
+        i === 0
+          ? t("mapPage.start")
+          : i === stops.length - 1
+            ? t("mapPage.destination")
+            : `${t("mapPage.stop")} ${i}`;
       const popup = new ml.Popup({ offset: 24 }).setHTML(
         `<strong>${role}</strong><br/>${st.label}<br/>📍 <code>${st.lat.toFixed(5)}, ${st.lng.toFixed(5)}</code>`,
       );
       return new ml.Marker({ color }).setLngLat([st.lng, st.lat]).setPopup(popup).addTo(map);
     });
-  }, [stops, mapReady]);
+  }, [stops, mapReady, t]);
 
   // ── Wyszukiwarka miejsc (geokoder) ──
   function onQueryChange(key: string, value: string) {
@@ -878,7 +891,7 @@ export default function MapPage() {
     const key = newId();
     setStops((s) => {
       const next = [...s];
-      next.splice(next.length - 1, 0, { key, label: "Nowy przystanek", lat: 50, lng: 15 });
+      next.splice(next.length - 1, 0, { key, label: t("mapPage.newStop"), lat: 50, lng: 15 });
       return next;
     });
     setQueries((q) => ({ ...q, [key]: "" }));
@@ -889,7 +902,7 @@ export default function MapPage() {
 
   function useMyLocation() {
     if (!navigator.geolocation) {
-      setShareMsg("GPS niedostępny w tej przeglądarce.");
+      setShareMsg(t("mapPage.gpsUnavailable"));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -897,12 +910,12 @@ export default function MapPage() {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setStops((s) =>
-          s.map((st, i) => (i === 0 ? { ...st, label: "Moja lokalizacja", lat, lng } : st)),
+          s.map((st, i) => (i === 0 ? { ...st, label: t("mapPage.myLocation"), lat, lng } : st)),
         );
-        setQueries((q) => ({ ...q, "s-start": "Moja lokalizacja" }));
+        setQueries((q) => ({ ...q, "s-start": t("mapPage.myLocation") }));
         mapRef.current?.flyTo({ center: [lng, lat], zoom: 11 });
       },
-      () => setShareMsg("Nie udało się pobrać lokalizacji."),
+      () => setShareMsg(t("mapPage.locationError")),
     );
   }
 
@@ -912,14 +925,14 @@ export default function MapPage() {
     if (saved.some((p) => p.lat === start.lat && p.lng === start.lng)) return;
     try {
       const created = await insertSavedPlace(getBrowserSupabase(), companyId, {
-        name: start.label || "Zapisane miejsce",
+        name: start.label || t("mapPage.savedPlaceDefault"),
         category: savedCat,
         lat: start.lat,
         lng: start.lng,
       });
       setSaved((s) => [...s, created].sort((a, b) => a.name.localeCompare(b.name)));
     } catch {
-      setShareMsg("Nie udało się zapisać miejsca.");
+      setShareMsg(t("mapPage.savePlaceError"));
     }
   }
 
@@ -928,27 +941,27 @@ export default function MapPage() {
       await deleteSavedPlace(getBrowserSupabase(), id);
       setSaved((s) => s.filter((p) => p.id !== id));
     } catch {
-      setShareMsg("Nie udało się usunąć miejsca.");
+      setShareMsg(t("mapPage.removePlaceError"));
     }
   }
 
-  // Czytelny opis różnicy trasy po dodaniu miejsca (PL).
+  // Czytelny opis różnicy trasy po dodaniu miejsca.
   function describeDelta(name: string, d: ReturnType<typeof routeDelta>): string {
-    if (d.negligible) return `Dodano „${name}" — trasa bez istotnej zmiany.`;
-    const distTxt = `${d.longer ? "dłuższa" : "krótsza"} o ${Math.abs(d.distanceKm)} km`;
+    if (d.negligible) return `${t("mapPage.added")} „${name}" — ${t("mapPage.deltaNoChange")}.`;
+    const distTxt = `${d.longer ? t("mapPage.deltaLonger") : t("mapPage.deltaShorter")} ${Math.abs(d.distanceKm)} km`;
     const timeTxt =
       d.durationMin > 0
-        ? `dłużej o ${formatDuration(d.durationMin)}`
+        ? `${t("mapPage.deltaSlower")} ${formatDuration(d.durationMin)}`
         : d.durationMin < 0
-          ? `krócej o ${formatDuration(-d.durationMin)}`
-          : "ten sam czas";
+          ? `${t("mapPage.deltaFaster")} ${formatDuration(-d.durationMin)}`
+          : t("mapPage.deltaSameTime");
     const tollTxt =
       d.tollEur > 0
-        ? `drożej o ${d.tollEur} € myta`
+        ? `${t("mapPage.deltaPricier")} ${d.tollEur} € ${t("mapPage.deltaTollWord")}`
         : d.tollEur < 0
-          ? `taniej o ${Math.abs(d.tollEur)} € myta`
-          : "myto bez zmian";
-    return `Dodano „${name}": ${distTxt}, ${timeTxt}, ${tollTxt}.`;
+          ? `${t("mapPage.deltaCheaper")} ${Math.abs(d.tollEur)} € ${t("mapPage.deltaTollWord")}`
+          : t("mapPage.deltaTollUnchanged");
+    return `${t("mapPage.added")} „${name}": ${distTxt}, ${timeTxt}, ${tollTxt}.`;
   }
 
   async function addSavedAsStop(p: SavedPlace) {
@@ -996,7 +1009,7 @@ export default function MapPage() {
       if (!m) return;
       setSendDrivers(await listDrivers(sb, m.companyId));
     } catch {
-      setShareMsg("Kartoteka kierowców dostępna dla właściciela/spedytora.");
+      setShareMsg(t("mapPage.driversOwnerOnly"));
     }
   }
 
@@ -1020,11 +1033,11 @@ export default function MapPage() {
             }
           : {},
       });
-      setShareMsg("📤 Trasa wysłana — kierowca zobaczy ją na mapie w aplikacji.");
+      setShareMsg(t("mapPage.routeSent"));
       setSendDrivers(null);
       setSendDriverId("");
     } catch (e) {
-      setShareMsg(e instanceof Error ? e.message : "Nie udało się wysłać trasy.");
+      setShareMsg(e instanceof Error ? e.message : t("mapPage.routeSendError"));
     } finally {
       setSendBusy(false);
     }
@@ -1037,7 +1050,7 @@ export default function MapPage() {
     const url = `${window.location.origin}/map?r=${r}`;
     navigator.clipboard
       ?.writeText(url)
-      .then(() => setShareMsg("🔗 Link do trasy skopiowany."))
+      .then(() => setShareMsg(t("mapPage.linkCopied")))
       .catch(() => setShareMsg(url));
   }
 
@@ -1132,7 +1145,7 @@ export default function MapPage() {
   async function loadPoisAlongRoute() {
     const geo = routeGeoRef.current;
     if (!geo || geo.length < 2) {
-      setShareMsg("Najpierw wytycz trasę.");
+      setShareMsg(t("mapPage.planRouteFirst"));
       return;
     }
     setPoiBusy(true);
@@ -1165,7 +1178,7 @@ export default function MapPage() {
     if (!TOMTOM_KEY) return;
     const geo = routeGeoRef.current;
     if (!geo || geo.length < 2) {
-      setShareMsg("Najpierw wytycz trasę.");
+      setShareMsg(t("mapPage.planRouteFirst"));
       return;
     }
     setPoiBusy(true);
@@ -1195,7 +1208,7 @@ export default function MapPage() {
       }));
       allPoisRef.current = pois;
       applyPoiFilter();
-      if (pois.length === 0) setShareMsg("Brak wyników po drodze (TomTom).");
+      if (pois.length === 0) setShareMsg(t("mapPage.noResultsAlongRoute"));
     } catch {
       setPoiCount(0);
     } finally {
@@ -1214,7 +1227,7 @@ export default function MapPage() {
       const res = await fetch(`/api/fuel-prices?lat=${c.lat}&lng=${c.lng}&radius=15`);
       const data = (await res.json()) as { configured: boolean; stations: FuelStationPrice[] };
       if (!data.configured) {
-        setFuelPriceMsg("Ceny paliwa: dodaj klucz FUEL_PRICE_API_KEY (Tankerkönig, DE).");
+        setFuelPriceMsg(t("mapPage.fuelPricesNeedKey"));
         setFuelPrices([]);
         return;
       }
@@ -1223,9 +1236,9 @@ export default function MapPage() {
         .sort((a, b) => (a.diesel ?? 0) - (b.diesel ?? 0))
         .slice(0, 8);
       setFuelPrices(withDiesel);
-      if (withDiesel.length === 0) setFuelPriceMsg("Brak cen w tej okolicy (działa dla Niemiec).");
+      if (withDiesel.length === 0) setFuelPriceMsg(t("mapPage.noFuelPricesNearby"));
     } catch {
-      setFuelPriceMsg("Nie udało się pobrać cen paliwa.");
+      setFuelPriceMsg(t("mapPage.fuelPricesError"));
     } finally {
       setFuelPriceBusy(false);
     }
@@ -1262,14 +1275,14 @@ export default function MapPage() {
       // `result.segments.length` (undefined). Auto-reroute (#309) może wywołać burst 429.
       if (!res.ok) {
         const e = (await res.json().catch(() => ({}))) as { error?: string };
-        toast(e.error ?? "Nie udało się wyznaczyć trasy.", "error");
+        toast(e.error ?? t("mapPage.routeError"), "error");
         return null;
       }
       const r = (await res.json()) as RouteResponse;
       // #W1: waliduj kształt odpowiedzi przed użyciem — 2xx bez geometry/segments też
       // wywaliłby drawRoute/itemsNearRoute/render, a brak `catch` = nieobsłużone odrzucenie.
       if (!Array.isArray(r.geometry) || !Array.isArray(r.segments)) {
-        toast("Nieprawidłowa odpowiedź routingu.", "error");
+        toast(t("mapPage.routeInvalidResponse"), "error");
         return null;
       }
       setResult(r);
@@ -1293,7 +1306,7 @@ export default function MapPage() {
       return r;
     } catch {
       // #W1: sieć/parse/nieoczekiwany wyjątek — komunikat zamiast nieobsłużonego odrzucenia.
-      toast("Nie udało się wyznaczyć trasy.", "error");
+      toast(t("mapPage.routeError"), "error");
       return null;
     } finally {
       setBusy(false);
@@ -1370,10 +1383,10 @@ export default function MapPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Mapa</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("mapPage.title")}</h1>
       <p style={{ color: cssPalette.smoke, marginTop: 4 }}>
-        Wyszukaj dowolne miasto/miejsce, wytycz trasę przez przystanki. Podkład wektorowy/satelita,
-        teren i budynki 3D{MAPTILER_KEY ? "" : " (dodaj klucz MapTiler, by włączyć 3D)"}.
+        {t("mapPage.subtitle")}
+        {MAPTILER_KEY ? "" : ` ${t("mapPage.subtitleAddKey")}`}.
       </p>
 
       <div style={{ display: "flex", gap: 16, marginTop: 16, flexWrap: "wrap" }}>
@@ -1389,7 +1402,7 @@ export default function MapPage() {
 
           <div style={{ display: "flex", gap: 6 }}>
             <button type="button" className={styles.ghost} style={{ flex: 1 }} onClick={addStop}>
-              ➕ Przystanek
+              ➕ {t("mapPage.stop")}
             </button>
             <button
               type="button"
@@ -1397,7 +1410,7 @@ export default function MapPage() {
               style={{ flex: 1 }}
               onClick={useMyLocation}
             >
-              📍 Moja lokalizacja
+              📍 {t("mapPage.myLocation")}
             </button>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
@@ -1406,7 +1419,7 @@ export default function MapPage() {
               onChange={(e) => setSavedCat(e.target.value as SavedPlaceCategory)}
               className={styles.ghost}
               style={{ flex: 1 }}
-              title="Kategoria zapisanego miejsca"
+              title={t("mapPage.savedCategoryTitle")}
             >
               {SAVED_PLACE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -1415,7 +1428,7 @@ export default function MapPage() {
               ))}
             </select>
             <button type="button" className={styles.ghost} style={{ flex: 1 }} onClick={saveStart}>
-              ⭐ Zapisz start
+              ⭐ {t("mapPage.saveStart")}
             </button>
           </div>
           <button
@@ -1424,10 +1437,10 @@ export default function MapPage() {
             style={{ width: "100%" }}
             onClick={shareRoute}
           >
-            🔗 Udostępnij trasę
+            🔗 {t("mapPage.shareRoute")}
           </button>
           <button type="button" className={styles.ghost} onClick={openSendToDriver}>
-            📤 Wyślij kierowcy
+            📤 {t("mapPage.sendToDriver")}
           </button>
           {sendDrivers && (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1436,7 +1449,7 @@ export default function MapPage() {
                 value={sendDriverId}
                 onChange={(e) => setSendDriverId(e.target.value)}
               >
-                <option value="">— wybierz kierowcę —</option>
+                <option value="">{t("mapPage.selectDriver")}</option>
                 {sendDrivers.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.first_name} {d.last_name}
@@ -1449,7 +1462,7 @@ export default function MapPage() {
                 disabled={!sendDriverId || sendBusy}
                 onClick={sendRouteToDriver}
               >
-                {sendBusy ? "…" : "Wyślij"}
+                {sendBusy ? "…" : t("mapPage.send")}
               </button>
             </div>
           )}
@@ -1473,7 +1486,7 @@ export default function MapPage() {
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
-          <span className={styles.label}>Podkład</span>
+          <span className={styles.label}>{t("mapPage.basemap")}</span>
           <div style={{ display: "flex", gap: 6 }}>
             {BASEMAPS.map((b) => (
               <button
@@ -1494,7 +1507,7 @@ export default function MapPage() {
                   checked={terrain3d}
                   onChange={(e) => toggleTerrain(e.target.checked)}
                 />{" "}
-                Teren 3D
+                {t("mapPage.terrain3d")}
               </label>
               <label className={styles.check}>
                 <input
@@ -1502,7 +1515,7 @@ export default function MapPage() {
                   checked={globe}
                   onChange={(e) => toggleGlobe(e.target.checked)}
                 />{" "}
-                Globus 3D
+                {t("mapPage.globe3d")}
               </label>
             </>
           )}
@@ -1515,7 +1528,7 @@ export default function MapPage() {
               checked={kindHeavy}
               onChange={(e) => setKindHeavy(e.target.checked)}
             />{" "}
-            Ciężarówka (TIR) — routing wg wymiarów + ruch
+            {t("mapPage.truckRouting")}
           </label>
           {kindHeavy && (
             <>
@@ -1525,12 +1538,13 @@ export default function MapPage() {
                 style={{ textAlign: "left", padding: "8px 10px" }}
                 onClick={() => setDimsOpen((o) => !o)}
               >
-                {dimsOpen ? "▾" : "▸"} Wymiary i tonaż ({weightT} t · {axles} osie)
+                {dimsOpen ? "▾" : "▸"} {t("mapPage.dimsAndTonnage")} ({weightT} t · {axles}{" "}
+                {t("mapPage.axlesSuffix")})
               </button>
               {dimsOpen && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                   <label className={styles.field}>
-                    <span className={styles.label}>Masa całk. (t)</span>
+                    <span className={styles.label}>{t("mapPage.grossWeightT")}</span>
                     <input
                       className={styles.input}
                       type="number"
@@ -1539,7 +1553,7 @@ export default function MapPage() {
                     />
                   </label>
                   <label className={styles.field}>
-                    <span className={styles.label}>Osie</span>
+                    <span className={styles.label}>{t("mapPage.axles")}</span>
                     <input
                       className={styles.input}
                       type="number"
@@ -1548,7 +1562,7 @@ export default function MapPage() {
                     />
                   </label>
                   <label className={styles.field}>
-                    <span className={styles.label}>Wysokość (cm)</span>
+                    <span className={styles.label}>{t("mapPage.heightCm")}</span>
                     <input
                       className={styles.input}
                       type="number"
@@ -1557,7 +1571,7 @@ export default function MapPage() {
                     />
                   </label>
                   <label className={styles.field}>
-                    <span className={styles.label}>Szerokość (cm)</span>
+                    <span className={styles.label}>{t("mapPage.widthCm")}</span>
                     <input
                       className={styles.input}
                       type="number"
@@ -1566,7 +1580,7 @@ export default function MapPage() {
                     />
                   </label>
                   <label className={styles.field} style={{ gridColumn: "1 / -1" }}>
-                    <span className={styles.label}>Długość (cm)</span>
+                    <span className={styles.label}>{t("mapPage.lengthCm")}</span>
                     <input
                       className={styles.input}
                       type="number"
@@ -1587,7 +1601,7 @@ export default function MapPage() {
                 autoRerouteRef.current = e.target.checked;
               }}
             />{" "}
-            🔁 Auto-objazd przy nowych utrudnieniach
+            🔁 {t("mapPage.autoDetour")}
           </label>
           <label className={styles.check}>
             <input
@@ -1595,7 +1609,7 @@ export default function MapPage() {
               checked={avoidTolls}
               onChange={(e) => setAvoidTolls(e.target.checked)}
             />{" "}
-            Omijaj płatne drogi
+            {t("mapPage.avoidTolls")}
           </label>
           <label className={styles.check}>
             <input
@@ -1603,7 +1617,7 @@ export default function MapPage() {
               checked={avoidFerries}
               onChange={(e) => setAvoidFerries(e.target.checked)}
             />{" "}
-            Omijaj promy
+            {t("mapPage.avoidFerries")}
           </label>
           <label className={styles.check}>
             <input
@@ -1611,11 +1625,11 @@ export default function MapPage() {
               checked={avoidCH}
               onChange={(e) => setAvoidCH(e.target.checked)}
             />{" "}
-            Omijaj Szwajcarię
+            {t("mapPage.avoidSwitzerland")}
           </label>
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
-          <span className={styles.label}>Koszt paliwa (szac.)</span>
+          <span className={styles.label}>{t("mapPage.fuelCostEstimate")}</span>
           <div style={{ display: "flex", gap: 6 }}>
             <input
               className={styles.input}
@@ -1623,7 +1637,7 @@ export default function MapPage() {
               value={consumption}
               onChange={(e) => setConsumption(e.target.value)}
               placeholder="l/100km"
-              title="Spalanie l/100km"
+              title={t("mapPage.consumptionTitle")}
             />
             <input
               className={styles.input}
@@ -1632,20 +1646,20 @@ export default function MapPage() {
               value={fuelPrice}
               onChange={(e) => setFuelPrice(e.target.value)}
               placeholder="€/l"
-              title="Cena za litr"
+              title={t("mapPage.pricePerLiterTitle")}
             />
             <input
               className={styles.input}
               type="number"
               value={fuelDiscount}
               onChange={(e) => setFuelDiscount(e.target.value)}
-              placeholder="rabat %"
-              title="Rabat karty %"
+              placeholder={t("mapPage.discountPlaceholder")}
+              title={t("mapPage.cardDiscountTitle")}
             />
           </div>
 
           <Button onClick={() => plan()} disabled={busy} style={{ marginTop: 6 }}>
-            {busy ? "Liczę…" : "Wytycz trasę"}
+            {busy ? t("mapPage.computing") : t("mapPage.planRoute")}
           </Button>
 
           <div style={{ display: "flex", gap: 6 }}>
@@ -1656,7 +1670,7 @@ export default function MapPage() {
               onClick={loadPois}
               disabled={poiBusy}
             >
-              {poiBusy ? "Szukam…" : "📍 POI w widoku"}
+              {poiBusy ? t("mapPage.searching") : `📍 ${t("mapPage.poiInView")}`}
             </button>
             <button
               type="button"
@@ -1665,7 +1679,7 @@ export default function MapPage() {
               onClick={loadPoisAlongRoute}
               disabled={poiBusy}
             >
-              🛣️ POI wzdłuż trasy
+              🛣️ {t("mapPage.poiAlongRoute")}
             </button>
           </div>
           {TOMTOM_KEY && (
@@ -1677,7 +1691,7 @@ export default function MapPage() {
                 onClick={() => loadTomtomAlongRoute("fuel", "fuel_station")}
                 disabled={poiBusy}
               >
-                ⛽ Paliwo po drodze
+                ⛽ {t("mapPage.fuelAlongRoute")}
               </button>
               <button
                 type="button"
@@ -1686,16 +1700,16 @@ export default function MapPage() {
                 onClick={() => loadTomtomAlongRoute("parking", "parking")}
                 disabled={poiBusy}
               >
-                🅿️ Parking po drodze
+                🅿️ {t("mapPage.parkingAlongRoute")}
               </button>
             </div>
           )}
           {poiCount != null && (
             <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-              Znaleziono: <strong>{poiCount}</strong> ·{" "}
-              <span style={{ color: cssPalette.red }}>● stacje</span>{" "}
-              <span style={{ color: "#22c55e" }}>● parkingi</span>{" "}
-              <span style={{ color: "#3b82f6" }}>● firmy</span>
+              {t("mapPage.found")} <strong>{poiCount}</strong> ·{" "}
+              <span style={{ color: cssPalette.red }}>● {t("mapPage.legendStations")}</span>{" "}
+              <span style={{ color: "#22c55e" }}>● {t("mapPage.legendParkings")}</span>{" "}
+              <span style={{ color: "#3b82f6" }}>● {t("mapPage.legendCompanies")}</span>
             </div>
           )}
 
@@ -1705,7 +1719,7 @@ export default function MapPage() {
             onClick={loadFuelPrices}
             disabled={fuelPriceBusy}
           >
-            {fuelPriceBusy ? "Pobieram ceny…" : "⛽ Ceny paliwa (DE)"}
+            {fuelPriceBusy ? t("mapPage.loadingPrices") : `⛽ ${t("mapPage.fuelPricesDE")}`}
           </button>
           {fuelPriceMsg && (
             <div style={{ fontSize: 12, color: cssPalette.smoke }}>{fuelPriceMsg}</div>
@@ -1729,12 +1743,12 @@ export default function MapPage() {
                 }
               }}
             />{" "}
-            Tylko stacje akceptujące moje karty (orientacyjnie)
+            {t("mapPage.onlyMyCardStations")}
           </label>
           {cardFilterOn &&
             (cardOptions.length === 0 ? (
               <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                Brak kart we flocie — dodaj kartę w „Karty paliwowe”.
+                {t("mapPage.noCardsInFleet")}
               </div>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -1769,7 +1783,7 @@ export default function MapPage() {
               checked={reportMode}
               onChange={(e) => setReportMode(e.target.checked)}
             />{" "}
-            Tryb zgłoszeń (klik na mapie)
+            {t("mapPage.reportMode")}
           </label>
           {reportMode && (
             <select
@@ -1793,14 +1807,16 @@ export default function MapPage() {
               checked={trafficOn}
               onChange={(e) => setTrafficOn(e.target.checked)}
             />{" "}
-            🚦 Ruch na żywo (HERE)
+            🚦 {t("mapPage.liveTrafficHere")}
           </label>
           {trafficOn && (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
-              <span style={{ color: TRAFFIC_COLOR.free }}>● płynnie</span>
-              <span style={{ color: TRAFFIC_COLOR.moderate }}>● umiarkowanie</span>
-              <span style={{ color: TRAFFIC_COLOR.heavy }}>● gęsto</span>
-              <span style={{ color: TRAFFIC_COLOR.blocked }}>● zator</span>
+              <span style={{ color: TRAFFIC_COLOR.free }}>● {t("mapPage.trafficFree")}</span>
+              <span style={{ color: TRAFFIC_COLOR.moderate }}>
+                ● {t("mapPage.trafficModerate")}
+              </span>
+              <span style={{ color: TRAFFIC_COLOR.heavy }}>● {t("mapPage.trafficHeavy")}</span>
+              <span style={{ color: TRAFFIC_COLOR.blocked }}>● {t("mapPage.trafficBlocked")}</span>
             </div>
           )}
           {trafficMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{trafficMsg}</div>}
@@ -1813,7 +1829,7 @@ export default function MapPage() {
                   checked={incidentsOn}
                   onChange={(e) => setIncidentsOn(e.target.checked)}
                 />{" "}
-                🚧 Utrudnienia (TomTom)
+                🚧 {t("mapPage.incidentsTomtom")}
               </label>
               {incidentsOn && (
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>

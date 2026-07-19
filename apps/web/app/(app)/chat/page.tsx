@@ -24,6 +24,7 @@ import {
 } from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -42,22 +43,24 @@ function notifyChat(threadId: string | null, preview: string): void {
 }
 
 function ChatImg({ path }: { path: string }) {
+  const t = useT();
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     chatPhotoUrl(getBrowserSupabase(), path)
       .then(setUrl)
       .catch(() => {});
   }, [path]);
-  if (!url) return <span style={{ fontSize: 12 }}>📷 wczytywanie…</span>;
+  if (!url) return <span style={{ fontSize: 12 }}>📷 {t("chat.imgLoading")}</span>;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
       {/* biome-ignore lint/performance/noImgElement: podpisany URL Storage, poza optymalizacją next/image */}
-      <img src={url} alt="Zdjęcie z czatu" style={{ maxWidth: 240, borderRadius: 10 }} />
+      <img src={url} alt={t("chat.imgAlt")} style={{ maxWidth: 240, borderRadius: 10 }} />
     </a>
   );
 }
 
 export default function ChatPage() {
+  const t = useT();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThread, setActiveThread] = useState<ChatThread | null>(null); // null = Ogólny
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -97,14 +100,14 @@ export default function ChatPage() {
         setCompanyId(m.companyId);
         setThreads(await listThreads(sb, m.companyId));
       } catch (e) {
-        if (alive) setErr(e instanceof Error ? e.message : "Nie udało się wczytać czatu.");
+        if (alive) setErr(e instanceof Error ? e.message : t("chat.loadError"));
       }
     })();
     return () => {
       alive = false;
       cleanup?.();
     };
-  }, []);
+  }, [t]);
 
   // Wiadomości aktywnego kanału — lekki reload przy zmianie firmy/wątku
   // (bez zrywania połączenia WSS; realtime subskrybuje osobny efekt niżej).
@@ -117,13 +120,13 @@ export default function ChatPage() {
         const msgs = await listMessages(getBrowserSupabase(), companyId, { threadId });
         if (alive) setMessages(msgs);
       } catch {
-        if (alive) setErr("Nie udało się wczytać wiadomości.");
+        if (alive) setErr(t("chat.messagesLoadError"));
       }
     })();
     return () => {
       alive = false;
     };
-  }, [companyId, threadId]);
+  }, [companyId, threadId, t]);
 
   // Realtime: jedna subskrypcja per firma (kanał firmowy, filtr company_id).
   // Przełączenie wątku NIE odtwarza połączenia — handler filtruje po refie (N15).
@@ -149,9 +152,9 @@ export default function ChatPage() {
       setText("");
       notifyChat(threadId, body);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie wysłano wiadomości.");
+      setErr(e instanceof Error ? e.message : t("chat.sendError"));
     }
-  }, [text, companyId, myLabel, threadId]);
+  }, [text, companyId, myLabel, threadId, t]);
 
   async function sendFile(file: File) {
     if (!companyId) return;
@@ -160,14 +163,14 @@ export default function ChatPage() {
       const path = await uploadChatPhotoBinary(sb, companyId, await file.arrayBuffer(), {
         mime: file.type || "image/jpeg",
       });
-      const msg = await sendMessage(sb, companyId, "📷 Zdjęcie", myLabel, {
+      const msg = await sendMessage(sb, companyId, t("chat.photoMessage"), myLabel, {
         threadId,
         photoPath: path,
       });
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-      notifyChat(threadId, "📷 Zdjęcie");
+      notifyChat(threadId, t("chat.photoMessage"));
     } catch {
-      setErr("Nie udało się wysłać zdjęcia.");
+      setErr(t("chat.photoSendError"));
     }
   }
 
@@ -182,14 +185,14 @@ export default function ChatPage() {
   async function submitCreate() {
     if (!companyId || !nameDraft.trim()) return;
     try {
-      const t = await createThread(getBrowserSupabase(), companyId, nameDraft.trim(), [
+      const thread = await createThread(getBrowserSupabase(), companyId, nameDraft.trim(), [
         ...selected,
       ]);
-      setThreads((list) => [...list, t]);
+      setThreads((list) => [...list, thread]);
       setCreating(false);
-      setActiveThread(t);
+      setActiveThread(thread);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się utworzyć kanału.");
+      setErr(e instanceof Error ? e.message : t("chat.createError"));
     }
   }
 
@@ -198,12 +201,12 @@ export default function ChatPage() {
     try {
       await renameThread(getBrowserSupabase(), activeThread.id, nameDraft.trim());
       setThreads((list) =>
-        list.map((t) => (t.id === activeThread.id ? { ...t, name: nameDraft.trim() } : t)),
+        list.map((th) => (th.id === activeThread.id ? { ...th, name: nameDraft.trim() } : th)),
       );
-      setActiveThread((t) => (t ? { ...t, name: nameDraft.trim() } : t));
+      setActiveThread((th) => (th ? { ...th, name: nameDraft.trim() } : th));
       setEditingMembers(false);
     } catch {
-      setErr("Nie udało się zmienić nazwy.");
+      setErr(t("chat.renameError"));
     }
   }
 
@@ -221,16 +224,13 @@ export default function ChatPage() {
         return next;
       });
     } catch {
-      setErr("Nie udało się zmienić członków.");
+      setErr(t("chat.membersError"));
     }
   }
 
   return (
     <div style={s.page}>
-      <PageHeader
-        title="Czat firmowy"
-        subtitle="Kanały rozmów z kierowcami — na żywo, ze zdjęciami i powiadomieniami push"
-      />
+      <PageHeader title={t("chat.title")} subtitle={t("chat.subtitle")} />
       {err && <p style={s.err}>{err}</p>}
 
       <div style={s.layout}>
@@ -241,16 +241,16 @@ export default function ChatPage() {
             style={{ ...s.channel, ...(threadId === null ? s.channelOn : {}) }}
             onClick={() => setActiveThread(null)}
           >
-            📢 Ogólny
+            📢 {t("chat.general")}
           </button>
-          {threads.map((t) => (
+          {threads.map((th) => (
             <button
-              key={t.id}
+              key={th.id}
               type="button"
-              style={{ ...s.channel, ...(threadId === t.id ? s.channelOn : {}) }}
-              onClick={() => setActiveThread(t)}
+              style={{ ...s.channel, ...(threadId === th.id ? s.channelOn : {}) }}
+              onClick={() => setActiveThread(th)}
             >
-              💬 {t.name}
+              💬 {th.name}
             </button>
           ))}
           {manage && (
@@ -264,7 +264,7 @@ export default function ChatPage() {
                 await loadMembersFor(null);
               }}
             >
-              ➕ Nowy kanał
+              ➕ {t("chat.newChannel")}
             </button>
           )}
           {manage && activeThread && (
@@ -278,7 +278,7 @@ export default function ChatPage() {
                 await loadMembersFor(activeThread);
               }}
             >
-              ⚙︎ Ustawienia kanału
+              ⚙︎ {t("chat.channelSettings")}
             </button>
           )}
         </aside>
@@ -288,14 +288,16 @@ export default function ChatPage() {
           {(creating || editingMembers) && (
             <div style={s.panel}>
               <strong style={{ color: palette.offWhite }}>
-                {creating ? "Nowy kanał" : `Ustawienia: ${activeThread?.name}`}
+                {creating
+                  ? t("chat.newChannel")
+                  : `${t("chat.settingsPrefix")} ${activeThread?.name}`}
               </strong>
               <div style={{ display: "flex", gap: 8 }}>
                 <input
                   style={s.inputSmall}
                   value={nameDraft}
                   onChange={(e) => setNameDraft(e.target.value)}
-                  placeholder="Nazwa kanału (np. Jan — trasa DE)"
+                  placeholder={t("chat.namePlaceholder")}
                 />
                 <button
                   type="button"
@@ -303,7 +305,7 @@ export default function ChatPage() {
                   onClick={creating ? submitCreate : saveRename}
                   disabled={!nameDraft.trim()}
                 >
-                  {creating ? "Utwórz" : "Zapisz nazwę"}
+                  {creating ? t("chat.create") : t("chat.saveName")}
                 </button>
                 <button
                   type="button"
@@ -313,7 +315,7 @@ export default function ChatPage() {
                     setEditingMembers(false);
                   }}
                 >
-                  Zamknij
+                  {t("chat.close")}
                 </button>
               </div>
               <div style={s.memberGrid}>
@@ -346,9 +348,7 @@ export default function ChatPage() {
           )}
 
           <div style={s.thread}>
-            {messages.length === 0 && (
-              <p style={s.empty}>Brak wiadomości — napisz pierwszą poniżej.</p>
-            )}
+            {messages.length === 0 && <p style={s.empty}>{t("chat.empty")}</p>}
             {messages.map((m) => {
               const mine = m.sender_id === me;
               return (
@@ -357,7 +357,9 @@ export default function ChatPage() {
                   style={{ ...s.row, justifyContent: mine ? "flex-end" : "flex-start" }}
                 >
                   <div style={{ ...s.bubble, ...(mine ? s.bubbleMine : s.bubbleOther) }}>
-                    {!mine && <div style={s.sender}>{m.sender_label || "członek firmy"}</div>}
+                    {!mine && (
+                      <div style={s.sender}>{m.sender_label || t("chat.companyMember")}</div>
+                    )}
                     {m.photo_path ? <ChatImg path={m.photo_path} /> : <div>{m.body}</div>}
                     <div style={{ ...s.time, color: mine ? "#ffffffaa" : palette.smoke }}>
                       {m.created_at.slice(11, 16)}
@@ -393,11 +395,11 @@ export default function ChatPage() {
                   send();
                 }
               }}
-              placeholder={`Wiadomość — ${activeThread ? activeThread.name : "kanał ogólny"}… (Enter wysyła)`}
+              placeholder={`${t("chat.messagePlaceholderPrefix")} ${activeThread ? activeThread.name : t("chat.generalChannel")}… ${t("chat.enterSends")}`}
               rows={2}
             />
             <button type="button" style={s.sendBtn} onClick={send} disabled={!text.trim()}>
-              Wyślij ➤
+              {t("chat.send")} ➤
             </button>
           </div>
         </section>
