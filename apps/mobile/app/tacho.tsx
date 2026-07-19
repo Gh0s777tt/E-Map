@@ -6,7 +6,15 @@
  * • #331 Planer odpoczynku tygodniowego (144 h, warianty 45/24 h),
  * • poradnik z realnych zdjęć VDO, wpis manualny, rozporządzenie 561/2006.
  */
-import { aetrStatus, formatTachoMin, parseTachoTimes, planWeeklyRest } from "@e-logistic/core";
+import {
+  aetrStatus,
+  formatTachoMin,
+  type InfringementKind,
+  type InfringementSeverity,
+  inspectAetr,
+  parseTachoTimes,
+  planWeeklyRest,
+} from "@e-logistic/core";
 import type { MobileMessageKey } from "@e-logistic/i18n";
 import { haversineKm } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
@@ -77,6 +85,24 @@ const LIVE_ACTIVITIES: { key: LiveActivity; glyph: string; labelKey: MobileMessa
   { key: "work", glyph: "🔧", labelKey: "m.tacho.actWork" },
   { key: "rest", glyph: "🛏", labelKey: "m.tacho.actRest" },
 ];
+
+// Wirtualny inspektor 561 — etykiety naruszeń i skala wagi (2006/22/WE zał. III).
+const INFRINGEMENT_LABEL: Record<InfringementKind, MobileMessageKey> = {
+  "continuous-driving": "m.tacho.infr.continuousDriving",
+  "daily-driving": "m.tacho.infr.dailyDriving",
+  "weekly-driving": "m.tacho.infr.weeklyDriving",
+  "two-week-driving": "m.tacho.infr.twoWeekDriving",
+};
+const SEVERITY_LABEL: Record<InfringementSeverity, MobileMessageKey> = {
+  minor: "m.tacho.severity.minor",
+  serious: "m.tacho.severity.serious",
+  very_serious: "m.tacho.severity.verySerious",
+};
+const SEVERITY_COLOR: Record<InfringementSeverity, string> = {
+  minor: "#f59e0b",
+  serious: "#f97316",
+  very_serious: "#ef4444",
+};
 
 const colorFor = (min: number) => (min <= 0 ? "#ef4444" : min <= 30 ? "#f59e0b" : "#22c55e");
 
@@ -210,6 +236,16 @@ export default function TachoScreen() {
   const [redUsed, setRedUsed] = useState(0);
 
   const st = aetrStatus({
+    continuousDrivingMin: continuous,
+    breakTakenMin: breakTaken,
+    dailyDrivingMin: daily,
+    weeklyDrivingMin: weekly,
+    prevWeekDrivingMin: prevWeek,
+    extendedDrivesUsed: extUsed,
+    reducedRestsUsed: redUsed,
+  });
+  // Wirtualna kontrola 561 — te same wejścia co licznik, wykrywa naruszenia czasu jazdy.
+  const insp = inspectAetr({
     continuousDrivingMin: continuous,
     breakTakenMin: breakTaken,
     dailyDrivingMin: daily,
@@ -464,6 +500,48 @@ export default function TachoScreen() {
           </Card>
         ))}
       </View>
+
+      {/* Wirtualna kontrola 561 — pre-kontrola naruszeń czasu jazdy (2006/22/WE zał. III) */}
+      <View
+        style={[
+          s.inspBox,
+          {
+            borderColor: insp.clean
+              ? "#22c55e55"
+              : `${SEVERITY_COLOR[insp.worst ?? "very_serious"]}88`,
+          },
+        ]}
+      >
+        <View style={s.inspHeader}>
+          <Text style={s.inspHeading}>🚔 {t("m.tacho.inspection.heading")}</Text>
+          {!insp.clean && (
+            <View
+              style={[
+                s.inspCountPill,
+                { backgroundColor: SEVERITY_COLOR[insp.worst ?? "very_serious"] },
+              ]}
+            >
+              <Text style={s.inspCountText}>{insp.infringements.length}</Text>
+            </View>
+          )}
+        </View>
+        {insp.clean ? (
+          <Text style={s.inspClean}>✅ {t("m.tacho.inspection.clean")}</Text>
+        ) : (
+          insp.infringements.map((i) => (
+            <View key={i.kind} style={s.inspRow}>
+              <View style={[s.sevBadge, { backgroundColor: SEVERITY_COLOR[i.severity] }]}>
+                <Text style={s.sevBadgeText}>{t(SEVERITY_LABEL[i.severity])}</Text>
+              </View>
+              <Text style={s.inspLabel}>{t(INFRINGEMENT_LABEL[i.kind])}</Text>
+              <Text style={s.inspOver}>+{formatTachoMin(i.byMin)}</Text>
+              <Text style={s.inspLimit}>≤ {formatTachoMin(i.limitMin)}</Text>
+            </View>
+          ))
+        )}
+        <Text style={s.inspDisclaimer}>{t("m.tacho.inspection.disclaimer")}</Text>
+      </View>
+
       <Text style={s.hint}>{t("m.tacho.counterHint")}</Text>
 
       {/* #345: Dziennik — dzień pracy i odpoczynek tygodniowy zapisywane w profilu */}
@@ -634,6 +712,41 @@ const s = StyleSheet.create({
   resultCard: { flexGrow: 1, minWidth: 150, alignItems: "center" },
   resultValue: { fontSize: 20, fontWeight: "800" },
   resultLabel: { color: palette.smoke, fontSize: 11.5, marginTop: 3, textAlign: "center" },
+  inspBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    backgroundColor: palette.nearBlack,
+  },
+  inspHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  inspHeading: { color: palette.offWhite, fontSize: 14, fontWeight: "800" },
+  inspCountPill: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: "center",
+  },
+  inspCountText: { color: palette.black, fontSize: 12.5, fontWeight: "800" },
+  inspClean: { color: "#22c55e", fontSize: 13, fontWeight: "800" },
+  inspRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  sevBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  sevBadgeText: {
+    color: palette.black,
+    fontSize: 10.5,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  inspLabel: { color: palette.offWhite, fontSize: 12.5, flex: 1, minWidth: 120 },
+  inspOver: { color: palette.offWhite, fontSize: 12.5, fontWeight: "800" },
+  inspLimit: { color: palette.smoke, fontSize: 12 },
+  inspDisclaimer: { color: palette.smoke, fontSize: 11, lineHeight: 15 },
   stepItem: { flexDirection: "row", gap: 10 },
   stepNo: { color: palette.red, fontWeight: "800", fontSize: 14, width: 18, textAlign: "center" },
   stepText: { color: palette.offWhite, fontSize: 13.5, lineHeight: 19, flex: 1 },

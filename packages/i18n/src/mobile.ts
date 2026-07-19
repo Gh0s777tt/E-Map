@@ -677,6 +677,17 @@ const pl = {
   "m.tacho.regulation": "Rozporządzenie 561/2006 (PDF)",
   "m.tacho.regulationHint":
     "Pełny skonsolidowany tekst przepisów o czasie jazdy i odpoczynkach — zawsze pod ręką, także do pokazania na kontroli.",
+  "m.tacho.inspection.heading": "Wirtualna kontrola (561)",
+  "m.tacho.inspection.clean": "Brak naruszeń — limity 561 zachowane.",
+  "m.tacho.inspection.disclaimer":
+    "Skala wg dyrektywy 2006/22/WE zał. III — pomoc orientacyjna, nie zastępuje kontroli.",
+  "m.tacho.infr.continuousDriving": "Jazda ciągła bez przerwy (4 h 30)",
+  "m.tacho.infr.dailyDriving": "Jazda dobowa",
+  "m.tacho.infr.weeklyDriving": "Jazda tygodniowa (56 h)",
+  "m.tacho.infr.twoWeekDriving": "Jazda w dwa tygodnie (90 h)",
+  "m.tacho.severity.minor": "drobne",
+  "m.tacho.severity.serious": "poważne",
+  "m.tacho.severity.verySerious": "bardzo poważne",
   "m.settings.position": "Pozycja",
   "m.settings.sharePosHint":
     "Gdy włączysz, dyspozytor widzi Twoje auto na mapie firmy (aktualizacja co 2 min, tylko gdy aplikacja jest otwarta). Wyłączysz w każdej chwili — pozycja jest wtedy usuwana.",
@@ -1630,6 +1641,17 @@ const en: Record<MobileMessageKey, string> = {
   "m.tacho.regulation": "Regulation 561/2006 (PDF)",
   "m.tacho.regulationHint":
     "The full consolidated text on driving times and rests — always at hand, also for roadside checks.",
+  "m.tacho.inspection.heading": "Virtual inspection (561)",
+  "m.tacho.inspection.clean": "No infringements — 561 limits respected.",
+  "m.tacho.inspection.disclaimer":
+    "Scale per Directive 2006/22/EC Annex III — guidance only, does not replace an inspection.",
+  "m.tacho.infr.continuousDriving": "Continuous driving without a break (4 h 30)",
+  "m.tacho.infr.dailyDriving": "Daily driving",
+  "m.tacho.infr.weeklyDriving": "Weekly driving (56 h)",
+  "m.tacho.infr.twoWeekDriving": "Driving over two weeks (90 h)",
+  "m.tacho.severity.minor": "minor",
+  "m.tacho.severity.serious": "serious",
+  "m.tacho.severity.verySerious": "very serious",
   "m.settings.position": "Location",
   "m.settings.sharePosHint":
     "When enabled, the dispatcher sees your truck on the company map (updated every 2 min, only while the app is open). Turn it off anytime — your position is then deleted.",
@@ -2581,6 +2603,17 @@ const de: Record<MobileMessageKey, string> = {
   "m.tacho.regulation": "Verordnung 561/2006 (PDF)",
   "m.tacho.regulationHint":
     "Der vollständige konsolidierte Text zu Lenk- und Ruhezeiten — immer griffbereit, auch bei Kontrollen.",
+  "m.tacho.inspection.heading": "Virtuelle Kontrolle (561)",
+  "m.tacho.inspection.clean": "Keine Verstöße — 561-Grenzwerte eingehalten.",
+  "m.tacho.inspection.disclaimer":
+    "Skala nach Richtlinie 2006/22/EG Anhang III — nur Orientierung, ersetzt keine Kontrolle.",
+  "m.tacho.infr.continuousDriving": "Ununterbrochene Lenkzeit ohne Pause (4 h 30)",
+  "m.tacho.infr.dailyDriving": "Tageslenkzeit",
+  "m.tacho.infr.weeklyDriving": "Wochenlenkzeit (56 h)",
+  "m.tacho.infr.twoWeekDriving": "Lenkzeit in zwei Wochen (90 h)",
+  "m.tacho.severity.minor": "geringfügig",
+  "m.tacho.severity.serious": "schwerwiegend",
+  "m.tacho.severity.verySerious": "sehr schwerwiegend",
   "m.settings.position": "Standort",
   "m.settings.sharePosHint":
     "Wenn aktiviert, sieht der Disponent deinen LKW auf der Firmenkarte (Aktualisierung alle 2 Min., nur bei geöffneter App). Jederzeit abschaltbar — die Position wird dann gelöscht.",
@@ -3530,6 +3563,17 @@ const uk: Record<MobileMessageKey, string> = {
   "m.tacho.regulation": "Регламент 561/2006 (PDF)",
   "m.tacho.regulationHint":
     "Повний консолідований текст про час керування та відпочинки — завжди під рукою, зокрема для контролю.",
+  "m.tacho.inspection.heading": "Віртуальна перевірка (561)",
+  "m.tacho.inspection.clean": "Порушень немає — ліміти 561 дотримано.",
+  "m.tacho.inspection.disclaimer":
+    "Шкала за Директивою 2006/22/ЄС, дод. III — лише орієнтир, не замінює перевірки.",
+  "m.tacho.infr.continuousDriving": "Безперервне керування без перерви (4 год 30)",
+  "m.tacho.infr.dailyDriving": "Добове керування",
+  "m.tacho.infr.weeklyDriving": "Тижневе керування (56 год)",
+  "m.tacho.infr.twoWeekDriving": "Керування за два тижні (90 год)",
+  "m.tacho.severity.minor": "незначне",
+  "m.tacho.severity.serious": "серйозне",
+  "m.tacho.severity.verySerious": "дуже серйозне",
   "m.settings.position": "Позиція",
   "m.settings.sharePosHint":
     "Коли ввімкнено, диспетчер бачить вашу вантажівку на мапі фірми (оновлення кожні 2 хв, лише коли застосунок відкрито). Можна вимкнути будь-коли — позиція видаляється.",
