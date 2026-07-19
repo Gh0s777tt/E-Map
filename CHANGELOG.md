@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-361-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.205.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-362-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.206.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.206.0] — 📱 Tacho na mobile: 4 panele zgodności na ekranie aplikacji (+ fix jednostki)
+
+Silniki tacho (Faza 1/2 — dotąd tylko web) trafiły na ekran aplikacji — **mobile 1.90.0**. Trzy panele dla kierowcy (widzi **swoje** dane) + jeden glance dla właściciela; wszystkie i18n w **4 językach** (pl/en/de/uk, parytet).
+
+- `[#362]` 🚔 **Wirtualna kontrola 561** ([tacho](apps/mobile/app/tacho.tsx)) — z licznika `inspectAetr` wykrywa naruszenia jazdy z **wagą** (2006/22/WE): badge + o ile przekroczono + limit.
+- `[#362]` 🛏 **Saldo kompensacji** ([TachoJournal](apps/mobile/components/TachoJournal.tsx)) — z **własnych** odpoczynków kierowcy `restCompensationLedger`: długi (561/2006 art. 8.6) + terminy + oznaczenie po terminie (live).
+- `[#362]` ⏱ **WTD 48 h** ([work-time](apps/mobile/app/work-time.tsx)) — `wtdStatus` z ewidencji: średnia tygodniowa vs 48 h, budżet, najwyższy tydzień, tygodnie > 60 h.
+- `[#362]` 🗓 **Terminy sczytań** (Tacho, **owner/dyspozytor, read-only**) — `checkDownload` glance „co wymaga sczytania" (karta 28 dni / tacho 90 dni, 581/2010); ustawianie dat zostaje na webie.
+- `[#362]` 🐛 **Fix jednostki** — mobile `h()` traktował godziny jak minuty (dzielił `/60` → licznik ~0 h). Ewidencja trzyma **godziny** (potwierdzone: web form step 0.5, `.ddd`/checklist zapisują `/60`). Bug utajony (tabela pusta), ale realny.
+
+**Bramki:** `biome` ✓ (1 warning prexistujący, nie z tych zmian) · parytet i18n **5/5** (4 języki) ✓ · mobile `tsc` exit 0 (weryfikowany po każdym z 4 paneli) ✓ · bez migracji. **Widoczne po rebuildzie EAS.**
 
 ## [1.205.0] — 🌍 Web i18n: WSZYSTKIE strony panelu przez `t()` (PL/EN, parytet)
 
