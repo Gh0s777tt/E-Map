@@ -20,8 +20,6 @@
       "bundleIdentifier": "com.ghostempire.elogistic",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "E-Logistic pokazuje Twoją pozycję na mapie TIR (parkingi i stacje w okolicy).",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "E-Logistic liczy przejechane kilometry (tacho) także przy zgaszonym ekranie.",
-        "UIBackgroundModes": ["location"],
         "NSCameraUsageDescription": "E-Logistic używa aparatu do zdjęć towaru (dowód zabezpieczenia ładunku) i checklist.",
         "NSFaceIDUsageDescription": "E-Logistic używa Face ID do odblokowania aplikacji.",
         "NSPhotoLibraryUsageDescription": "E-Logistic potrzebuje dostępu do zdjęć, by dołączyć zdjęcie towaru do zlecenia.",
@@ -38,12 +36,8 @@
         "backgroundColor": "#0a0a0a"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.USE_BIOMETRIC"
       ]
     },
@@ -66,10 +60,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "E-Logistic pokazuje Twoją pozycję na mapie TIR (parkingi i stacje w okolicy).",
-          "locationAlwaysAndWhenInUsePermission": "E-Logistic liczy przejechane kilometry (tacho) także przy zgaszonym ekranie.",
-          "isAndroidBackgroundLocationEnabled": true,
-          "isAndroidForegroundServiceEnabled": true
+          "locationWhenInUsePermission": "E-Logistic pokazuje Twoją pozycję na mapie TIR (parkingi i stacje w okolicy)."
         }
       ],
       [

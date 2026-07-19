@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AppLockGate } from "../components/AppLockGate";
 import { AuthProvider, useAuth } from "../components/AuthProvider";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { LocaleProvider, useT } from "../lib/i18n";
 import { guardRedirect, notificationTarget } from "../lib/navigation";
 
@@ -88,6 +89,22 @@ function RootNav() {
   );
 }
 
+/** #audyt: RootNav w Error Boundary — błąd renderu ekranu nie ubija całej apki (Apple 5.6). */
+function GuardedNav() {
+  const t = useT();
+  const router = useRouter();
+  return (
+    <ErrorBoundary
+      title={t("m.error.title")}
+      body={t("m.error.body")}
+      retryLabel={t("m.error.retry")}
+      onReset={() => router.replace("/(tabs)")}
+    >
+      <RootNav />
+    </ErrorBoundary>
+  );
+}
+
 // #306: Sentry — crash reporty z telefonów kierowców. Bez EXPO_PUBLIC_SENTRY_DSN: no-op.
 const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 if (SENTRY_DSN) {
@@ -101,7 +118,7 @@ function RootLayout() {
       <LocaleProvider>
         <AppLockGate>
           <AuthProvider>
-            <RootNav />
+            <GuardedNav />
           </AuthProvider>
         </AppLockGate>
       </LocaleProvider>

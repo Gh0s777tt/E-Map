@@ -142,10 +142,7 @@ export default function Login() {
       <Text style={styles.subtitle}>{t("m.login.subtitle")}</Text>
 
       {!supabaseConfigured ? (
-        <Text style={styles.error}>
-          Brak konfiguracji Supabase. Ustaw EXPO_PUBLIC_SUPABASE_URL i
-          EXPO_PUBLIC_SUPABASE_ANON_KEY.
-        </Text>
+        <Text style={styles.error}>{t("m.error.serviceUnavailable")}</Text>
       ) : (
         <View style={styles.form}>
           <TextInput

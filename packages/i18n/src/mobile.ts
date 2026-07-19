@@ -5,6 +5,10 @@
  */
 
 const pl = {
+  "m.error.title": "Coś poszło nie tak",
+  "m.error.body": "Wystąpił nieoczekiwany błąd. Spróbuj ponownie — Twoje dane są bezpieczne.",
+  "m.error.retry": "Spróbuj ponownie",
+  "m.error.serviceUnavailable": "Usługa chwilowo niedostępna. Spróbuj ponownie później.",
   "m.tab.home": "Pulpit",
   "m.tab.orders": "Zlecenia",
   "m.tab.map": "Mapa",
@@ -999,6 +1003,10 @@ const pl = {
 export type MobileMessageKey = keyof typeof pl;
 
 const en: Record<MobileMessageKey, string> = {
+  "m.error.title": "Something went wrong",
+  "m.error.body": "An unexpected error occurred. Please try again — your data is safe.",
+  "m.error.retry": "Try again",
+  "m.error.serviceUnavailable": "The service is temporarily unavailable. Please try again later.",
   "m.tab.home": "Home",
   "m.tab.orders": "Orders",
   "m.tab.map": "Map",
@@ -1985,6 +1993,12 @@ const en: Record<MobileMessageKey, string> = {
 };
 
 const de: Record<MobileMessageKey, string> = {
+  "m.error.title": "Etwas ist schiefgelaufen",
+  "m.error.body":
+    "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut — deine Daten sind sicher.",
+  "m.error.retry": "Erneut versuchen",
+  "m.error.serviceUnavailable":
+    "Der Dienst ist vorübergehend nicht verfügbar. Bitte versuche es später erneut.",
   "m.tab.home": "Übersicht",
   "m.tab.orders": "Aufträge",
   "m.tab.map": "Karte",
@@ -2976,6 +2990,10 @@ const de: Record<MobileMessageKey, string> = {
 };
 
 const uk: Record<MobileMessageKey, string> = {
+  "m.error.title": "Щось пішло не так",
+  "m.error.body": "Сталася неочікувана помилка. Спробуйте ще раз — ваші дані в безпеці.",
+  "m.error.retry": "Спробувати ще раз",
+  "m.error.serviceUnavailable": "Сервіс тимчасово недоступний. Спробуйте пізніше.",
   "m.tab.home": "Панель",
   "m.tab.orders": "Замовлення",
   "m.tab.map": "Карта",

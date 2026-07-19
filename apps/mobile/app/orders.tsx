@@ -59,7 +59,7 @@ export default function OrdersScreen() {
     setErr(null);
     if (!supabaseConfigured) {
       setLoading(false);
-      setErr("Brak konfiguracji Supabase.");
+      setErr(t("m.error.serviceUnavailable"));
       return;
     }
     try {

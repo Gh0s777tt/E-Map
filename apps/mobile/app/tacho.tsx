@@ -322,34 +322,38 @@ export default function TachoScreen() {
   }, []);
   // #audyt tacho: GPS startuje przy WEJŚCIU na ekran (nie dopiero po ręcznym tapnięciu czynności).
   // Dzięki temu km liczą się automatycznie po ruszeniu, a auto-przełączenie >15 km/h samo otwiera
-  // sesję „jazda". (Licznik km w tle — przy zgaszonym ekranie — dokłada osobny natywny serwis.)
+  // sesję „jazda". Licznik km działa, gdy ekran Tacho jest otwarty (foreground).
   // biome-ignore lint/correctness/useExhaustiveDependencies: watcher raz na montowanie ekranu
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     let cancelled = false;
     (async () => {
-      let perm = await Location.getForegroundPermissionsAsync();
-      if (!perm.granted) perm = await Location.requestForegroundPermissionsAsync();
-      if (!perm.granted || cancelled) return;
-      sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 30 },
-        (pos) => {
-          const raw = pos.coords.speed;
-          const kmh = raw != null && raw >= 0 ? Math.round(raw * 3.6) : null;
-          setSpeed(kmh);
-          const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          const prev = lastFix.current;
-          lastFix.current = fix;
-          if (prev && currentRef.current?.activity === "driving") {
-            const d = haversineKm(prev, fix);
-            if (d > 0.02 && d < 3) addKmToday(d).then(setKmToday);
-          }
-          // auto-wypełnianie: ruszyłeś (>15 km/h) → licznik sam przechodzi na jazdę
-          if (kmh != null && kmh > 15 && currentRef.current?.activity !== "driving") {
-            switchRef.current("driving");
-          }
-        },
-      );
+      try {
+        let perm = await Location.getForegroundPermissionsAsync();
+        if (!perm.granted) perm = await Location.requestForegroundPermissionsAsync();
+        if (!perm.granted || cancelled) return;
+        sub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 30 },
+          (pos) => {
+            const raw = pos.coords.speed;
+            const kmh = raw != null && raw >= 0 ? Math.round(raw * 3.6) : null;
+            setSpeed(kmh);
+            const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            const prev = lastFix.current;
+            lastFix.current = fix;
+            if (prev && currentRef.current?.activity === "driving") {
+              const d = haversineKm(prev, fix);
+              if (d > 0.02 && d < 3) addKmToday(d).then(setKmToday);
+            }
+            // auto-wypełnianie: ruszyłeś (>15 km/h) → licznik sam przechodzi na jazdę
+            if (kmh != null && kmh > 15 && currentRef.current?.activity !== "driving") {
+              switchRef.current("driving");
+            }
+          },
+        );
+      } catch {
+        // GPS niedostępny / odmowa / błąd natywny — ekran Tacho działa dalej bez licznika km.
+      }
     })();
     return () => {
       cancelled = true;
