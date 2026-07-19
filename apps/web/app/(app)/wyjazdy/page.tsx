@@ -5,6 +5,7 @@ import { buildJourneys, effectiveModules, type Journey, pickRate } from "@e-logi
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -42,6 +43,7 @@ const money = (n: number | null) => (n == null ? "—" : `${n} €`);
 const num = (n: number | null, unit = "") => (n == null ? "—" : `${n}${unit}`);
 
 export default function JourneysPage() {
+  const t = useT();
   const { vehicles } = useFleet();
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [fuel, setFuel] = useState<FuelRow[]>([]);
@@ -64,24 +66,24 @@ export default function JourneysPage() {
       }
       const manage = m.role === "owner" || m.role === "dispatcher";
       setDenied(!manage && !effectiveModules(m.role, m.modules).includes("stats"));
-      const [t, f, a, d, r] = await Promise.all([
+      const [tripsRes, f, a, d, r] = await Promise.all([
         listTripEvents(sb, {}),
         listFuelLogs(sb, { table: "fuel_logs" }),
         listFuelLogs(sb, { table: "adblue_logs" }),
         listDrivers(sb, m.companyId).catch(() => []),
         listRates(sb, m.companyId).catch(() => []),
       ]);
-      setTrips(t);
+      setTrips(tripsRes);
       setFuel(f);
       setAdblue(a);
       setDrivers(d);
       setRates(r);
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać wyjazdów.");
+      setLoadErr(e instanceof Error ? e.message : t("journeys.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -94,11 +96,13 @@ export default function JourneysPage() {
 
   const driverName = useCallback(
     (id: string | null) => {
-      if (!id) return "Nieprzypisany kierowca";
+      if (!id) return t("journeys.unassignedDriver");
       const d = drivers.find((x) => x.user_id === id);
-      return d ? `${d.last_name} ${d.first_name}` : `Kierowca ${id.slice(0, 8)}`;
+      return d
+        ? `${d.last_name} ${d.first_name}`
+        : `${t("journeys.driverPrefix")} ${id.slice(0, 8)}`;
     },
-    [drivers],
+    [drivers, t],
   );
 
   const journeys = useMemo(() => {
@@ -150,22 +154,15 @@ export default function JourneysPage() {
 
   return (
     <div style={{ maxWidth: 920 }}>
-      <PageHeader
-        title="Wyjazdy (trasy)"
-        subtitle="Zdarzenia trasy pogrupowane w wyjazdy — od rozpoczęcia do zakończenia, per kierowca i pojazd. Statystyki: dystans, spalanie, ładunki, koszt i zysk."
-      />
+      <PageHeader title={t("journeys.title")} subtitle={t("journeys.subtitle")} />
 
-      {denied && (
-        <p style={{ color: palette.red, marginTop: 16 }}>
-          ⛔ Brak dostępu do statystyk. Poproś właściciela o uprawnienia.
-        </p>
-      )}
+      {denied && <p style={{ color: palette.red, marginTop: 16 }}>{t("journeys.denied")}</p>}
 
       <ListStatus
         loading={loading}
         error={loadErr}
         empty={!denied && journeys.length === 0}
-        emptyText="Brak wyjazdów. Kierowca zaczyna wyjazd akcją Rozpoczęcie, a kończy Zakończenie (formularz Trasa)."
+        emptyText={t("journeys.empty")}
         onRetry={load}
       />
 
@@ -177,7 +174,8 @@ export default function JourneysPage() {
               🧑‍✈️ {driverName(driverId === "unassigned" ? null : driverId)}
               <span style={{ color: palette.smoke, fontWeight: 400, fontSize: 14 }}>
                 {" "}
-                · {list.length} {list.length === 1 ? "wyjazd" : "wyjazdy"}
+                · {list.length}{" "}
+                {list.length === 1 ? t("journeys.tripSingular") : t("journeys.tripPlural")}
               </span>
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -185,43 +183,46 @@ export default function JourneysPage() {
                 <div key={`${j.vehicleId}-${j.index}`} style={card}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <strong style={{ fontSize: 15 }}>
-                      Wyjazd #{j.index} · {regOf(j.vehicleId)}
+                      {t("journeys.cardLabel")} #{j.index} · {regOf(j.vehicleId)}
                     </strong>
                     <span style={j.open ? badgeOpen : badgeDone}>
-                      {j.open ? "w toku" : "zakończony"}
+                      {j.open ? t("journeys.statusOpen") : t("journeys.statusDone")}
                     </span>
                     <span style={{ flex: 1 }} />
                     <span style={{ color: palette.smoke, fontSize: 13 }}>
                       {j.startAt.slice(0, 10)} → {j.endAt ? j.endAt.slice(0, 10) : "…"}
-                      {j.durationDays != null ? ` · ${j.durationDays} dni` : ""}
+                      {j.durationDays != null
+                        ? ` · ${j.durationDays} ${t("journeys.daysSuffix")}`
+                        : ""}
                     </span>
                   </div>
                   <div style={statRow}>
                     <span>
-                      Dystans: <b>{num(j.distanceKm, " km")}</b>
+                      {t("journeys.distance")}: <b>{num(j.distanceKm, " km")}</b>
                     </span>
                     <span>
-                      Spalanie: <b>{num(j.avgConsumptionLPer100km, " L/100km")}</b>
+                      {t("journeys.consumption")}:{" "}
+                      <b>{num(j.avgConsumptionLPer100km, " L/100km")}</b>
                     </span>
                     <span>
-                      Tankowań: <b>{j.fuelings}</b> ({j.fuelLiters} L)
+                      {t("journeys.fuelings")}: <b>{j.fuelings}</b> ({j.fuelLiters} L)
                     </span>
                     <span>
-                      Załadunki/rozładunki: <b>{j.loads}</b>/<b>{j.unloads}</b>
+                      {t("journeys.loadsUnloads")}: <b>{j.loads}</b>/<b>{j.unloads}</b>
                     </span>
                     <span>
-                      Waga ładunków: <b>{j.totalLoadKg} kg</b>
+                      {t("journeys.loadWeight")}: <b>{j.totalLoadKg} kg</b>
                     </span>
                   </div>
                   <div style={{ ...statRow, marginTop: 4 }}>
                     <span>
-                      Koszt: <b>{money(j.cost)}</b>
+                      {t("journeys.cost")}: <b>{money(j.cost)}</b>
                     </span>
                     <span>
-                      Przychód: <b>{money(j.revenue)}</b>
+                      {t("journeys.revenue")}: <b>{money(j.revenue)}</b>
                     </span>
                     <span>
-                      Zysk:{" "}
+                      {t("journeys.profit")}:{" "}
                       <b style={{ color: (j.profit ?? 0) >= 0 ? "#22c55e" : palette.red }}>
                         {money(j.profit)}
                       </b>

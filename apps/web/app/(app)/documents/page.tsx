@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -39,6 +40,7 @@ function formatBytes(n: number | null): string {
 const MAX_MB = 25;
 
 export default function DocumentsPage() {
+  const t = useT();
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -73,11 +75,11 @@ export default function DocumentsPage() {
       setCanManage(m.role === "owner" || m.role === "dispatcher");
       setDocs(await listDocuments(sb, m.companyId));
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać dokumentów.");
+      setLoadErr(e instanceof Error ? e.message : t("documents.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -120,11 +122,14 @@ export default function DocumentsPage() {
 
   async function upload() {
     if (!file) {
-      toast("Wybierz plik.", "error");
+      toast(t("documents.pickFile"), "error");
       return;
     }
     if (file.size > MAX_MB * 1024 * 1024) {
-      toast(`Plik za duży (max ${MAX_MB} MB).`, "error");
+      toast(
+        `${t("documents.fileTooBigPrefix")}${MAX_MB}${t("documents.fileTooBigSuffix")}`,
+        "error",
+      );
       return;
     }
     setBusy(true);
@@ -132,7 +137,7 @@ export default function DocumentsPage() {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) {
-        toast("Brak firmy.", "error");
+        toast(t("documents.noCompany"), "error");
         return;
       }
       await uploadDocument(sb, m.companyId, file, {
@@ -143,11 +148,11 @@ export default function DocumentsPage() {
         visibility,
         allowedUserIds: visibility === "selected" ? allowed : [],
       });
-      toast("Dokument wgrany.", "success");
+      toast(t("documents.uploaded"), "success");
       resetForm();
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd wgrywania.", "error");
+      toast(e instanceof Error ? e.message : t("documents.uploadError"), "error");
     } finally {
       setBusy(false);
     }
@@ -171,7 +176,7 @@ export default function DocumentsPage() {
       const url = await getDocumentUrl(getBrowserSupabase(), d.path, 120);
       window.open(url, "_blank", "noopener");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Nie udało się otworzyć dokumentu.", "error");
+      toast(e instanceof Error ? e.message : t("documents.openError"), "error");
     }
   }
 
@@ -189,27 +194,29 @@ export default function DocumentsPage() {
       a.click();
       a.remove();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Nie udało się pobrać dokumentu.", "error");
+      toast(e instanceof Error ? e.message : t("documents.downloadError"), "error");
     }
   }
 
   async function remove(d: DocumentMeta) {
-    if (!(await confirm(`Usunąć dokument „${d.name}"?`))) return;
+    if (
+      !(await confirm(
+        `${t("documents.deleteConfirmPrefix")}${d.name}${t("documents.deleteConfirmSuffix")}`,
+      ))
+    )
+      return;
     try {
       await deleteDocument(getBrowserSupabase(), d);
-      toast("Dokument usunięty.", "success");
+      toast(t("documents.deleted"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
+      toast(e instanceof Error ? e.message : t("documents.deleteError"), "error");
     }
   }
 
   return (
     <div style={{ maxWidth: 920 }}>
-      <PageHeader
-        title="Sejf dokumentów"
-        subtitle="Bezpieczne miejsce na dokumenty firmy i pojazdów (OC, przeglądy, leasing, umowy). Prywatne — dostęp tylko dla Twojej firmy; przypomnienia o terminach ważności."
-      />
+      <PageHeader title={t("documents.title")} subtitle={t("documents.subtitle")} />
 
       <SetupNotice source={source} />
 
@@ -217,7 +224,11 @@ export default function DocumentsPage() {
         <div style={styles.form}>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={f.label}>Plik (max {MAX_MB} MB)</span>
+              <span style={f.label}>
+                {t("documents.fieldFilePrefix")}
+                {MAX_MB}
+                {t("documents.fieldFileSuffix")}
+              </span>
               <input
                 ref={fileRef}
                 style={f.input}
@@ -226,24 +237,24 @@ export default function DocumentsPage() {
               />
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Nazwa</span>
+              <span style={f.label}>{t("documents.fieldName")}</span>
               <input
                 style={f.input}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="np. OC ciągnik 2026"
+                placeholder={t("documents.namePlaceholder")}
               />
             </label>
           </div>
           <div style={styles.grid}>
             <label style={styles.field}>
-              <span style={f.label}>Kategoria</span>
+              <span style={f.label}>{t("documents.fieldCategory")}</span>
               <select
                 style={f.input}
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
-                <option value="">— brak —</option>
+                <option value="">{t("documents.optionNone")}</option>
                 {DOCUMENT_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -252,20 +263,20 @@ export default function DocumentsPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Widoczność</span>
+              <span style={f.label}>{t("documents.fieldVisibility")}</span>
               <select
                 style={f.input}
                 value={visibility}
                 onChange={(e) => setVisibility(e.target.value as typeof visibility)}
               >
-                <option value="management">tylko zarząd</option>
-                <option value="company">cała firma (kierowcy też)</option>
-                <option value="selected">wybrane osoby</option>
+                <option value="management">{t("documents.visManagement")}</option>
+                <option value="company">{t("documents.visCompany")}</option>
+                <option value="selected">{t("documents.visSelected")}</option>
               </select>
             </label>
             {visibility === "selected" && (
               <div style={{ ...styles.field, gridColumn: "1 / -1" }}>
-                <span style={f.label}>Kto widzi (zaznacz)</span>
+                <span style={f.label}>{t("documents.whoSees")}</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   {members.map((mm) => (
                     <label key={mm.user_id} style={{ fontSize: 13, display: "flex", gap: 4 }}>
@@ -287,13 +298,13 @@ export default function DocumentsPage() {
               </div>
             )}
             <label style={styles.field}>
-              <span style={f.label}>Pojazd (opcjonalnie)</span>
+              <span style={f.label}>{t("documents.fieldVehicleOptional")}</span>
               <select
                 style={f.input}
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
               >
-                <option value="">— brak —</option>
+                <option value="">{t("documents.optionNone")}</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.registration}
@@ -302,7 +313,7 @@ export default function DocumentsPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Termin ważności</span>
+              <span style={f.label}>{t("documents.fieldExpiry")}</span>
               <input
                 style={f.input}
                 type="date"
@@ -313,7 +324,7 @@ export default function DocumentsPage() {
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <Button onClick={upload} disabled={busy || !file}>
-              {busy ? "Wgrywanie…" : "⬆️ Wgraj dokument"}
+              {busy ? t("documents.uploading") : t("documents.upload")}
             </Button>
             {file && (
               <span style={styles.dim}>
@@ -333,7 +344,7 @@ export default function DocumentsPage() {
               onClick={() => setFilter(c)}
               style={filter === c ? styles.chipActive : styles.chip}
             >
-              {c === "all" ? "Wszystkie" : c}
+              {c === "all" ? t("common.all") : c}
             </button>
           ))}
           <span style={{ flex: 1 }} />
@@ -341,7 +352,7 @@ export default function DocumentsPage() {
             ⬇️ CSV
           </Button>
           <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
-            {filtered.length} z {docs.length}
+            {filtered.length} {t("documents.countOf")} {docs.length}
           </span>
         </div>
       )}
@@ -350,7 +361,7 @@ export default function DocumentsPage() {
         loading={loading}
         error={loadErr}
         empty={docs.length === 0}
-        emptyText="Brak dokumentów. Wgraj pierwszy plik."
+        emptyText={t("documents.empty")}
         onRetry={load}
       />
       {!loading && !loadErr && filtered.length > 0 && (
@@ -367,16 +378,13 @@ export default function DocumentsPage() {
                   <select
                     style={{ ...f.input, width: "auto", padding: "4px 8px", fontSize: 12 }}
                     value={d.visibility}
-                    title="Kto widzi dokument"
+                    title={t("documents.whoSeesTitle")}
                     onChange={async (e) => {
                       const next = e.target.value as DocumentMeta["visibility"];
                       // #audyt B5: „wybrane osoby" bez wskazanych osób ukryłoby dokument
                       // wszystkim (listę osób ustawia się przy wgrywaniu) — blokujemy zmianę.
                       if (next === "selected" && (d.allowed_user_ids?.length ?? 0) === 0) {
-                        toast(
-                          "Widoczność „wybrane osoby” ustaw przy wgrywaniu — inaczej dokument zniknąłby wszystkim.",
-                          "error",
-                        );
+                        toast(t("documents.selectedVisibilityWarning"), "error");
                         await load();
                         return;
                       }
@@ -389,19 +397,19 @@ export default function DocumentsPage() {
                         );
                         await load();
                       } catch {
-                        toast("Błąd zmiany widoczności.", "error");
+                        toast(t("documents.visibilityError"), "error");
                       }
                     }}
                   >
-                    <option value="management">🔒 zarząd</option>
-                    <option value="company">👥 firma</option>
-                    <option value="selected">👤 wybrani</option>
+                    <option value="management">{t("documents.visManagementShort")}</option>
+                    <option value="company">{t("documents.visCompanyShort")}</option>
+                    <option value="selected">{t("documents.visSelectedShort")}</option>
                   </select>
                   {exp && (
                     <Badge color={EXPIRY_COLOR[exp.level]}>
                       {exp.level === "expired"
-                        ? `przeterminowany (${-exp.daysLeft} dni)`
-                        : `ważny do ${d.expiry_date} (${exp.daysLeft} dni)`}
+                        ? `${t("documents.expiredPrefix")}${-exp.daysLeft}${t("documents.daysParen")}`
+                        : `${t("documents.validUntilPrefix")}${d.expiry_date} (${exp.daysLeft}${t("documents.daysParen")}`}
                     </Badge>
                   )}
                   <span style={{ flex: 1 }} />
@@ -414,9 +422,12 @@ export default function DocumentsPage() {
                 <div style={styles.cardBody}>
                   {regOf(d.vehicle_id) && <span style={styles.dim}>🚚 {regOf(d.vehicle_id)}</span>}
                   <span style={styles.dim}>{formatBytes(d.size_bytes)}</span>
-                  <span style={styles.dim}>dodano {d.created_at.slice(0, 10)}</span>
+                  <span style={styles.dim}>
+                    {t("documents.addedPrefix")}
+                    {d.created_at.slice(0, 10)}
+                  </span>
                   <Button variant="ghost" onClick={() => downloadDoc(d)}>
-                    ⬇️ Pobierz
+                    {t("documents.download")}
                   </Button>
                 </div>
               </div>

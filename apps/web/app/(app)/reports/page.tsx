@@ -12,11 +12,13 @@ import {
   toCsv,
   zodFieldErrors,
 } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { VehicleDiagram } from "@/components/VehicleDiagram";
@@ -26,27 +28,31 @@ import { useFleet } from "@/lib/useFleet";
 
 type Defect = Awaited<ReturnType<typeof listDefects>>[number];
 
-const SEV_LABEL: Record<string, string> = { low: "niska", medium: "średnia", high: "wysoka" };
+const SEV_LABEL: Record<string, MessageKey> = {
+  low: "reports.sev.low",
+  medium: "reports.sev.medium",
+  high: "reports.sev.high",
+};
 const SEV_COLOR: Record<string, string> = {
   low: palette.smoke,
   medium: "#f59e0b",
   high: palette.red,
 };
-const STATUS_LABEL: Record<string, string> = {
-  open: "Zgłoszone",
-  in_progress: "W naprawie",
-  resolved: "Naprawione",
+const STATUS_LABEL: Record<string, MessageKey> = {
+  open: "reports.status.open",
+  in_progress: "reports.status.inProgress",
+  resolved: "reports.status.resolved",
 };
 const STATUS_COLOR: Record<string, string> = {
   open: palette.red,
   in_progress: "#f59e0b",
   resolved: "#22c55e",
 };
-const STATUS_FILTERS: { value: "all" | DefectStatus; label: string }[] = [
-  { value: "all", label: "Wszystkie" },
-  { value: "open", label: "Zgłoszone" },
-  { value: "in_progress", label: "W naprawie" },
-  { value: "resolved", label: "Naprawione" },
+const STATUS_FILTERS: { value: "all" | DefectStatus; labelKey: MessageKey }[] = [
+  { value: "all", labelKey: "common.all" },
+  { value: "open", labelKey: "reports.status.open" },
+  { value: "in_progress", labelKey: "reports.status.inProgress" },
+  { value: "resolved", labelKey: "reports.status.resolved" },
 ];
 
 function download(filename: string, text: string) {
@@ -60,6 +66,7 @@ function download(filename: string, text: string) {
 }
 
 export default function ReportsPage() {
+  const t = useT();
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
   const toast = useToast();
@@ -79,8 +86,17 @@ export default function ReportsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | DefectStatus>("all");
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
 
+  const sevLabel = (sv: string): string => {
+    const key = SEV_LABEL[sv];
+    return key ? t(key) : sv;
+  };
+  const statusLabel = (st: string): string => {
+    const key = STATUS_LABEL[st];
+    return key ? t(key) : st;
+  };
+
   const setupMsg = setupMessage(source, {
-    noVehicles: "Dodaj pojazd w zakładce Pojazdy, aby zgłosić usterkę.",
+    noVehicles: t("reports.noVehicles"),
   });
 
   const load = useCallback(async () => {
@@ -92,11 +108,11 @@ export default function ReportsPage() {
       setCanManage(m?.role === "owner" || m?.role === "dispatcher");
       if (m) setDefects(await listDefects(sb, { limit: 500 }));
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać zgłoszeń.");
+      setLoadErr(e instanceof Error ? e.message : t("reports.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -146,8 +162,8 @@ export default function ReportsPage() {
       regOf(d.vehicle_id),
       d.part,
       d.side ?? "",
-      SEV_LABEL[d.severity] ?? d.severity,
-      STATUS_LABEL[d.status] ?? d.status,
+      sevLabel(d.severity),
+      statusLabel(d.status),
       d.dashboard_light ? "tak" : "",
       d.description,
       d.created_at?.slice(0, 10) ?? "",
@@ -181,17 +197,17 @@ export default function ReportsPage() {
         data: { user },
       } = await sb.auth.getUser();
       if (!m || !user) {
-        toast("Brak sesji/firmy.", "error");
+        toast(t("reports.noSession"), "error");
         return;
       }
       await insertDefect(sb, parsed.data, { companyId: m.companyId, reportedBy: user.id });
-      toast("Usterka zgłoszona.", "success");
+      toast(t("reports.defectReported"), "success");
       setDescription("");
       setDashboardLight(false);
       setPartTouched(false);
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zgłoszenia.", "error");
+      toast(e instanceof Error ? e.message : t("reports.reportError"), "error");
     }
   }
 
@@ -202,30 +218,27 @@ export default function ReportsPage() {
         data: { user },
       } = await sb.auth.getUser();
       await updateDefectStatus(sb, id, s, user?.id);
-      toast("Status zaktualizowany.", "success");
+      toast(t("reports.statusUpdated"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zmiany statusu.", "error");
+      toast(e instanceof Error ? e.message : t("reports.statusError"), "error");
     }
   }
 
   async function remove(id: string) {
-    if (!(await confirm("Usunąć zgłoszenie?"))) return;
+    if (!(await confirm(t("reports.deleteConfirm")))) return;
     try {
       await deleteDefect(getBrowserSupabase(), id);
-      toast("Zgłoszenie usunięte.", "success");
+      toast(t("reports.deleted"), "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd usuwania.", "error");
+      toast(e instanceof Error ? e.message : t("reports.deleteError"), "error");
     }
   }
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <PageHeader
-        title="Usterki pojazdu"
-        subtitle="Zgłaszaj uszkodzenia i to, co wymaga kontroli. Schemat auta zaznacza miejsce wg opisu; właściciel/mechanik zmienia status."
-      />
+      <PageHeader title={t("reports.title")} subtitle={t("reports.subtitle")} />
 
       {setupMsg && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {setupMsg}</p>}
 
@@ -240,13 +253,13 @@ export default function ReportsPage() {
         >
           <VehicleDiagram part={part} side={side} onZone={onZone} />
           <div style={{ fontSize: 11, color: palette.smoke, textAlign: "center", marginTop: 6 }}>
-            kliknij stronę / koła
+            {t("reports.clickHint")}
           </div>
         </div>
 
         <div style={styles.form}>
           <label style={styles.field}>
-            <span style={f.label}>Pojazd</span>
+            <span style={f.label}>{t("common.vehicle")}</span>
             <select
               style={f.input}
               value={vehicleId}
@@ -262,7 +275,7 @@ export default function ReportsPage() {
 
           <div style={{ display: "flex", gap: 12 }}>
             <label style={styles.field}>
-              <span style={f.label}>Układ / część</span>
+              <span style={f.label}>{t("reports.fieldPart")}</span>
               <select
                 style={f.input}
                 value={part}
@@ -279,7 +292,7 @@ export default function ReportsPage() {
               </select>
             </label>
             <label style={styles.field}>
-              <span style={f.label}>Strona</span>
+              <span style={f.label}>{t("reports.fieldSide")}</span>
               <select style={f.input} value={side} onChange={(e) => setSide(e.target.value)}>
                 {DEFECT_SIDES.map((s) => (
                   <option key={s} value={s}>
@@ -292,7 +305,7 @@ export default function ReportsPage() {
 
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
             <label style={styles.field}>
-              <span style={f.label}>Pilność</span>
+              <span style={f.label}>{t("reports.fieldSeverity")}</span>
               <select
                 style={f.input}
                 value={severity}
@@ -300,7 +313,7 @@ export default function ReportsPage() {
               >
                 {DEFECT_SEVERITIES.map((s) => (
                   <option key={s} value={s}>
-                    {SEV_LABEL[s]}
+                    {sevLabel(s)}
                   </option>
                 ))}
               </select>
@@ -311,33 +324,35 @@ export default function ReportsPage() {
                 checked={dashboardLight}
                 onChange={(e) => setDashboardLight(e.target.checked)}
               />{" "}
-              Kontrolka na desce rozdzielczej
+              {t("reports.dashboardLight")}
             </label>
           </div>
 
           <label style={styles.field}>
-            <span style={f.label}>Opis *</span>
+            <span style={f.label}>{t("reports.fieldDescription")}</span>
             <textarea
               style={{ ...f.input, minHeight: 80 }}
               value={description}
               onChange={(e) => onDescription(e.target.value)}
-              placeholder="np. klocki hamulcowe do wymiany, piszczą z lewej; zapaliła się kontrolka"
+              placeholder={t("reports.descriptionPlaceholder")}
             />
             {errors.description && <span style={styles.err}>{errors.description}</span>}
           </label>
 
           <Button onClick={submit} style={{ alignSelf: "flex-start", minWidth: 160 }}>
-            Zgłoś usterkę
+            {t("reports.submit")}
           </Button>
         </div>
       </div>
 
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 36 }}>Zgłoszenia</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 36 }}>
+        {t("reports.submissionsHeading")}
+      </h2>
       <ListStatus
         loading={loading}
         error={loadErr}
         empty={defects.length === 0}
-        emptyText="Brak zgłoszeń."
+        emptyText={t("reports.empty")}
         onRetry={load}
       />
       {!loading && !loadErr && defects.length > 0 && (
@@ -351,7 +366,7 @@ export default function ReportsPage() {
                   onClick={() => setStatusFilter(s.value)}
                   style={statusFilter === s.value ? styles.chipActive : styles.chip}
                 >
-                  {s.label}
+                  {t(s.labelKey)}
                 </button>
               ))}
             </div>
@@ -361,7 +376,7 @@ export default function ReportsPage() {
                 onChange={(e) => setVehicleFilter(e.target.value)}
                 style={styles.select}
               >
-                <option value="all">Wszystkie pojazdy</option>
+                <option value="all">{t("reports.allVehicles")}</option>
                 {vehicleOpts.map((id) => (
                   <option key={id} value={id}>
                     {regOf(id)}
@@ -374,13 +389,11 @@ export default function ReportsPage() {
               ⬇️ CSV
             </Button>
             <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
-              {filtered.length} z {defects.length}
+              {filtered.length} {t("reports.countOf")} {defects.length}
             </span>
           </div>
           {filtered.length === 0 ? (
-            <p style={{ color: palette.smoke, marginTop: 16 }}>
-              Brak wyników dla wybranych filtrów.
-            </p>
+            <p style={{ color: palette.smoke, marginTop: 16 }}>{t("reports.noFilterResults")}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
               {filtered.map((d) => (
@@ -393,23 +406,23 @@ export default function ReportsPage() {
                     </div>
                     <div style={{ color: palette.smoke, fontSize: 13 }}>{d.description}</div>
                   </div>
-                  <Badge color={SEV_COLOR[d.severity]}>{SEV_LABEL[d.severity] ?? d.severity}</Badge>
-                  <Badge color={STATUS_COLOR[d.status]}>{STATUS_LABEL[d.status] ?? d.status}</Badge>
+                  <Badge color={SEV_COLOR[d.severity]}>{sevLabel(d.severity)}</Badge>
+                  <Badge color={STATUS_COLOR[d.status]}>{statusLabel(d.status)}</Badge>
                   {canManage && (
                     <>
                       {d.status !== "in_progress" && d.status !== "resolved" && (
                         <Button variant="ghost" onClick={() => changeStatus(d.id, "in_progress")}>
-                          W naprawie
+                          {t("reports.status.inProgress")}
                         </Button>
                       )}
                       {d.status !== "resolved" && (
                         <Button variant="ghost" onClick={() => changeStatus(d.id, "resolved")}>
-                          Naprawione
+                          {t("reports.status.resolved")}
                         </Button>
                       )}
                       {d.status === "resolved" && (
                         <Button variant="ghost" onClick={() => changeStatus(d.id, "open")}>
-                          Otwórz
+                          {t("reports.reopen")}
                         </Button>
                       )}
                       <Button variant="danger" onClick={() => remove(d.id)}>
