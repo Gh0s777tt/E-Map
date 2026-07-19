@@ -7,7 +7,17 @@
  * • poradnik z realnych zdjęć VDO, wpis manualny, rozporządzenie 561/2006.
  */
 import {
+  type DriverRow,
+  getActiveMembership,
+  listDrivers,
+  listTachoDownloads,
+  type TachoDownloadRow,
+} from "@e-logistic/api";
+import {
   aetrStatus,
+  checkDownload,
+  DOWNLOAD_LIMITS,
+  type DownloadStatus,
   formatTachoMin,
   type InfringementKind,
   type InfringementSeverity,
@@ -21,7 +31,7 @@ import { palette } from "@e-logistic/ui";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   Linking,
@@ -35,6 +45,7 @@ import {
 import { TachoJournal } from "../components/TachoJournal";
 import { Card, Chip, SectionTitle, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
+import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import {
   addKmToday,
   cancelBreakAlerts,
@@ -47,6 +58,7 @@ import {
   scheduleBreakAlerts,
   setLiveActivity,
 } from "../lib/tachoLive";
+import { useFleet } from "../lib/useFleet";
 
 const BASE = "https://e-logistic-one.vercel.app/tacho";
 const PDF_URL = `${BASE}/rozporzadzenie-561-2006.pdf`;
@@ -104,6 +116,18 @@ const SEVERITY_COLOR: Record<InfringementSeverity, string> = {
   very_serious: "#ef4444",
 };
 
+// Terminy sczytań (581/2010) — kolor i etykieta badge'a per status z silnika `checkDownload`.
+const DL_STATUS_COLOR: Record<DownloadStatus, string> = {
+  ok: "#22c55e",
+  soon: "#f59e0b",
+  overdue: "#ef4444",
+};
+const DL_STATUS_LABEL: Record<DownloadStatus, MobileMessageKey> = {
+  ok: "m.tacho.dl.statusOk",
+  soon: "m.tacho.dl.statusSoon",
+  overdue: "m.tacho.dl.statusOverdue",
+};
+
 const colorFor = (min: number) => (min <= 0 ? "#ef4444" : min <= 30 ? "#f59e0b" : "#22c55e");
 
 const fmtDT = (ms: number) => {
@@ -144,6 +168,129 @@ function Stepper({
       >
         <Text style={s.stepBtnText}>+</Text>
       </Pressable>
+    </View>
+  );
+}
+
+/**
+ * Faza 2 tacho: terminy sczytań (581/2010) — WYŁĄCZNIE podgląd dla właściciela/
+ * dyspozytora. Karta kierowcy ≤ 28 dni, jednostka pojazdowa ≤ 90 dni; datę
+ * ostatniego pobrania ustawia firma na webie, telefon tylko POKAZUJE status.
+ * Ukrywa się dla kierowcy, offline oraz gdy tabela `tacho_downloads` nieobecna.
+ */
+function TachoDownloadsStatus() {
+  const t = useT();
+  const { vehicles } = useFleet();
+  const [drivers, setDrivers] = useState<DriverRow[]>([]);
+  const [rows, setRows] = useState<TachoDownloadRow[]>([]);
+  const [canView, setCanView] = useState(false);
+  // false dopóki tabela/migracja nieobecna (zapytanie rzuca) → sekcja ukryta zamiast błędu.
+  const [available, setAvailable] = useState(false);
+
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    let alive = true;
+    (async () => {
+      try {
+        const sb = getSupabase();
+        const m = await getActiveMembership(sb);
+        if (!m || !alive) return;
+        if (m.role !== "owner" && m.role !== "dispatcher") return; // read-only, tylko zarząd
+        setCanView(true);
+        listDrivers(sb, m.companyId)
+          .then((d) => {
+            if (alive) setDrivers(d);
+          })
+          .catch(() => {}); // brak kartoteki → etykiety zejdą do skróconego id
+        try {
+          const r = await listTachoDownloads(sb, m.companyId);
+          if (alive) {
+            setRows(r);
+            setAvailable(true);
+          }
+        } catch {
+          if (alive) setAvailable(false); // tabela tacho_downloads jeszcze nie nałożona
+        }
+      } catch {
+        // offline / brak firmy → sekcja się nie pokaże
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const items = useMemo(() => {
+    const n = new Date();
+    const today = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+    const dName = (id: string | null) => {
+      if (!id) return "—";
+      const d = drivers.find((x) => x.id === id);
+      return d ? `${d.first_name} ${d.last_name}`.trim() || id.slice(0, 8) : id.slice(0, 8);
+    };
+    const vReg = (id: string | null) =>
+      id ? (vehicles.find((v) => v.id === id)?.registration ?? id.slice(0, 8)) : "—";
+    return rows
+      .map((r) => ({
+        row: r,
+        check: checkDownload(r.kind, r.last_download, today),
+        label: r.kind === "card" ? dName(r.driver_id) : vReg(r.vehicle_id),
+      }))
+      .sort((a, b) => a.check.daysLeft - b.check.daysLeft);
+  }, [rows, drivers, vehicles]);
+
+  const overdue = items.filter((i) => i.check.status === "overdue").length;
+  const soon = items.filter((i) => i.check.status === "soon").length;
+  const attention = overdue + soon;
+  const accent = overdue > 0 ? "#ef4444" : "#f59e0b";
+
+  // Nic dla kierowcy, przy braku tabeli i dla pustej listy — sekcja tylko gdy jest co pokazać.
+  if (!canView || !available || items.length === 0) return null;
+
+  const counts: string[] = [];
+  if (overdue > 0) counts.push(`${overdue} ${t("m.tacho.dl.statusOverdue")}`);
+  if (soon > 0) counts.push(`${soon} ${t("m.tacho.dl.statusSoon")}`);
+
+  return (
+    <View style={[s.inspBox, { borderColor: attention > 0 ? `${accent}88` : "#22c55e55" }]}>
+      <View style={s.inspHeader}>
+        <Text style={s.inspHeading}>🗓️ {t("m.tacho.dl.heading")}</Text>
+        {attention > 0 && (
+          <View style={[s.inspCountPill, { backgroundColor: accent }]}>
+            <Text style={s.inspCountText}>{attention}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={s.hint}>
+        {t("m.tacho.dl.limits", { card: DOWNLOAD_LIMITS.cardDays, vu: DOWNLOAD_LIMITS.vuDays })}
+      </Text>
+      {counts.length > 0 && (
+        <Text style={[s.dlSummary, { color: accent }]}>{counts.join(" · ")}</Text>
+      )}
+      {items.map(({ row, check, label }) => (
+        <View key={row.id} style={s.dlRow}>
+          <View style={[s.dlBadge, { backgroundColor: DL_STATUS_COLOR[check.status] }]}>
+            <Text style={s.dlBadgeText}>{t(DL_STATUS_LABEL[check.status])}</Text>
+          </View>
+          <View style={s.dlBody}>
+            <Text style={s.dlLabel} numberOfLines={1}>
+              {label}{" "}
+              <Text style={s.dlKind}>
+                · {row.kind === "card" ? t("m.tacho.dl.card") : t("m.tacho.dl.vu")}
+              </Text>
+            </Text>
+            <Text style={s.dlMeta}>
+              {t("m.tacho.dl.lastPrefix")} {check.lastISO} · {t("m.tacho.dl.duePrefix")}{" "}
+              {check.dueISO} (
+              {check.daysLeft < 0
+                ? t("m.tacho.dl.overdueByDays", { days: -check.daysLeft })
+                : t("m.tacho.dl.dueInDays", { days: check.daysLeft })}
+              )
+            </Text>
+          </View>
+        </View>
+      ))}
+      <Text style={s.inspDisclaimer}>{t("m.tacho.dl.disclaimer")}</Text>
     </View>
   );
 }
@@ -347,6 +494,9 @@ export default function TachoScreen() {
         <Text style={s.worktimeText}>📋 {t("m.tacho.worktime")}</Text>
         <Text style={s.hint}>{t("m.tacho.worktimeHint")}</Text>
       </Pressable>
+
+      {/* Terminy sczytań (581/2010) — read-only, tylko właściciel/dyspozytor */}
+      <TachoDownloadsStatus />
 
       {/* #329: Licznik LIVE */}
       <SectionTitle>{t("m.tacho.live")}</SectionTitle>
@@ -779,4 +929,17 @@ const s = StyleSheet.create({
     gap: 4,
   },
   worktimeText: { color: palette.offWhite, fontSize: 14, fontWeight: "800" },
+  dlSummary: { fontSize: 12.5, fontWeight: "800" },
+  dlRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  dlBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginTop: 1 },
+  dlBadgeText: {
+    color: palette.black,
+    fontSize: 10.5,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+  dlBody: { flex: 1, gap: 2 },
+  dlLabel: { color: palette.offWhite, fontSize: 13, fontWeight: "700" },
+  dlKind: { color: palette.smoke, fontSize: 12, fontWeight: "600" },
+  dlMeta: { color: palette.smoke, fontSize: 12, lineHeight: 16 },
 });
