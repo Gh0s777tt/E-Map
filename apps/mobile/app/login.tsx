@@ -6,6 +6,7 @@
  */
 import { palette } from "@e-logistic/ui";
 import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -76,16 +77,26 @@ export default function Login() {
     setError(null);
     setBusy("apple");
     try {
+      // Supabase wymaga nonce przy natywnym Apple: hashowany (SHA256) idzie do Apple,
+      // surowy do Supabase — Supabase hashuje surowy i porównuje z claimem w tokenie.
+      // Bez tego token był odrzucany → logowanie Apple nie działało.
+      const rawNonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce,
+      );
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: hashedNonce,
       });
       if (!credential.identityToken) throw new Error(t("m.login.appleNoToken"));
       const { error: e } = await getSupabase().auth.signInWithIdToken({
         provider: "apple",
         token: credential.identityToken,
+        nonce: rawNonce,
       });
       if (e) setError(friendlyOAuthError(e.message));
     } catch (e) {
