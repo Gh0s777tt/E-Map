@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -50,6 +51,7 @@ function toEntry(r: WorkTimeRecord): WorkTimeEntry {
 }
 
 export default function WorkTimePage() {
+  const t = useT();
   const confirm = useConfirm();
   // #271 · B3: wybór kierowcy steruje zestawieniem (filtr po driver_id) i etykietą zapisu ("" = wszyscy).
   const [filterDriverId, setFilterDriverId] = useState("");
@@ -85,11 +87,11 @@ export default function WorkTimePage() {
           .catch(() => {});
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać ewidencji.");
+      setErr(e instanceof Error ? e.message : t("workTime.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -137,7 +139,7 @@ export default function WorkTimePage() {
     if (!companyId) return;
     const valid = rows.filter((r) => r.driving > 0 || r.otherWork > 0 || r.rest > 0);
     if (valid.length === 0) {
-      setErr("Uzupełnij co najmniej jeden dzień.");
+      setErr(t("workTime.fillAtLeastOne"));
       return;
     }
     setBusy(true);
@@ -163,19 +165,19 @@ export default function WorkTimePage() {
       setRows([emptyRow()]);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zapisu.");
+      setErr(e instanceof Error ? e.message : t("workTime.saveError"));
     } finally {
       setBusy(false);
     }
   }
 
   async function removeSaved(r: WorkTimeRecord) {
-    if (!(await confirm("Usunąć ten dzień z ewidencji?"))) return;
+    if (!(await confirm(t("workTime.deleteConfirm")))) return;
     try {
       await deleteWorkTimeEntry(getBrowserSupabase(), r.id);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd usuwania.");
+      setErr(e instanceof Error ? e.message : t("workTime.deleteError"));
     }
   }
 
@@ -217,10 +219,7 @@ export default function WorkTimePage() {
   if (loading) {
     return (
       <div style={{ maxWidth: 980 }}>
-        <PageHeader
-          title="Czas pracy kierowcy"
-          subtitle="Ewidencja godzin jazdy, innej pracy i odpoczynku."
-        />
+        <PageHeader title={t("workTime.title")} subtitle={t("workTime.subtitleShort")} />
         <ListStatus loading error={null} />
       </div>
     );
@@ -228,11 +227,8 @@ export default function WorkTimePage() {
   if (!canManage) {
     return (
       <div style={{ maxWidth: 980 }}>
-        <PageHeader
-          title="Czas pracy kierowcy"
-          subtitle="Ewidencja godzin jazdy, innej pracy i odpoczynku."
-        />
-        <p style={{ color: palette.smoke }}>Dostęp tylko dla właściciela / spedytora.</p>
+        <PageHeader title={t("workTime.title")} subtitle={t("workTime.subtitleShort")} />
+        <p style={{ color: palette.smoke }}>{t("workTime.accessOwnerDispatcher")}</p>
       </div>
     );
   }
@@ -241,10 +237,7 @@ export default function WorkTimePage() {
 
   return (
     <div style={{ maxWidth: 980 }}>
-      <PageHeader
-        title="Czas pracy kierowcy"
-        subtitle="Ewidencja godzin jazdy / innej pracy / odpoczynku z podsumowaniem. Dzienny limit jazdy (10 h) tylko sygnalizuje przekroczenie — to nie interpretacja prawna."
-      />
+      <PageHeader title={t("workTime.title")} subtitle={t("workTime.subtitle")} />
 
       {companyId && (
         <TachoAutoSection
@@ -256,13 +249,13 @@ export default function WorkTimePage() {
       )}
 
       <div style={{ ...f.field, maxWidth: 320, marginBottom: 14 }}>
-        <span style={f.label}>Kierowca (zestawienie i zapis)</span>
+        <span style={f.label}>{t("workTime.driverFilterLabel")}</span>
         <select
           style={f.input}
           value={filterDriverId}
           onChange={(e) => setFilterDriverId(e.target.value)}
         >
-          <option value="">— wszyscy —</option>
+          <option value="">{t("workTime.allDrivers")}</option>
           {driversList.map((d) => (
             <option key={d.id} value={d.id}>
               {`${d.first_name} ${d.last_name}`.trim()}
@@ -273,11 +266,11 @@ export default function WorkTimePage() {
 
       <div style={f.card}>
         <div style={{ ...f.listRow, color: palette.smoke, fontSize: 12, fontWeight: 700 }}>
-          <span style={{ width: 140 }}>Data</span>
-          <span style={{ width: 90 }}>Jazda</span>
-          <span style={{ width: 100 }}>Inna praca</span>
-          <span style={{ width: 110 }}>Odpoczynek</span>
-          <span style={{ width: 90 }}>Praca Σ</span>
+          <span style={{ width: 140 }}>{t("common.date")}</span>
+          <span style={{ width: 90 }}>{t("workTime.colDriving")}</span>
+          <span style={{ width: 100 }}>{t("workTime.colOtherWork")}</span>
+          <span style={{ width: 110 }}>{t("workTime.colRest")}</span>
+          <span style={{ width: 90 }}>{t("workTime.colWorkSum")}</span>
           <span style={{ flex: 1 }} />
           <span style={{ width: 36 }} />
         </div>
@@ -323,7 +316,9 @@ export default function WorkTimePage() {
               </span>
               <span style={{ flex: 1 }}>
                 {over && (
-                  <span style={{ color: palette.red, fontSize: 12 }}>⚠️ jazda &gt; 10 h</span>
+                  <span style={{ color: palette.red, fontSize: 12 }}>
+                    ⚠️ {t("workTime.driveOver10h")}
+                  </span>
                 )}
               </span>
               <button
@@ -332,7 +327,7 @@ export default function WorkTimePage() {
                   setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : rs))
                 }
                 style={styles.del}
-                aria-label="Usuń wiersz"
+                aria-label={t("workTime.removeRow")}
               >
                 ✕
               </button>
@@ -345,18 +340,20 @@ export default function WorkTimePage() {
 
       <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <Button variant="ghost" onClick={() => setRows((rs) => [...rs, emptyRow()])}>
-          ➕ Dodaj dzień
+          ➕ {t("workTime.addDay")}
         </Button>
         <span style={{ flex: 1 }} />
         <Button onClick={saveDrafts} disabled={busy || draft.summary.days === 0}>
-          {busy ? "Zapisuję…" : "💾 Zapisz do ewidencji"}
+          {busy ? t("common.saving") : `💾 ${t("workTime.saveToRecord")}`}
         </Button>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", marginTop: 28, marginBottom: 8 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Ewidencja</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{t("workTime.recordHeading")}</h2>
         <span style={{ color: palette.smoke, fontSize: 13, marginLeft: 8 }}>
-          {filteredSaved.length > 0 ? `${filteredSaved.length} dni` : "brak zapisanych"}
+          {filteredSaved.length > 0
+            ? `${filteredSaved.length} ${t("workTime.daysSuffix")}`
+            : t("workTime.noneSaved")}
         </span>
         <span style={{ flex: 1 }} />
         <Button variant="ghost" onClick={exportCsv} disabled={filteredSaved.length === 0}>
@@ -378,13 +375,17 @@ export default function WorkTimePage() {
                 <span style={{ ...f.cell, width: 90 }}>🛠️ {rec.other_work} h</span>
                 <span style={{ ...f.cell, width: 90 }}>😴 {rec.rest} h</span>
                 <span style={{ flex: 1 }}>
-                  {over && <span style={{ color: palette.red, fontSize: 12 }}>⚠️ &gt; 10 h</span>}
+                  {over && (
+                    <span style={{ color: palette.red, fontSize: 12 }}>
+                      ⚠️ {t("workTime.over10hShort")}
+                    </span>
+                  )}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeSaved(rec)}
                   style={styles.del}
-                  aria-label="Usuń"
+                  aria-label={t("common.delete")}
                 >
                   🗑️
                 </button>
@@ -394,25 +395,27 @@ export default function WorkTimePage() {
         </div>
       ) : (
         <p style={{ color: palette.smoke }}>
-          {filterDriverId
-            ? "Brak zapisanych dni dla wybranego kierowcy."
-            : "Brak zapisanych dni — dodaj powyżej i zapisz do ewidencji."}
+          {filterDriverId ? t("workTime.emptyForDriver") : t("workTime.emptyGeneral")}
         </p>
       )}
 
       {s.days > 0 && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-          <Stat label="Dni" value={String(s.days)} />
-          <Stat label="Jazda Σ" value={`${s.driving} h`} />
-          <Stat label="Inna praca Σ" value={`${s.otherWork} h`} />
-          <Stat label="Odpoczynek Σ" value={`${s.rest} h`} />
-          <Stat label="Praca łącznie" value={`${s.workTotal} h`} accent={palette.red} />
+          <Stat label={t("workTime.statDays")} value={String(s.days)} />
+          <Stat label={t("workTime.statDriving")} value={`${s.driving} h`} />
+          <Stat label={t("workTime.statOtherWork")} value={`${s.otherWork} h`} />
+          <Stat label={t("workTime.statRest")} value={`${s.rest} h`} />
           <Stat
-            label="Śr. jazda/dzień"
+            label={t("workTime.statWorkTotal")}
+            value={`${s.workTotal} h`}
+            accent={palette.red}
+          />
+          <Stat
+            label={t("workTime.statAvgDriving")}
             value={s.avgDrivingPerDay != null ? `${s.avgDrivingPerDay} h` : "—"}
           />
           <Stat
-            label="Dni > limitu jazdy"
+            label={t("workTime.statOverDays")}
             value={String(s.overDrivingDays)}
             accent={s.overDrivingDays > 0 ? palette.red : "#22c55e"}
           />
@@ -438,37 +441,36 @@ export default function WorkTimePage() {
               flexWrap: "wrap",
             }}
           >
-            <strong style={{ fontSize: 14 }}>⏱️ Czas pracy WTD (2002/15/WE)</strong>
+            <strong style={{ fontSize: 14 }}>⏱️ {t("workTime.wtd.heading")}</strong>
             <span
               style={{ color: wtd.avgOk ? "#22c55e" : palette.red, fontWeight: 800, fontSize: 15 }}
             >
-              śr. {wtd.avgWeeklyH} h / {WTD_LIMITS.weeklyAvg} h
+              {t("workTime.wtd.avgPrefix")} {wtd.avgWeeklyH} h / {WTD_LIMITS.weeklyAvg} h
             </span>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
             <Stat
-              label={`Okres (${wtd.weeksCounted}/${wtd.referenceWeeks} tyg.)`}
+              label={`${t("workTime.wtd.periodPrefix")}${wtd.weeksCounted}/${wtd.referenceWeeks} ${t("workTime.wtd.weeksSuffix")}`}
               value={`${wtd.totalWorkingH} h`}
             />
             <Stat
-              label="Najwyższy tydzień"
+              label={t("workTime.wtd.maxWeek")}
               value={`${wtd.maxWeeklyH} h`}
               accent={wtd.weeksOver60.length ? palette.red : undefined}
             />
             <Stat
-              label="Tygodnie > 60 h"
+              label={t("workTime.wtd.weeksOver60")}
               value={String(wtd.weeksOver60.length)}
               accent={wtd.weeksOver60.length ? palette.red : "#22c55e"}
             />
             <Stat
-              label="Budżet do średniej 48 h"
+              label={t("workTime.wtd.budget48")}
               value={`${wtd.budgetToAvgH} h`}
               accent={wtd.budgetToAvgH < 0 ? palette.red : "#22c55e"}
             />
           </div>
           <p style={{ color: palette.smoke, fontSize: 11, margin: "12px 0 0" }}>
-            Reżim ODRĘBNY od 561/2006: średnia ≤ 48 h/tydz. w okresie 17 tyg., max 60 h/tydz. Pomoc
-            orientacyjna.
+            {t("workTime.wtd.disclaimer")}
           </p>
         </div>
       )}
@@ -498,7 +500,7 @@ export default function WorkTimePage() {
               flexWrap: "wrap",
             }}
           >
-            <strong style={{ fontSize: 14 }}>🛏 Saldo kompensacji odpoczynków</strong>
+            <strong style={{ fontSize: 14 }}>🛏 {t("workTime.comp.heading")}</strong>
             <span
               style={{
                 color:
@@ -511,7 +513,9 @@ export default function WorkTimePage() {
                 fontSize: 15,
               }}
             >
-              {comp.outstandingH > 0 ? `${comp.outstandingH} h do oddania` : "✅ brak długów"}
+              {comp.outstandingH > 0
+                ? `${comp.outstandingH} ${t("workTime.comp.toRepaySuffix")}`
+                : `✅ ${t("workTime.comp.noDebts")}`}
             </span>
           </div>
           {comp.debts.filter((d) => !d.settled).length > 0 && (
@@ -533,18 +537,20 @@ export default function WorkTimePage() {
                   >
                     <span style={{ fontWeight: 700, minWidth: 44 }}>{d.owedH} h</span>
                     <span style={{ flex: 1, color: palette.smoke }}>
-                      termin oddania {new Date(d.deadlineMs).toLocaleDateString("pl-PL")}
+                      {t("workTime.comp.repayBy")}{" "}
+                      {new Date(d.deadlineMs).toLocaleDateString("pl-PL")}
                     </span>
                     {d.overdue && (
-                      <span style={{ color: palette.red, fontWeight: 700 }}>⚠️ po terminie</span>
+                      <span style={{ color: palette.red, fontWeight: 700 }}>
+                        ⚠️ {t("workTime.comp.overdue")}
+                      </span>
                     )}
                   </li>
                 ))}
             </ul>
           )}
           <p style={{ color: palette.smoke, fontSize: 11, margin: "12px 0 0" }}>
-            561/2006 art. 8.6 — skrócony odpoczynek tygodniowy (&lt; 45 h) oddaje się en bloc do
-            końca 3. tygodnia. Dane z dziennika tacho kierowcy. Pomoc orientacyjna.
+            {t("workTime.comp.disclaimer")}
           </p>
         </div>
       )}

@@ -14,9 +14,11 @@ import {
   upsertTachoDownload,
 } from "@e-logistic/api";
 import { checkDownload, DOWNLOAD_LIMITS, type DownloadStatus } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as f from "@/components/formStyles";
+import { useT } from "@/components/LocaleProvider";
 import { Button } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -27,10 +29,10 @@ const STATUS_COLOR: Record<DownloadStatus, string> = {
   soon: "#f59e0b",
   overdue: "#ef4444",
 };
-const STATUS_LABEL: Record<DownloadStatus, string> = {
-  ok: "ok",
-  soon: "wkrótce",
-  overdue: "po terminie",
+const STATUS_LABEL: Record<DownloadStatus, MessageKey> = {
+  ok: "tacho.downloadStatus.ok",
+  soon: "tacho.downloadStatus.soon",
+  overdue: "tacho.downloadStatus.overdue",
 };
 
 const st: Record<string, React.CSSProperties> = {
@@ -61,7 +63,9 @@ const st: Record<string, React.CSSProperties> = {
 };
 
 export function TachoDownloadsSection() {
+  const t = useT();
   const { vehicles } = useFleet();
+  const statusLabel = (s: DownloadStatus) => t(STATUS_LABEL[s]);
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [rows, setRows] = useState<TachoDownloadRow[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -138,7 +142,7 @@ export function TachoDownloadsSection() {
       setSubjectId("");
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zapisu.");
+      setErr(e instanceof Error ? e.message : t("tacho.dl.saveError"));
     } finally {
       setBusy(false);
     }
@@ -157,17 +161,16 @@ export function TachoDownloadsSection() {
 
   return (
     <>
-      <h3 style={st.h3}>🗓️ Terminy sczytań tachografu</h3>
+      <h3 style={st.h3}>🗓️ {t("tacho.dl.heading")}</h3>
       <p style={{ color: palette.smoke, fontSize: 13.5, maxWidth: 760, lineHeight: 1.55 }}>
-        Karta kierowcy co ≤ {DOWNLOAD_LIMITS.cardDays} dni, jednostka pojazdowa (tachograf) co ≤{" "}
-        {DOWNLOAD_LIMITS.vuDays} dni (581/2010). Wpisz datę ostatniego pobrania — policzymy termin i
-        status.
+        {t("tacho.dl.introCardPrefix")} {DOWNLOAD_LIMITS.cardDays} {t("tacho.dl.introVuMid")}{" "}
+        {DOWNLOAD_LIMITS.vuDays} {t("tacho.dl.introSuffix")}
         {(overdue > 0 || soon > 0) && (
           <span style={{ fontWeight: 700, color: overdue ? palette.red : "#f59e0b" }}>
             {" "}
-            {overdue > 0 && `${overdue} po terminie`}
+            {overdue > 0 && `${overdue} ${t("tacho.downloadStatus.overdue")}`}
             {overdue > 0 && soon > 0 && " · "}
-            {soon > 0 && `${soon} wkrótce`}.
+            {soon > 0 && `${soon} ${t("tacho.downloadStatus.soon")}`}.
           </span>
         )}
       </p>
@@ -175,7 +178,7 @@ export function TachoDownloadsSection() {
       <div style={st.box}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
           <label style={{ ...f.field, minWidth: 150 }}>
-            <span style={f.label}>Rodzaj</span>
+            <span style={f.label}>{t("tacho.dl.kind")}</span>
             <select
               style={f.input}
               value={kind}
@@ -184,18 +187,20 @@ export function TachoDownloadsSection() {
                 setSubjectId("");
               }}
             >
-              <option value="card">Karta kierowcy (28 dni)</option>
-              <option value="vu">Tachograf pojazdu (90 dni)</option>
+              <option value="card">{t("tacho.dl.optCard")}</option>
+              <option value="vu">{t("tacho.dl.optVu")}</option>
             </select>
           </label>
           <label style={{ ...f.field, minWidth: 180 }}>
-            <span style={f.label}>{kind === "card" ? "Kierowca" : "Pojazd"}</span>
+            <span style={f.label}>
+              {kind === "card" ? t("tacho.dl.driver") : t("common.vehicle")}
+            </span>
             <select
               style={f.input}
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
             >
-              <option value="">— wybierz —</option>
+              <option value="">{t("tacho.dl.select")}</option>
               {kind === "card"
                 ? drivers.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -210,7 +215,7 @@ export function TachoDownloadsSection() {
             </select>
           </label>
           <label style={{ ...f.field, minWidth: 150 }}>
-            <span style={f.label}>Data pobrania</span>
+            <span style={f.label}>{t("tacho.dl.downloadDate")}</span>
             <input
               type="date"
               style={f.input}
@@ -219,7 +224,7 @@ export function TachoDownloadsSection() {
             />
           </label>
           <Button onClick={save} disabled={busy || !subjectId}>
-            {busy ? "Zapisuję…" : "Zapisz"}
+            {busy ? t("common.saving") : t("common.save")}
           </Button>
         </div>
         {err && <p style={{ color: palette.red, fontSize: 13, marginTop: 8 }}>{err}</p>}
@@ -229,21 +234,24 @@ export function TachoDownloadsSection() {
             {items.map(({ row, check, label }) => (
               <div key={row.id} style={st.row}>
                 <span style={{ ...st.badge, background: STATUS_COLOR[check.status] }}>
-                  {STATUS_LABEL[check.status]}
+                  {statusLabel(check.status)}
                 </span>
                 <span style={{ fontWeight: 700, minWidth: 120 }}>{label}</span>
                 <span style={{ color: palette.smoke, fontSize: 13 }}>
-                  {row.kind === "card" ? "karta" : "tachograf"}
+                  {row.kind === "card" ? t("tacho.dl.card") : t("tacho.dl.tacho")}
                 </span>
                 <span style={{ flex: 1, color: palette.smoke, fontSize: 13 }}>
-                  ostatnie {check.lastISO} · termin {check.dueISO} (
-                  {check.daysLeft < 0 ? `${-check.daysLeft} dni po` : `za ${check.daysLeft} dni`})
+                  {t("tacho.dl.last")} {check.lastISO} · {t("tacho.dl.due")} {check.dueISO} (
+                  {check.daysLeft < 0
+                    ? `${-check.daysLeft} ${t("tacho.dl.daysOver")}`
+                    : `${t("tacho.dl.inPrefix")} ${check.daysLeft} ${t("tacho.daysSuffix")}`}
+                  )
                 </span>
                 <button
                   type="button"
                   onClick={() => remove(row.id)}
                   style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
-                  aria-label="Usuń"
+                  aria-label={t("common.delete")}
                 >
                   🗑️
                 </button>
@@ -251,12 +259,10 @@ export function TachoDownloadsSection() {
             ))}
           </div>
         ) : (
-          <p style={{ color: palette.smoke, fontSize: 13, marginTop: 12 }}>
-            Brak wpisów — dodaj datę ostatniego sczytania powyżej.
-          </p>
+          <p style={{ color: palette.smoke, fontSize: 13, marginTop: 12 }}>{t("tacho.dl.empty")}</p>
         )}
         <p style={{ color: palette.smoke, fontSize: 11, marginTop: 10 }}>
-          Pomoc orientacyjna — wiążące są rzeczywiste pobrania danych i wpisy w tachografie.
+          {t("tacho.dl.disclaimer")}
         </p>
       </div>
     </>

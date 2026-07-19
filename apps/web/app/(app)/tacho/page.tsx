@@ -20,8 +20,10 @@ import {
   planWeeklyRest,
   round2,
 } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -30,16 +32,16 @@ import { TachoDownloadsSection } from "./TachoDownloadsSection";
 const PDF = "/tacho/rozporzadzenie-561-2006.pdf";
 
 // Wirtualny inspektor 561 — etykiety naruszeń i skala wagi (2006/22/WE zał. III).
-const INFRINGEMENT_LABEL: Record<InfringementKind, string> = {
-  "continuous-driving": "Jazda ciągła bez przerwy (4 h 30)",
-  "daily-driving": "Jazda dobowa",
-  "weekly-driving": "Jazda tygodniowa (56 h)",
-  "two-week-driving": "Jazda w dwa tygodnie (90 h)",
+const INFRINGEMENT_LABEL: Record<InfringementKind, MessageKey> = {
+  "continuous-driving": "tacho.infr.continuousDriving",
+  "daily-driving": "tacho.infr.dailyDriving",
+  "weekly-driving": "tacho.infr.weeklyDriving",
+  "two-week-driving": "tacho.infr.twoWeekDriving",
 };
-const SEVERITY_LABEL: Record<InfringementSeverity, string> = {
-  minor: "drobne",
-  serious: "poważne",
-  very_serious: "bardzo poważne",
+const SEVERITY_LABEL: Record<InfringementSeverity, MessageKey> = {
+  minor: "tacho.severity.minor",
+  serious: "tacho.severity.serious",
+  very_serious: "tacho.severity.verySerious",
 };
 const SEVERITY_COLOR: Record<InfringementSeverity, string> = {
   minor: "#f59e0b",
@@ -47,73 +49,38 @@ const SEVERITY_COLOR: Record<InfringementSeverity, string> = {
   very_serious: "#ef4444",
 };
 
-const DRIVING_SHOTS = [
-  {
-    file: "jazda-ekran-glowny.jpg",
-    caption:
-      "Ekran główny w trasie: aktualna godzina, prędkość, czynność rejestrowana (jazda) i przebieg pojazdu.",
-  },
-  {
-    file: "jazda-do-przerwy.jpg",
-    caption:
-      "Licznik w trasie: u góry czas jazdy pozostały do następnej wymaganej przerwy, u dołu minimalna wymagana przerwa (45 min albo 30, jeśli wcześniej była 15).",
-  },
-  {
-    file: "jazda-cykl-4h30.jpg",
-    caption:
-      "Cykl 4 h 30: po lewej wykorzystany czas jazdy (kierowca 1 i 2), po prawej odpoczynek wykonany w bieżącym cyklu.",
-  },
+const DRIVING_SHOTS: { file: string; caption: MessageKey }[] = [
+  { file: "jazda-ekran-glowny.jpg", caption: "tacho.shot.drivingMain" },
+  { file: "jazda-do-przerwy.jpg", caption: "tacho.shot.drivingToBreak" },
+  { file: "jazda-cykl-4h30.jpg", caption: "tacho.shot.drivingCycle4h30" },
 ];
-const STOP_SHOTS = [
-  {
-    file: "postoj-ekran-glowny.jpg",
-    caption:
-      "Ekran główny na postoju: godzina, prędkość 0 km/h, aktualna czynność (odpoczynek) i przebieg pojazdu.",
-  },
-  {
-    file: "postoj-czas-utc.jpg",
-    caption:
-      "Czas UTC — tachograf rejestruje wszystko w UTC: w Polsce latem −2 h, zimą −1 h względem czasu lokalnego.",
-  },
-  {
-    file: "postoj-kredyty-9h-10h.jpg",
-    caption:
-      "Kredyty tygodnia: pozostałe skrócone odpoczynki dobowe 9 h (max 3) i wydłużone czasy jazdy do 10 h (max 2).",
-  },
-  {
-    file: "postoj-limity-tygodnia.jpg",
-    caption:
-      "Limity tygodnia: pozostały czas jazdy w tygodniu (56 h; w dwóch tygodniach 90 h), czas do rozpoczęcia odpoczynku tygodniowego (max 144 h) i czas do jego wykonania.",
-  },
-  {
-    file: "postoj-limity-doby.jpg",
-    caption:
-      "Limity doby: pozostały czas jazdy i pracy w bieżącej dobie oraz czas do wykonania minimalnego odpoczynku dobowego (11 h regularny / 9 h skrócony).",
-  },
-  {
-    file: "postoj-do-odpoczynku.jpg",
-    caption:
-      "Odpoczynek: pozostały czas do wykonania minimalnego wymaganego odpoczynku i czas jazdy dostępny po jego zakończeniu.",
-  },
+const STOP_SHOTS: { file: string; caption: MessageKey }[] = [
+  { file: "postoj-ekran-glowny.jpg", caption: "tacho.shot.stopMain" },
+  { file: "postoj-czas-utc.jpg", caption: "tacho.shot.stopUtc" },
+  { file: "postoj-kredyty-9h-10h.jpg", caption: "tacho.shot.stopCredits" },
+  { file: "postoj-limity-tygodnia.jpg", caption: "tacho.shot.stopWeekLimits" },
+  { file: "postoj-limity-doby.jpg", caption: "tacho.shot.stopDayLimits" },
+  { file: "postoj-do-odpoczynku.jpg", caption: "tacho.shot.stopToRest" },
 ];
 
-const MANUAL_STEPS = [
-  "Zatrzymaj pojazd i włącz zapłon. Włóż kartę chipem do góry — tachograf przywita Cię i pokaże datę ostatniego wyjęcia karty.",
-  "Na pytanie o wpis manualny wybierz strzałkami TAK i zatwierdź OK. (NIE = okres bez karty pozostanie nieudokumentowany.)",
-  "Górny wiersz to moment wyjęcia karty, dolny edytujesz Ty. Strzałkami wybierz rodzaj czynności: młotki = inna praca, łóżko = odpoczynek, ukośnik = dyspozycja, ? = okres nieznany.",
-  "Ustaw kolejno dzień, miesiąc, rok, godzinę i minutę końca danej czynności — OK po każdym polu. Możesz dodać wiele okresów, aż do chwili obecnej.",
-  "Dojazd do pojazdu poza bazą i powrót zapisuj jako dyspozycję, odpoczynek w domu jako łóżko.",
-  "Na końcu zatwierdź akceptację (TAK). Uwaga: po zatwierdzeniu wpisu nie można go już poprawić.",
-  "Ustaw kraj rozpoczęcia pracy (MENU → wpisz kierowca 1 → kraj rozpocz.). Nie ruszaj, dopóki symbol karty nie zapisze się w całości — ruszenie przerywa wpis.",
+const MANUAL_STEPS: MessageKey[] = [
+  "tacho.manual.step1",
+  "tacho.manual.step2",
+  "tacho.manual.step3",
+  "tacho.manual.step4",
+  "tacho.manual.step5",
+  "tacho.manual.step6",
+  "tacho.manual.step7",
 ];
 
-const VIOLATION_LABEL: Record<string, string> = {
-  "continuous-driving-over-4h30": "jazda ciągła > 4 h 30",
-  "daily-driving-over-10h": "jazda dobowa > 10 h",
+const VIOLATION_LABEL: Record<string, MessageKey> = {
+  "continuous-driving-over-4h30": "tacho.violation.continuousOver4h30",
+  "daily-driving-over-10h": "tacho.violation.dailyOver10h",
 };
 
 /** #331: planer odpoczynku tygodniowego (144 h, warianty 45/24 h). */
 function WeeklyRestPlanner() {
+  const t = useT();
   const [end, setEnd] = useState("");
   const [type, setType] = useState<"regular" | "reduced">("regular");
   const endMs = Date.parse(end);
@@ -124,10 +91,9 @@ function WeeklyRestPlanner() {
     new Date(ms).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" });
   return (
     <>
-      <h3 style={st.h3}>🛏 Planer odpoczynku tygodniowego</h3>
+      <h3 style={st.h3}>🛏 {t("tacho.weeklyRest.heading")}</h3>
       <p style={{ color: palette.smoke, fontSize: 13.5, maxWidth: 760, lineHeight: 1.55 }}>
-        Podaj koniec ostatniego odpoczynku tygodniowego — policzymy najpóźniejszy start następnego
-        (144 h) i warianty 45 h / 24 h z rekompensatą.
+        {t("tacho.weeklyRest.intro")}
       </p>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <input
@@ -141,8 +107,8 @@ function WeeklyRestPlanner() {
           onChange={(e) => setType(e.target.value as "regular" | "reduced")}
           style={st.input}
         >
-          <option value="regular">poprzedni: 45 h (regularny)</option>
-          <option value="reduced">poprzedni: 24 h (skrócony)</option>
+          <option value="regular">{t("tacho.weeklyRest.prevRegular")}</option>
+          <option value="reduced">{t("tacho.weeklyRest.prevReduced")}</option>
         </select>
       </div>
       {plan && (
@@ -153,21 +119,23 @@ function WeeklyRestPlanner() {
               fontWeight: 700,
             }}
           >
-            ⏳ Najpóźniejszy start: {fmt(plan.latestStartMs)}
+            ⏳ {t("tacho.weeklyRest.latestStart")}: {fmt(plan.latestStartMs)}
             {plan.hoursUntilLatestStart >= 0
-              ? ` (pozostało ${plan.hoursUntilLatestStart.toFixed(0)} h)`
-              : " — TERMIN MINĄŁ, odpoczynek powinien już trwać!"}
+              ? ` (${plan.hoursUntilLatestStart.toFixed(0)} ${t("tacho.weeklyRest.remainingSuffix")})`
+              : ` — ${t("tacho.weeklyRest.deadlinePassed")}`}
           </div>
           {plan.mustBeRegular && (
             <div style={{ color: "#f59e0b", fontWeight: 700 }}>
-              ⚠️ Poprzedni był skrócony — ten musi być regularny (45 h).
+              ⚠️ {t("tacho.weeklyRest.mustBeRegular")}
             </div>
           )}
-          <div>🛏 Wariant 45 h — koniec: {fmt(plan.regularEndMs)}</div>
+          <div>
+            🛏 {t("tacho.weeklyRest.variant45")}: {fmt(plan.regularEndMs)}
+          </div>
           {plan.reducedEndMs != null && plan.compensationDeadlineMs != null && (
             <div>
-              💤 Wariant 24 h — koniec: {fmt(plan.reducedEndMs)} (rekompensata 21 h do{" "}
-              {fmt(plan.compensationDeadlineMs)})
+              💤 {t("tacho.weeklyRest.variant24")}: {fmt(plan.reducedEndMs)} (
+              {t("tacho.weeklyRest.compensationUntil")} {fmt(plan.compensationDeadlineMs)})
             </div>
           )}
         </div>
@@ -178,11 +146,17 @@ function WeeklyRestPlanner() {
 
 /** #328: import odczytu karty kierowcy (.ddd) — parser w przeglądarce. */
 function DddImportSection() {
+  const t = useT();
   const [result, setResult] = useState<DddParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [driver, setDriver] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  const violationLabel = (v: string): string => {
+    const key = VIOLATION_LABEL[v];
+    return key ? t(key) : v;
+  };
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -193,10 +167,7 @@ function DddImportSection() {
     setResult(parsed);
     setFileName(file.name);
     if (parsed.holderName) setDriver(parsed.holderName);
-    if (parsed.days.length === 0)
-      setMsg(
-        "Nie znaleziono rejestrów aktywności — czy to odczyt KARTY kierowcy (nie tachografu)?",
-      );
+    if (parsed.days.length === 0) setMsg(t("tacho.ddd.noActivity"));
   }
 
   async function importDays() {
@@ -206,7 +177,7 @@ function DddImportSection() {
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
-      if (!m) throw new Error("Brak aktywnej firmy.");
+      if (!m) throw new Error(t("tacho.ddd.noCompany"));
       let n = 0;
       for (const d of result.days) {
         if (d.totals.driving === 0 && d.totals.work === 0) continue;
@@ -224,9 +195,9 @@ function DddImportSection() {
         );
         n++;
       }
-      setMsg(`✅ Dopisano ${n} dni do ewidencji czasu pracy.`);
+      setMsg(`✅ ${t("tacho.ddd.appendedPrefix")} ${n} ${t("tacho.ddd.appendedSuffix")}`);
     } catch (e) {
-      setMsg(`⚠️ ${e instanceof Error ? e.message : "Import nieudany."}`);
+      setMsg(`⚠️ ${e instanceof Error ? e.message : t("tacho.ddd.importFailed")}`);
     } finally {
       setBusy(false);
     }
@@ -236,11 +207,9 @@ function DddImportSection() {
 
   return (
     <>
-      <h3 style={st.h3}>📥 Odczyt karty kierowcy (.ddd)</h3>
+      <h3 style={st.h3}>📥 {t("tacho.ddd.heading")}</h3>
       <p style={{ color: palette.smoke, fontSize: 13.5, maxWidth: 760, lineHeight: 1.55 }}>
-        Wgraj plik pobrania karty kierowcy (np. z czytnika lub programu do sczytywania) — dni,
-        minuty jazdy/pracy/odpoczynku i naruszenia 561 policzą się same, bez ręcznego wpisywania.
-        Plik jest analizowany w przeglądarce i nigdzie nie jest wysyłany.
+        {t("tacho.ddd.intro")}
       </p>
       <input
         type="file"
@@ -253,9 +222,12 @@ function DddImportSection() {
           <div style={{ fontSize: 13.5 }}>
             <strong>{fileName}</strong>
             {result.holderName ? ` · ${result.holderName}` : ""}
-            {result.generation ? ` · Gen${result.generation}` : ""} · {result.days.length} dni ·{" "}
+            {result.generation ? ` · Gen${result.generation}` : ""} · {result.days.length}{" "}
+            {t("tacho.daysSuffix")} ·{" "}
             <span style={{ color: violationsTotal ? "#ef4444" : "#22c55e", fontWeight: 700 }}>
-              {violationsTotal ? `${violationsTotal} naruszeń` : "bez naruszeń"}
+              {violationsTotal
+                ? `${violationsTotal} ${t("tacho.ddd.infringementsSuffix")}`
+                : t("tacho.noInfringements")}
             </span>
           </div>
           {result.days.length > 0 && (
@@ -263,17 +235,19 @@ function DddImportSection() {
               <table style={{ borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
                 <thead>
                   <tr>
-                    {[
-                      "Data",
-                      "Jazda",
-                      "Inna praca",
-                      "Dyspozycja",
-                      "Odpoczynek",
-                      "km",
-                      "Naruszenia",
-                    ].map((h) => (
+                    {(
+                      [
+                        "common.date",
+                        "tacho.col.driving",
+                        "tacho.col.otherWork",
+                        "tacho.col.availability",
+                        "tacho.col.rest",
+                        "tacho.col.km",
+                        "tacho.col.infringements",
+                      ] as const
+                    ).map((h) => (
                       <th key={h} style={st.th}>
-                        {h}
+                        {t(h)}
                       </th>
                     ))}
                   </tr>
@@ -289,7 +263,7 @@ function DddImportSection() {
                       <td style={st.td}>{d.distanceKm}</td>
                       <td style={{ ...st.td, color: d.violations.length ? "#ef4444" : "#22c55e" }}>
                         {d.violations.length
-                          ? d.violations.map((v) => VIOLATION_LABEL[v] ?? v).join(", ")
+                          ? d.violations.map((v) => violationLabel(v)).join(", ")
                           : "OK"}
                       </td>
                     </tr>
@@ -303,11 +277,11 @@ function DddImportSection() {
               <input
                 value={driver}
                 onChange={(e) => setDriver(e.target.value)}
-                placeholder="Kierowca (do ewidencji)"
+                placeholder={t("tacho.ddd.driverPlaceholder")}
                 style={st.input}
               />
               <Button onClick={importDays} disabled={busy}>
-                {busy ? "Import…" : "➕ Dopisz dni do ewidencji czasu pracy"}
+                {busy ? t("tacho.ddd.importing") : `➕ ${t("tacho.ddd.appendDays")}`}
               </Button>
             </div>
           )}
@@ -346,6 +320,7 @@ function Num({
 }
 
 export default function TachoPage() {
+  const t = useT();
   const [continuous, setContinuous] = useState(0);
   const [breakTaken, setBreakTaken] = useState(0);
   const [daily, setDaily] = useState(0);
@@ -373,42 +348,48 @@ export default function TachoPage() {
     reducedRestsUsed: redUsed,
   });
   const colorFor = (min: number) => (min <= 0 ? "#ef4444" : min <= 30 ? "#f59e0b" : "#22c55e");
+  const infrLabel = (k: InfringementKind) => t(INFRINGEMENT_LABEL[k]);
+  const severityLabel = (sev: InfringementSeverity) => t(SEVERITY_LABEL[sev]);
 
   const results = [
-    { label: "Do przerwy", value: formatTachoMin(s.toBreakMin), color: colorFor(s.toBreakMin) },
-    { label: "Wymagana przerwa", value: `${s.requiredBreakMin} min`, color: undefined },
     {
-      label: "Dziś zostało (9 h)",
+      label: t("tacho.calc.toBreak"),
+      value: formatTachoMin(s.toBreakMin),
+      color: colorFor(s.toBreakMin),
+    },
+    { label: t("tacho.calc.requiredBreak"), value: `${s.requiredBreakMin} min`, color: undefined },
+    {
+      label: t("tacho.calc.todayLeft"),
       value: formatTachoMin(s.dailyRemainingMin),
       color: colorFor(s.dailyRemainingMin),
     },
     {
-      label: "Z wydłużeniem (10 h)",
+      label: t("tacho.calc.withExtension"),
       value:
         s.dailyRemainingExtendedMin != null ? formatTachoMin(s.dailyRemainingExtendedMin) : "—",
       color: undefined,
     },
     {
-      label: "Tydzień (56 h)",
+      label: t("tacho.calc.week"),
       value: formatTachoMin(s.weeklyRemainingMin),
       color: colorFor(s.weeklyRemainingMin),
     },
     {
-      label: "Dwa tygodnie (90 h)",
+      label: t("tacho.calc.twoWeeks"),
       value: formatTachoMin(s.twoWeekRemainingMin),
       color: undefined,
     },
-    { label: "Jazdy 10 h", value: `${s.extendedLeft} × 10h`, color: undefined },
-    { label: "Odpoczynki 9 h", value: `${s.reducedRestsLeft} × 9h`, color: undefined },
+    { label: t("tacho.calc.drives10h"), value: `${s.extendedLeft} × 10h`, color: undefined },
+    { label: t("tacho.calc.rests9h"), value: `${s.reducedRestsLeft} × 9h`, color: undefined },
   ];
 
-  const gallery = (shots: { file: string; caption: string }[]) => (
+  const gallery = (shots: { file: string; caption: MessageKey }[]) => (
     <div style={st.grid}>
       {shots.map(({ file, caption }) => (
         <figure key={file} style={st.fig}>
           {/* biome-ignore lint/performance/noImgElement: statyczne zdjęcia poradnika z public/ */}
-          <img src={`/tacho/${file}`} alt={caption} style={st.img} loading="lazy" />
-          <figcaption style={st.cap}>{caption}</figcaption>
+          <img src={`/tacho/${file}`} alt={t(caption)} style={st.img} loading="lazy" />
+          <figcaption style={st.cap}>{t(caption)}</figcaption>
         </figure>
       ))}
     </div>
@@ -416,66 +397,69 @@ export default function TachoPage() {
 
   return (
     <div style={{ maxWidth: 980 }}>
-      <PageHeader
-        title="Tacho — poradnik i przepisy"
-        subtitle="Licznik 561, realne ekrany tachografu VDO z objaśnieniami, wpis manualny krok po kroku i pełny tekst rozporządzenia 561/2006."
-      />
+      <PageHeader title={t("tacho.title")} subtitle={t("tacho.subtitle")} />
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
         <Button onClick={() => window.open(PDF, "_blank", "noopener")}>
-          📜 Rozporządzenie 561/2006 (PDF)
+          📜 {t("tacho.openPdf")}
         </Button>
         <Button variant="ghost" onClick={() => window.location.assign("/work-time")}>
-          📋 Ewidencja czasu pracy
+          📋 {t("tacho.workTimeLink")}
         </Button>
         <span style={{ color: palette.smoke, fontSize: 13, alignSelf: "center" }}>
-          Pełny skonsolidowany tekst — także do pokazania na kontroli.
+          {t("tacho.pdfHint")}
         </span>
       </div>
 
       <DddImportSection />
 
-      <h3 style={st.h3}>🧮 Licznik 561</h3>
+      <h3 style={st.h3}>🧮 {t("tacho.calc.heading")}</h3>
       <div style={st.calc}>
         <div style={{ display: "grid", gap: 6 }}>
           <Num
-            label="Jazda ciągła od przerwy"
+            label={t("tacho.calc.inputContinuous")}
             value={continuous}
             onChange={setContinuous}
             step={15}
             max={360}
           />
           <Num
-            label="Wykorzystana część przerwy (min)"
+            label={t("tacho.calc.inputBreakTaken")}
             value={breakTaken}
             onChange={setBreakTaken}
             step={15}
             max={45}
           />
-          <Num label="Jazda w tej dobie" value={daily} onChange={setDaily} step={30} max={660} />
           <Num
-            label="Jazda w tym tygodniu"
+            label={t("tacho.calc.inputDaily")}
+            value={daily}
+            onChange={setDaily}
+            step={30}
+            max={660}
+          />
+          <Num
+            label={t("tacho.calc.inputWeekly")}
             value={weekly}
             onChange={setWeekly}
             step={60}
             max={3600}
           />
           <Num
-            label="Jazda w zeszłym tygodniu"
+            label={t("tacho.calc.inputPrevWeek")}
             value={prevWeek}
             onChange={setPrevWeek}
             step={60}
             max={3600}
           />
           <Num
-            label="Wykorzystane jazdy 10 h"
+            label={t("tacho.calc.inputExtUsed")}
             value={extUsed}
             onChange={setExtUsed}
             step={1}
             max={2}
           />
           <Num
-            label="Wykorzystane odpoczynki 9 h"
+            label={t("tacho.calc.inputRedUsed")}
             value={redUsed}
             onChange={setRedUsed}
             step={1}
@@ -510,9 +494,11 @@ export default function TachoPage() {
             gap: 8,
           }}
         >
-          <strong style={{ fontSize: 14 }}>🚔 Wirtualna kontrola (561)</strong>
+          <strong style={{ fontSize: 14 }}>🚔 {t("tacho.inspection.heading")}</strong>
           {insp.clean ? (
-            <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 13 }}>✅ bez naruszeń</span>
+            <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 13 }}>
+              ✅ {t("tacho.noInfringements")}
+            </span>
           ) : (
             <span
               style={{
@@ -522,7 +508,9 @@ export default function TachoPage() {
               }}
             >
               {insp.infringements.length}{" "}
-              {insp.infringements.length === 1 ? "naruszenie" : "naruszeń"}
+              {insp.infringements.length === 1
+                ? t("tacho.inspection.infringementSingular")
+                : t("tacho.inspection.infringementPlural")}
             </span>
           )}
         </div>
@@ -552,38 +540,37 @@ export default function TachoPage() {
                     textTransform: "uppercase",
                   }}
                 >
-                  {SEVERITY_LABEL[i.severity]}
+                  {severityLabel(i.severity)}
                 </span>
-                <span style={{ flex: 1, minWidth: 160 }}>{INFRINGEMENT_LABEL[i.kind]}</span>
+                <span style={{ flex: 1, minWidth: 160 }}>{infrLabel(i.kind)}</span>
                 <span style={{ color: palette.smoke }}>
-                  +{formatTachoMin(i.byMin)} (limit {formatTachoMin(i.limitMin)})
+                  +{formatTachoMin(i.byMin)} ({t("tacho.inspection.limitLabel")}{" "}
+                  {formatTachoMin(i.limitMin)})
                 </span>
               </li>
             ))}
           </ul>
         )}
         <p style={{ color: palette.smoke, fontSize: 11, margin: "10px 0 0" }}>
-          Skala wg dyrektywy 2006/22/WE zał. III — pomoc orientacyjna, nie zastępuje kontroli.
+          {t("tacho.inspection.disclaimer")}
         </p>
       </div>
-      <p style={{ color: palette.smoke, fontSize: 13 }}>
-        Pomoc orientacyjna na wzór licznika VDO — wiążący jest zapis tachografu i karty kierowcy.
-      </p>
+      <p style={{ color: palette.smoke, fontSize: 13 }}>{t("tacho.calc.disclaimer")}</p>
 
       <WeeklyRestPlanner />
 
       <TachoDownloadsSection />
 
-      <h3 style={st.h3}>🚛 Co pokazuje tachograf — podczas jazdy</h3>
+      <h3 style={st.h3}>🚛 {t("tacho.galleryDriving")}</h3>
       {gallery(DRIVING_SHOTS)}
-      <h3 style={st.h3}>🅿️ Co pokazuje tachograf — podczas postoju</h3>
+      <h3 style={st.h3}>🅿️ {t("tacho.galleryStop")}</h3>
       {gallery(STOP_SHOTS)}
 
-      <h3 style={st.h3}>✍️ Wpis manualny — krok po kroku</h3>
+      <h3 style={st.h3}>✍️ {t("tacho.manual.heading")}</h3>
       <ol style={st.steps}>
         {MANUAL_STEPS.map((step) => (
-          <li key={step.slice(0, 24)} style={{ marginBottom: 8, lineHeight: 1.55 }}>
-            {step}
+          <li key={step} style={{ marginBottom: 8, lineHeight: 1.55 }}>
+            {t(step)}
           </li>
         ))}
       </ol>
