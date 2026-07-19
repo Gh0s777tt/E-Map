@@ -1,13 +1,19 @@
 /** #285: Czas pracy — podsumowanie miesiąca + ostatnie wpisy ewidencji. */
 import { getActiveMembership, listWorkTimeEntries, type WorkTimeRecord } from "@e-logistic/api";
+import { WTD_LIMITS, weeklyWorkingFromEntries, wtdStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Card, SectionTitle, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
-const h = (mins: number) => `${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, "0")} m`;
+// Ewidencja trzyma czas w GODZINACH (dziesiętnie), jak web/.ddd/checklist (min→h przez /60).
+// Poprzednio dzielone /60 (jak minuty) → licznik pokazywał ~0; teraz godziny→min i rozbicie.
+const h = (hours: number) => {
+  const mins = Math.round(hours * 60);
+  return `${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, "0")} m`;
+};
 
 export default function WorkTimeScreen() {
   const t = useT();
@@ -40,6 +46,23 @@ export default function WorkTimeScreen() {
   const driving = inMonth.reduce((a, e) => a + e.driving, 0);
   const other = inMonth.reduce((a, e) => a + e.other_work, 0);
 
+  // WTD 2002/15/WE — REŻIM ODRĘBNY od 561/2006: średnia tygodniowa ≤ 48 h (okno 17 tyg.).
+  // Mapowanie 1:1 jak w wersji web (toEntry): rekord ewidencji → WorkTimeEntry rdzenia.
+  const wtd = useMemo(
+    () =>
+      wtdStatus(
+        weeklyWorkingFromEntries(
+          entries.map((e) => ({
+            date: e.work_date,
+            driving: e.driving,
+            otherWork: e.other_work,
+            rest: e.rest,
+          })),
+        ),
+      ),
+    [entries],
+  );
+
   return (
     <ScrollView
       style={s.screen}
@@ -63,6 +86,66 @@ export default function WorkTimeScreen() {
           <Text style={s.kpiValue}>{h(other)}</Text>
         </Card>
       </View>
+
+      {wtd.weeksCounted > 0 && (
+        <View
+          style={[
+            s.wtd,
+            {
+              borderColor:
+                wtd.avgOk && wtd.weeksOver60.length === 0
+                  ? `${palette.success}55`
+                  : `${palette.danger}88`,
+            },
+          ]}
+        >
+          <View style={s.wtdHead}>
+            <Text style={s.wtdTitle}>⏱️ {t("m.worktime.wtd.heading")}</Text>
+            <Text style={[s.wtdAvg, { color: wtd.avgOk ? palette.success : palette.red }]}>
+              {t("m.worktime.wtd.avgLabel", { avg: wtd.avgWeeklyH, limit: WTD_LIMITS.weeklyAvg })}
+            </Text>
+          </View>
+          <View style={s.wtdStats}>
+            <View style={s.wtdStat}>
+              <Text style={s.kpiLabel}>
+                {t("m.worktime.wtd.period", { weeks: wtd.weeksCounted, ref: wtd.referenceWeeks })}
+              </Text>
+              <Text style={s.kpiValue}>{wtd.totalWorkingH} h</Text>
+            </View>
+            <View style={s.wtdStat}>
+              <Text style={s.kpiLabel}>{t("m.worktime.wtd.maxWeek")}</Text>
+              <Text
+                style={[s.kpiValue, wtd.weeksOver60.length > 0 ? { color: palette.red } : null]}
+              >
+                {wtd.maxWeeklyH} h
+              </Text>
+            </View>
+            <View style={s.wtdStat}>
+              <Text style={s.kpiLabel}>{t("m.worktime.wtd.weeksOver60")}</Text>
+              <Text
+                style={[
+                  s.kpiValue,
+                  { color: wtd.weeksOver60.length > 0 ? palette.red : palette.success },
+                ]}
+              >
+                {wtd.weeksOver60.length}
+              </Text>
+            </View>
+            <View style={s.wtdStat}>
+              <Text style={s.kpiLabel}>{t("m.worktime.wtd.budget")}</Text>
+              <Text
+                style={[
+                  s.kpiValue,
+                  { color: wtd.budgetToAvgH < 0 ? palette.red : palette.success },
+                ]}
+              >
+                {wtd.budgetToAvgH} h
+              </Text>
+            </View>
+          </View>
+          <Text style={s.wtdNote}>{t("m.worktime.wtd.disclaimer")}</Text>
+        </View>
+      )}
 
       {err && <Text style={s.err}>{err}</Text>}
       {!loading && !err && entries.length === 0 && (
@@ -102,4 +185,34 @@ const s = StyleSheet.create({
   entryDriver: { color: palette.smoke, fontSize: 13 },
   entryMeta: { color: palette.smoke, fontSize: 13 },
   entryNote: { color: palette.smoke, fontSize: 12, fontStyle: "italic" },
+  wtd: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    gap: 12,
+    backgroundColor: "rgba(127,127,127,0.06)",
+  },
+  wtdHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  wtdTitle: { color: palette.offWhite, fontWeight: "800", fontSize: 14 },
+  wtdAvg: { fontWeight: "800", fontSize: 15 },
+  wtdStats: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  wtdStat: {
+    flexGrow: 1,
+    flexBasis: "45%",
+    minWidth: 120,
+    gap: 4,
+    backgroundColor: palette.nearBlack,
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  wtdNote: { color: palette.smoke, fontSize: 11, lineHeight: 16 },
 });
