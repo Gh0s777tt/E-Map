@@ -9,13 +9,16 @@ import {
 import {
   computeTachoDays,
   formatMinutes,
+  type RestType,
   round2,
   type TachoEntry,
   type TachoSummary,
 } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useMemo, useState } from "react";
 import * as f from "@/components/formStyles";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -27,11 +30,11 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
  * brakujące dni do ewidencji czasu pracy.
  */
 
-const REST_LABEL: Record<string, string> = {
-  "daily-regular": "dobowy normalny",
-  "daily-reduced": "dobowy SKRÓCONY",
-  "weekly-regular": "tygodniowy normalny",
-  "weekly-reduced": "tygodniowy SKRÓCONY",
+const REST_LABEL: Record<RestType, MessageKey> = {
+  "daily-regular": "workTime.auto.restDailyRegular",
+  "daily-reduced": "workTime.auto.restDailyReduced",
+  "weekly-regular": "workTime.auto.restWeeklyRegular",
+  "weekly-reduced": "workTime.auto.restWeeklyReduced",
 };
 
 function toTachoEntries(subs: ChecklistSubmission[]): TachoEntry[] {
@@ -55,6 +58,7 @@ export function TachoAutoSection({
   savedKeys: Set<string>;
   onImported: () => void;
 }) {
+  const t = useT();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [subs, setSubs] = useState<ChecklistSubmission[]>([]);
@@ -70,14 +74,14 @@ export function TachoAutoSection({
       });
       setSubs(list);
       if (list.length === 0) {
-        toast("Brak zgłoszeń checklisty Tachograf — kierowcy wypełniają ją w aplikacji.", "info");
+        toast(t("workTime.auto.noSubmissions"), "info");
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Nie udało się pobrać checklist.", "error");
+      toast(e instanceof Error ? e.message : t("workTime.auto.loadError"), "error");
     } finally {
       setBusy(false);
     }
-  }, [companyId, toast]);
+  }, [companyId, toast, t]);
 
   const drivers = useMemo(
     () => [...new Set(subs.map((s) => s.driver_label).filter(Boolean))].sort(),
@@ -127,10 +131,13 @@ export function TachoAutoSection({
           companyId,
         );
       }
-      toast(`Dopisano ${missing.length} dni do ewidencji.`, "success");
+      toast(
+        `${t("workTime.auto.importedPrefix")}${missing.length}${t("workTime.auto.importedSuffix")}`,
+        "success",
+      );
       onImported();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu.", "error");
+      toast(e instanceof Error ? e.message : t("workTime.saveError"), "error");
     } finally {
       setBusy(false);
     }
@@ -139,14 +146,14 @@ export function TachoAutoSection({
   return (
     <div style={styles.card}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <strong>⏱️ Auto z checklisty Tachograf</strong>
+        <strong>⏱️ {t("workTime.auto.heading")}</strong>
         <Button
           onClick={() => {
             setOpen((v) => !v);
             if (!open && subs.length === 0) void loadSubs();
           }}
         >
-          {open ? "Zwiń" : "Wylicz z checklist"}
+          {open ? t("workTime.auto.collapse") : t("workTime.auto.compute")}
         </Button>
         {open && drivers.length > 0 && (
           <select
@@ -154,7 +161,7 @@ export function TachoAutoSection({
             value={driver}
             onChange={(e) => setDriver(e.target.value)}
           >
-            <option value="">— wybierz kierowcę —</option>
+            <option value="">{t("workTime.auto.selectDriver")}</option>
             {drivers.map((d) => (
               <option key={d} value={d}>
                 {d}
@@ -170,12 +177,12 @@ export function TachoAutoSection({
             <table style={styles.tbl}>
               <thead>
                 <tr>
-                  <th style={styles.th}>Data</th>
-                  <th style={styles.th}>Start</th>
-                  <th style={styles.th}>Koniec</th>
-                  <th style={styles.th}>Służba</th>
-                  <th style={styles.th}>Odpoczynek przed</th>
-                  <th style={styles.th}>Uwagi</th>
+                  <th style={styles.th}>{t("common.date")}</th>
+                  <th style={styles.th}>{t("workTime.auto.colStart")}</th>
+                  <th style={styles.th}>{t("workTime.auto.colEnd")}</th>
+                  <th style={styles.th}>{t("workTime.auto.colDuty")}</th>
+                  <th style={styles.th}>{t("workTime.auto.colRestBefore")}</th>
+                  <th style={styles.th}>{t("workTime.auto.colNotes")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,7 +196,7 @@ export function TachoAutoSection({
                     </td>
                     <td style={styles.td}>
                       {d.restBeforeMinutes != null ? formatMinutes(d.restBeforeMinutes) : "—"}
-                      {d.restType ? ` (${REST_LABEL[d.restType]})` : ""}
+                      {d.restType ? ` (${t(REST_LABEL[d.restType])})` : ""}
                     </td>
                     <td
                       style={{ ...styles.td, color: d.alerts.length ? palette.red : palette.smoke }}
@@ -211,24 +218,28 @@ export function TachoAutoSection({
             }}
           >
             <span style={{ color: palette.smoke, fontSize: 13 }}>
-              Razem służby: <strong>{formatMinutes(summary.totalWorkMinutes)}</strong>
+              {t("workTime.auto.totalDuty")}{" "}
+              <strong>{formatMinutes(summary.totalWorkMinutes)}</strong>
               {summary.alerts.length > 0 && (
-                <span style={{ color: palette.red }}> · alertów: {summary.alerts.length}</span>
+                <span style={{ color: palette.red }}>
+                  {t("workTime.auto.alertsInlinePrefix")}
+                  {summary.alerts.length}
+                </span>
               )}
             </span>
             <Button onClick={importMissing} disabled={busy || missing.length === 0}>
               {busy
-                ? "Zapisuję…"
+                ? t("workTime.auto.saving")
                 : missing.length > 0
-                  ? `➕ Dopisz ${missing.length} brakujących dni do ewidencji`
-                  : "Wszystkie dni już w ewidencji ✓"}
+                  ? `➕ ${t("workTime.auto.importPrefix")}${missing.length}${t("workTime.auto.importSuffix")}`
+                  : `${t("workTime.auto.allImported")} ✓`}
             </Button>
           </div>
         </>
       )}
       {open && driver && !summary && (
         <p style={{ color: palette.smoke, fontSize: 13, marginTop: 8 }}>
-          Brak kompletnych wpisów Tachografu (tryb + godzina) dla tego kierowcy.
+          {t("workTime.auto.noCompleteEntries")}
         </p>
       )}
     </div>
