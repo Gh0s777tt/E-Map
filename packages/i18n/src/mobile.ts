@@ -298,6 +298,13 @@ const pl = {
   "m.journal.history": "Historia",
   "m.journal.hint":
     "Zapisane w profilu — widoczne na bieżąco; po zakończeniu odpoczynku aplikacja przypomni o kolejnym (144 h).",
+  "m.journal.comp.heading": "Saldo kompensacji odpoczynków",
+  "m.journal.comp.toRepay": "do oddania",
+  "m.journal.comp.clean": "Brak zaległych kompensacji",
+  "m.journal.comp.deadline": "termin oddania",
+  "m.journal.comp.overdue": "po terminie",
+  "m.journal.comp.disclaimer":
+    "561/2006 art. 8.6 — skrócony odpoczynek tygodniowy (< 45 h) oddaje się en bloc do końca 3. tygodnia. Dane z Twojego dziennika tacho. Pomoc orientacyjna.",
   "m.fuel.postcode": "Kod pocztowy",
   "m.fuel.company": "Nazwa firmy (opcjonalnie)",
   "m.fuel.geoFill": "Uzupełnij z lokalizacji",
@@ -1263,6 +1270,13 @@ const en: Record<MobileMessageKey, string> = {
   "m.journal.history": "History",
   "m.journal.hint":
     "Saved to your profile — always up to date; after a rest ends the app reminds you about the next one (144 h).",
+  "m.journal.comp.heading": "Rest compensation balance",
+  "m.journal.comp.toRepay": "to repay",
+  "m.journal.comp.clean": "No outstanding compensation",
+  "m.journal.comp.deadline": "repay by",
+  "m.journal.comp.overdue": "overdue",
+  "m.journal.comp.disclaimer":
+    "561/2006 art. 8.6 — a reduced weekly rest (< 45 h) is repaid en bloc by the end of the 3rd week. Data from your tacho log. Guidance only.",
   "m.fuel.postcode": "Postcode",
   "m.fuel.company": "Company name (optional)",
   "m.fuel.geoFill": "Fill from location",
@@ -2224,6 +2238,13 @@ const de: Record<MobileMessageKey, string> = {
   "m.journal.history": "Verlauf",
   "m.journal.hint":
     "In deinem Profil gespeichert — immer aktuell; nach dem Ende erinnert die App an die nächste (144 h).",
+  "m.journal.comp.heading": "Saldo des Ruhezeit-Ausgleichs",
+  "m.journal.comp.toRepay": "nachzuholen",
+  "m.journal.comp.clean": "Kein Ausgleich offen",
+  "m.journal.comp.deadline": "Frist",
+  "m.journal.comp.overdue": "überfällig",
+  "m.journal.comp.disclaimer":
+    "561/2006 Art. 8.6 — eine reduzierte Wochenruhe (< 45 h) wird en bloc bis zum Ende der 3. Woche nachgeholt. Daten aus deinem Tacho-Journal. Nur als Orientierung.",
   "m.fuel.postcode": "Postleitzahl",
   "m.fuel.company": "Firmenname (optional)",
   "m.fuel.geoFill": "Aus Standort ausfüllen",
@@ -3184,6 +3205,13 @@ const uk: Record<MobileMessageKey, string> = {
   "m.journal.history": "Історія",
   "m.journal.hint":
     "Збережено у профілі — завжди актуально; після завершення застосунок нагадає про наступний (144 год).",
+  "m.journal.comp.heading": "Баланс компенсації відпочинків",
+  "m.journal.comp.toRepay": "до компенсації",
+  "m.journal.comp.clean": "Немає заборгованих компенсацій",
+  "m.journal.comp.deadline": "термін",
+  "m.journal.comp.overdue": "прострочено",
+  "m.journal.comp.disclaimer":
+    "561/2006 ст. 8.6 — скорочений тижневий відпочинок (< 45 год) компенсують en bloc до кінця 3-го тижня. Дані з твого журналу тахо. Орієнтовна допомога.",
   "m.fuel.postcode": "Поштовий індекс",
   "m.fuel.company": "Назва фірми (необовʼязково)",
   "m.fuel.geoFill": "Заповнити з локації",

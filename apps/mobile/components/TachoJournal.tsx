@@ -10,9 +10,10 @@ import {
   type TachoEventKind,
   type TachoRestType,
 } from "@e-logistic/api";
+import { restCompensationLedger, weeklyRestsFromBoundaries } from "@e-logistic/core";
 import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { fmtDT } from "../lib/date";
 import { success, warn } from "../lib/haptics";
@@ -88,6 +89,16 @@ export function TachoJournal() {
 
   const lastWorkStart = events.find((e) => e.kind === "work_start");
   const lastWorkEnd = events.find((e) => e.kind === "work_end");
+
+  // Saldo kompensacji skróconych odpoczynków tygodniowych (561/2006 art. 8.6) —
+  // z par start/koniec buduje ukończone odpoczynki i liczy dług en bloc.
+  const comp = useMemo(() => {
+    const boundaries = events
+      .filter((e) => e.kind === "weekly_rest_start" || e.kind === "weekly_rest_end")
+      .map((e) => ({ start: e.kind === "weekly_rest_start", atMs: Date.parse(e.at) }));
+    if (boundaries.length === 0) return null;
+    return restCompensationLedger(weeklyRestsFromBoundaries(boundaries), now);
+  }, [events, now]);
 
   return (
     <>
@@ -178,6 +189,61 @@ export function TachoJournal() {
             ))}
           </View>
         )}
+
+        {/* #4 Faza 2 — saldo kompensacji skróconych odpoczynków tygodniowych. */}
+        {comp && (
+          <View
+            style={[
+              s.compBox,
+              {
+                borderColor:
+                  comp.overdueCount > 0
+                    ? "#ef444488"
+                    : comp.outstandingH > 0
+                      ? "#f59e0b88"
+                      : "#22c55e55",
+              },
+            ]}
+          >
+            <View style={s.compHead}>
+              <Text style={s.compHeading}>🛏 {t("m.journal.comp.heading")}</Text>
+              <Text
+                style={[
+                  s.compBig,
+                  {
+                    color:
+                      comp.outstandingH > 0
+                        ? comp.overdueCount > 0
+                          ? "#ef4444"
+                          : "#f59e0b"
+                        : "#22c55e",
+                  },
+                ]}
+              >
+                {comp.outstandingH > 0
+                  ? `${comp.outstandingH} h ${t("m.journal.comp.toRepay")}`
+                  : `✅ ${t("m.journal.comp.clean")}`}
+              </Text>
+            </View>
+            {comp.debts.some((d) => !d.settled) && (
+              <View style={s.compList}>
+                {comp.debts
+                  .filter((d) => !d.settled)
+                  .map((d) => (
+                    <Text key={d.fromEndMs} style={s.compRow}>
+                      <Text style={s.compOwed}>{d.owedH} h</Text> · {t("m.journal.comp.deadline")}{" "}
+                      {fmtDT(d.deadlineMs)}
+                      {d.overdue ? (
+                        <Text style={s.compOverdue}> ⚠️ {t("m.journal.comp.overdue")}</Text>
+                      ) : null}
+                    </Text>
+                  ))}
+              </View>
+            )}
+            <Text style={s.compDisclaimer}>{t("m.journal.comp.disclaimer")}</Text>
+          </View>
+        )}
+
         <Text style={s.hint}>{t("m.journal.hint")}</Text>
       </Card>
     </>
@@ -199,4 +265,19 @@ const s = StyleSheet.create({
   histHead: { color: palette.offWhite, fontSize: 12.5, fontWeight: "800", marginTop: 4 },
   histRow: { color: palette.smoke, fontSize: 12.5, lineHeight: 18 },
   hint: { color: palette.smoke, fontSize: 12, lineHeight: 17 },
+  compBox: { borderWidth: 1, borderRadius: 10, padding: 12, marginTop: 4, gap: 8 },
+  compHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  compHeading: { color: palette.offWhite, fontSize: 13, fontWeight: "800", flexShrink: 1 },
+  compBig: { fontSize: 14, fontWeight: "800" },
+  compList: { gap: 5 },
+  compRow: { color: palette.smoke, fontSize: 12.5, lineHeight: 18 },
+  compOwed: { color: palette.offWhite, fontWeight: "800" },
+  compOverdue: { color: "#ef4444", fontWeight: "800" },
+  compDisclaimer: { color: palette.smoke, fontSize: 11, lineHeight: 15 },
 });
