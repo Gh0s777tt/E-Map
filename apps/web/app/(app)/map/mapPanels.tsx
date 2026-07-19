@@ -7,6 +7,7 @@ import {
 } from "@e-logistic/core";
 import type { FuelStationPrice, GeoHit } from "@e-logistic/maps";
 import { cssPalette } from "@e-logistic/ui";
+import { useT } from "@/components/LocaleProvider";
 import { DISRUPTION_RADIUS_KM, REPORT_COLOR, REPORT_LABEL, SAVED_CAT_ICON } from "./mapTheme";
 import type { Report, RouteResponse, Stop } from "./mapTypes";
 import { Row, styles } from "./mapUi";
@@ -29,35 +30,36 @@ export function RouteSummary({
   grandTotal: number;
   disruptions: (Report & { distanceKm: number })[];
 }) {
+  const t = useT();
   return (
     <>
       <div className={styles.result}>
-        <Row k="Dystans" v={`${result.distanceKm} km`} />
+        <Row k={t("mapPage.distance")} v={`${result.distanceKm} km`} />
         <Row
-          k="Czas jazdy"
-          v={`${formatDuration(result.durationMin)}${result.durationEstimated ? " (szac.)" : ""}`}
+          k={t("mapPage.drivingTime")}
+          v={`${formatDuration(result.durationMin)}${result.durationEstimated ? ` ${t("mapPage.estShort")}` : ""}`}
         />
         <Row
-          k="Myto"
-          v={`${result.tollCost} ${result.currency}${result.tollEstimated ? " (szac.)" : ""}`}
+          k={t("mapPage.tollLabel")}
+          v={`${result.tollCost} ${result.currency}${result.tollEstimated ? ` ${t("mapPage.estShort")}` : ""}`}
         />
-        <Row k="Paliwo (szac.)" v={`${fuelTotal} ${result.currency}`} />
+        <Row k={t("mapPage.fuelEstimate")} v={`${fuelTotal} ${result.currency}`} />
         {(() => {
           // #337 Eco: litry i emisja CO₂ dla trasy (spalanie modelowe 30 l/100 km).
           const eco = estimateRouteFuel({ distanceKm: result.distanceKm, fuelPricePerL: 0 });
           return (
             <>
-              <Row k="Zużycie (szac.)" v={`${eco.fuelLiters} l · ~30 l/100`} />
-              <Row k="🌿 Emisja CO₂ (szac.)" v={`${eco.co2Kg} kg`} />
+              <Row k={t("mapPage.consumptionEstimate")} v={`${eco.fuelLiters} l · ~30 l/100`} />
+              <Row k={`🌿 ${t("mapPage.co2Estimate")}`} v={`${eco.co2Kg} kg`} />
             </>
           );
         })()}
         <div style={{ height: 1, background: cssPalette.graphite, margin: "2px 0" }} />
-        <Row k="Razem (myto+paliwo)" v={`${grandTotal} ${result.currency}`} />
+        <Row k={t("mapPage.totalTollFuel")} v={`${grandTotal} ${result.currency}`} />
         {result.segments.length > 0 && (
           <div style={{ marginTop: 6 }}>
             <div style={{ color: cssPalette.smoke, fontSize: 12, marginBottom: 2 }}>
-              ETA przystanków (start teraz):
+              {t("mapPage.stopsEtaNow")}
             </div>
             {(() => {
               let cum = 0;
@@ -71,34 +73,34 @@ export function RouteSummary({
                   <Row
                     // biome-ignore lint/suspicious/noArrayIndexKey: segmenty są pozycyjne
                     key={`eta-${i * 1}`}
-                    k={`→ przystanek ${i + 1}`}
-                    v={`${hh}:${mm} (po ${formatDuration(cum)})`}
+                    k={`→ ${t("mapPage.etaStopWord")} ${i + 1}`}
+                    v={`${hh}:${mm} (${t("mapPage.afterWord")} ${formatDuration(cum)})`}
                   />
                 );
               });
             })()}
           </div>
         )}
-        <Row k="Dostawca" v={result.provider} />
+        <Row k={t("mapPage.provider")} v={result.provider} />
       </div>
 
       <div className={styles.disruptions}>
         <span className={styles.label}>
-          🚧 Utrudnienia na trasie{" "}
+          🚧 {t("mapPage.disruptionsOnRoute")}{" "}
           <span style={{ color: cssPalette.smoke }}>
-            (≤ {DISRUPTION_RADIUS_KM} km · zgłoszenia kierowców)
+            (≤ {DISRUPTION_RADIUS_KM} km · {t("mapPage.driverReports")})
           </span>
         </span>
         {disruptions.length === 0 ? (
           <div style={{ fontSize: 12, color: cssPalette.smoke, marginTop: 4 }}>
-            Brak zgłoszeń przy trasie. 👍
+            {t("mapPage.noReportsNearRoute")} 👍
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
             {disruptions.slice(0, 12).map((d) => (
               <div key={d.id} className={styles.disruptionRow}>
                 <span style={{ color: REPORT_COLOR[d.type], fontWeight: 700 }}>
-                  ● {REPORT_LABEL[d.type]}
+                  ● {t(REPORT_LABEL[d.type])}
                 </span>
                 <span style={{ color: cssPalette.smoke, fontSize: 12 }}>{d.distanceKm} km</span>
                 {d.comment && (
@@ -123,10 +125,13 @@ export function SavedPlacesChips({
   onAdd: (p: SavedPlace) => void;
   onRemove: (id: string) => void;
 }) {
+  const t = useT();
   if (saved.length === 0) return null;
   return (
     <div>
-      <span className={styles.label}>Zapisane miejsca ({saved.length})</span>
+      <span className={styles.label}>
+        {t("mapPage.savedPlaces")} ({saved.length})
+      </span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
         {saved.map((p) => (
           <span key={p.id} className={styles.savedChip}>
@@ -134,7 +139,7 @@ export function SavedPlacesChips({
               type="button"
               className={styles.savedAdd}
               onClick={() => onAdd(p)}
-              title={`Dodaj „${p.name}" do trasy`}
+              title={`${t("mapPage.addWord")} „${p.name}" ${t("mapPage.toRoute")}`}
             >
               {
                 SAVED_CAT_ICON[
@@ -171,10 +176,16 @@ export function StopsEditor({
   removeStop: (key: string) => void;
   pickHit: (key: string, hit: GeoHit) => void;
 }) {
+  const t = useT();
   return (
     <>
       {stops.map((st, i) => {
-        const role = i === 0 ? "Start" : i === stops.length - 1 ? "Cel" : `Przystanek ${i}`;
+        const role =
+          i === 0
+            ? t("mapPage.start")
+            : i === stops.length - 1
+              ? t("mapPage.destination")
+              : `${t("mapPage.stop")} ${i}`;
         const removable = i > 0 && i < stops.length - 1;
         const list = hits[st.key] ?? [];
         return (
@@ -186,7 +197,7 @@ export function StopsEditor({
                   className={styles.input}
                   value={queries[st.key] ?? ""}
                   onChange={(e) => onQueryChange(st.key, e.target.value)}
-                  placeholder="Miasto, adres lub miejsce…"
+                  placeholder={t("mapPage.searchPlaceholder")}
                 />
               </div>
               {removable && (
@@ -224,6 +235,7 @@ export function FuelPricesPanel({
   prices: FuelStationPrice[];
   onFly: (s: FuelStationPrice) => void;
 }) {
+  const t = useT();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {prices.map((s) => (
@@ -236,7 +248,7 @@ export function FuelPricesPanel({
         >
           <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
             {s.brand || s.name}
-            {s.isOpen ? "" : " (zamkn.)"}
+            {s.isOpen ? "" : ` ${t("mapPage.closedShort")}`}
           </span>
           <strong style={{ color: cssPalette.red }}>{s.diesel?.toFixed(3)} €</strong>
         </button>

@@ -1,3 +1,4 @@
+import type { MessageKey } from "@e-logistic/i18n";
 import type { Poi, TrafficIncident } from "@e-logistic/maps";
 import { REPORT_COLOR, REPORT_LABEL } from "./mapTheme";
 import type { Report } from "./mapTypes";
@@ -43,14 +44,14 @@ export function incidentFeatures(incidents: TrafficIncident[]) {
   };
 }
 
-/** GeoJSON zgłoszeń na mapie (etykieta + kolor wg typu). */
-export function reportFeatures(reports: Report[]) {
+/** GeoJSON zgłoszeń na mapie (etykieta + kolor wg typu). `t` tłumaczy etykietę do popupu. */
+export function reportFeatures(reports: Report[], t: (key: MessageKey) => string) {
   return {
     type: "FeatureCollection" as const,
     features: reports.map((r) => ({
       type: "Feature" as const,
       properties: {
-        label: REPORT_LABEL[r.type],
+        label: t(REPORT_LABEL[r.type]),
         color: REPORT_COLOR[r.type],
         comment: r.comment ?? "",
       },

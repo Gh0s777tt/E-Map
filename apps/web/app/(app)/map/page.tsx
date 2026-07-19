@@ -294,7 +294,7 @@ export default function MapPage() {
   const drawReports = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
-    const data = reportFeatures(reportsRef.current);
+    const data = reportFeatures(reportsRef.current, t);
     const existing = map.getSource("reports");
     if (existing) {
       (existing as import("maplibre-gl").GeoJSONSource).setData(data);
@@ -312,7 +312,7 @@ export default function MapPage() {
         "circle-stroke-color": palette.white,
       },
     } as import("maplibre-gl").AddLayerObject);
-  }, []);
+  }, [t]);
 
   // Utrudnienia na trasie ze zgłoszeń społeczności (korki/wypadki/zamknięcia
   // blisko wyznaczonej trasy) — darmowa alternatywa dla płatnego API ruchu.
@@ -634,7 +634,8 @@ export default function MapPage() {
         if (f?.geometry.type !== "Point") return;
         const props = f.properties as { id?: string; name?: string; type?: string } | null;
         const [lng, lat] = f.geometry.coordinates as [number, number];
-        const kindLabel = POI_LABEL[props?.type ?? ""] ?? t("mapPage.poiFallback");
+        const poiKey = POI_LABEL[props?.type ?? ""];
+        const kindLabel = poiKey ? t(poiKey) : t("mapPage.poiFallback");
         const name = props?.name || kindLabel;
         const coords = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         const popup = new ml.Popup()
@@ -739,7 +740,7 @@ export default function MapPage() {
         const props = f.properties as { severity?: string; description?: string } | null;
         const [lng, lat] = f.geometry.coordinates as [number, number];
         const sev = (props?.severity ?? "unknown") as keyof typeof INCIDENT_LABEL;
-        const title = INCIDENT_LABEL[sev];
+        const title = t(INCIDENT_LABEL[sev]);
         new ml.Popup()
           .setLngLat([lng, lat])
           .setHTML(
@@ -1495,7 +1496,7 @@ export default function MapPage() {
                 onClick={() => switchBasemap(b.key)}
                 className={`${styles.segment} ${basemap === b.key ? styles.segmentActive : ""}`}
               >
-                {b.label}
+                {t(b.label)}
               </button>
             ))}
           </div>
@@ -1793,7 +1794,7 @@ export default function MapPage() {
             >
               {REPORT_TYPES.map((rt) => (
                 <option key={rt} value={rt}>
-                  {REPORT_LABEL[rt]}
+                  {t(REPORT_LABEL[rt])}
                 </option>
               ))}
             </select>
@@ -1833,13 +1834,17 @@ export default function MapPage() {
               </label>
               {incidentsOn && (
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
-                  <span style={{ color: INCIDENT_COLOR.closure }}>● {INCIDENT_LABEL.closure}</span>
-                  <span style={{ color: INCIDENT_COLOR.major }}>● {INCIDENT_LABEL.major}</span>
-                  <span style={{ color: INCIDENT_COLOR.moderate }}>
-                    ● {INCIDENT_LABEL.moderate}
+                  <span style={{ color: INCIDENT_COLOR.closure }}>
+                    ● {t(INCIDENT_LABEL.closure)}
                   </span>
-                  <span style={{ color: INCIDENT_COLOR.minor }}>● {INCIDENT_LABEL.minor}</span>
-                  <span style={{ color: INCIDENT_COLOR.unknown }}>● {INCIDENT_LABEL.unknown}</span>
+                  <span style={{ color: INCIDENT_COLOR.major }}>● {t(INCIDENT_LABEL.major)}</span>
+                  <span style={{ color: INCIDENT_COLOR.moderate }}>
+                    ● {t(INCIDENT_LABEL.moderate)}
+                  </span>
+                  <span style={{ color: INCIDENT_COLOR.minor }}>● {t(INCIDENT_LABEL.minor)}</span>
+                  <span style={{ color: INCIDENT_COLOR.unknown }}>
+                    ● {t(INCIDENT_LABEL.unknown)}
+                  </span>
                 </div>
               )}
               {incidentMsg && (
