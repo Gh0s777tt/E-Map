@@ -21,7 +21,7 @@ Domknięcie internacjonalizacji panelu web — **każda strona `(app)` renderuje
 - `[#361]` 🌍 **15 stron przez `t()`** — Ceny diesla, Audyt, Harmonogram, Scoring, Analityka, Rozliczenia (+kierowcy), Diety, Wyjazdy, Dokumenty, Usterki, Czat, Mapa (plik strony), Tacho, Czas pracy. Wzorzec: `useT` (klient) / `createTranslator` (serwer — dashboard), klucze płaskie `namespace.key`, **bez interpolacji** (dynamika w JSX, splity prefix/suffix), mapy etykiet `kod→MessageKey` w komponencie (jak `SEV_LABEL`/`RANK_LABEL`).
 - `[#361]` ✅ **Parytet pl/en wymuszony compile-time** — `en: Record<MessageKey, string>` + test parytetu (5/5); brak/nadmiar klucza = błąd `tsc`.
 - `[#361]` 🧩 **Panele Fazy 2 tacho** (inspektor, WTD, kompensacja, sczytania) też przez `t()` — spójne z resztą.
-- `[#361]` 📌 **Świadome follow-upy** (współdzielone komponenty, nie strony): `DEFECT_PARTS/SIDES` (Usterki + diagram pojazdu), komponenty panelu Mapy (`mapPanels`/`mapTheme` + enumy core), `TachoAutoSection`. Eksporty **CSV zostają PL** (konwencja: nazwy plików/nagłówki).
+- `[#361]` ✅ **Współdzielone komponenty — DOMKNIĘTE** (już nie tylko strony): `DEFECT_PARTS/SIDES` (Usterki + [diagram pojazdu](apps/web/components/VehicleDiagram.tsx)), panel Mapy ([mapPanels](apps/web/app/(app)/map/mapPanels.tsx)/[mapTheme](apps/web/app/(app)/map/mapTheme.ts)/mapFeatures), [TachoAutoSection](apps/web/app/(app)/work-time/TachoAutoSection.tsx) — mapy etykiet `wartość→MessageKey` tłumaczone u konsumentów, wartości kanoniczne (DB/`core`) nietknięte. Eksporty **CSV zostają PL** (konwencja: nazwy plików/nagłówki).
 
 **Bramki:** `biome` ✓ · parytet i18n **5/5** ✓ · web `tsc` exit 0 (weryfikowany po każdym z 8 batchy) ✓ · bez migracji. Deploy przez Vercel.
 
