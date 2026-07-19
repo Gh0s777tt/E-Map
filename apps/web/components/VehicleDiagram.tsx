@@ -1,6 +1,7 @@
 "use client";
 
 import { palette } from "@e-logistic/ui";
+import { useT } from "@/components/LocaleProvider";
 
 export type DiagramZone = "front" | "left" | "right" | "rear" | "wheels";
 
@@ -49,6 +50,7 @@ export function VehicleDiagram({
   side?: string;
   onZone?: (zone: DiagramZone) => void;
 }) {
+  const t = useT();
   const active = zonesFor(part, side);
   const fill = (z: DiagramZone) => (active.has(z) ? `${palette.red}cc` : "transparent");
   const stroke = palette.graphite;
@@ -85,10 +87,10 @@ export function VehicleDiagram({
       <rect x="20" y="285" width="160" height="6" {...zoneProps("wheels")} />
 
       <text x="100" y="34" textAnchor="middle" fontSize="11" fill={palette.offWhite}>
-        przód
+        {t("reports.side.front")}
       </text>
       <text x="100" y="328" textAnchor="middle" fontSize="11" fill={palette.offWhite}>
-        tył
+        {t("reports.side.rear")}
       </text>
     </svg>
   );

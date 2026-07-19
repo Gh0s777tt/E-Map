@@ -48,6 +48,30 @@ const STATUS_COLOR: Record<string, string> = {
   in_progress: "#f59e0b",
   resolved: "#22c55e",
 };
+// Kanoniczna wartość PL (zapis w DB) → klucz i18n do WYŚWIETLENIA. Wartości z @e-logistic/core.
+const PART_LABEL: Record<string, MessageKey> = {
+  "Hamulce (klocki/tarcze)": "reports.part.brakes",
+  "Opony / koła": "reports.part.tyres",
+  Zawieszenie: "reports.part.suspension",
+  Światła: "reports.part.lights",
+  "Lusterka / szyby": "reports.part.mirrors",
+  Silnik: "reports.part.engine",
+  "Skrzynia biegów": "reports.part.gearbox",
+  "Układ AdBlue / wydech": "reports.part.adblue",
+  Elektryka: "reports.part.electrics",
+  "Kabina / wnętrze": "reports.part.cabin",
+  "Naczepa / zabudowa": "reports.part.trailer",
+  Inne: "reports.part.other",
+};
+const SIDE_LABEL: Record<string, MessageKey> = {
+  lewa: "reports.side.left",
+  prawa: "reports.side.right",
+  przód: "reports.side.front",
+  tył: "reports.side.rear",
+  "oś przednia": "reports.side.frontAxle",
+  "oś tylna": "reports.side.rearAxle",
+  "—": "reports.side.none",
+};
 const STATUS_FILTERS: { value: "all" | DefectStatus; labelKey: MessageKey }[] = [
   { value: "all", labelKey: "common.all" },
   { value: "open", labelKey: "reports.status.open" },
@@ -94,6 +118,8 @@ export default function ReportsPage() {
     const key = STATUS_LABEL[st];
     return key ? t(key) : st;
   };
+  const partLabel = (p: string): string => (PART_LABEL[p] ? t(PART_LABEL[p]) : p);
+  const sideLabel = (s: string): string => (SIDE_LABEL[s] ? t(SIDE_LABEL[s]) : s);
 
   const setupMsg = setupMessage(source, {
     noVehicles: t("reports.noVehicles"),
@@ -286,7 +312,7 @@ export default function ReportsPage() {
               >
                 {DEFECT_PARTS.map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {partLabel(p)}
                   </option>
                 ))}
               </select>
@@ -296,7 +322,7 @@ export default function ReportsPage() {
               <select style={f.input} value={side} onChange={(e) => setSide(e.target.value)}>
                 {DEFECT_SIDES.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {sideLabel(s)}
                   </option>
                 ))}
               </select>
@@ -401,8 +427,8 @@ export default function ReportsPage() {
                   <strong style={{ minWidth: 90 }}>{regOf(d.vehicle_id)}</strong>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>
-                      {d.part}
-                      {d.side ? ` · ${d.side}` : ""} {d.dashboard_light ? "💡" : ""}
+                      {partLabel(d.part)}
+                      {d.side ? ` · ${sideLabel(d.side)}` : ""} {d.dashboard_light ? "💡" : ""}
                     </div>
                     <div style={{ color: palette.smoke, fontSize: 13 }}>{d.description}</div>
                   </div>
