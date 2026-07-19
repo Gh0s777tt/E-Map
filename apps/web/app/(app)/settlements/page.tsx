@@ -14,10 +14,12 @@ import {
   round2,
   type Settlement,
 } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import * as f from "@/components/formStyles";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader, SetupNotice } from "@/components/ui";
 import { downloadCsv } from "@/lib/csv";
@@ -46,13 +48,13 @@ type TripRow = {
   comment: string | null;
 };
 
-const TRIP_LABEL: Record<string, string> = {
-  load: "Załadunek",
-  unload: "Rozładunek",
-  start: "Rozpoczęcie",
-  end: "Zakończenie",
-  service: "Serwis",
-  other: "Inne",
+const TRIP_LABEL: Record<string, MessageKey> = {
+  load: "settlements.trip.load",
+  unload: "settlements.trip.unload",
+  start: "settlements.trip.start",
+  end: "settlements.trip.end",
+  service: "settlements.trip.service",
+  other: "settlements.trip.other",
 };
 
 function firstOfMonth(): string {
@@ -64,6 +66,7 @@ function today(): string {
 }
 
 export default function SettlementsPage() {
+  const t = useT();
   const { vehicles, source } = useFleet();
   const toast = useToast();
   const [vehicleId, setVehicleId] = useState("");
@@ -80,6 +83,11 @@ export default function SettlementsPage() {
   const [denied, setDenied] = useState(false);
   const [rates, setRates] = useState<Rate[]>([]);
   const [isOwner, setIsOwner] = useState(false);
+
+  const tripLabel = (a: string): string => {
+    const key = TRIP_LABEL[a];
+    return key ? t(key) : a;
+  };
 
   // Strażnik modułu + wczytanie stawek (domyślne €/km per pojazd) + rola.
   useEffect(() => {
@@ -114,7 +122,7 @@ export default function SettlementsPage() {
     if (!vehicleId) return;
     const val = Number(ratePerKm);
     if (!Number.isFinite(val) || val < 0) {
-      toast("Podaj poprawną stawkę €/km (≥ 0).", "error");
+      toast(t("settlements.invalidRate"), "error");
       return;
     }
     try {
@@ -123,9 +131,12 @@ export default function SettlementsPage() {
       if (!m) return;
       await saveDefaultRate(sb, { companyId: m.companyId, vehicleId, ratePerKm: val });
       setRates(await listRates(sb, m.companyId));
-      toast(`Zapisano domyślną stawkę ${val} €/km dla ${regOf(vehicleId)}.`, "success");
+      toast(
+        `${t("settlements.rateSavedPrefix")} ${val} €/km ${t("settlements.rateSavedFor")} ${regOf(vehicleId)}.`,
+        "success",
+      );
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Nie udało się zapisać stawki.", "error");
+      toast(e instanceof Error ? e.message : t("settlements.rateSaveError"), "error");
     }
   }
 
@@ -143,7 +154,7 @@ export default function SettlementsPage() {
       // Zakres dat filtrowany po stronie bazy (mniej danych w transferze) — `to` do końca dnia.
       const toEnd = `${to}T23:59:59.999Z`;
       const range = { from, to: toEnd };
-      const [f, a, t] = await Promise.all([
+      const [f, a, tripEv] = await Promise.all([
         listFuelLogs(sb, { vehicleId, ...range }),
         listFuelLogs(sb, { vehicleId, table: "adblue_logs", ...range }),
         listTripEvents(sb, { vehicleId, ...range }),
@@ -151,7 +162,7 @@ export default function SettlementsPage() {
       // Zakres dat już zastosowany w zapytaniu (gte/lte na created_at) — bez ponownego filtra w JS.
       const fFilt = f as FuelRow[];
       const aFilt = a as FuelRow[];
-      const tFilt = t as TripRow[];
+      const tFilt = tripEv as TripRow[];
       setFuel(fFilt);
       setAdblue(aFilt);
       setTrips(tFilt);
@@ -171,7 +182,7 @@ export default function SettlementsPage() {
       );
     } catch (e) {
       setSettlement(null);
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych do rozliczenia.");
+      setLoadErr(e instanceof Error ? e.message : t("settlements.loadError"));
     } finally {
       setBusy(false);
     }
@@ -196,7 +207,7 @@ export default function SettlementsPage() {
     }
     for (const r of trips) {
       rows.push([
-        TRIP_LABEL[r.action] ?? r.action,
+        tripLabel(r.action),
         r.created_at.slice(0, 10),
         r.odometer_km,
         null,
@@ -229,29 +240,22 @@ export default function SettlementsPage() {
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <PageHeader
-        title="Rozliczenia tras"
-        subtitle="Podsumowanie kosztów (paliwo, AdBlue, serwis, myto) i zysku dla pojazdu w wybranym okresie. Eksport do CSV (Excel) i wydruk/PDF."
-      />
+      <PageHeader title={t("settlements.title")} subtitle={t("settlements.subtitle")} />
 
       {/* #265: generator rozliczenia miesięcznego kierowcy (normy/stawki firmy). */}
       <p style={{ marginTop: 4 }}>
         <a href="/settlements/driver" style={{ color: palette.red, fontWeight: 700 }}>
-          🧾 Rozliczenie miesięczne kierowcy → generator (dni, km, premie, wydruk PDF)
+          {t("settlements.driverGenLink")}
         </a>
       </p>
 
-      <SetupNotice source={source} noVehicles="Dodaj pojazd, aby rozliczyć trasy." />
-      {denied && (
-        <p style={{ color: palette.red, marginTop: 16 }}>
-          ⛔ Brak dostępu do modułu Rozliczenia. Poproś właściciela o nadanie uprawnień.
-        </p>
-      )}
+      <SetupNotice source={source} noVehicles={t("settlements.noVehicles")} />
+      {denied && <p style={{ color: palette.red, marginTop: 16 }}>{t("settlements.denied")}</p>}
 
       {!denied && (
         <div className={`${styles.controls} no-print`}>
           <label className={styles.field}>
-            <span style={f.label}>Pojazd</span>
+            <span style={f.label}>{t("common.vehicle")}</span>
             <select
               className={styles.input}
               value={vehicleId}
@@ -265,7 +269,7 @@ export default function SettlementsPage() {
             </select>
           </label>
           <label className={styles.field}>
-            <span style={f.label}>Od</span>
+            <span style={f.label}>{t("settlements.from")}</span>
             <input
               className={styles.input}
               type="date"
@@ -274,7 +278,7 @@ export default function SettlementsPage() {
             />
           </label>
           <label className={styles.field}>
-            <span style={f.label}>Do</span>
+            <span style={f.label}>{t("settlements.to")}</span>
             <input
               className={styles.input}
               type="date"
@@ -283,34 +287,34 @@ export default function SettlementsPage() {
             />
           </label>
           <label className={styles.field}>
-            <span style={f.label}>Stawka €/km</span>
+            <span style={f.label}>{t("settlements.ratePerKm")}</span>
             <input
               className={styles.input}
               type="number"
               step="0.01"
               value={ratePerKm}
               onChange={(e) => setRatePerKm(e.target.value)}
-              placeholder="np. 1.20"
+              placeholder={t("settlements.ratePlaceholder")}
             />
           </label>
           {isOwner && (
             <button type="button" className={styles.ghost} onClick={saveRate}>
-              💾 Zapisz domyślną
+              {t("settlements.saveDefault")}
             </button>
           )}
           <label className={styles.field}>
-            <span style={f.label}>Myto (€)</span>
+            <span style={f.label}>{t("settlements.tollField")}</span>
             <input
               className={styles.input}
               type="number"
               step="0.01"
               value={tollCost}
               onChange={(e) => setTollCost(e.target.value)}
-              placeholder="opcjonalnie"
+              placeholder={t("settlements.optional")}
             />
           </label>
           <Button onClick={load} disabled={busy || !vehicleId}>
-            {busy ? "Liczę…" : "Przelicz"}
+            {busy ? t("settlements.computing") : t("settlements.compute")}
           </Button>
         </div>
       )}
@@ -325,68 +329,75 @@ export default function SettlementsPage() {
               className="no-print"
               style={{ color: palette.red, display: "inline-block", marginBottom: 8 }}
             >
-              Karta pojazdu →
+              {t("settlements.vehicleCard")}
             </Link>
           )}
           <div className={styles.cards}>
-            <Card label="Dystans" value={`${settlement.distanceKm} km`} />
+            <Card label={t("settlements.distance")} value={`${settlement.distanceKm} km`} />
             <Card
-              label="Spalanie"
+              label={t("settlements.consumption")}
               value={
                 settlement.avgConsumptionLPer100km != null
                   ? `${settlement.avgConsumptionLPer100km} L/100km`
                   : "—"
               }
             />
-            <Card label="Koszt razem" value={`${settlement.totalCost} €`} />
+            <Card label={t("settlements.totalCost")} value={`${settlement.totalCost} €`} />
             <Card
-              label="Zysk"
+              label={t("settlements.profit")}
               value={`${settlement.profit} €`}
               accent={settlement.profit >= 0 ? "#22c55e" : palette.red}
             />
             <Card
-              label="Marża"
+              label={t("settlements.margin")}
               value={settlement.marginPercent != null ? `${settlement.marginPercent}%` : "—"}
             />
           </div>
 
           <table className={styles.table}>
             <tbody>
-              <Tr k="Paliwo" v={`${settlement.fuelLiters} L · ${settlement.fuelCost} €`} />
+              <Tr
+                k={t("settlements.fuel")}
+                v={`${settlement.fuelLiters} L · ${settlement.fuelCost} €`}
+              />
               <Tr k="AdBlue" v={`${settlement.adblueLiters} L · ${settlement.adblueCost} €`} />
-              <Tr k="Serwis" v={`${settlement.serviceCost} €`} />
-              <Tr k="Inne" v={`${settlement.otherCost} €`} />
-              <Tr k="Myto" v={`${settlement.tollCost} €`} />
-              <Tr k="Przychód (stawka × km)" v={`${settlement.revenue} €`} />
+              <Tr k={t("settlements.service")} v={`${settlement.serviceCost} €`} />
+              <Tr k={t("settlements.other")} v={`${settlement.otherCost} €`} />
+              <Tr k={t("settlements.toll")} v={`${settlement.tollCost} €`} />
+              <Tr k={t("settlements.revenue")} v={`${settlement.revenue} €`} />
             </tbody>
           </table>
 
           <div style={{ display: "flex", gap: 8, marginTop: 16 }} className="no-print">
             <Button variant="ghost" onClick={exportCsv}>
-              ⬇️ Eksport CSV
+              {t("settlements.exportCsv")}
             </Button>
             <Button variant="ghost" onClick={() => window.print()}>
-              🖨️ Drukuj / PDF
+              {t("settlements.print")}
             </Button>
           </div>
 
           <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 28 }}>
-            Pozycje ({fuel.length + adblue.length + trips.length})
+            {t("settlements.items")} ({fuel.length + adblue.length + trips.length})
           </h2>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Typ</th>
-                <th className={styles.th}>Data</th>
-                <th className={styles.th}>Licznik</th>
-                <th className={styles.th}>Litry</th>
-                <th className={styles.th}>Kwota</th>
+                <th className={styles.th}>{t("settlements.colType")}</th>
+                <th className={styles.th}>{t("common.date")}</th>
+                <th className={styles.th}>{t("settlements.colOdometer")}</th>
+                <th className={styles.th}>{t("settlements.colLiters")}</th>
+                <th className={styles.th}>{t("settlements.colAmount")}</th>
               </tr>
             </thead>
             <tbody>
               {fuel.map((r) => (
                 <tr key={`f-${r.created_at}-${r.odometer_km}-${r.liters}`}>
-                  <td className={styles.td}>{r.is_full === false ? "Paliwo (cz.)" : "Paliwo"}</td>
+                  <td className={styles.td}>
+                    {r.is_full === false
+                      ? t("settlements.fuelPartialShort")
+                      : t("settlements.fuel")}
+                  </td>
                   <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km}</td>
                   <td className={styles.td}>{r.liters}</td>
@@ -408,7 +419,7 @@ export default function SettlementsPage() {
               ))}
               {trips.map((r) => (
                 <tr key={`t-${r.created_at}-${r.action}-${r.odometer_km}`}>
-                  <td className={styles.td}>{TRIP_LABEL[r.action] ?? r.action}</td>
+                  <td className={styles.td}>{tripLabel(r.action)}</td>
                   <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km ?? "—"}</td>
                   <td className={styles.td}>—</td>

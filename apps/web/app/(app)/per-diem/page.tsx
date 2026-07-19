@@ -9,11 +9,13 @@ import {
   type PerDiemTrip,
 } from "@e-logistic/api";
 import { computePerDiem, type DietMode, type DietTrip, sumPerDiem } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
+import { useT } from "@/components/LocaleProvider";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
@@ -34,7 +36,10 @@ function emptyRow(): Row {
   };
 }
 
-const MODE_LABEL: Record<DietMode, string> = { domestic: "krajowa", foreign: "zagraniczna" };
+const MODE_LABEL: Record<DietMode, MessageKey> = {
+  domestic: "perDiem.modeDomestic",
+  foreign: "perDiem.modeForeign",
+};
 
 /** PerDiemTrip (DB) → DietTrip (rdzeń) do policzenia należnej diety. */
 function toTrip(t: PerDiemTrip): DietTrip {
@@ -48,6 +53,7 @@ function toTrip(t: PerDiemTrip): DietTrip {
 }
 
 export default function PerDiemPage() {
+  const t = useT();
   const confirm = useConfirm();
   const [driver, setDriver] = useState("");
   // #271: kartoteka do podpowiedzi + FK driver_id przy zapisie.
@@ -60,6 +66,8 @@ export default function PerDiemPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const modeLabel = (m: DietMode): string => t(MODE_LABEL[m]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,11 +84,11 @@ export default function PerDiemPage() {
         .catch(() => {});
       if (manage) setSaved(await listPerDiemTrips(sb, m.companyId));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się pobrać diet.");
+      setErr(e instanceof Error ? e.message : t("perDiem.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -101,7 +109,7 @@ export default function PerDiemPage() {
     if (!companyId) return;
     const valid = rows.filter((r) => r.hours > 0 && r.dailyRate > 0);
     if (valid.length === 0) {
-      setErr("Uzupełnij czas i stawkę co najmniej jednej podróży.");
+      setErr(t("perDiem.validateTripRequired"));
       return;
     }
     setBusy(true);
@@ -132,19 +140,19 @@ export default function PerDiemPage() {
       setRows([emptyRow()]);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zapisu diet.");
+      setErr(e instanceof Error ? e.message : t("perDiem.saveError"));
     } finally {
       setBusy(false);
     }
   }
 
-  async function removeSaved(t: PerDiemTrip) {
-    if (!(await confirm("Usunąć zapisaną podróż?"))) return;
+  async function removeSaved(trip: PerDiemTrip) {
+    if (!(await confirm(t("perDiem.confirmDelete")))) return;
     try {
-      await deletePerDiemTrip(getBrowserSupabase(), t.id);
+      await deletePerDiemTrip(getBrowserSupabase(), trip.id);
       await load();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd usuwania.");
+      setErr(e instanceof Error ? e.message : t("perDiem.deleteError"));
     }
   }
 
@@ -166,7 +174,7 @@ export default function PerDiemPage() {
         s.driver_name ?? "",
         s.trip_date ?? "",
         s.destination ?? "—",
-        MODE_LABEL[s.mode],
+        modeLabel(s.mode),
         s.hours,
         r.days,
         s.daily_rate,
@@ -176,17 +184,15 @@ export default function PerDiemPage() {
     });
     body.push([]);
     body.push(["Podsumowanie wg waluty", "", "", "", "", "", "", "", ""]);
-    for (const t of savedTotals) body.push(["", "", "", "", "", t.days, "", t.amount, t.currency]);
+    for (const row of savedTotals)
+      body.push(["", "", "", "", "", row.days, "", row.amount, row.currency]);
     downloadCsv(`diety_${csvDateStamp()}.csv`, headers, body);
   }
 
   if (loading) {
     return (
       <div style={{ maxWidth: 1000 }}>
-        <PageHeader
-          title="Diety kierowcy"
-          subtitle="Kalkulator i ewidencja diet z podróży służbowych."
-        />
+        <PageHeader title={t("perDiem.title")} subtitle={t("perDiem.subtitleShort")} />
         <ListStatus loading error={null} />
       </div>
     );
@@ -195,31 +201,25 @@ export default function PerDiemPage() {
   if (!canManage) {
     return (
       <div style={{ maxWidth: 1000 }}>
-        <PageHeader
-          title="Diety kierowcy"
-          subtitle="Kalkulator i ewidencja diet z podróży służbowych."
-        />
-        <p style={{ color: palette.smoke }}>Dostęp tylko dla właściciela / spedytora.</p>
+        <PageHeader title={t("perDiem.title")} subtitle={t("perDiem.subtitleShort")} />
+        <p style={{ color: palette.smoke }}>{t("perDiem.accessOwnerDispatcher")}</p>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 1000 }}>
-      <PageHeader
-        title="Diety kierowcy"
-        subtitle="Kalkulator i ewidencja diet (per diem) — krajowych i zagranicznych. Stawki dobowe ustalasz sam (urzędowe zmienia ustawodawca)."
-      />
+      <PageHeader title={t("perDiem.title")} subtitle={t("perDiem.subtitle")} />
 
       <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
         <div style={{ ...f.field, maxWidth: 320 }}>
-          <span style={f.label}>Kierowca (do zestawienia)</span>
+          <span style={f.label}>{t("perDiem.driverForReport")}</span>
           <input
             style={f.input}
             value={driver}
             list="drivers-dl"
             onChange={(e) => setDriver(e.target.value)}
-            placeholder="Imię i nazwisko"
+            placeholder={t("perDiem.namePlaceholder")}
           />
           <datalist id="drivers-dl">
             {driversList.map((d) => (
@@ -228,7 +228,7 @@ export default function PerDiemPage() {
           </datalist>
         </div>
         <div style={{ ...f.field, maxWidth: 180 }}>
-          <span style={f.label}>Data podróży</span>
+          <span style={f.label}>{t("perDiem.tripDate")}</span>
           <input
             style={f.input}
             type="date"
@@ -240,13 +240,13 @@ export default function PerDiemPage() {
 
       <div style={f.card}>
         <div style={{ ...f.listRow, color: palette.smoke, fontSize: 12, fontWeight: 700 }}>
-          <span style={{ flex: 1, minWidth: 120 }}>Cel</span>
-          <span style={{ width: 120 }}>Typ</span>
-          <span style={{ width: 90 }}>Czas (h)</span>
-          <span style={{ width: 100 }}>Stawka/dobę</span>
-          <span style={{ width: 80 }}>Waluta</span>
-          <span style={{ width: 70 }}>Doby</span>
-          <span style={{ width: 100 }}>Kwota</span>
+          <span style={{ flex: 1, minWidth: 120 }}>{t("perDiem.colDestination")}</span>
+          <span style={{ width: 120 }}>{t("perDiem.colType")}</span>
+          <span style={{ width: 90 }}>{t("perDiem.colHours")}</span>
+          <span style={{ width: 100 }}>{t("perDiem.colRate")}</span>
+          <span style={{ width: 80 }}>{t("perDiem.colCurrency")}</span>
+          <span style={{ width: 70 }}>{t("perDiem.colDays")}</span>
+          <span style={{ width: 100 }}>{t("perDiem.colAmount")}</span>
           <span style={{ width: 36 }} />
         </div>
 
@@ -258,15 +258,15 @@ export default function PerDiemPage() {
                 style={{ ...f.input, flex: 1, minWidth: 120 }}
                 value={r.destination}
                 onChange={(e) => patch(r.id, { destination: e.target.value })}
-                placeholder="np. Niemcy / Warszawa"
+                placeholder={t("perDiem.destPlaceholder")}
               />
               <select
                 style={{ ...f.input, width: 120 }}
                 value={r.mode}
                 onChange={(e) => patch(r.id, { mode: e.target.value as DietMode })}
               >
-                <option value="foreign">zagraniczna</option>
-                <option value="domestic">krajowa</option>
+                <option value="foreign">{t("perDiem.modeForeign")}</option>
+                <option value="domestic">{t("perDiem.modeDomestic")}</option>
               </select>
               <input
                 style={{ ...f.input, width: 90 }}
@@ -299,7 +299,7 @@ export default function PerDiemPage() {
                   setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.id !== r.id) : rs))
                 }
                 style={styles.del}
-                aria-label="Usuń wiersz"
+                aria-label={t("perDiem.removeRow")}
               >
                 ✕
               </button>
@@ -312,18 +312,18 @@ export default function PerDiemPage() {
 
       <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <Button variant="ghost" onClick={() => setRows((rs) => [...rs, emptyRow()])}>
-          ➕ Dodaj podróż
+          {t("perDiem.addTrip")}
         </Button>
         <span style={{ flex: 1 }} />
         <Button onClick={saveDrafts} disabled={busy || draftResults.length === 0}>
-          {busy ? "Zapisuję…" : "💾 Zapisz do ewidencji"}
+          {busy ? t("perDiem.saving") : t("perDiem.saveToRecord")}
         </Button>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", marginTop: 28, marginBottom: 8 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Ewidencja diet</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{t("perDiem.recordHeading")}</h2>
         <span style={{ color: palette.smoke, fontSize: 13, marginLeft: 8 }}>
-          {saved.length > 0 ? `${saved.length} podróży` : "brak zapisanych"}
+          {saved.length > 0 ? `${saved.length} ${t("perDiem.tripsCount")}` : t("perDiem.noneSaved")}
         </span>
         <span style={{ flex: 1 }} />
         <Button variant="ghost" onClick={exportCsv} disabled={saved.length === 0}>
@@ -341,13 +341,15 @@ export default function PerDiemPage() {
                   <strong>{s.destination || "—"}</strong>
                   <span style={{ color: palette.smoke, fontSize: 12 }}>
                     {" "}
-                    · {MODE_LABEL[s.mode]}
+                    · {modeLabel(s.mode)}
                     {s.driver_name ? ` · ${s.driver_name}` : ""}
                     {s.trip_date ? ` · ${s.trip_date}` : ""}
                   </span>
                 </span>
                 <span style={{ ...f.cell, width: 90 }}>{s.hours} h</span>
-                <span style={{ ...f.cell, width: 70 }}>{r.days} dób</span>
+                <span style={{ ...f.cell, width: 70 }}>
+                  {r.days} {t("perDiem.daysUnit")}
+                </span>
                 <span style={{ width: 130, fontWeight: 700, color: palette.red }}>
                   {r.amount} {s.currency}
                 </span>
@@ -355,7 +357,7 @@ export default function PerDiemPage() {
                   type="button"
                   onClick={() => removeSaved(s)}
                   style={styles.del}
-                  aria-label="Usuń"
+                  aria-label={t("common.delete")}
                 >
                   🗑️
                 </button>
@@ -364,21 +366,20 @@ export default function PerDiemPage() {
           })}
         </div>
       ) : (
-        <p style={{ color: palette.smoke }}>
-          Brak zapisanych diet — dodaj podróże powyżej i zapisz do ewidencji.
-        </p>
+        <p style={{ color: palette.smoke }}>{t("perDiem.emptyRecord")}</p>
       )}
 
       {savedTotals.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Podsumowanie — należne diety</div>
-          {savedTotals.map((t) => (
-            <div key={t.currency} style={{ ...f.listRow, ...styles.totalRow }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("perDiem.summaryDue")}</div>
+          {savedTotals.map((tot) => (
+            <div key={tot.currency} style={{ ...f.listRow, ...styles.totalRow }}>
               <span style={{ flex: 1 }}>
-                {t.count} {t.count === 1 ? "podróż" : "podróże/-y"} · {t.days} dób
+                {tot.count} {tot.count === 1 ? t("perDiem.tripSingular") : t("perDiem.tripPlural")}{" "}
+                · {tot.days} {t("perDiem.daysUnit")}
               </span>
               <span style={{ fontWeight: 800, color: palette.red, fontSize: 16 }}>
-                {t.amount} {t.currency}
+                {tot.amount} {tot.currency}
               </span>
             </div>
           ))}
@@ -386,9 +387,11 @@ export default function PerDiemPage() {
       )}
 
       <p style={{ ...f.meta, marginTop: 16, maxWidth: 720 }}>
-        Reguły czasu: <strong>krajowa</strong> — do doby: &lt;8h = 0, 8–12h = ½, &gt;12h = 1;
-        powyżej doby: każda pełna doba = 1, niepełna ≤8h = ½, &gt;8h = 1.{" "}
-        <strong>Zagraniczna</strong> — ≤8h = ⅓, 8–12h = ½, &gt;12h = 1; każda pełna doba = 1.
+        {t("perDiem.rulesIntro")}
+        <strong>{t("perDiem.modeDomestic")}</strong>
+        {t("perDiem.rulesDomestic")}
+        <strong>{t("perDiem.rulesForeignLabel")}</strong>
+        {t("perDiem.rulesForeign")}
       </p>
     </div>
   );

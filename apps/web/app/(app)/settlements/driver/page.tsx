@@ -17,6 +17,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as f from "@/components/formStyles";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader, PrintButton } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -46,6 +47,7 @@ function daysAgoIso(days: number): string {
 }
 
 export default function DriverSettlementPage() {
+  const t = useT();
   const toast = useToast();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
@@ -105,16 +107,16 @@ export default function DriverSettlementPage() {
       if (error) throw error;
 
       const byWeek = new Map<string, { min: number; max: number; dates: Set<string> }>();
-      for (const t of trips ?? []) {
-        const day = t.created_at.slice(0, 10);
+      for (const tr of trips ?? []) {
+        const day = tr.created_at.slice(0, 10);
         const wk = isoWeekStart(day);
         const cur = byWeek.get(wk) ?? {
-          min: t.odometer_km,
-          max: t.odometer_km,
+          min: tr.odometer_km,
+          max: tr.odometer_km,
           dates: new Set<string>(),
         };
-        cur.min = Math.min(cur.min, t.odometer_km);
-        cur.max = Math.max(cur.max, t.odometer_km);
+        cur.min = Math.min(cur.min, tr.odometer_km);
+        cur.max = Math.max(cur.max, tr.odometer_km);
         cur.dates.add(day);
         byWeek.set(wk, cur);
       }
@@ -130,14 +132,14 @@ export default function DriverSettlementPage() {
       setDocOverride("");
       setLoaded(true);
       if (workDates.size === 0 && (trips ?? []).length === 0) {
-        toast("Brak danych w okresie — uzupełnij dni i km ręcznie poniżej.", "info");
+        toast(t("settlementsDriver.noDataInfo"), "info");
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Nie udało się pobrać danych.", "error");
+      toast(e instanceof Error ? e.message : t("settlementsDriver.loadError"), "error");
     } finally {
       setBusy(false);
     }
-  }, [companyId, driver, driverName, from, to, toast]);
+  }, [companyId, driver, driverName, from, to, toast, t]);
 
   const result = useMemo(
     () =>
@@ -157,9 +159,9 @@ export default function DriverSettlementPage() {
     if (!companyId) return;
     try {
       await saveSettlementSettings(getBrowserSupabase(), companyId, settings);
-      toast("Zapisano stawki firmy.", "success");
+      toast(t("settlementsDriver.ratesSaved"), "success");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu stawek.", "error");
+      toast(e instanceof Error ? e.message : t("settlementsDriver.ratesSaveError"), "error");
     }
   }
 
@@ -175,13 +177,13 @@ export default function DriverSettlementPage() {
           amount: result.balance,
           currency: "PLN",
           entryDate: to,
-          note: `Rozliczenie ${from} → ${to} (dni: ${days}, km: ${result.kmTotal})`,
+          note: `${t("settlementsDriver.settlement")} ${from} → ${to} (${t("settlementsDriver.days")}: ${days}, km: ${result.kmTotal})`,
         },
         companyId,
       );
-      toast("Dodano należność w wypłatach kierowcy.", "success");
+      toast(t("settlementsDriver.payoutAdded"), "success");
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Błąd zapisu wypłaty.", "error");
+      toast(e instanceof Error ? e.message : t("settlementsDriver.payoutSaveError"), "error");
     } finally {
       setBusy(false);
     }
@@ -193,27 +195,21 @@ export default function DriverSettlementPage() {
   if (!canManage) {
     return (
       <div>
-        <PageHeader title="Rozliczenie kierowcy" />
-        <p style={{ color: palette.smoke }}>
-          Rozliczenia generuje właściciel lub spedytor. Twoje wypłaty znajdziesz w module
-          Rozliczenia.
-        </p>
+        <PageHeader title={t("settlementsDriver.title")} />
+        <p style={{ color: palette.smoke }}>{t("settlementsDriver.noAccess")}</p>
       </div>
     );
   }
 
   return (
     <div>
-      <PageHeader
-        title="Rozliczenie kierowcy"
-        subtitle="Dni i km z danych okresu · normy i stawki Twojej firmy · wydruk PDF"
-      />
+      <PageHeader title={t("settlementsDriver.title")} subtitle={t("settlementsDriver.subtitle")} />
 
       <div style={styles.controls} className="no-print">
         <label style={styles.field}>
-          <span style={styles.lbl}>Kierowca</span>
+          <span style={styles.lbl}>{t("settlementsDriver.driver")}</span>
           <select style={f.input} value={driverId} onChange={(e) => setDriverId(e.target.value)}>
-            <option value="">— wybierz —</option>
+            <option value="">{t("settlementsDriver.selectPlaceholder")}</option>
             {drivers.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.first_name} {d.last_name}
@@ -222,7 +218,7 @@ export default function DriverSettlementPage() {
           </select>
         </label>
         <label style={styles.field}>
-          <span style={styles.lbl}>Od</span>
+          <span style={styles.lbl}>{t("settlementsDriver.from")}</span>
           <input
             style={f.input}
             type="date"
@@ -231,27 +227,28 @@ export default function DriverSettlementPage() {
           />
         </label>
         <label style={styles.field}>
-          <span style={styles.lbl}>Do</span>
+          <span style={styles.lbl}>{t("settlementsDriver.to")}</span>
           <input style={f.input} type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
         <Button onClick={loadData} disabled={!driver || busy}>
-          {busy ? "Pobieram…" : "⬇️ Pobierz dni i km"}
+          {busy ? t("settlementsDriver.fetching") : t("settlementsDriver.fetchDaysKm")}
         </Button>
       </div>
 
       <details style={styles.card} className="no-print">
         <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-          ⚙️ Normy i stawki firmy {isOwner ? "(edytujesz jako właściciel)" : "(podgląd)"}
+          {t("settlementsDriver.companyRates")}{" "}
+          {isOwner ? t("settlementsDriver.editingAsOwner") : t("settlementsDriver.preview")}
         </summary>
         <div style={styles.grid6}>
           {(
             [
-              ["Stawka dzienna [zł]", "dailyRate"],
-              ["Norma km / dzień", "kmNormPerDay"],
-              ["Stawka za km nadwyżki [zł]", "kmRate"],
-              ["Ubezpieczenie [zł/dzień]", "insurancePerDay"],
-              ["Telefon [zł / 30 dni]", "phoneMonthly"],
-              ["Premia dok. [zł / 30 dni]", "docBonusMonthly"],
+              [t("settlementsDriver.dailyRate"), "dailyRate"],
+              [t("settlementsDriver.kmNorm"), "kmNormPerDay"],
+              [t("settlementsDriver.kmRate"), "kmRate"],
+              [t("settlementsDriver.insurance"), "insurancePerDay"],
+              [t("settlementsDriver.phone"), "phoneMonthly"],
+              [t("settlementsDriver.docBonus"), "docBonusMonthly"],
             ] as const
           ).map(([label, key]) => (
             <label key={key} style={styles.field}>
@@ -269,7 +266,7 @@ export default function DriverSettlementPage() {
         </div>
         {isOwner && (
           <div style={{ marginTop: 10 }}>
-            <Button onClick={saveSettings}>Zapisz stawki firmy</Button>
+            <Button onClick={saveSettings}>{t("settlementsDriver.saveCompanyRates")}</Button>
           </div>
         )}
       </details>
@@ -277,10 +274,10 @@ export default function DriverSettlementPage() {
       {loaded && driver && (
         <>
           <div style={styles.card} className="no-print">
-            <strong>Korekty (przed wydrukiem)</strong>
+            <strong>{t("settlementsDriver.corrections")}</strong>
             <div style={styles.grid6}>
               <label style={styles.field}>
-                <span style={styles.lbl}>Dni razem</span>
+                <span style={styles.lbl}>{t("settlementsDriver.daysTotal")}</span>
                 <input
                   style={f.input}
                   type="number"
@@ -289,7 +286,7 @@ export default function DriverSettlementPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.lbl}>Premia norma [zł]</span>
+                <span style={styles.lbl}>{t("settlementsDriver.normBonus")}</span>
                 <input
                   style={f.input}
                   type="number"
@@ -299,16 +296,16 @@ export default function DriverSettlementPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.lbl}>Premia dok. (korekta)</span>
+                <span style={styles.lbl}>{t("settlementsDriver.docBonusAdjust")}</span>
                 <input
                   style={f.input}
-                  placeholder={`auto: ${zl(result.docBonus)}`}
+                  placeholder={`${t("settlementsDriver.autoPrefix")} ${zl(result.docBonus)}`}
                   value={docOverride}
                   onChange={(e) => setDocOverride(e.target.value)}
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.lbl}>Hotele [zł]</span>
+                <span style={styles.lbl}>{t("settlementsDriver.hotels")}</span>
                 <input
                   style={f.input}
                   type="number"
@@ -318,7 +315,7 @@ export default function DriverSettlementPage() {
                 />
               </label>
               <label style={styles.field}>
-                <span style={styles.lbl}>Potrącenia/zaliczki [zł]</span>
+                <span style={styles.lbl}>{t("settlementsDriver.deductions")}</span>
                 <input
                   style={f.input}
                   type="number"
@@ -331,7 +328,9 @@ export default function DriverSettlementPage() {
             {weeks.map((w, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: tygodnie są czysto pozycyjne (Tydzień 1..N)
               <div key={`w-${i * 1}`} style={styles.weekRow}>
-                <span style={{ width: 90, color: palette.smoke }}>Tydzień {i + 1}</span>
+                <span style={{ width: 90, color: palette.smoke }}>
+                  {t("settlementsDriver.week")} {i + 1}
+                </span>
                 <input
                   style={{ ...f.input, width: 90 }}
                   type="number"
@@ -349,13 +348,13 @@ export default function DriverSettlementPage() {
             ))}
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
               <Button onClick={() => setWeeks((ws) => [...ws, { days: 0, km: 0 }])}>
-                + tydzień
+                {t("settlementsDriver.addWeek")}
               </Button>
               <Button
                 onClick={() => setWeeks((ws) => ws.slice(0, -1))}
                 disabled={weeks.length <= 1}
               >
-                − tydzień
+                {t("settlementsDriver.removeWeek")}
               </Button>
             </div>
           </div>
@@ -367,43 +366,45 @@ export default function DriverSettlementPage() {
             <table style={styles.tbl}>
               <tbody>
                 <tr style={styles.rowB}>
-                  <td>Rozliczenie {driverName}</td>
+                  <td>
+                    {t("settlementsDriver.settlement")} {driverName}
+                  </td>
                   <td style={styles.num}>{from}</td>
-                  <td style={styles.num}>do</td>
+                  <td style={styles.num}>{t("settlementsDriver.rangeTo")}</td>
                   <td style={styles.num} colSpan={2}>
                     {to}
                   </td>
                 </tr>
                 <tr>
-                  <td>km razem (z danych okresu)</td>
+                  <td>{t("settlementsDriver.kmTotalRow")}</td>
                   <td style={styles.num} colSpan={3}>
                     {result.kmTotal}
                   </td>
                   <td style={styles.num} />
                 </tr>
                 <tr style={{ background: "#f2d7e0", color: "#111" }}>
-                  <td>dni</td>
+                  <td>{t("settlementsDriver.days")}</td>
                   <td style={styles.num}>{days}</td>
-                  <td style={styles.num}>stawka</td>
+                  <td style={styles.num}>{t("settlementsDriver.rate")}</td>
                   <td style={styles.num}>{zl(settings.dailyRate)}</td>
                   <td style={styles.num}>{zl(result.base)}</td>
                 </tr>
                 <tr style={{ background: "#d5a6bd", color: "#111", fontWeight: 700 }}>
                   <td colSpan={4} style={styles.num}>
-                    KWOTA PODSTAWOWA:
+                    {t("settlementsDriver.baseAmount")}
                   </td>
                   <td style={styles.num}>{zl(result.base)}</td>
                 </tr>
                 <tr style={styles.blueL}>
                   <td colSpan={4} style={{ fontSize: 11 }}>
-                    premia dokumentacja / bezszkodowość / terminowość / paliwo (
-                    {zl(settings.docBonusMonthly)} /30dni)
+                    {t("settlementsDriver.docBonusDesc")} ({zl(settings.docBonusMonthly)}{" "}
+                    {t("settlementsDriver.per30days")})
                   </td>
                   <td style={styles.num}>{zl(result.docBonus)}</td>
                 </tr>
                 <tr style={styles.blueL}>
                   <td colSpan={4}>
-                    <strong>premia norma</strong>
+                    <strong>{t("settlementsDriver.normBonusRow")}</strong>
                   </td>
                   <td style={styles.num}>{zl(result.normBonus)}</td>
                 </tr>
@@ -411,7 +412,10 @@ export default function DriverSettlementPage() {
                   // biome-ignore lint/suspicious/noArrayIndexKey: wiersze pozycyjne (Tydzień 1..N)
                   <tr key={`p-${i * 1}`} style={styles.blue}>
                     <td>
-                      <strong>Tydzień {i + 1}</strong> | dni | km | stawka
+                      <strong>
+                        {t("settlementsDriver.week")} {i + 1}
+                      </strong>{" "}
+                      | {t("settlementsDriver.days")} | km | {t("settlementsDriver.rate")}
                     </td>
                     <td style={styles.num}>{w.days}</td>
                     <td style={styles.num}>{w.km}</td>
@@ -421,47 +425,48 @@ export default function DriverSettlementPage() {
                 ))}
                 <tr style={styles.blue}>
                   <td>
-                    <strong>Dodatek na ubezpieczenie</strong>
+                    <strong>{t("settlementsDriver.insuranceSupplement")}</strong>
                   </td>
                   <td style={styles.num} colSpan={2}>
-                    stawka / dzień
+                    {t("settlementsDriver.ratePerDay")}
                   </td>
                   <td style={styles.num}>{settings.insurancePerDay}</td>
                   <td style={styles.num}>{zl(result.insurance)}</td>
                 </tr>
                 <tr style={{ ...styles.blue, fontWeight: 700 }}>
                   <td colSpan={4} style={styles.num}>
-                    PREMIA RAZEM
+                    {t("settlementsDriver.bonusTotal")}
                   </td>
                   <td style={styles.num}>{zl(result.bonusTotal)}</td>
                 </tr>
                 <tr>
                   <td colSpan={4} style={styles.num}>
-                    TELEFON ({zl(settings.phoneMonthly)} /30dni)
+                    {t("settlementsDriver.phoneRow")} ({zl(settings.phoneMonthly)}{" "}
+                    {t("settlementsDriver.per30days")})
                   </td>
                   <td style={styles.num}>{zl(result.phone)}</td>
                 </tr>
                 <tr>
                   <td colSpan={4} style={styles.num}>
-                    HOTELE
+                    {t("settlementsDriver.hotelsRow")}
                   </td>
                   <td style={styles.num}>{result.hotels ? zl(result.hotels) : ""}</td>
                 </tr>
                 <tr style={{ background: "#ffe599", color: "#111", fontWeight: 700 }}>
                   <td colSpan={4} style={styles.num}>
-                    RAZEM
+                    {t("common.total")}
                   </td>
                   <td style={styles.num}>{zl(result.total)}</td>
                 </tr>
                 <tr>
                   <td colSpan={4} style={styles.num}>
-                    Potrącenia / zaliczki
+                    {t("settlementsDriver.deductionsRow")}
                   </td>
                   <td style={styles.num}>{result.deductions ? `−${zl(result.deductions)}` : ""}</td>
                 </tr>
                 <tr style={{ background: "#b6d7a8", color: "#111", fontWeight: 700 }}>
                   <td colSpan={4} style={styles.num}>
-                    BALANS
+                    {t("settlementsDriver.balance")}
                   </td>
                   <td style={styles.num}>{zl(result.balance)}</td>
                 </tr>
@@ -472,7 +477,7 @@ export default function DriverSettlementPage() {
           <div style={{ display: "flex", gap: 10, marginTop: 14 }} className="no-print">
             <PrintButton />
             <Button onClick={saveAsPayout} disabled={busy}>
-              💰 Zapisz jako należność ({zl(result.balance)})
+              {t("settlementsDriver.saveAsDue")} ({zl(result.balance)})
             </Button>
           </div>
         </>
