@@ -7,7 +7,7 @@
  * `NSLocationAlwaysAndWhenInUseUsageDescription`, `ACCESS_BACKGROUND_LOCATION`).
  *
  * Poza tą jedną warunkową sekcją konfiguracja jest 1:1 z poprzednim app.json
- * (wersja 1.90.2, wszystkie infoPlist/pluginy/permissions bez zmian).
+ * (wersja 1.91.0, wszystkie infoPlist/pluginy/permissions bez zmian).
  */
 
 // v2 (tło) tylko gdy jawnie ustawione w profilu EAS `production-bg`.
@@ -63,7 +63,7 @@ module.exports = {
     name: "E-Logistic",
     slug: "e-logistic",
     scheme: "elogistic",
-    version: "1.90.2",
+    version: "1.91.0",
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,

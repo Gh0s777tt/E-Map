@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-363-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.207.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-364-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.208.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.208.0] — 🧰 Batch funkcji: firma kierowcy, tryby lokalizacji, reset Tacho, PIN za biometrią, hardening DB
+
+Pakiet zgłoszony przez właściciela. Mobile **1.91.0** (wymaga rebuildu EAS). Migracja **0083** nałożona na prod.
+
+- `[#364]` 👤 **Firma własna kierowcy (B2B/kontrakt)** — kierowca na kontrakt może mieć własną firmę: nazwa/NIP/REGON/adres/profil działalności (opcjonalne). Migracja [0083](supabase/migrations/0083_driver_company.sql) (+5 kolumn `drivers`, `driver_save`/`list_drivers` rozszerzone; PII i auth bez zmian), formularze [web](apps/web/components/DriverRoster.tsx) + [mobile](apps/mobile/app/manage-drivers.tsx), i18n web+mobile.
+- `[#364]` 📍 **Tryby udostępniania lokalizacji** ([settings](apps/mobile/app/settings.tsx)) — chooser off / „tylko gdy używam" / „cały czas (w tle)". **Apple‑safe:** `app.json → app.config.js`; domyślny build (v1, do review) ma **ZERO** tła (chroni przed 2.5.4); „always" + task tła ([backgroundLocation](apps/mobile/lib/backgroundLocation.ts)) dochodzą TYLKO w buildzie z flagą `EAS_BG_LOCATION=1` (profil `production-bg` = v2 na TestFlight po akceptacji).
+- `[#364]` ♻️ **Reset Tacho** ([tacho](apps/mobile/app/tacho.tsx)) — przycisk „Reset licznika" (z potwierdzeniem) czyści LIVE + km dnia + kalkulator → wszystko od 0.
+- `[#364]` 🔒 **PIN karty za biometrią** ([cards](apps/mobile/app/(tabs)/cards.tsx)) — odczyt PIN karty paliwowej bramkowany Face ID / kodem urządzenia (`authenticate()`); RPC + audyt bez zmian.
+- `[#364]` 🛡️ **Hardening DB** ([0082](supabase/migrations/0082_advisor_hardening.sql)) wg Supabase Advisors — `set_updated_at` search_path, odcięte helpery `_card_key`/`_pii_key`/`dev_stats`. Reszta warnów celowa (RPC z wewn. auth, helpery RLS, token-gated `order_tracking`); ERROR `spatial_ref_sys` nieusuwalny (tabela PostGIS).
+
+**Bramki:** biome ✓ · parytet i18n 5/5 (web + 4 języki mobile) ✓ · api+web+mobile `tsc` 0 ✓ · migracje 0082/0083 na prod. **Otwarte (sekrety usera):** klucz TomTom→Vercel (mapy), Apple Key+Supabase (logowanie Apple).
 
 ## [1.207.0] — 🍏 Mobile: przegląd jakości pod Apple 5.6 (crash + stabilność + polish)
 
