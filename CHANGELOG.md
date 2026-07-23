@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-364-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.208.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-365-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.209.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,18 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.209.0] — 🗺️ Podkład mapy TomTom (web + mobile) — „widać TomTom"
+
+Domknięcie #4 od strony kodu. Do tej pory podkład mapy to **MapTiler/OSM**, a TomTom był tylko opcjonalną nakładką incydentów → użytkownik słusznie „nigdzie nie widział TomTom". Teraz TomTom jest **pełnoprawnym podkładem** (raster, styl „night" pod motyw red/black) i **domyślnym**, gdy jest jego klucz.
+
+- `[#365]` 🗺️ **Web** ([mapTheme](apps/web/app/(app)/map/mapTheme.ts), [mapTypes](apps/web/app/(app)/map/mapTypes.ts), [page](apps/web/app/(app)/map/page.tsx)) — nowy podkład `tomtom` w przełączniku „Podkład" (pojawia się, gdy jest `NEXT_PUBLIC_TOMTOM_KEY`), `DEFAULT_BASEMAP` = TomTom → MapTiler(dark) → OSM. Nakładki ruchu/incydentów odtwarzane po zmianie podkładu (bez zmian).
+- `[#365]` 📱 **Mobile** ([mapStyle](apps/mobile/lib/mapStyle.ts)) — `mapStyle()` priorytetuje TomTom (`EXPO_PUBLIC_TOMTOM_KEY`) → MapTiler → OSM; ten sam styl „night".
+- `[#365]` 🌐 **i18n** — nowy klucz `mapPage.basemapTomtom` (pl/en, parytet 5/5).
+
+> **Uwaga (config, nie kod):** żeby TomTom był widoczny, ustaw klucze env — web `NEXT_PUBLIC_TOMTOM_KEY` (podkład+incydenty) i serwerowy `TOMTOM_KEY`/`HERE_API_KEY` (routing „wyznacz trasę"); mobile `EXPO_PUBLIC_TOMTOM_KEY`. Podkład wektorowy MapTiler nadal pod `*_MAPTILER_KEY`.
+
+**Bramki:** biome ✓ · parytet i18n 5/5 ✓ · web+mobile `tsc` 0 ✓.
 
 ## [1.208.0] — 🧰 Batch funkcji: firma kierowcy, tryby lokalizacji, reset Tacho, PIN za biometrią, hardening DB
 

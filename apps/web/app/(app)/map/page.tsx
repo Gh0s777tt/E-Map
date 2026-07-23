@@ -62,6 +62,7 @@ import { FuelPricesPanel, RouteSummary, SavedPlacesChips, StopsEditor } from "./
 import {
   BASEMAPS,
   basemapStyle,
+  DEFAULT_BASEMAP,
   DISRUPTION_RADIUS_KM,
   INCIDENT_COLOR,
   INCIDENT_LABEL,
@@ -101,7 +102,7 @@ export default function MapPage() {
     "s-end": "Warszawa",
   });
   const [hits, setHits] = useState<Record<string, GeoHit[]>>({});
-  const [basemap, setBasemap] = useState<BasemapKey>(MAPTILER_KEY ? "dark" : "osm");
+  const [basemap, setBasemap] = useState<BasemapKey>(DEFAULT_BASEMAP);
   const [terrain3d, setTerrain3d] = useState(true);
   const [globe, setGlobe] = useState(false);
   const [kindHeavy, setKindHeavy] = useState(true);
@@ -596,7 +597,7 @@ export default function MapPage() {
       if (!containerRef.current) return;
       map = new ml.Map({
         container: containerRef.current,
-        style: basemapStyle(MAPTILER_KEY ? "dark" : "osm"),
+        style: basemapStyle(DEFAULT_BASEMAP),
         center: [15, 50],
         zoom: 4,
         pitch: 45,

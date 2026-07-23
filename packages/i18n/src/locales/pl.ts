@@ -1290,6 +1290,7 @@ export const pl = {
   "mapPage.poiCompany": "Firma",
   "mapPage.poiWash": "Myjnia",
   "mapPage.poiWeigh": "Waga",
+  "mapPage.basemapTomtom": "TomTom",
   "mapPage.basemapDark": "Ciemna",
   "mapPage.basemapSatellite": "Satelita",
   "mapPage.basemapTerrain": "Teren",

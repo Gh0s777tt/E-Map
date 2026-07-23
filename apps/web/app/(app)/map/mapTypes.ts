@@ -19,4 +19,4 @@ export type Report = {
   lng: number;
   comment: string | null;
 };
-export type BasemapKey = "dark" | "satellite" | "terrain" | "osm";
+export type BasemapKey = "tomtom" | "dark" | "satellite" | "terrain" | "osm";

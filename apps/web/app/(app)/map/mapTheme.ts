@@ -92,16 +92,44 @@ export const OSM_STYLE: StyleSpecification = {
 const mtStyle = (name: string) =>
   `https://api.maptiler.com/maps/${name}/style.json?key=${MAPTILER_KEY}`;
 
-/** Dostępne podkłady (gdy jest klucz MapTiler — wektorowe/satelita/teren; inaczej tylko OSM). Etykiety = klucze i18n. */
-export const BASEMAPS: { key: BasemapKey; label: MessageKey }[] = MAPTILER_KEY
-  ? [
-      { key: "dark", label: "mapPage.basemapDark" },
-      { key: "satellite", label: "mapPage.basemapSatellite" },
-      { key: "terrain", label: "mapPage.basemapTerrain" },
-    ]
-  : [{ key: "osm", label: "mapPage.basemapOsm" }];
+/** Podkład TomTom (raster, styl „night" pod motyw red/black) — gdy jest `NEXT_PUBLIC_TOMTOM_KEY`. */
+const tomtomStyle = (): StyleSpecification => ({
+  version: 8,
+  sources: {
+    tomtom: {
+      type: "raster",
+      tiles: [`https://api.tomtom.com/map/1/tile/basic/night/{z}/{x}/{y}.png?key=${TOMTOM_KEY}`],
+      tileSize: 256,
+      attribution: "© TomTom",
+    },
+  },
+  layers: [
+    { id: "bg", type: "background", paint: { "background-color": palette.black } },
+    { id: "tomtom", type: "raster", source: "tomtom" },
+  ],
+});
+
+/**
+ * Dostępne podkłady wg dostępnych kluczy. TomTom (gdy jest jego klucz) jest
+ * pierwszy i domyślny — user chciał „wszystko na TomTom". Dalej MapTiler
+ * (wektor/satelita/teren). Gdy brak jakiegokolwiek klucza — tylko OSM.
+ * Etykiety = klucze i18n.
+ */
+export const BASEMAPS: { key: BasemapKey; label: MessageKey }[] = [];
+if (TOMTOM_KEY) BASEMAPS.push({ key: "tomtom", label: "mapPage.basemapTomtom" });
+if (MAPTILER_KEY)
+  BASEMAPS.push(
+    { key: "dark", label: "mapPage.basemapDark" },
+    { key: "satellite", label: "mapPage.basemapSatellite" },
+    { key: "terrain", label: "mapPage.basemapTerrain" },
+  );
+if (BASEMAPS.length === 0) BASEMAPS.push({ key: "osm", label: "mapPage.basemapOsm" });
+
+/** Podkład startowy: TomTom > MapTiler(dark) > OSM (wg dostępnych kluczy). */
+export const DEFAULT_BASEMAP: BasemapKey = TOMTOM_KEY ? "tomtom" : MAPTILER_KEY ? "dark" : "osm";
 
 export function basemapStyle(key: BasemapKey): string | StyleSpecification {
+  if (key === "tomtom") return TOMTOM_KEY ? tomtomStyle() : OSM_STYLE;
   if (!MAPTILER_KEY) return OSM_STYLE;
   if (key === "satellite") return mtStyle("hybrid");
   if (key === "terrain") return mtStyle("outdoor-v2");

@@ -1289,6 +1289,7 @@ export const en: Record<MessageKey, string> = {
   "mapPage.poiCompany": "Company",
   "mapPage.poiWash": "Car wash",
   "mapPage.poiWeigh": "Weigh station",
+  "mapPage.basemapTomtom": "TomTom",
   "mapPage.basemapDark": "Dark",
   "mapPage.basemapSatellite": "Satellite",
   "mapPage.basemapTerrain": "Terrain",
