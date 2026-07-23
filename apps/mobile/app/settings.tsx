@@ -1,7 +1,7 @@
 /** #285: Ustawienia — konto, powiadomienia push, wersja aplikacji, wylogowanie.
  *  #300: wybór języka aplikacji (Systemowy / PL / EN / DE / UK). */
 import { deleteMyPosition } from "@e-logistic/api";
-import { MOBILE_LOCALES, type MobileLocale } from "@e-logistic/i18n";
+import { MOBILE_LOCALES, type MobileLocale, type MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
@@ -16,7 +16,13 @@ import {
   setAppLockEnabled,
 } from "../lib/appLock";
 import { type LocalePref, useLocale } from "../lib/i18n";
-import { getSharePosition, reportPositionOnce, setSharePosition } from "../lib/positionShare";
+import {
+  bgLocationEnabled,
+  getSharePositionMode,
+  type PositionShareMode,
+  reportPositionOnce,
+  setSharePositionMode,
+} from "../lib/positionShare";
 import { type PowerSyncStatusInfo, powersyncConfigured, powersyncStatus } from "../lib/powersync";
 import { registerForPush } from "../lib/push";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
@@ -26,6 +32,14 @@ const LOCALE_LABEL: Record<MobileLocale, string> = {
   en: "English",
   de: "Deutsch",
   uk: "Українська",
+};
+
+// #351: tryby udostępniania pozycji (kolejność w chooserze). "always" tylko w v2.
+const POS_MODES: PositionShareMode[] = ["off", "foreground", "always"];
+const POS_MODE_LABEL: Record<PositionShareMode, MobileMessageKey> = {
+  off: "m.settings.posOff",
+  foreground: "m.settings.posForeground",
+  always: "m.settings.posAlways",
 };
 
 export default function SettingsScreen() {
@@ -46,11 +60,11 @@ export default function SettingsScreen() {
   }, []);
   const version = Constants.expoConfig?.version ?? "—";
 
-  // #324: udostępnianie pozycji firmie (dobrowolne; wyłączenie kasuje wiersz)
-  const [sharePos, setSharePos] = useState(false);
+  // #324/#351: udostępnianie pozycji firmie (dobrowolne; wybór trybu; "off" kasuje wiersz)
+  const [posMode, setPosMode] = useState<PositionShareMode>("off");
   const [posMsg, setPosMsg] = useState<string | null>(null);
   useEffect(() => {
-    getSharePosition().then(setSharePos);
+    getSharePositionMode().then(setPosMode);
   }, []);
   // #340: blokada biometryczna aplikacji
   const [lockOn, setLockOn] = useState(false);
@@ -74,22 +88,35 @@ export default function SettingsScreen() {
     setLockOn(true);
   }
 
-  async function toggleShare() {
+  async function selectMode(mode: PositionShareMode) {
     setPosMsg(null);
-    if (sharePos) {
-      await setSharePosition(false);
-      setSharePos(false);
+    if (mode === posMode) return;
+    // "always" tylko w buildzie v2 (flaga) — w v1 chip jest nieaktywny, ale strzeżemy i tu
+    if (mode === "always" && !bgLocationEnabled) return;
+
+    if (mode === "off") {
+      await setSharePositionMode("off");
+      setPosMode("off");
       if (supabaseConfigured) await deleteMyPosition(getSupabase()).catch(() => {});
       setPosMsg(t("m.settings.sharePosRemoved"));
       return;
     }
+
+    // każdy tryb udostępniania wymaga zgody na lokalizację przy użyciu aplikacji
     const perm = await Location.requestForegroundPermissionsAsync();
     if (!perm.granted) {
       setPosMsg(t("m.settings.sharePosDenied"));
       return;
     }
-    await setSharePosition(true);
-    setSharePos(true);
+    if (mode === "always") {
+      const bg = await Location.requestBackgroundPermissionsAsync();
+      if (!bg.granted) {
+        setPosMsg(t("m.settings.sharePosDenied"));
+        return;
+      }
+    }
+    await setSharePositionMode(mode);
+    setPosMode(mode);
     reportPositionOnce().catch(() => {});
     setPosMsg(t("m.settings.sharePosEnabled"));
   }
@@ -151,16 +178,28 @@ export default function SettingsScreen() {
       <SectionTitle>{t("m.settings.position")}</SectionTitle>
       <Card style={{ gap: 10 }}>
         <Text style={s.hint}>{t("m.settings.sharePosHint")}</Text>
-        <Pressable
-          style={[s.lang, sharePos && s.langOn, { alignSelf: "flex-start" }]}
-          onPress={toggleShare}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: sharePos }}
-        >
-          <Text style={[s.langText, sharePos && s.langTextOn]}>
-            {sharePos ? `✓ ${t("m.settings.sharePosOn")}` : `○ ${t("m.settings.sharePosOff")}`}
-          </Text>
-        </Pressable>
+        <Text style={s.k}>{t("m.settings.posMode")}</Text>
+        <View style={s.langRow}>
+          {POS_MODES.map((mode) => {
+            const on = posMode === mode;
+            const disabled = mode === "always" && !bgLocationEnabled;
+            return (
+              <Pressable
+                key={mode}
+                style={[s.lang, on && s.langOn, disabled && s.langDisabled]}
+                onPress={() => selectMode(mode)}
+                disabled={disabled}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on, disabled }}
+              >
+                <Text style={[s.langText, on && s.langTextOn, disabled && s.langTextDisabled]}>
+                  {t(POS_MODE_LABEL[mode])}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {!bgLocationEnabled && <Text style={s.hint}>{t("m.settings.posAlwaysV2Note")}</Text>}
         {posMsg && <Text style={s.msg}>{posMsg}</Text>}
       </Card>
 
@@ -256,6 +295,8 @@ const s = StyleSheet.create({
     paddingVertical: 8,
   },
   langOn: { backgroundColor: palette.red, borderColor: palette.red },
+  langDisabled: { opacity: 0.4 },
   langText: { color: palette.smoke, fontSize: 14, fontWeight: "600" },
   langTextOn: { color: palette.white, fontWeight: "800" },
+  langTextDisabled: { color: palette.smoke },
 });
