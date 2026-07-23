@@ -322,6 +322,13 @@ export const en: Record<MessageKey, string> = {
   "drivers.inviteReady": "Invitation ready (valid for 7 days)",
   "drivers.qrAlt": "Invitation QR code",
 
+  "drivers.company.section": "Driver's company (optional)",
+  "drivers.company.name": "Company name",
+  "drivers.company.taxId": "Tax ID (NIP)",
+  "drivers.company.regon": "REGON",
+  "drivers.company.address": "Address",
+  "drivers.company.activity": "Business activity",
+
   "vehicles.subtitle":
     "Add, edit and delete vehicles. Click a vehicle in the list to see details and assigned cards.",
   "vehicles.editingBanner": "✏️ Editing vehicle.",

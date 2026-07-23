@@ -20,6 +20,12 @@ export interface DriverRow {
   passport_expiry: string | null;
   id_card_expiry: string | null;
   qualification_details: { name: string; doc_number?: string | null; expiry?: string | null }[];
+  // Firma własna kierowcy (B2B / kontrakt) — dane rejestrowe, jawne (nie PII).
+  company_name: string | null;
+  company_tax_id: string | null;
+  company_regon: string | null;
+  company_address: string | null;
+  company_activity: string | null;
   user_id: string | null;
 }
 
@@ -61,6 +67,11 @@ async function saveDriverIdentity(
       doc_number: q.docNumber ?? null,
       expiry: q.expiry ?? null,
     })) as unknown as import("../client").Json,
+    p_company_name: input.companyName ?? null,
+    p_company_tax_id: input.companyTaxId ?? null,
+    p_company_regon: input.companyRegon ?? null,
+    p_company_address: input.companyAddress ?? null,
+    p_company_activity: input.companyActivity ?? null,
   });
   if (error) throw error;
   return data as string;

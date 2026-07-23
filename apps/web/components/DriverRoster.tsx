@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { DataImport, type ImportColumn } from "@/components/DataImport";
+import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Badge, Button } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -97,6 +98,7 @@ function validateDriverRow(
 export function DriverRoster() {
   const confirm = useConfirm();
   const toast = useToast();
+  const t = useT();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [allowed, setAllowed] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -118,6 +120,12 @@ export function DriverRoster() {
   const [adrExpiry, setAdrExpiry] = useState("");
   const [passportExpiry, setPassportExpiry] = useState("");
   const [idCardExpiry, setIdCardExpiry] = useState("");
+  // Firma własna kierowcy (B2B / kontrakt) — opcjonalne dane rejestrowe.
+  const [companyName, setCompanyName] = useState("");
+  const [companyTaxId, setCompanyTaxId] = useState("");
+  const [companyRegon, setCompanyRegon] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [companyActivity, setCompanyActivity] = useState("");
   // #319: szczegóły uprawnień (nr dokumentu + ważność) per nazwa uprawnienia.
   const [qualDetails, setQualDetails] = useState<
     Record<string, { docNumber: string; expiry: string }>
@@ -160,6 +168,11 @@ export function DriverRoster() {
     setAdrExpiry("");
     setPassportExpiry("");
     setIdCardExpiry("");
+    setCompanyName("");
+    setCompanyTaxId("");
+    setCompanyRegon("");
+    setCompanyAddress("");
+    setCompanyActivity("");
     setQualDetails({});
     setErrors({});
   }
@@ -273,6 +286,11 @@ export function DriverRoster() {
     setAdrExpiry(d.adr_expiry ?? "");
     setPassportExpiry(d.passport_expiry ?? "");
     setIdCardExpiry(d.id_card_expiry ?? "");
+    setCompanyName(d.company_name ?? "");
+    setCompanyTaxId(d.company_tax_id ?? "");
+    setCompanyRegon(d.company_regon ?? "");
+    setCompanyAddress(d.company_address ?? "");
+    setCompanyActivity(d.company_activity ?? "");
     setQualDetails(
       Object.fromEntries(
         (d.qualification_details ?? []).map((q) => [
@@ -309,6 +327,11 @@ export function DriverRoster() {
         docNumber: qualDetails[q]?.docNumber?.trim() || undefined,
         expiry: qualDetails[q]?.expiry || undefined,
       })),
+      companyName: companyName.trim() || undefined,
+      companyTaxId: companyTaxId.trim() || undefined,
+      companyRegon: companyRegon.trim() || undefined,
+      companyAddress: companyAddress.trim() || undefined,
+      companyActivity: companyActivity.trim() || undefined,
     });
     if (!parsed.success) {
       const map = zodFieldErrors(parsed.error);
@@ -620,6 +643,58 @@ export function DriverRoster() {
             onChange={(e) => setNotes(e.target.value)}
           />
         </label>
+
+        <div>
+          <span style={styles.label}>{t("drivers.company.section")}</span>
+          <div style={{ marginTop: 6 }}>
+            <label style={styles.field}>
+              <span style={styles.label}>{t("drivers.company.name")}</span>
+              <input
+                style={styles.input}
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+            </label>
+          </div>
+          <div style={{ ...styles.grid, marginTop: 8 }}>
+            <label style={styles.field}>
+              <span style={styles.label}>{t("drivers.company.taxId")}</span>
+              <input
+                style={styles.input}
+                value={companyTaxId}
+                onChange={(e) => setCompanyTaxId(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>{t("drivers.company.regon")}</span>
+              <input
+                style={styles.input}
+                value={companyRegon}
+                onChange={(e) => setCompanyRegon(e.target.value)}
+              />
+            </label>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <label style={styles.field}>
+              <span style={styles.label}>{t("drivers.company.address")}</span>
+              <input
+                style={styles.input}
+                value={companyAddress}
+                onChange={(e) => setCompanyAddress(e.target.value)}
+              />
+            </label>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <label style={styles.field}>
+              <span style={styles.label}>{t("drivers.company.activity")}</span>
+              <input
+                style={styles.input}
+                value={companyActivity}
+                onChange={(e) => setCompanyActivity(e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
 
         <div style={{ display: "flex", gap: 10 }}>
           <Button onClick={save}>{editingId ? "Zapisz zmiany" : "Dodaj kierowcę"}</Button>

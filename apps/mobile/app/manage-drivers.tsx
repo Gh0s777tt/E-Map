@@ -3,7 +3,8 @@
  * dyspozytor dodaje, edytuje i usuwa kierowców: tożsamość (imię/nazwisko/data ur.,
  * szyfrowane at-rest przez RPC), kategorie prawa jazdy, uprawnienia, terminy
  * ważności (prawo jazdy, kod 95, badania lekarskie/psychotechniczne, ADR, paszport,
- * dowód) i notatki. Odpowiednik panelu web „Kierowcy".
+ * dowód), notatki oraz firmę własną kierowcy (B2B / kontrakt — nazwa, NIP, REGON,
+ * adres, profil działalności; opcjonalne). Odpowiednik panelu web „Kierowcy".
  *
  * Świadomie poza tą falą (kolejna): numery dokumentów (osobne szyfrowane RPC),
  * szczegóły uprawnień UDT/HDS (numer+data) i powiązanie z kontem aplikacji.
@@ -60,6 +61,12 @@ const empty = {
   adrExpiry: "",
   passportExpiry: "",
   idCardExpiry: "",
+  // Firma własna kierowcy (B2B / kontrakt) — opcjonalne dane rejestrowe.
+  companyName: "",
+  companyTaxId: "",
+  companyRegon: "",
+  companyAddress: "",
+  companyActivity: "",
   // Zachowywane bez zmian (edytowane tylko na webie w tej fali).
   qualDetails: [] as QualDetail[],
 };
@@ -140,6 +147,11 @@ export default function ManageDriversScreen() {
       adrExpiry: r.adr_expiry ?? "",
       passportExpiry: r.passport_expiry ?? "",
       idCardExpiry: r.id_card_expiry ?? "",
+      companyName: r.company_name ?? "",
+      companyTaxId: r.company_tax_id ?? "",
+      companyRegon: r.company_regon ?? "",
+      companyAddress: r.company_address ?? "",
+      companyActivity: r.company_activity ?? "",
       qualDetails: r.qualification_details.map((q) => ({
         name: q.name,
         docNumber: q.doc_number ?? undefined,
@@ -169,6 +181,11 @@ export default function ManageDriversScreen() {
       adrExpiry: clean(form.adrExpiry),
       passportExpiry: clean(form.passportExpiry),
       idCardExpiry: clean(form.idCardExpiry),
+      companyName: clean(form.companyName),
+      companyTaxId: clean(form.companyTaxId),
+      companyRegon: clean(form.companyRegon),
+      companyAddress: clean(form.companyAddress),
+      companyActivity: clean(form.companyActivity),
       // Odznaczenie chipa uprawnienia musi usunąć też jego szczegóły (numer/data),
       // inaczej osierocony wpis w qualification_details generuje fałszywe alerty
       // compliance. Zachowujemy szczegóły tylko dla nadal wybranych uprawnień (web-parytet).
@@ -318,6 +335,56 @@ export default function ManageDriversScreen() {
             placeholder="—"
             placeholderTextColor={palette.smoke}
             multiline
+          />
+
+          <Text style={s.section}>{t("m.mdrv.company")}</Text>
+          <Text style={s.lbl}>{t("m.mdrv.companyName")}</Text>
+          <TextInput
+            style={s.input}
+            value={form.companyName}
+            onChangeText={(v) => set({ companyName: v })}
+            placeholder="—"
+            placeholderTextColor={palette.smoke}
+          />
+          <View style={s.row2}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.lbl}>{t("m.mdrv.companyTaxId")}</Text>
+              <TextInput
+                style={s.input}
+                value={form.companyTaxId}
+                onChangeText={(v) => set({ companyTaxId: v })}
+                placeholder="—"
+                placeholderTextColor={palette.smoke}
+                autoCapitalize="none"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.lbl}>{t("m.mdrv.companyRegon")}</Text>
+              <TextInput
+                style={s.input}
+                value={form.companyRegon}
+                onChangeText={(v) => set({ companyRegon: v })}
+                placeholder="—"
+                placeholderTextColor={palette.smoke}
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+          <Text style={s.lbl}>{t("m.mdrv.companyAddress")}</Text>
+          <TextInput
+            style={s.input}
+            value={form.companyAddress}
+            onChangeText={(v) => set({ companyAddress: v })}
+            placeholder="—"
+            placeholderTextColor={palette.smoke}
+          />
+          <Text style={s.lbl}>{t("m.mdrv.companyActivity")}</Text>
+          <TextInput
+            style={s.input}
+            value={form.companyActivity}
+            onChangeText={(v) => set({ companyActivity: v })}
+            placeholder="—"
+            placeholderTextColor={palette.smoke}
           />
 
           {msg && <Text style={s.err}>{msg}</Text>}

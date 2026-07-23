@@ -129,6 +129,12 @@ export const driverSchema = z.object({
       }),
     )
     .default([]),
+  // Firma własna kierowcy (B2B / kontrakt, nie etat) — opcjonalne dane rejestrowe.
+  companyName: z.string().max(160).optional(),
+  companyTaxId: z.string().max(32).optional(),
+  companyRegon: z.string().max(32).optional(),
+  companyAddress: z.string().max(200).optional(),
+  companyActivity: z.string().max(200).optional(),
 });
 export type DriverInput = z.infer<typeof driverSchema>;
 

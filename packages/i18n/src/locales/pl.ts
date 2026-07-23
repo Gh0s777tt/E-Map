@@ -321,6 +321,13 @@ export const pl = {
   "drivers.inviteReady": "Zaproszenie gotowe (ważne 7 dni)",
   "drivers.qrAlt": "Kod QR zaproszenia",
 
+  "drivers.company.section": "Firma kierowcy (opcjonalnie)",
+  "drivers.company.name": "Nazwa firmy",
+  "drivers.company.taxId": "NIP",
+  "drivers.company.regon": "REGON",
+  "drivers.company.address": "Adres",
+  "drivers.company.activity": "Profil działalności",
+
   "vehicles.subtitle":
     "Dodawaj, edytuj i usuwaj pojazdy. Kliknij auto na liście, by zobaczyć szczegóły i przypisane karty.",
   "vehicles.editingBanner": "✏️ Edytujesz pojazd.",

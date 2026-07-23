@@ -756,6 +756,11 @@ export interface Database {
           passport_expiry: string | null;
           id_card_expiry: string | null;
           qualification_details: Json | null;
+          company_name: string | null;
+          company_tax_id: string | null;
+          company_regon: string | null;
+          company_address: string | null;
+          company_activity: string | null;
         };
         Insert: {
           id?: string;
@@ -780,6 +785,11 @@ export interface Database {
           passport_expiry?: string | null;
           id_card_expiry?: string | null;
           qualification_details?: Json | null;
+          company_name?: string | null;
+          company_tax_id?: string | null;
+          company_regon?: string | null;
+          company_address?: string | null;
+          company_activity?: string | null;
         };
         Update: {
           id?: string;
@@ -804,6 +814,11 @@ export interface Database {
           passport_expiry?: string | null;
           id_card_expiry?: string | null;
           qualification_details?: Json | null;
+          company_name?: string | null;
+          company_tax_id?: string | null;
+          company_regon?: string | null;
+          company_address?: string | null;
+          company_activity?: string | null;
         };
         Relationships: [];
       };
@@ -2226,6 +2241,11 @@ export interface Database {
           p_passport_expiry?: string | null;
           p_id_card_expiry?: string | null;
           p_qual_details?: Json | null;
+          p_company_name?: string | null;
+          p_company_tax_id?: string | null;
+          p_company_regon?: string | null;
+          p_company_address?: string | null;
+          p_company_activity?: string | null;
         };
         Returns: string;
       };
