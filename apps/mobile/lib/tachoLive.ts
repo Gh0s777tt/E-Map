@@ -127,6 +127,12 @@ export async function addKmToday(deltaKm: number): Promise<number> {
   return km;
 }
 
+/** Zeruje licznik kilometrów dnia — używane przez pełny reset licznika Tacho
+ *  (resetLive czyści tylko segmenty i alerty przerwy, km trzyma osobny klucz). */
+export async function resetKmToday(): Promise<void> {
+  await AsyncStorage.removeItem(KM_KEY);
+}
+
 export async function cancelBreakAlerts(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(NOTIF_KEY);

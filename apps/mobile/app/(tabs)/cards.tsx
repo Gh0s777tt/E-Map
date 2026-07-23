@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
 import { Skeleton, wide } from "../../components/ui";
+import { authenticate } from "../../lib/appLock";
 import { warn } from "../../lib/haptics";
 import { useT } from "../../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
@@ -78,6 +79,9 @@ export default function FuelCardsScreen() {
       });
       return;
     }
+    // PIN ujawniamy dopiero po potwierdzeniu tożsamości (Face ID / odcisk / kod
+    // urządzenia). authenticate() jest fail-safe: bez biometrii zwraca true.
+    if (!(await authenticate(t("m.cards.pinAuthPrompt")))) return;
     try {
       const pin = await getFuelCardPin(getSupabase(), card.id);
       setPins((p) => ({ ...p, [card.id]: pin }));

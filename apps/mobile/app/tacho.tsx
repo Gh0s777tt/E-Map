@@ -33,6 +33,7 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Image,
   Linking,
   Pressable,
@@ -44,6 +45,7 @@ import {
 } from "react-native";
 import { TachoJournal } from "../components/TachoJournal";
 import { Card, Chip, SectionTitle, wide } from "../components/ui";
+import { success } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import {
@@ -54,6 +56,7 @@ import {
   liveStatus,
   loadKmToday,
   loadLiveSegments,
+  resetKmToday,
   resetLive,
   scheduleBreakAlerts,
   setLiveActivity,
@@ -503,6 +506,45 @@ export default function TachoScreen() {
 
   const currentMin = current ? Math.max(0, Math.round((now - current.start) / 60_000)) : 0;
 
+  // Pełny reset licznika Tacho: LIVE (segmenty + alerty przerwy) + km dnia +
+  // kalkulator ręczny → 0. Z potwierdzeniem (operacja nieodwracalna).
+  function resetCounter() {
+    Alert.alert(t("m.tacho.reset"), t("m.tacho.resetConfirm"), [
+      { text: t("m.manage.cancel"), style: "cancel" },
+      {
+        text: t("m.tacho.reset"),
+        style: "destructive",
+        onPress: async () => {
+          await resetLive(); // segmenty LIVE + cancelBreakAlerts() (już w środku)
+          await resetKmToday(); // km dnia trzyma osobny klucz — resetLive go nie czyści
+          // LIVE + wskazania na ekranie
+          setSegments([]);
+          setSpeed(null);
+          setKmToday(0);
+          lastFix.current = null;
+          // #327 kalkulator ręczny → 0
+          setContinuous(0);
+          setBreakTaken(0);
+          setDaily(0);
+          setWeekly(0);
+          setPrevWeek(0);
+          setExtUsed(0);
+          setRedUsed(0);
+          // #330 odczyty OCR
+          setDetected([]);
+          setScanMsg(null);
+          setNow(Date.now());
+          // Ponowne wczytanie stanu pochodnego z magazynu (potwierdza zero).
+          const [segs, km] = await Promise.all([loadLiveSegments(), loadKmToday()]);
+          setSegments(segs);
+          setKmToday(km);
+          success();
+          Alert.alert(t("m.tacho.resetDone"));
+        },
+      },
+    ]);
+  }
+
   return (
     <ScrollView style={s.screen} contentContainerStyle={[s.content, wide]}>
       {/* Rozporządzenie — zawsze na wierzchu */}
@@ -573,6 +615,16 @@ export default function TachoScreen() {
         <Text style={s.hint}>{t("m.tacho.liveHint")}</Text>
         <Text style={s.hint}>{t("m.tacho.gpsHint")}</Text>
       </Card>
+
+      {/* Pełny reset licznika — zeruje LIVE, km dnia i kalkulator ręczny */}
+      <Pressable
+        style={s.resetBtn}
+        onPress={resetCounter}
+        accessibilityRole="button"
+        accessibilityLabel={t("m.tacho.reset")}
+      >
+        <Text style={s.resetBtnText}>🔄 {t("m.tacho.reset")}</Text>
+      </Pressable>
 
       {/* #327: Licznik 561 (ręczny) + #330 OCR */}
       <SectionTitle>{t("m.tacho.counter")}</SectionTitle>
@@ -849,6 +901,14 @@ const s = StyleSheet.create({
   liveNow: { color: palette.offWhite, fontSize: 22, fontWeight: "800", textAlign: "center" },
   liveStats: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center" },
   liveReset: { color: palette.smoke, fontSize: 12.5, textAlign: "center", paddingVertical: 2 },
+  resetBtn: {
+    borderWidth: 1,
+    borderColor: palette.red,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  resetBtnText: { color: palette.red, fontWeight: "800", fontSize: 14 },
   scanBtn: {
     borderWidth: 1,
     borderColor: palette.red,
