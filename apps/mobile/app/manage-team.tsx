@@ -6,10 +6,15 @@
  * uprawnień pominiętych modułów. Wiersz właściciela zablokowany (bez samo-degradacji).
  */
 import {
+  type CompanyInvite,
   type CompanyMember,
   createInvite,
   getActiveMembership,
+  isInvitePending,
   listCompanyMembers,
+  listInvites,
+  revokeInvite,
+  setMemberStatus,
   updateMember,
 } from "@e-logistic/api";
 import {
@@ -69,6 +74,7 @@ export default function ManageTeamScreen() {
   const modLabel = (m: AppModule) => t(`m.mmod.${m}` as MobileMessageKey);
   const permLabel = (p: PermissionLevel) => t(`m.perm.${p}` as MobileMessageKey);
   const [members, setMembers] = useState<CompanyMember[]>([]);
+  const [invites, setInvites] = useState<CompanyInvite[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -86,6 +92,9 @@ export default function ManageTeamScreen() {
       setIsOwner(m.role === "owner");
       setMsg(null);
       setMembers(await listCompanyMembers(sb));
+      if (m.role === "owner") {
+        setInvites((await listInvites(sb, m.companyId)).filter((i) => isInvitePending(i)));
+      }
     } catch (e) {
       setMsg(e instanceof Error ? e.message : t("m.mteam.loadError"));
     }
@@ -148,6 +157,52 @@ export default function ManageTeamScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // #365 (audyt · #1): zawieś/przywróć dostęp członka (odcięcie byłego pracownika).
+  function toggleAccess(m: CompanyMember) {
+    const disabled = m.status === "disabled";
+    Alert.alert(
+      disabled ? t("m.mteam.reactivate") : t("m.mteam.suspend"),
+      disabled ? t("m.mteam.reactivateConfirm") : t("m.mteam.suspendConfirm"),
+      [
+        { text: t("m.manage.cancel"), style: "cancel" },
+        {
+          text: disabled ? t("m.mteam.reactivate") : t("m.mteam.suspend"),
+          style: disabled ? "default" : "destructive",
+          onPress: async () => {
+            try {
+              await setMemberStatus(getSupabase(), m.user_id, disabled ? "active" : "disabled");
+              success();
+              await load();
+            } catch (e) {
+              warn();
+              setMsg(e instanceof Error ? e.message : t("m.mteam.saveError"));
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function revoke(inv: CompanyInvite) {
+    Alert.alert(t("m.mteam.revoke"), t("m.mteam.revokeConfirm"), [
+      { text: t("m.manage.cancel"), style: "cancel" },
+      {
+        text: t("m.mteam.revoke"),
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await revokeInvite(getSupabase(), inv.id);
+            success();
+            await load();
+          } catch (e) {
+            warn();
+            setMsg(e instanceof Error ? e.message : t("m.mteam.saveError"));
+          }
+        },
+      },
+    ]);
   }
 
   // ── Edycja członka ────────────────────────────────────────────────────────
@@ -246,13 +301,14 @@ export default function ManageTeamScreen() {
       {members.length === 0 && <Text style={s.dim}>{t("m.mteam.empty")}</Text>}
       {members.map((m) => {
         const canEdit = isOwner && m.role !== "owner";
+        const disabled = m.status === "disabled";
         return (
-          <Card key={m.user_id} style={{ gap: 6 }}>
+          <Card key={m.user_id} style={{ gap: 6, opacity: disabled ? 0.6 : 1 }}>
             <View style={s.rowTop}>
               <Text style={s.name}>
                 {m.role === "owner" ? "👑" : m.role === "dispatcher" ? "🧭" : "🚚"} {m.email}
               </Text>
-              {canEdit && (
+              {canEdit && !disabled && (
                 <Pressable onPress={() => openEdit(m)} hitSlop={8}>
                   <Text style={s.editLink}>✏️</Text>
                 </Pressable>
@@ -260,12 +316,38 @@ export default function ManageTeamScreen() {
             </View>
             <Text style={s.dim}>
               {roleLabel(m.role)}
-              {m.status && m.status !== "active" ? ` · ${m.status}` : ""}
+              {disabled ? ` · ${t("m.mteam.suspended")}` : ""}
             </Text>
+            {canEdit && (
+              <Pressable onPress={() => toggleAccess(m)} hitSlop={6}>
+                <Text style={[s.accessLink, disabled && { color: "#22c55e" }]}>
+                  {disabled ? `↩ ${t("m.mteam.reactivate")}` : `⛔ ${t("m.mteam.suspend")}`}
+                </Text>
+              </Pressable>
+            )}
           </Card>
         );
       })}
       {!isOwner && <Text style={s.hint}>{t("m.mteam.ownerOnly")}</Text>}
+
+      {isOwner && invites.length > 0 && (
+        <>
+          <SectionTitle>
+            {t("m.mteam.invitesTitle")} ({invites.length})
+          </SectionTitle>
+          {invites.map((inv) => (
+            <Card key={inv.id} style={{ gap: 6 }}>
+              <View style={s.rowTop}>
+                <Text style={s.name}>✉️ {inv.email ?? t("m.mteam.inviteNoEmail")}</Text>
+                <Pressable onPress={() => revoke(inv)} hitSlop={8}>
+                  <Text style={s.accessLink}>⛔ {t("m.mteam.revoke")}</Text>
+                </Pressable>
+              </View>
+              <Text style={s.dim}>{roleLabel(inv.role)}</Text>
+            </Card>
+          ))}
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -324,5 +406,6 @@ const s = StyleSheet.create({
   rowTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   name: { color: palette.offWhite, fontSize: 14, fontWeight: "800", flexShrink: 1 },
   editLink: { fontSize: 16 },
+  accessLink: { color: "#f59e0b", fontSize: 13, fontWeight: "700", paddingTop: 2 },
   dim: { color: palette.smoke, fontSize: 12.5 },
 });

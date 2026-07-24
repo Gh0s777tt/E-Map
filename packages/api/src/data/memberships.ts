@@ -78,6 +78,21 @@ export async function updateMember(
   if (error) throw error;
 }
 
+/**
+ * Zawieś (`disabled`) lub przywróć (`active`) dostęp członka firmy (owner).
+ * RPC set_member_status sam ustala firmę wywołującego i pilnuje guardów
+ * (nie własne konto, nie właściciel) oraz audytuje zmianę. `disabled` odcina
+ * cały dostęp — helpery RLS wymagają `status='active'`.
+ */
+export async function setMemberStatus(
+  client: SupabaseClient,
+  userId: string,
+  status: "active" | "disabled",
+) {
+  const { error } = await client.rpc("set_member_status", { p_user: userId, p_status: status });
+  if (error) throw error;
+}
+
 /** Onboarding: tworzy firmę i członkostwo `owner` dla zalogowanego usera (RPC). */
 export async function bootstrapCompany(client: SupabaseClient, name: string): Promise<string> {
   const { data, error } = await client.rpc("bootstrap_company", { p_name: name });

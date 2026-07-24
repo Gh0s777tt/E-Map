@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-365-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.209.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-366-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.210.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,19 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.210.0] — 🔒 Odcięcie dostępu byłemu członkowi firmy (priorytet #1 z audytu)
+
+Domknięcie **najpoważniejszej potwierdzonej luki multi-tenant** z audytu wieloagentowego: enum `membership_status` miał `disabled`, ale nic go nie ustawiało → odchodzący kierowca zachowywał dostęp do danych firmy i **PIN-ów kart**. Helpery RLS ([0002](supabase/migrations/0002_rls.sql:8): `is_member_of`/`has_role`/`is_developer`) wymagają `status='active'`, więc `disabled` realnie odcina cały dostęp.
+
+- `[#366]` 🔒 **Migracja [0084](supabase/migrations/0084_member_access_control.sql)** (na prod): `set_member_status(p_user,p_status)` — owner zawiesza/przywraca dostęp członka, SECURITY DEFINER z guardami (tylko owner, nie własne konto, nie właściciela, tylko `active⇄disabled`) i audytem (`member.suspend`/`member.reactivate`); `revoke_invite(p_invite)` — owner/spedytor cofa oczekujące zaproszenie (wygasza, audyt `invite.revoke`). Oba `revoke ... from public` + `grant ... to authenticated`.
+- `[#366]` 👔 **Web** ([team](apps/web/app/(app)/team/page.tsx)) — przy każdym członku „⛔ Zawieś dostęp" / „↩ Przywróć dostęp" (z potwierdzeniem), znacznik „Zawieszony", oraz sekcja **oczekujących zaproszeń** z „Cofnij".
+- `[#366]` 📱 **Mobile** ([manage-team](apps/mobile/app/manage-team.tsx)) — parytet: zawieś/przywróć (Alert), status zawieszenia, lista i cofanie zaproszeń.
+- `[#366]` 🧩 **Warstwa danych** ([memberships](packages/api/src/data/memberships.ts) `setMemberStatus`, [invites](packages/api/src/data/invites.ts) `listInvites`/`revokeInvite`/`isInvitePending`) + typy RPC ([database.types](packages/api/src/database.types.ts)); i18n web (pl/en) + mobile (pl/en/de/uk).
+
+> Weryfikacja na prod: funkcje `SECURITY DEFINER`, `anon` bez EXECUTE, guardy (enum + owner) potwierdzone smoke-testem. Część mobilna wejdzie w kolejnym buildzie EAS (po buildzie 61).
+
+**Bramki:** biome ✓ · parytet i18n 5/5 ✓ · api+web+mobile `tsc` 0 ✓ · migracja 0084 na prod.
 
 ## [1.209.0] — 🗺️ Podkład mapy TomTom (web + mobile) — „widać TomTom"
 

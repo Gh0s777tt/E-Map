@@ -2287,6 +2287,14 @@ export interface Database {
         }[];
       };
       list_invites: { Args: { p_company: string | null }; Returns: Json };
+      revoke_invite: { Args: { p_invite: string | null }; Returns: undefined };
+      set_member_status: {
+        Args: {
+          p_user: string | null;
+          p_status: Database["public"]["Enums"]["membership_status"] | null;
+        };
+        Returns: undefined;
+      };
       list_visible_checklist_templates: {
         Args: Record<PropertyKey, never>;
         Returns: {

@@ -24,3 +24,36 @@ export async function acceptInvite(client: SupabaseClient, token: string): Promi
   if (error) throw error;
   return data as string;
 }
+
+export interface CompanyInvite {
+  id: string;
+  /** E-mail zaproszonego (odszyfrowany przez RPC) lub null (link/QR bez e-maila). */
+  email: string | null;
+  role: Role;
+  vehicle_id: string | null;
+  /** Ustawione, gdy zaproszenie zostało zaakceptowane. */
+  accepted_at: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+/** Lista zaproszeń firmy (owner/spedytor; odczyt audytowany w RPC). */
+export async function listInvites(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<CompanyInvite[]> {
+  const { data, error } = await client.rpc("list_invites", { p_company: companyId });
+  if (error) throw error;
+  return (data ?? []) as unknown as CompanyInvite[];
+}
+
+/** Zaproszenie jest „oczekujące", gdy niezaakceptowane i nie wygasło. */
+export function isInvitePending(inv: CompanyInvite, now = new Date()): boolean {
+  return inv.accepted_at === null && (inv.expires_at === null || new Date(inv.expires_at) > now);
+}
+
+/** Cofa (wygasza) oczekujące zaproszenie (owner/spedytor; audytowane). */
+export async function revokeInvite(client: SupabaseClient, inviteId: string) {
+  const { error } = await client.rpc("revoke_invite", { p_invite: inviteId });
+  if (error) throw error;
+}
