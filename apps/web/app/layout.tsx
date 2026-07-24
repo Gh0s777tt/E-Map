@@ -32,6 +32,11 @@ const NO_FLASH = `(function(){try{var t=localStorage.getItem("el-theme");if(t!==
 // push) — warunek instalowalności PWA i punktacji PWABuilder (Microsoft Store).
 const REGISTER_SW = `if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})})}`;
 
+// #367: `lang` dokumentu ustawia PANEL (`(app)/layout.tsx`), bo tylko on jest tłumaczony.
+// Tutaj zostaje statyczne `lang="pl"` — strony publiczne (landing, prywatność, wsparcie,
+// logowanie, śledzenie) są PL-only i statyczne; nadpisywanie ich na „en" byłoby fałszywą
+// deklaracją języka wobec czytników ekranu (i wymuszałoby render dynamiczny całej apki).
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" data-theme="dark" suppressHydrationWarning>

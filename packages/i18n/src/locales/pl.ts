@@ -1192,6 +1192,13 @@ export const pl = {
   "mapPage.destination": "Cel",
   "mapPage.stop": "Przystanek",
   "mapPage.newStop": "Nowy przystanek",
+  "mapPage.stopAdded": "Dodano przystanek",
+  "mapPage.rightClickAddStop": "Prawy klik na mapie = przystanek w tym miejscu (z adresem).",
+  "mapPage.savedPlacesLayer": "Zapisane miejsca na mapie",
+  "mapPage.avoidCountriesUnsupported":
+    "Omijanie krajów NIE zostało uwzględnione — dostawca, który policzył tę trasę, tego nie obsługuje. Pełne wykluczenie kraju daje tylko HERE; TomTom potrafi ominąć wyłącznie drogi winietowe.",
+  "mapPage.avoidCountriesVignetteOnly":
+    "Omijanie krajów uwzględnione CZĘŚCIOWO — TomTom ominął drogi objęte winietą, ale nie wyklucza całego kraju. Pełne wykluczenie daje tylko HERE.",
   "mapPage.gpsUnavailable": "GPS niedostępny w tej przeglądarce.",
   "mapPage.myLocation": "Moja lokalizacja",
   "mapPage.locationError": "Nie udało się pobrać lokalizacji.",

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { geocode } from "./geocode";
-import { buildTomTomRouteUrl, parseTomTomRoute, TomTomRoutingProvider } from "./tomtom";
+import {
+  buildTomTomRouteUrl,
+  parseTomTomRoute,
+  TomTomRoutingProvider,
+  tomtomVignetteCodes,
+} from "./tomtom";
 import {
   TOMTOM_CATEGORY,
   tomtomGeocode,
@@ -65,6 +70,34 @@ describe("buildTomTomRouteUrl", () => {
 
   it("rzuca przy <2 punktach", () => {
     expect(() => buildTomTomRouteUrl({ waypoints: [BERLIN] }, "KEY")).toThrow();
+  });
+
+  // #367: TomTom nie ma wykluczania krajów — mapujemy avoidCountries na avoidVignette.
+  it("avoidCountries → avoidVignette dla krajów winietowych (kraje bez winiety pomijane)", () => {
+    const url = buildTomTomRouteUrl(
+      { waypoints: [BERLIN, WARSAW], options: { avoidCountries: ["ch", "AT", "DE"] } },
+      "KEY",
+    );
+    expect(url).toContain("avoidVignette=CHE,AUT");
+  });
+
+  it("avoidCountries bez krajów winietowych → brak avoidVignette", () => {
+    const url = buildTomTomRouteUrl(
+      { waypoints: [BERLIN, WARSAW], options: { avoidCountries: ["DE", "PL"] } },
+      "KEY",
+    );
+    expect(url).not.toContain("avoidVignette");
+  });
+});
+
+describe("tomtomVignetteCodes", () => {
+  it("normalizuje ISO2 → ISO3, odduplikowuje i pomija nieznane", () => {
+    expect(tomtomVignetteCodes([" ch ", "CH", "at", "XX"])).toEqual(["CHE", "AUT"]);
+  });
+
+  it("brak listy → pusto", () => {
+    expect(tomtomVignetteCodes()).toEqual([]);
+    expect(tomtomVignetteCodes([])).toEqual([]);
   });
 });
 

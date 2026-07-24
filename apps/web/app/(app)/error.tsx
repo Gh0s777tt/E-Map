@@ -1,6 +1,8 @@
 "use client";
 
 import { cssPalette as palette } from "@e-logistic/ui";
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
 import { Button } from "@/components/ui";
 
 /**
@@ -8,8 +10,9 @@ import { Button } from "@/components/ui";
  * klienckie), renderując się WEWNĄTRZ root layoutu, więc nawigacja i motyw zostają. Motyw
  * #E50914/#0a0a0a; `reset()` ponawia render segmentu bez utraty sesji. #Ś1.
  *
- * Miejsce na `Sentry.captureException(error)` (useEffect), gdy obserwowalność zostanie
- * wpięta (🔜) — dziś apka nie loguje do konsoli, więc boundary tylko pokazuje błąd.
+ * #367: raport do Sentry. Granice błędów Reacta ZATRZYMUJĄ propagację do `window.onerror`,
+ * więc globalny handler (#306) ich nie widzi — bez tego `captureException` najpoważniejsze
+ * crashe renderu (te, które ubijają stronę) nie trafiały do Sentry wcale.
  */
 export default function AppError({
   error,
@@ -18,6 +21,10 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <div
       style={{

@@ -135,6 +135,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <LocaleProvider locale={locale}>
+      {/*
+        #367: `lang` dokumentu zgodny z językiem panelu. Root layout deklaruje „pl" i tak
+        zostaje dla stron publicznych (PL-only), a tutaj — jedynym tłumaczonym obszarze —
+        podmieniamy atrybut na wybrany język. Bez tego czytnik ekranu czytał angielski
+        panel polskim syntezatorem. Wartość pochodzi z `getLocale()` (whitelist LOCALES).
+      */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: literał z whitelisty LOCALES, bez danych użytkownika */}
+      <script dangerouslySetInnerHTML={{ __html: `document.documentElement.lang="${locale}"` }} />
       <div className="app-shell">
         <AppSidebar navGroups={navGroups} email={email} supabaseConfigured={supabaseConfigured} />
         <main className="app-main">

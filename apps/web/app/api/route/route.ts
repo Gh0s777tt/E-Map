@@ -5,6 +5,7 @@ import {
   estimateTruckDurationMin,
   type RouteRequest,
   routeMultiLeg,
+  tomtomVignetteCodes,
 } from "@e-logistic/maps";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -76,6 +77,24 @@ export async function POST(request: Request) {
         ? createRoutingProvider({ provider: "graphhopper", apiKey: ghKey })
         : createRoutingProvider();
 
+  // #367: wykluczanie krajów (`options.avoidCountries`) realizuje w pełni tylko HERE
+  // (`exclude[countries]`). TomTom potrafi ominąć wyłącznie drogi winietowe we wskazanych
+  // krajach (`avoidVignette`), GraphHopper i mock — nic. Bez tej informacji checkbox
+  // „Omijaj Szwajcarię" bywał po cichu ignorowany.
+  //
+  // Rozróżniamy TRZY stany zamiast jednego bitu — inaczej komunikat kłamałby o TomTomie,
+  // który realnie omija winiety: `full` (HERE), `partial` (TomTom, gdy któryś z krajów
+  // jest winietowy), `none` (nic nie zastosowano). `undefined` = użytkownik nic nie prosił.
+  const requestedCountries = body.options?.avoidCountries ?? [];
+  const avoidCountriesMode: "full" | "partial" | "none" | undefined =
+    requestedCountries.length === 0
+      ? undefined
+      : provider.name === "here"
+        ? "full"
+        : provider.name === "tomtom" && tomtomVignetteCodes(requestedCountries).length > 0
+          ? "partial"
+          : "none";
+
   try {
     const result = await routeMultiLeg(provider, body);
 
@@ -111,6 +130,7 @@ export async function POST(request: Request) {
       segments,
       tollCost,
       tollEstimated,
+      avoidCountriesMode,
     });
   } catch (e) {
     const mock = await routeMultiLeg(createRoutingProvider(), body);
@@ -119,6 +139,8 @@ export async function POST(request: Request) {
       durationMin: estimateTruckDurationMin(mock.distanceKm),
       durationEstimated: true,
       tollEstimated: false,
+      // Fallback to mock — na pewno nie wyklucza krajów.
+      avoidCountriesMode: requestedCountries.length > 0 ? ("none" as const) : undefined,
       fallback: true,
       error: e instanceof Error ? e.message : "Błąd routingu",
     });

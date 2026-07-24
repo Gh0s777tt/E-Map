@@ -35,6 +35,28 @@ quality:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
+# ── Bramka spójności typów bazy ze schematem (#367) ──
+# `packages/api/src/database.types.ts` jest GENEROWANE ze schematu (`pnpm gen:types`),
+# ale nic dotąd nie pilnowało, by po migracji je zregenerowano — typy potrafiły więc
+# „gwarantować" nieistniejące kolumny (rozjazd zabroniony w CLAUDE.md).
+# Job WŁĄCZA SIĘ SAM po dodaniu zmiennej `SUPABASE_DB_URL` (Settings → CI/CD → Variables;
+# ustaw jako masked + protected). Bez zmiennej jest pomijany, więc nie blokuje pipeline'u.
+# Porównujemy przez `cp`+`diff`, NIE `git diff` — obraz `node:*-slim` nie zawiera gita
+# (repo klonuje kontener helpera), więc `git` w jobie kończyłby się „command not found",
+# a `||` zamieniłoby to w mylący komunikat o rozjeździe typów.
+db-types:
+  extends: .node
+  stage: test
+  script:
+    - cp packages/api/src/database.types.ts /tmp/database.types.before.ts
+    - pnpm gen:types
+    - >
+      diff -u /tmp/database.types.before.ts packages/api/src/database.types.ts ||
+      { echo "❌ database.types.ts rozjechane ze schematem — uruchom 'pnpm gen:types' i zacommituj wynik."; exit 1; }
+  rules:
+    - if: '$SUPABASE_DB_URL && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$SUPABASE_DB_URL && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
 # ── Skan sekretów (pełna historia, konfiguracja .gitleaks.toml) ──
 gitleaks:
   stage: security

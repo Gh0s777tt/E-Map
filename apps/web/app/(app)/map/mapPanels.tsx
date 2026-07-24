@@ -82,6 +82,30 @@ export function RouteSummary({
           </div>
         )}
         <Row k={t("mapPage.provider")} v={result.provider} />
+        {/*
+          #367: uczciwy komunikat o omijaniu krajów. Rozróżniamy „nie zastosowano nic"
+          od „TomTom ominął winiety, ale kraju nie wyklucza" — jeden wspólny tekst
+          kłamałby o trasie liczonej TomTomem (dziś domyślnym dostawcą).
+        */}
+        {(result.avoidCountriesMode === "none" || result.avoidCountriesMode === "partial") && (
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 12,
+              lineHeight: 1.4,
+              color: cssPalette.offWhite,
+              background: cssPalette.black,
+              border: `1px solid ${result.avoidCountriesMode === "none" ? cssPalette.red : "#eab308"}`,
+              borderRadius: 8,
+              padding: "8px 10px",
+            }}
+          >
+            ⚠️{" "}
+            {result.avoidCountriesMode === "none"
+              ? t("mapPage.avoidCountriesUnsupported")
+              : t("mapPage.avoidCountriesVignetteOnly")}
+          </div>
+        )}
       </div>
 
       <div className={styles.disruptions}>

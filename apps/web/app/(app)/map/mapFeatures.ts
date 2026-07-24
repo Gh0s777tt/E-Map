@@ -1,6 +1,8 @@
+import type { SavedPlace } from "@e-logistic/api";
+import { SAVED_PLACE_CATEGORIES, type SavedPlaceCategory } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
 import type { Poi, TrafficIncident } from "@e-logistic/maps";
-import { REPORT_COLOR, REPORT_LABEL } from "./mapTheme";
+import { REPORT_COLOR, REPORT_LABEL, SAVED_CAT_ICON } from "./mapTheme";
 import type { Report } from "./mapTypes";
 
 /** GeoJSON linii trasy z pary [lng, lat]. */
@@ -26,6 +28,29 @@ export function poiFeatures(pois: Poi[]) {
       properties: { id: p.id, name: p.name ?? "", type: p.type },
       geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] as [number, number] },
     })),
+  };
+}
+
+/**
+ * #367: GeoJSON zapisanych miejsc firmy — ikona kategorii (SAVED_CAT_ICON) leci
+ * w properties jako `icon` i trafia do `text-field` warstwy symbol. `category`
+ * z bazy to zwykły string, więc nieznana wartość spada na „other" (jak w chipsach).
+ */
+export function savedFeatures(places: SavedPlace[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: places.map((p) => {
+      const cat: SavedPlaceCategory = (SAVED_PLACE_CATEGORIES as readonly string[]).includes(
+        p.category,
+      )
+        ? (p.category as SavedPlaceCategory)
+        : "other";
+      return {
+        type: "Feature" as const,
+        properties: { id: p.id, name: p.name, icon: SAVED_CAT_ICON[cat] },
+        geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] as [number, number] },
+      };
+    }),
   };
 }
 

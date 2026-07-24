@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-366-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.210.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-367-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.211.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,24 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.211.0] — ⚡ Paczka tanich zwycięstw z audytu (mapa, obserwowalność, CI, XSS)
+
+Sześć pozycji „duża wartość / mały koszt" z audytu wieloagentowego, plus poprawki znalezione
+przy adwersaryjnej weryfikacji tej paczki (w tym **realna luka XSS**, której audyt nie miał w zakresie).
+
+- `[#367]` 🛡️ **XSS w popupach mapy** ([map/page.tsx](apps/web/app/(app)/map/page.tsx)) — komentarze zgłoszeń, nazwy POI z OSM, opisy incydentów i etykiety przystanków szły surowe do `Popup.setHTML`. `map_reports.comment` to wolny tekst dowolnego zalogowanego, a warstwa jest **wspólna dla wszystkich firm** — jeden wpis `<img src=x onerror=…>` wykonywał się u każdego, kto kliknął pinezkę. Wszystkie wstawki przez `escapeHtml` (z apostrofem).
+- `[#367]` 🛡️ **Fałszywe zgłoszenia z kliknięcia w pinezkę** ([map/page.tsx](apps/web/app/(app)/map/page.tsx)) — w trybie zgłoszeń klik w POI/incydent/zapisane miejsce otwierał popup **i** zakładał zgłoszenie (wypadek/policja/waga) we wspólnej tabeli. Guard `queryRenderedFeatures` przed `insertMapReport`.
+- `[#367]` 🔭 **Sentry w granicach błędów web** ([(app)/error.tsx](apps/web/app/(app)/error.tsx), [global-error.tsx](apps/web/app/global-error.tsx)) — granice błędów Reacta zatrzymują propagację do `window.onerror`, więc crashe renderu (te, które ubijają stronę) **nie trafiały do Sentry wcale** mimo wdrożenia #306.
+- `[#367]` 🗺️ **Zapisane miejsca firmy na mapie** ([map/page.tsx](apps/web/app/(app)/map/page.tsx), [mapFeatures](apps/web/app/(app)/map/mapFeatures.ts)) — warstwa z ikoną kategorii, popup „dodaj jako przystanek", przełącznik i odtwarzanie po zmianie podkładu (`applyOverlays` + guard `isStyleLoaded`).
+- `[#367]` 🖱️ **Prawy klik = przystanek** ([map/page.tsx](apps/web/app/(app)/map/page.tsx)) — reverse-geocode TomTom (dotąd nieużywany) w języku UI, z fallbackiem na współrzędne; nie koliduje z trybem zgłoszeń ani z pinezkami.
+- `[#367]` 🚧 **Omijanie krajów bez cichego ignorowania** ([tomtom](packages/maps/src/tomtom.ts), [/api/route](apps/web/app/api/route/route.ts), [mapPanels](apps/web/app/(app)/map/mapPanels.tsx)) — TomTom dostał `avoidVignette` (CH/AT/CZ/SK/HU/SI/BG/RO/MD), a odpowiedź API niesie **trzy uczciwe stany** `avoidCountriesMode: full | partial | none`. Jeden bit kłamałby o TomTomie (dziś domyślnym), który realnie omija winiety, choć kraju nie wyklucza.
+- `[#367]` 🌐 **`<html lang>` zgodny z językiem** ([(app)/layout](apps/web/app/(app)/layout.tsx)) — ustawiany w **panelu**, jedynym tłumaczonym obszarze. Strony publiczne (landing/prywatność/wsparcie/logowanie) są PL-only i zostają statyczne z `lang="pl"` — nadpisywanie ich na „en" byłoby fałszywą deklaracją języka (i wymuszało render dynamiczny całej apki).
+- `[#367]` 🧪 **Bramka CI: typy bazy vs schemat** ([.gitlab-ci.yml](.gitlab-ci.yml)) — job `db-types` (`pnpm gen:types` + `diff`) pilnuje, by po migracji zregenerowano `database.types.ts`. Porównanie przez `cp`+`diff`, bo `node:*-slim` nie ma gita. **Włącza się sam** po dodaniu zmiennej CI `SUPABASE_DB_URL`.
+
+> Konfiguracja po stronie właściciela: `NEXT_PUBLIC_SENTRY_DSN` w Vercel (bez DSN Sentry jest no-opem) oraz `SUPABASE_DB_URL` w GitLab → Settings → CI/CD → Variables (masked + protected), by aktywować bramkę typów.
+
+**Bramki:** biome ✓ · parytet i18n 5/5 ✓ · `tsc` maps+api+web+mobile 0 ✓ · testy maps 80/80, web 61/61 ✓.
 
 ## [1.210.0] — 🔒 Odcięcie dostępu byłemu członkowi firmy (priorytet #1 z audytu)
 

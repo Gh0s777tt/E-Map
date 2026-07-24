@@ -1191,6 +1191,13 @@ export const en: Record<MessageKey, string> = {
   "mapPage.destination": "Destination",
   "mapPage.stop": "Stop",
   "mapPage.newStop": "New stop",
+  "mapPage.stopAdded": "Stop added",
+  "mapPage.rightClickAddStop": "Right-click the map to add a stop there (with its address).",
+  "mapPage.savedPlacesLayer": "Saved places on the map",
+  "mapPage.avoidCountriesUnsupported":
+    "Country avoidance was NOT applied — the provider that computed this route does not support it. Full country exclusion is available only with HERE; TomTom can only avoid vignette roads.",
+  "mapPage.avoidCountriesVignetteOnly":
+    "Country avoidance applied PARTIALLY — TomTom avoided vignette roads but does not exclude the whole country. Full exclusion is available only with HERE.",
   "mapPage.gpsUnavailable": "GPS not available in this browser.",
   "mapPage.myLocation": "My location",
   "mapPage.locationError": "Failed to get your location.",

@@ -1,10 +1,17 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 /**
  * Globalny error boundary (App Router) — ostatnia siatka bezpieczeństwa dla wyjątków
  * renderu, które ubiją ROOT layout. global-error ZASTĘPUJE root layout, więc renderuje
  * własne <html>/<body> i style inline (globals.css może być niedostępny). Motyw #E50914
  * na #0a0a0a; `reset()` ponawia render. #Ś1: apka dotąd nie miała żadnego boundary.
+ *
+ * #367: raport do Sentry — granice błędów Reacta zatrzymują propagację do `window.onerror`,
+ * więc globalny handler (#306) tych crashy nie widział. `lang` zostaje „pl", bo treść tego
+ * ekranu jest zaszyta po polsku (i18n tu nie sięga — komponent zastępuje root layout).
  */
 export default function GlobalError({
   error,
@@ -13,6 +20,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <html lang="pl">
       <body

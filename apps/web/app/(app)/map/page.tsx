@@ -44,6 +44,7 @@ import {
   type Poi,
   type TrafficFlow,
   type TrafficIncident,
+  tomtomReverseGeocode,
   tomtomSearchAlongRoute,
   tomtomTrafficIncidents,
 } from "@e-logistic/maps";
@@ -57,7 +58,13 @@ import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-import { incidentFeatures, poiFeatures, reportFeatures, routeFeature } from "./mapFeatures";
+import {
+  incidentFeatures,
+  poiFeatures,
+  reportFeatures,
+  routeFeature,
+  savedFeatures,
+} from "./mapFeatures";
 import { FuelPricesPanel, RouteSummary, SavedPlacesChips, StopsEditor } from "./mapPanels";
 import {
   BASEMAPS,
@@ -75,6 +82,41 @@ import {
 } from "./mapTheme";
 import type { BasemapKey, MaplibreModule, Report, RouteResponse, Stop } from "./mapTypes";
 import { styles } from "./mapUi";
+
+/**
+ * #367: punktowe warstwy mapy — mają własne popupy (POI/zgłoszenia/incydenty/zapisane
+ * miejsca) albo niosą informację (auta live). Prawy klik nad którąkolwiek z nich NIE
+ * dodaje przystanku: najpierw pytamy `queryRenderedFeatures`, żeby nowa interakcja
+ * nie zabierała klików istniejącym punktom.
+ */
+const CLICKABLE_LAYERS = [
+  "pois-layer",
+  "reports-layer",
+  "incidents-layer",
+  "saved-layer",
+  "saved-icons",
+  "trucks-layer",
+  "trucks-labels",
+] as const;
+
+/**
+ * #367: ucieczka HTML dla danych wstawianych do `Popup.setHTML`.
+ *
+ * Dotyczy KAŻDEGO tekstu spoza katalogu i18n: komentarze zgłoszeń (wolny tekst dowolnego
+ * zalogowanego użytkownika, a warstwa `map_reports` jest wspólna dla wszystkich firm),
+ * nazwy POI z OSM/Overpass (publicznie edytowalne), opisy incydentów TomTom i etykiety
+ * przystanków z geokodera. Bez tego wystarczyłby jeden wpis z `<img src=x onerror=…>`,
+ * by kod wykonał się u każdego, kto kliknie pinezkę. Apostrof też uciekamy — helper bywa
+ * używany wewnątrz atrybutów.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 export default function MapPage() {
   const t = useT();
@@ -134,6 +176,15 @@ export default function MapPage() {
   const trafficOnRef = useRef(false);
   const incidentsOnRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
+  // #367: warstwa zapisanych miejsc firmy na mapie (obok chipsów). Przełącznik
+  // spójny z warstwami ruchu/incydentów; refy — bo applyOverlays (po setStyle)
+  // i handlery mapy rejestrowane RAZ potrzebują świeżego stanu poza domknięciem.
+  const [savedLayerOn, setSavedLayerOn] = useState(true);
+  const savedLayerOnRef = useRef(true);
+  const savedRef = useRef<SavedPlace[]>([]);
+  // #367: mostki do funkcji z bieżącego renderu (popup miejsca / prawy klik w mapę).
+  const addSavedStopRef = useRef<((p: SavedPlace) => void) | null>(null);
+  const addStopAtRef = useRef<((lat: number, lng: number) => void) | null>(null);
 
   // Koszt paliwa trasy (silnik billing) + zapisane miejsca.
   const [consumption, setConsumption] = useState("30");
@@ -537,6 +588,54 @@ export default function MapPage() {
     } as import("maplibre-gl").AddLayerObject);
   }, []);
 
+  /**
+   * #367: warstwa zapisanych miejsc firmy — obwódka w czerwieni marki + emoji
+   * kategorii (SAVED_CAT_ICON) jako `text-field` warstwy symbol. Symbol w try/catch
+   * jak przy autach live: styl rastrowy (fallback OSM) nie ma glyphów i by rzucił.
+   */
+  const drawSaved = useCallback((places: SavedPlace[]) => {
+    const map = mapRef.current;
+    if (!map) return;
+    // #367: po `setStyle` (zmiana podkładu) stary styl znika natychmiast, a `addSource`
+    // na niewczytanym stylu RZUCA („Style is not done loading."). Efekt Reacta wywołany
+    // w tym oknie wysadziłby stronę do error boundary. Warstwę i tak odtworzy
+    // `applyOverlays` na zdarzeniu `style.load`, czytając refy zaktualizowane wcześniej.
+    if (!map.isStyleLoaded()) return;
+    const data = savedFeatures(places);
+    const existing = map.getSource("saved");
+    if (existing) {
+      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
+      return;
+    }
+    map.addSource("saved", { type: "geojson", data });
+    map.addLayer({
+      id: "saved-layer",
+      type: "circle",
+      source: "saved",
+      paint: {
+        "circle-radius": 9,
+        "circle-color": palette.black,
+        "circle-opacity": 0.85,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": palette.red,
+      },
+    } as import("maplibre-gl").AddLayerObject);
+    try {
+      map.addLayer({
+        id: "saved-icons",
+        type: "symbol",
+        source: "saved",
+        layout: {
+          "text-field": ["get", "icon"],
+          "text-size": 13,
+          "text-allow-overlap": true,
+        },
+      } as import("maplibre-gl").AddLayerObject);
+    } catch {
+      // styl bez glyphów (fallback OSM) — zostaje samo kółko
+    }
+  }, []);
+
   const add3dBuildings = useCallback((map: MlMap) => {
     if (!MAPTILER_KEY || map.getLayer("3d-buildings")) return;
     const sources = map.getStyle().sources as Record<string, { type?: string }>;
@@ -585,7 +684,9 @@ export default function MapPage() {
     drawReports();
     if (routeGeoRef.current) drawRoute(routeGeoRef.current);
     if (poisRef.current.length) drawPois(poisRef.current);
-  }, [add3dBuildings, drawReports, drawRoute, drawPois]);
+    // #367: setStyle kasuje źródła/warstwy — odtwórz zapisane miejsca, gdy warstwa włączona.
+    if (savedLayerOnRef.current && savedRef.current.length) drawSaved(savedRef.current);
+  }, [add3dBuildings, drawReports, drawRoute, drawPois, drawSaved]);
 
   // ── Inicjalizacja mapy ──
   useEffect(() => {
@@ -609,6 +710,14 @@ export default function MapPage() {
       // Klik na mapie w trybie zgłoszeń.
       map.on("click", (e) => {
         if (!reportModeRef.current) return;
+        // #367: MapLibre odpala ten handler TAKŻE przy kliknięciu w pinezkę warstwy, więc
+        // otwarcie popupu POI/incydentu/zgłoszenia/zapisanego miejsca zakładało przy okazji
+        // fałszywe zgłoszenie (wypadek/policja/waga) we WSPÓLNEJ tabeli `map_reports` —
+        // widoczne dla wszystkich firm i nie do cofnięcia z mapy. Ten sam guard co w `contextmenu`.
+        const m = map as MlMap;
+        const hitLayers = CLICKABLE_LAYERS.filter((id) => m.getLayer(id));
+        if (hitLayers.length > 0 && m.queryRenderedFeatures(e.point, { layers: hitLayers }).length)
+          return;
         insertMapReport(getBrowserSupabase(), {
           type: reportTypeRef.current,
           lat: e.lngLat.lat,
@@ -625,7 +734,7 @@ export default function MapPage() {
         new ml.Popup()
           .setLngLat([lng, lat])
           .setHTML(
-            `<strong>${p?.label ?? t("mapPage.reportPopupFallback")}</strong>${p?.comment ? `<br/>${p.comment}` : ""}`,
+            `<strong>${escapeHtml(p?.label ?? t("mapPage.reportPopupFallback"))}</strong>${p?.comment ? `<br/>${escapeHtml(p.comment)}` : ""}`,
           )
           .addTo(map as MlMap);
       });
@@ -642,7 +751,7 @@ export default function MapPage() {
         const popup = new ml.Popup()
           .setLngLat([lng, lat])
           .setHTML(
-            `<strong>${name}</strong><br/>${kindLabel}<br/>📍 <code>${coords}</code>` +
+            `<strong>${escapeHtml(name)}</strong><br/>${escapeHtml(kindLabel)}<br/>📍 <code>${coords}</code>` +
               `<br/><a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" rel="noreferrer">${t("mapPage.navigate")} ↗</a>` +
               `<br/><button type="button" data-add-stop style="margin-top:6px;cursor:pointer">➕ ${t("mapPage.addAsStop")}</button>` +
               (props?.type === "parking" && props?.id
@@ -745,7 +854,7 @@ export default function MapPage() {
         new ml.Popup()
           .setLngLat([lng, lat])
           .setHTML(
-            `<strong>${title}</strong>${props?.description ? `<br/>${props.description}` : ""}`,
+            `<strong>${escapeHtml(title)}</strong>${props?.description ? `<br/>${escapeHtml(props.description)}` : ""}`,
           )
           .addTo(map as MlMap);
       });
@@ -754,6 +863,54 @@ export default function MapPage() {
       });
       map.on("mouseleave", "incidents-layer", () => {
         (map as MlMap).getCanvas().style.cursor = "";
+      });
+
+      // #367: zapisane miejsce firmy — popup z nazwą i dodaniem do trasy.
+      // Pełny `SavedPlace` bierzemy z `savedRef` po `id` z properties, żeby użyć
+      // dokładnie tej samej ścieżki co chipsy (addSavedAsStop → delta trasy).
+      map.on("click", "saved-layer", (e) => {
+        const f = e.features?.[0];
+        if (f?.geometry.type !== "Point") return;
+        const props = f.properties as { id?: string; name?: string; icon?: string } | null;
+        const [lng, lat] = f.geometry.coordinates as [number, number];
+        const name = props?.name || t("mapPage.savedPlaceDefault");
+        const popup = new ml.Popup()
+          .setLngLat([lng, lat])
+          .setHTML(
+            `<strong>${escapeHtml(props?.icon ?? "📍")} ${escapeHtml(name)}</strong>` +
+              `<br/>📍 <code>${lat.toFixed(5)}, ${lng.toFixed(5)}</code>` +
+              `<br/><button type="button" data-add-saved style="margin-top:6px;cursor:pointer">➕ ${t("mapPage.addAsStop")}</button>`,
+          )
+          .addTo(map as MlMap);
+        popup
+          .getElement()
+          ?.querySelector("[data-add-saved]")
+          ?.addEventListener("click", () => {
+            const place = savedRef.current.find((p) => p.id === props?.id);
+            if (place) addSavedStopRef.current?.(place);
+            popup.remove();
+          });
+      });
+      map.on("mouseenter", "saved-layer", () => {
+        (map as MlMap).getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "saved-layer", () => {
+        (map as MlMap).getCanvas().style.cursor = "";
+      });
+
+      // #367: PRAWY przycisk (contextmenu) = „dodaj przystanek tutaj" z reverse-geocode.
+      // Świadomie NIE lewy: lewy jest już zajęty przez tryb zgłoszeń, a MapLibre odpala
+      // handler mapy także przy kliknięciu w punkt warstwy — lewy klik dokładałby
+      // przystanek przy każdym otwarciu popupu POI/zgłoszenia i przy zwykłym pudle.
+      // Prawy klik nie koliduje z niczym i jest utartym wzorcem („dodaj punkt tutaj").
+      map.on("contextmenu", (e) => {
+        // W trybie zgłoszeń klik na mapie ma dotychczasowe znaczenie — nie mieszamy.
+        if (reportModeRef.current) return;
+        const m = map as MlMap;
+        const layers = CLICKABLE_LAYERS.filter((id) => m.getLayer(id));
+        if (layers.length > 0 && m.queryRenderedFeatures(e.point, { layers }).length > 0) return;
+        e.originalEvent.preventDefault();
+        addStopAtRef.current?.(e.lngLat.lat, e.lngLat.lng);
       });
 
       map.on("load", () => {
@@ -839,6 +996,15 @@ export default function MapPage() {
     };
   }, [incidentsOn, mapReady, fetchIncidentsForView, drawIncidents]);
 
+  // ── #367: warstwa zapisanych miejsc firmy (dane z bazy, bez zapytań do API) ──
+  useEffect(() => {
+    savedRef.current = saved;
+    savedLayerOnRef.current = savedLayerOn;
+    if (!mapReady) return;
+    // Wyłączona warstwa = pusta kolekcja (jak przy ruchu/incydentach), nie usuwanie warstwy.
+    drawSaved(savedLayerOn ? saved : []);
+  }, [saved, savedLayerOn, mapReady, drawSaved]);
+
   // ── Znaczniki przystanków (DOM — przetrwają zmianę stylu) ──
   useEffect(() => {
     if (!mapReady) return;
@@ -855,7 +1021,7 @@ export default function MapPage() {
             ? t("mapPage.destination")
             : `${t("mapPage.stop")} ${i}`;
       const popup = new ml.Popup({ offset: 24 }).setHTML(
-        `<strong>${role}</strong><br/>${st.label}<br/>📍 <code>${st.lat.toFixed(5)}, ${st.lng.toFixed(5)}</code>`,
+        `<strong>${escapeHtml(role)}</strong><br/>${escapeHtml(st.label)}<br/>📍 <code>${st.lat.toFixed(5)}, ${st.lng.toFixed(5)}</code>`,
       );
       return new ml.Marker({ color }).setLngLat([st.lng, st.lat]).setPopup(popup).addTo(map);
     });
@@ -900,6 +1066,37 @@ export default function MapPage() {
   }
   function removeStop(key: string) {
     setStops((s) => (s.length > 2 ? s.filter((st) => st.key !== key) : s));
+  }
+
+  /**
+   * #367: dodaje przystanek w miejscu wskazanym na mapie (prawy klik). Etykietę
+   * bierze z reverse-geocode TomTom; bez `NEXT_PUBLIC_TOMTOM_KEY` albo przy błędzie
+   * sieci/limitu zostają współrzędne — funkcja nigdy nie rzuca. Wstawia przed cel,
+   * tak samo jak addStop()/addSavedAsStop(), więc reguły trasy zostają bez zmian.
+   */
+  async function addStopAt(lat: number, lng: number) {
+    let label = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    if (TOMTOM_KEY) {
+      try {
+        // #367: język adresu zgodny z UI — domyślnie TomTom zwraca „pl-PL", więc panel
+        // po angielsku dostawał polskie etykiety przystanków. `lang` ustawia `(app)/layout`.
+        const uiLang = document.documentElement.lang === "en" ? "en-GB" : "pl-PL";
+        const hit = await tomtomReverseGeocode(lat, lng, TOMTOM_KEY, { language: uiLang });
+        const named = hit?.label || [hit?.postcode, hit?.city].filter(Boolean).join(" ").trim();
+        if (named) label = named;
+      } catch {
+        // brak sieci / limit TomTom → zostaje etykieta ze współrzędnych
+      }
+    }
+    const key = newId();
+    setStops((s) => {
+      const next = [...s];
+      next.splice(next.length - 1, 0, { key, label, lat, lng });
+      return next;
+    });
+    setQueries((q) => ({ ...q, [key]: label }));
+    // useT() na webie nie ma interpolacji — sklejamy komunikat w kodzie.
+    toast(`➕ ${t("mapPage.stopAdded")}: ${label}`, "success");
   }
 
   function useMyLocation() {
@@ -1249,6 +1446,10 @@ export default function MapPage() {
   // #309: recomputeDisruptions (starszy useCallback) woła plan() przez ref
   // eslint-disable-next-line react-hooks/exhaustive-deps
   planRef.current = () => void plan();
+  // #367: handlery mapy rejestrowane RAZ (popup zapisanego miejsca, prawy klik)
+  // sięgają po świeże funkcje przez refy — tak samo jak planRef wyżej.
+  addSavedStopRef.current = (p) => void addSavedAsStop(p);
+  addStopAtRef.current = (lat, lng) => void addStopAt(lat, lng);
 
   async function plan(override?: { lat: number; lng: number }[]): Promise<RouteResponse | null> {
     setBusy(true);
@@ -1415,6 +1616,10 @@ export default function MapPage() {
               📍 {t("mapPage.myLocation")}
             </button>
           </div>
+          {/* #367: podpowiedź do nowej interakcji — prawy klik dodaje przystanek z adresem. */}
+          <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+            🖱️ {t("mapPage.rightClickAddStop")}
+          </div>
           <div style={{ display: "flex", gap: 6 }}>
             <select
               value={savedCat}
@@ -1485,6 +1690,17 @@ export default function MapPage() {
           )}
 
           <SavedPlacesChips saved={saved} onAdd={addSavedAsStop} onRemove={removeSaved} />
+          {/* #367: przełącznik warstwy zapisanych miejsc — spójny z ruchem/incydentami. */}
+          {saved.length > 0 && (
+            <label className={styles.check}>
+              <input
+                type="checkbox"
+                checked={savedLayerOn}
+                onChange={(e) => setSavedLayerOn(e.target.checked)}
+              />{" "}
+              ⭐ {t("mapPage.savedPlacesLayer")}
+            </label>
+          )}
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 

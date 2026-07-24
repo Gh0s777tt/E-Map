@@ -28,6 +28,41 @@ export async function tomtomFetch(
   }
 }
 
+/**
+ * #367: kraje winietowe rozpoznawane przez TomTom `avoidVignette` (ISO 3166-1 alpha-3).
+ * TomTom Routing v1 NIE ma odpowiednika HERE `exclude[countries]` — nie potrafi
+ * wykluczyć kraju z trasy. Jedyne, co realnie umie, to ominąć drogi objęte winietą
+ * we wskazanych krajach (`avoidVignette`). Dla CH/AT/CZ/SK/HU/SI/BG/RO/MD realizuje
+ * to intencję „nie płacę tam za winietę", ale to NIE jest pełne wykluczenie kraju —
+ * dlatego `/api/route` raportuje `avoidCountriesMode: "partial"`, a UI mówi wprost,
+ * co dostawca zrobił (pełne wykluczenie = tylko HERE).
+ */
+const VIGNETTE_ISO3: Record<string, string> = {
+  CH: "CHE",
+  AT: "AUT",
+  CZ: "CZE",
+  SK: "SVK",
+  HU: "HUN",
+  SI: "SVN",
+  BG: "BGR",
+  RO: "ROU",
+  MD: "MDA",
+};
+
+/**
+ * #367: mapuje `options.avoidCountries` (ISO2) na kody ISO3 obsługiwane przez
+ * `avoidVignette`. Kraje bez winiety (np. DE, PL, FR) są pomijane — TomTom nie
+ * przyjmuje ich w tym parametrze. Kolejność zachowana, bez duplikatów.
+ */
+export function tomtomVignetteCodes(avoidCountries?: string[]): string[] {
+  const out: string[] = [];
+  for (const c of avoidCountries ?? []) {
+    const iso3 = VIGNETTE_ISO3[c.trim().toUpperCase()];
+    if (iso3 && !out.includes(iso3)) out.push(iso3);
+  }
+  return out;
+}
+
 /** Buduje URL TomTom Routing (czyste/testowalne). Lokalizacje literalne w ścieżce. */
 export function buildTomTomRouteUrl(req: RouteRequest, apiKey: string): string {
   const pts = req.waypoints;
@@ -54,10 +89,16 @@ export function buildTomTomRouteUrl(req: RouteRequest, apiKey: string): string {
     p.push("travelMode=car");
   }
 
-  // TomTom: `avoid` to parametr powtarzalny (nie CSV). Brak wykluczania krajów.
+  // TomTom: `avoid` to parametr powtarzalny (nie CSV).
   if (req.options?.avoidTolls) p.push("avoid=tollRoads");
   if (req.options?.avoidFerries) p.push("avoid=ferries");
   if (req.options?.avoidDirtRoads) p.push("avoid=unpavedRoads");
+
+  // #367: częściowa obsługa `avoidCountries` — TomTom umie tylko omijać drogi
+  // winietowe wskazanych krajów (CSV kodów ISO3, jak HERE `exclude[countries]`).
+  // Pełnego wykluczenia kraju TomTom nie ma — komunikat o tym idzie z `/api/route`.
+  const vignette = tomtomVignetteCodes(req.options?.avoidCountries);
+  if (vignette.length) p.push(`avoidVignette=${vignette.join(",")}`);
 
   return `${TOMTOM_BASE}/routing/1/calculateRoute/${locations}/json?${p.join("&")}`;
 }
