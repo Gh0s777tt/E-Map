@@ -9,6 +9,9 @@
  * lokalnie: +1 przy zdarzeniu realtime (cudza wiadomość spoza otwartego wątku),
  * 0 przy oznaczeniu wątku jako przeczytany. Wynik RPC z „poprzedniej epoki"
  * (sprzed oznaczenia) jest odrzucany — inaczej badge wracałby na moment.
+ *
+ * #369: zapis znacznika przeczytania przy strumieniu wiadomości jest zdławiony
+ * (jeden zapis „na koniec" zamiast zapisu na każdą wiadomość).
  */
 import {
   type ChatUnread,
@@ -31,6 +34,11 @@ let stopRealtime: (() => void) | null = null;
 let epoch = 0;
 /** Wątek otwarty na ekranie rozmowy — jego wiadomości nie są „nieprzeczytane". */
 let openChannel: string | null = null;
+/** #369: minimalny odstęp między zapisami znacznika przeczytania [ms]. */
+const READ_WRITE_MIN_INTERVAL_MS = 5000;
+let lastReadWriteAt = 0;
+/** Zaległy znacznik do dopisania „na koniec" (wyjście z ekranu / tło aplikacji). */
+let deferredRead: { threadId: string | null; companyIdHint: string | null } | null = null;
 
 const listeners = new Set<() => void>();
 
@@ -47,6 +55,18 @@ function withCount(key: string, count: number): ChatUnread {
   return { byChannel, total };
 }
 
+/**
+ * #369: wątek otwarty na ekranie NIGDY nie zapala badge'a — czytamy go na bieżąco.
+ * Baza może chwilowo twierdzić inaczej (zapis znacznika jest zdławiony, patrz
+ * `markChannelReadThrottled`), więc odsiewamy ten wątek z wyniku RPC.
+ */
+function withoutOpenChannel(next: ChatUnread): ChatUnread {
+  if (!openChannel || !next.byChannel[openChannel]) return next;
+  const byChannel = { ...next.byChannel };
+  delete byChannel[openChannel];
+  return { byChannel, total: Object.values(byChannel).reduce((a, b) => a + b, 0) };
+}
+
 /** Pobiera liczniki z bazy (odrzuca wynik, jeśli w międzyczasie coś przeczytano). */
 export async function refreshChatUnread(): Promise<void> {
   if (!companyId) return;
@@ -54,7 +74,7 @@ export async function refreshChatUnread(): Promise<void> {
   try {
     const next = await chatUnreadCounts(getSupabase(), companyId);
     if (mine !== epoch) return;
-    publish(next);
+    publish(withoutOpenChannel(next));
   } catch {
     // brak zasięgu — zostawiamy ostatni znany stan
   }
@@ -72,12 +92,44 @@ export function markChannelRead(threadId: string | null, companyIdHint?: string 
   if (state.byChannel[key]) publish(withCount(key, 0));
   const target = companyId ?? companyIdHint ?? null;
   if (!target) return;
+  lastReadWriteAt = Date.now();
+  if (deferredRead && chatChannelKey(deferredRead.threadId) === key) deferredRead = null;
   markChatRead(getSupabase(), target, threadId).catch(() => {});
 }
 
-/** Zgłasza wątek otwarty na ekranie rozmowy (`open=false` przy wyjściu). */
+/**
+ * #369: znacznik przeczytania dla ekranu, na którym wiadomości LECĄ STRUMIENIEM.
+ * Bez dławienia każda przychodząca wiadomość = osobny zapis do bazy u każdego
+ * patrzącego, a rosnąca `epoch` unieważniałaby odświeżenia w locie. RLS i tak
+ * liczy `created_at > last_read_at`, więc pojedynczy zapis „na koniec" wystarcza:
+ * rzadki zapis w trakcie + `flushDeferredRead()` przy zamknięciu wątku.
+ * Badge otwartego wątku i tak się nie zapali (`openChannel` + `withoutOpenChannel`).
+ */
+export function markChannelReadThrottled(
+  threadId: string | null,
+  companyIdHint?: string | null,
+): void {
+  if (Date.now() - lastReadWriteAt >= READ_WRITE_MIN_INTERVAL_MS) {
+    markChannelRead(threadId, companyIdHint);
+    return;
+  }
+  deferredRead = { threadId, companyIdHint: companyIdHint ?? null };
+}
+
+/** Dopisuje zaległy znacznik z `markChannelReadThrottled` (jeśli jakiś czeka). */
+function flushDeferredRead(): void {
+  const pending = deferredRead;
+  deferredRead = null;
+  if (pending) markChannelRead(pending.threadId, pending.companyIdHint);
+}
+
+/**
+ * Zgłasza wątek otwarty na ekranie rozmowy (`open=false` przy wyjściu).
+ * Wyjście dopisuje zaległy znacznik — to jest ten jeden zapis „na koniec".
+ */
 export function setOpenChatChannel(threadId: string | null, open: boolean): void {
   openChannel = open ? chatChannelKey(threadId) : null;
+  if (!open) flushDeferredRead();
 }
 
 /** Czyści licznik i subskrypcję (wylogowanie / zmiana konta na tym telefonie). */
@@ -87,6 +139,9 @@ export function resetChatUnread(): void {
   companyId = null;
   myId = null;
   starting = false;
+  // #369: zaległy znacznik należał do POPRZEDNIEGO konta — nie dopisujemy go.
+  deferredRead = null;
+  openChannel = null;
   epoch++;
   publish(emptyChatUnread());
 }
@@ -124,7 +179,11 @@ export function useChatUnread(): ChatUnread {
     listeners.add(fn);
     fn();
     const sub = AppState.addEventListener("change", (st) => {
-      if (st !== "active") return;
+      // #369: zejście w tło = ostatnia okazja, by dopisać zaległy znacznik.
+      if (st !== "active") {
+        flushDeferredRead();
+        return;
+      }
       void start(); // no-op gdy już wystartowane
       void refreshChatUnread();
     });

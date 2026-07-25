@@ -37,7 +37,7 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../components/AuthProvider";
-import { markChannelRead, setOpenChatChannel } from "../lib/chatUnread";
+import { markChannelRead, markChannelReadThrottled, setOpenChatChannel } from "../lib/chatUnread";
 import { tap, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import {
@@ -116,8 +116,11 @@ export default function ChatThreadScreen() {
         cleanup = subscribeMessages(sb, m.companyId, (msg) => {
           if ((msg.thread_id ?? null) !== threadId) return;
           setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-          // #368: rozmowa jest otwarta — czytamy na bieżąco, więc przesuwamy znacznik.
-          if (msg.sender_id !== me) markChannelRead(threadId, m.companyId);
+          // #368/#369: rozmowa jest otwarta — czytamy na bieżąco, ale znacznik
+          // zapisujemy ZDŁAWIONY. Zapis do bazy na KAŻDĄ wiadomość u każdego
+          // patrzącego był zbędny (RLS liczy `created_at > last_read_at`);
+          // zaległy zapis domyka `setOpenChatChannel(null, false)` przy wyjściu.
+          if (msg.sender_id !== me) markChannelReadThrottled(threadId, m.companyId);
         });
       } catch {
         if (alive) setErr(t("m.chat.loadFail"));
@@ -222,8 +225,11 @@ export default function ChatThreadScreen() {
       // Sam upload do Storage WYMAGA zasięgu (nie trzymamy zdjęć w AsyncStorage).
       // Gdy się uda — wiadomość leci już przez outbox, więc chwilowy brak sieci
       // przy samym INSERT-cie nie gubi zdjęcia.
+      // #369: `threadId` ląduje w ścieżce Storage i to on wyznacza krąg odbiorców
+      // (RLS 0088) — bez niego załącznik z rozmowy 1:1 widziałaby cała firma.
       const path = await uploadChatPhotoBinary(getSupabase(), companyId, decode(asset.base64), {
         mime: asset.mimeType ?? "image/jpeg",
+        threadId,
       });
       const input: ChatOutboxInput = {
         companyId,

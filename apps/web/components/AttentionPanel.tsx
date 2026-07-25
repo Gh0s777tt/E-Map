@@ -12,16 +12,16 @@ import {
   listVehiclesExpiry,
 } from "@e-logistic/api";
 import {
-  DAMAGE_KIND_LABELS,
-  DAMAGE_STATUS_LABELS,
   type ExpiryLevel,
   expiryStatus,
   invoicePaymentStatus,
   serviceStatus,
 } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -41,18 +41,19 @@ type Item = {
   statusLabel?: string;
 };
 
+// #369: etykiety pól trzymamy jako klucze i18n — tłumaczone dopiero przy budowie listy.
 const VEH_FIELDS = [
-  { col: "inspection_expiry", label: "Przegląd" },
-  { col: "insurance_expiry", label: "OC" },
-  { col: "leasing_end", label: "Leasing" },
+  { col: "inspection_expiry", labelKey: "attention.veh.inspection" },
+  { col: "insurance_expiry", labelKey: "attention.veh.insurance" },
+  { col: "leasing_end", labelKey: "attention.veh.leasing" },
 ] as const;
 
 const DRV_FIELDS = [
-  { col: "license_expiry", label: "Prawo jazdy" },
-  { col: "code95_expiry", label: "Kod 95" },
-  { col: "medical_expiry", label: "Badania lekarskie" },
-  { col: "psychotech_expiry", label: "Psychotechniczne" },
-  { col: "adr_expiry", label: "ADR" },
+  { col: "license_expiry", labelKey: "attention.drv.license" },
+  { col: "code95_expiry", labelKey: "attention.drv.code95" },
+  { col: "medical_expiry", labelKey: "attention.drv.medical" },
+  { col: "psychotech_expiry", labelKey: "attention.drv.psych" },
+  { col: "adr_expiry", labelKey: "attention.drv.adr" },
 ] as const;
 
 const MAX_SHOWN = 15;
@@ -72,6 +73,7 @@ function isCriticalDefect(severity: string, dashboardLight: boolean): boolean {
 export function AttentionPanel() {
   const [items, setItems] = useState<Item[]>([]);
   const [ready, setReady] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     (async () => {
@@ -104,8 +106,8 @@ export function AttentionPanel() {
             out.push({
               key: `veh-${v.id}-${f.col}`,
               icon: "🚚",
-              category: "Pojazd",
-              title: `${v.registration} · ${f.label}`,
+              category: t("attention.cat.vehicle"),
+              title: `${v.registration} · ${t(f.labelKey)}`,
               detail: date,
               level: st.level,
               urgency: st.daysLeft,
@@ -121,9 +123,9 @@ export function AttentionPanel() {
           out.push({
             key: `card-${c.id}`,
             icon: "💳",
-            category: "Karta",
+            category: t("attention.cat.card"),
             title:
-              `${String(c.provider ?? "Karta").toUpperCase()} ${c.card_number_masked ?? ""}`.trim(),
+              `${String(c.provider ?? t("attention.cat.card")).toUpperCase()} ${c.card_number_masked ?? ""}`.trim(),
             detail: c.valid_until,
             level: st.level,
             urgency: st.daysLeft,
@@ -131,16 +133,20 @@ export function AttentionPanel() {
           });
         }
 
-        for (const t of tasks) {
-          const cur = odo[t.vehicle_id] ?? null;
-          const st = serviceStatus(cur, t.last_done_km, t.interval_km);
+        // Uwaga: zmienna pętli to `task`, bo `t` to funkcja tłumacząca.
+        for (const task of tasks) {
+          const cur = odo[task.vehicle_id] ?? null;
+          const st = serviceStatus(cur, task.last_done_km, task.interval_km);
           if (st.level === "ok" || st.kmLeft == null) continue;
           out.push({
-            key: `svc-${t.id}`,
+            key: `svc-${task.id}`,
             icon: "🔧",
-            category: "Serwis",
-            title: `${regOf.get(t.vehicle_id) ?? "—"} · ${t.name}`,
-            detail: st.kmLeft < 0 ? `przekroczono o ${-st.kmLeft} km` : `za ${st.kmLeft} km`,
+            category: t("attention.cat.service"),
+            title: `${regOf.get(task.vehicle_id) ?? "—"} · ${task.name}`,
+            detail:
+              st.kmLeft < 0
+                ? `${t("attention.svc.overBy")} ${-st.kmLeft} km`
+                : `${t("attention.svc.inKm")} ${st.kmLeft} km`,
             level: st.level,
             urgency: st.kmLeft / 100,
             href: "/service",
@@ -154,7 +160,7 @@ export function AttentionPanel() {
           out.push({
             key: `doc-${d.id}`,
             icon: "📄",
-            category: "Dokument",
+            category: t("attention.cat.document"),
             title: d.name,
             detail: d.expiry_date,
             level: st.level,
@@ -177,9 +183,9 @@ export function AttentionPanel() {
           out.push({
             key: `inv-${inv.id}`,
             icon: "🧾",
-            category: "Faktura",
+            category: t("attention.cat.invoice"),
             title: `${inv.number} · ${inv.buyer_name ?? "—"}`,
-            detail: `termin ${inv.due_date} · ${inv.gross} ${inv.currency}`,
+            detail: `${t("attention.inv.duePrefix")} ${inv.due_date} · ${inv.gross} ${inv.currency}`,
             level: "expired",
             urgency: days,
             href: "/invoices",
@@ -192,13 +198,15 @@ export function AttentionPanel() {
           out.push({
             key: `dmg-${c.id}`,
             icon: "🛠️",
-            category: "Szkoda",
-            title: `${c.vehicle_id ? (regOf.get(c.vehicle_id) ?? "—") : "—"} · ${DAMAGE_KIND_LABELS[c.kind]}`,
-            detail: `${DAMAGE_STATUS_LABELS[c.status]}${c.cost != null ? ` · ${c.cost} ${c.currency}` : ""}`,
+            category: t("attention.cat.damage"),
+            // #369: etykiety rodzaju i statusu szkody przez i18n — stałe z `core`
+            // są wyłącznie polskie, więc panel po angielsku pokazywał „Kolizja / wypadek".
+            title: `${c.vehicle_id ? (regOf.get(c.vehicle_id) ?? "—") : "—"} · ${t(`damage.kind.${c.kind}` as MessageKey)}`,
+            detail: `${t(`damage.status.${c.status}` as MessageKey)}${c.cost != null ? ` · ${c.cost} ${c.currency}` : ""}`,
             level: c.status === "reported" ? "expired" : "soon",
             urgency: -daysSince,
             href: "/damages",
-            statusLabel: "otwarta",
+            statusLabel: t("attention.status.open"),
           });
         }
 
@@ -212,19 +220,20 @@ export function AttentionPanel() {
           out.push({
             key: `def-${d.id}`,
             icon: "🔩",
-            category: "Usterka",
+            category: t("attention.cat.defect"),
             // 💡 = zapalona kontrolka na desce (ta sama ikona co na liście w Raportach).
             title: `${regOf.get(d.vehicle_id) ?? "—"} · ${d.part}${d.dashboard_light ? " 💡" : ""}`,
             detail: d.description.length > 80 ? `${d.description.slice(0, 80)}…` : d.description,
             level: critical ? "expired" : "soon",
             urgency: -daysSince,
             href: "/reports",
-            statusLabel: d.status === "open" ? "zgłoszona" : "w naprawie",
+            statusLabel:
+              d.status === "open" ? t("attention.status.reported") : t("attention.status.inRepair"),
           });
         }
 
         for (const d of drvs) {
-          const name = `${d.last_name} ${d.first_name}`.trim() || "Kierowca";
+          const name = `${d.last_name} ${d.first_name}`.trim() || t("attention.cat.driver");
           for (const fld of DRV_FIELDS) {
             const date = d[fld.col];
             if (!date) continue;
@@ -233,8 +242,8 @@ export function AttentionPanel() {
             out.push({
               key: `drv-${d.id}-${fld.col}`,
               icon: "🪪",
-              category: "Kierowca",
-              title: `${name} · ${fld.label}`,
+              category: t("attention.cat.driver"),
+              title: `${name} · ${t(fld.labelKey)}`,
               detail: date,
               level: st.level,
               urgency: st.daysLeft,
@@ -251,7 +260,8 @@ export function AttentionPanel() {
         setReady(true);
       }
     })();
-  }, []);
+    // `t` w zależnościach: zmiana języka przebudowuje etykiety pozycji.
+  }, [t]);
 
   if (!ready || items.length === 0) return null;
 
@@ -262,9 +272,11 @@ export function AttentionPanel() {
   return (
     <div style={styles.card}>
       <div style={styles.head}>
-        <span style={{ fontWeight: 800 }}>⚠️ Co wymaga uwagi</span>
-        {expired > 0 && <span style={styles.pillRed}>{expired} po terminie</span>}
-        {soon > 0 && <span style={styles.pillWarn}>{soon} wkrótce</span>}
+        <span style={{ fontWeight: 800 }}>⚠️ {t("attention.title")}</span>
+        {expired > 0 && (
+          <span style={styles.pillRed}>{`${expired} ${t("attention.overdue")}`}</span>
+        )}
+        {soon > 0 && <span style={styles.pillWarn}>{`${soon} ${t("attention.soon")}`}</span>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {shown.map((it) => {
@@ -280,7 +292,8 @@ export function AttentionPanel() {
               <span
                 style={{ color, fontWeight: 700, fontSize: 13, minWidth: 110, textAlign: "right" }}
               >
-                {it.statusLabel ?? (it.level === "expired" ? "po terminie" : "wkrótce")}
+                {it.statusLabel ??
+                  (it.level === "expired" ? t("attention.overdue") : t("attention.soon"))}
               </span>
             </Link>
           );
@@ -288,7 +301,7 @@ export function AttentionPanel() {
       </div>
       {items.length > MAX_SHOWN && (
         <div style={{ color: palette.smoke, fontSize: 12, marginTop: 8 }}>
-          …i {items.length - MAX_SHOWN} więcej
+          {`${t("attention.morePrefix")} ${items.length - MAX_SHOWN} ${t("attention.moreSuffix")}`}
         </div>
       )}
     </div>

@@ -151,6 +151,15 @@ describe("geocode — pamięć podręczna (#368)", () => {
     expect(String(fetchFn.mock.calls[1]?.[0])).toContain("nominatim");
   });
 
+  it("wynik od PREFEROWANEGO dostawcy jest pamiętany (MapTiler)", async () => {
+    const fetchFn = stubFetch({
+      json: { features: [{ place_name: "Wien, AT", center: [16.37, 48.2] }] },
+    });
+    await geocode("Wien", { maptilerKey: "K" });
+    await geocode("Wien", { maptilerKey: "K" });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
   it("pusty wynik NIE jest pamiętany — awaria dostawcy nie blokuje wyszukiwarki", async () => {
     const fetchFn = stubFetch(
       { ok: false, status: 500 }, // MapTiler padł
@@ -162,5 +171,44 @@ describe("geocode — pamięć podręczna (#368)", () => {
       { label: "Berlin, DE", lat: 52, lng: 13 },
     ]);
     expect(fetchFn).toHaveBeenCalledTimes(3);
+  });
+});
+
+// Klucz cache opisuje dostawcę PREFEROWANEGO (wybranego z kluczy API). Gdy ten padnie,
+// a odpowie fallback, wyniku NIE wolno utrwalić pod tym kluczem — inaczej chwilowa
+// usterka zamrażała gorsze podpowiedzi na pełne 10 minut TTL.
+describe("geocode — fallback nie zatruwa pamięci podręcznej (#369)", () => {
+  it("odpowiedź Nominatimu nie ląduje pod kluczem MapTilera, który padł", async () => {
+    const fetchFn = stubFetch(
+      { ok: false, status: 500 }, // MapTiler padł
+      { json: [{ display_name: "Z fallbacku", lat: "52", lon: "13" }] }, // awaryjny Nominatim
+      { json: { features: [{ place_name: "Berlin, DE", center: [13, 52] }] } }, // MapTiler wrócił
+    );
+    expect(await geocode("Berlin", { maptilerKey: "K" })).toEqual([
+      { label: "Z fallbacku", lat: 52, lng: 13 },
+    ]);
+    // Druga próba pyta MapTilera od nowa (a nie oddaje zamrożonego fallbacku).
+    expect(await geocode("Berlin", { maptilerKey: "K" })).toEqual([
+      { label: "Berlin, DE", lat: 52, lng: 13 },
+    ]);
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+  });
+
+  // Dłuższy limit czasu: ten przypadek jako jedyny dociąga LENIWY moduł TomToma
+  // (`import("./tomtomSearch")`), a jego transformacja w vitest bywa wolna.
+  it("pusta (ale poprawna) odpowiedź TomToma NIE blokuje zapamiętania wyniku", {
+    timeout: 30_000,
+  }, async () => {
+    const fetchFn = stubFetch(
+      { json: { results: [] } }, // TomTom zgodnie z prawdą: „nie znam tej frazy"
+      { json: [{ display_name: "Z fallbacku", lat: "52", lon: "13" }] }, // dalej łańcuchem
+    );
+    const first = await geocode("Berlin", { tomtomKey: "T" });
+    expect(first).toEqual([{ label: "Z fallbacku", lat: 52, lng: 13 }]);
+    // #369: to NIE jest degradacja — TomTom odpowiedział poprawnie, tylko pusto.
+    // Wynik musi trafić do pamięci, inaczej dla każdej frazy nieznanej TomTomowi
+    // cache jest martwy i każde naciśnięcie klawisza kosztuje DWA zapytania.
+    expect(await geocode("Berlin", { tomtomKey: "T" })).toEqual(first);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 });

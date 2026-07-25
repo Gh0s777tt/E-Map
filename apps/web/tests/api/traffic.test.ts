@@ -57,6 +57,22 @@ describe("POST /api/traffic", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).tooLarge).toBe(true);
   });
+
+  // #369: limit liczony na PRZYCIĄGNIĘTYM prostokącie odrzucał widoki, które
+  // mieszczą się w limicie — przyciąganie celowo rozszerza ramkę o komórkę siatki.
+  it("okno mieszczące się w limicie NIE jest odrzucane po przyciągnięciu do siatki", async () => {
+    vi.stubEnv("HERE_API_KEY", "k");
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, json: async () => ({ results: [] }) });
+    vi.stubGlobal("fetch", fetchFn);
+    // Surowo 1,97° (mieści się), po przyciągnięciu 2,05° (dawniej: tooLarge).
+    const res = await POST(req({ west: 0.04, south: 0, east: 2.01, north: 0.5 }));
+    const body = await res.json();
+    expect(body.tooLarge).toBeUndefined();
+    expect(body.flows).toEqual([]);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("POST /api/traffic — pamięć podręczna (#368)", () => {

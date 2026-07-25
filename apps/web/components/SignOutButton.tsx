@@ -3,6 +3,7 @@
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/LocaleProvider";
+import { resetChatUnread } from "@/lib/chatUnread";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export function SignOutButton() {
@@ -11,6 +12,10 @@ export function SignOutButton() {
 
   async function signOut() {
     await getBrowserSupabase().auth.signOut();
+    // #369: `router.push` to miękka nawigacja SPA — stan modułowy przeżywa
+    // wylogowanie. Bez tego resetu badge czatu pokazywał po przelogowaniu
+    // liczniki POPRZEDNIEJ firmy (i trzymał jej subskrypcję realtime).
+    resetChatUnread();
     router.push("/login");
     router.refresh();
   }

@@ -229,15 +229,26 @@ export async function removeThreadMember(
 
 const BUCKET = "cargo-photos";
 
-/** Upload zdjęcia do czatu — zwraca ścieżkę do `photo_path`. */
+/**
+ * Upload zdjęcia do czatu — zwraca ścieżkę do `photo_path`.
+ *
+ * #369: ścieżka NIESIE KANAŁ (`{firma}/chat/{threadId|general}/{uuid}.{ext}`),
+ * bo bramka odczytu w Storage działa po prefiksie folderu (migracja 0088).
+ * Do #368 ścieżka była płaska (`{firma}/chat-{uuid}.{ext}`) i polityka nie miała
+ * jak odróżnić załącznika prywatnej rozmowy od zdjęcia ładunku — skan dokumentu
+ * z wątku 1:1 chroniła wtedy wyłącznie nieodgadywalność UUID-a.
+ *
+ * `threadId` musi odpowiadać wątkowi, do którego trafi wiadomość — inaczej
+ * nadawca wgra plik, którego sam nie odczyta (RLS 0088 zawęża po tym folderze).
+ */
 export async function uploadChatPhotoBinary(
   client: SupabaseClient,
   companyId: string,
   bytes: ArrayBuffer,
-  opts: { mime?: string } = {},
+  opts: { mime?: string; threadId?: string | null } = {},
 ): Promise<string> {
   const ext = (opts.mime ?? "image/jpeg").split("/")[1] ?? "jpg";
-  const path = `${companyId}/chat-${newId()}.${ext}`;
+  const path = `${companyId}/chat/${opts.threadId ?? GENERAL_CHANNEL}/${newId()}.${ext}`;
   const { error } = await client.storage.from(BUCKET).upload(path, bytes, {
     contentType: opts.mime ?? "image/jpeg",
   });
@@ -245,7 +256,14 @@ export async function uploadChatPhotoBinary(
   return path;
 }
 
-/** Podpisany URL zdjęcia z czatu (1 h). */
+/**
+ * Podpisany URL zdjęcia z czatu (1 h).
+ *
+ * #369: podpis powstaje po stronie Storage z tokenem użytkownika, więc bramką
+ * jest polityka `cargo_photos_obj_select` (0088) — nie da się podpisać ścieżki
+ * z wątku, do którego wywołujący nie należy. Tu świadomie NIE walidujemy
+ * ścieżki po stronie klienta: pojedyncze źródło prawdy siedzi w RLS.
+ */
 export async function chatPhotoUrl(client: SupabaseClient, path: string): Promise<string> {
   const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;

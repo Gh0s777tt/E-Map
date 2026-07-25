@@ -55,27 +55,50 @@ async function geocodeNominatim(query: string, limit: number): Promise<GeoHit[]>
   return out;
 }
 
+/** Dostawca geokodera: TomTom / MapTiler / Nominatim (OSM). */
+type GeoSource = "tt" | "mt" | "nom";
+
+/** Wynik jednego odpytania wraz z dostawcą, który FAKTYCZNIE odpowiedział. */
+interface GeoOutcome {
+  hits: GeoHit[];
+  source: GeoSource;
+  /**
+   * #369: true WYŁĄCZNIE, gdy preferowany dostawca padł (wyjątek) i odpowiedź
+   * pochodzi z awaryjnego fallbacku. Zejście łańcuchem po PUSTEJ, ale poprawnej
+   * odpowiedzi (TomTom zwyczajnie nie zna frazy) to NIE degradacja — mylenie tych
+   * dwóch przypadków wyłączało cache na produkcji, gdzie zawsze są oba klucze.
+   */
+  degraded: boolean;
+}
+
 /** Faktyczne odpytanie dostawców (bez pamięci podręcznej). */
 async function geocodeFresh(
   q: string,
   limit: number,
   opts?: { tomtomKey?: string; maptilerKey?: string },
-): Promise<GeoHit[]> {
+): Promise<GeoOutcome> {
   try {
     if (opts?.tomtomKey) {
       // Import leniwy — pakiet maps nie musi ładować TomTom, gdy klucza brak.
       const { tomtomGeocode } = await import("./tomtomSearch");
       const hits = await tomtomGeocode(q, opts.tomtomKey, { limit });
-      if (hits.length > 0) return hits;
+      if (hits.length > 0) return { hits, source: "tt", degraded: false };
     }
-    if (opts?.maptilerKey) return await geocodeMapTiler(q, opts.maptilerKey, limit);
-    return await geocodeNominatim(q, limit);
+    if (opts?.maptilerKey) {
+      return {
+        hits: await geocodeMapTiler(q, opts.maptilerKey, limit),
+        source: "mt",
+        degraded: false,
+      };
+    }
+    return { hits: await geocodeNominatim(q, limit), source: "nom", degraded: false };
   } catch {
-    // Awaryjnie spróbuj Nominatim (bez klucza).
+    // Preferowany dostawca PADŁ — wynik z awaryjnego Nominatim oznaczamy jako
+    // degradowany, żeby nie utrwalić gorszej odpowiedzi na pełne TTL.
     try {
-      return await geocodeNominatim(q, limit);
+      return { hits: await geocodeNominatim(q, limit), source: "nom", degraded: true };
     } catch {
-      return [];
+      return { hits: [], source: "nom", degraded: true };
     }
   }
 }
@@ -88,7 +111,7 @@ const GEOCODE_TTL_MS = 10 * 60 * 1000;
 /** Limit wpisów — geokoder leci na każde naciśnięcie klawisza, więc cache MUSI mieć sufit. */
 const GEOCODE_MAX_ENTRIES = 200;
 
-const geocodeCache = new TtlLruCache<Promise<GeoHit[]>>({
+const geocodeCache = new TtlLruCache<Promise<GeoOutcome>>({
   ttlMs: GEOCODE_TTL_MS,
   maxEntries: GEOCODE_MAX_ENTRIES,
 });
@@ -104,6 +127,7 @@ export function clearGeocodeCache(): void {
  *
  * #368: wynik jest pamiętany po ZNORMALIZOWANEJ frazie (TTL 10 min, LRU 200 wpisów),
  * a równoległe zapytania o tę samą frazę dzielą jedno wywołanie API.
+ * #369: odpowiedź z fallbacku NIE jest utrwalana pod kluczem dostawcy, który padł.
  */
 export async function geocode(
   query: string,
@@ -117,15 +141,22 @@ export async function geocode(
   // w obrębie instancji aplikacji, a `clearGeocodeCache()` obsługuje ich podmianę.
   // Język jest dziś zaszyty na sztywno w URL-ach (`pl` / `pl-PL`); gdyby stał się
   // parametrem, MUSI dołączyć do klucza — inaczej PL i DE dzieliłyby jeden wpis.
-  const source = opts?.tomtomKey ? "tt" : opts?.maptilerKey ? "mt" : "nom";
-  const key = `${source}|${limit}|${normalizeGeoQuery(q)}`;
+  //
+  // #369: klucz opisuje dostawcę PREFEROWANEGO (wynikającego z kluczy API), a nie
+  // tego, który odpowiedział. Dlatego wynik utrwalamy TYLKO wtedy, gdy odpowiedział
+  // właśnie preferowany. Inaczej jedna awaria TomToma zamrażała gorszy wynik
+  // z fallbacku (Nominatim) pod kluczem „tt" na pełne 10 minut TTL — mimo że TomTom
+  // wracał do formy po sekundach.
+  const preferred: GeoSource = opts?.tomtomKey ? "tt" : opts?.maptilerKey ? "mt" : "nom";
+  const key = `${preferred}|${limit}|${normalizeGeoQuery(q)}`;
   // Pusty wynik NIE trafia do pamięci: `geocodeFresh` zwraca [] zarówno przy
   // „brak trafień", jak i przy awarii obu dostawców — zamrożenie tego na 10 minut
   // zamieniłoby chwilową usterkę w martwą wyszukiwarkę.
-  return cachedCall(
+  const outcome = await cachedCall(
     geocodeCache,
     key,
     () => geocodeFresh(q, limit, opts),
-    (hits) => hits.length > 0,
+    (r) => r.hits.length > 0 && !r.degraded,
   );
+  return outcome.hits;
 }

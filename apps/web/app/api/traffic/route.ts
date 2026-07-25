@@ -64,10 +64,18 @@ export async function POST(request: Request) {
   // prostokąt ZAWIERA oryginał, więc użytkownik nie zobaczy mniej, niż widzi na ekranie.
   // Do dostawcy leci ta sama (przyciągnięta) ramka, którą pamiętamy — inaczej wpis
   // opisywałby inny obszar niż jego klucz.
-  const bbox = snapBboxOut(parsed.data);
+  const rawBbox = parsed.data;
+  const bbox = snapBboxOut(rawBbox);
   const { west, south, east, north } = bbox;
   // Zbyt duży obszar → dostawcy odrzucają; ograniczamy do rozsądnego okna (ok. 2°).
-  const tooLarge = Math.abs(east - west) > 2 || Math.abs(north - south) > 2;
+  // #369: limit liczymy na SUROWYM prostokącie z żądania, nie na przyciągniętym.
+  // `snapBboxOut` celowo rozszerza ramkę (do jednej komórki siatki na każdą stronę),
+  // więc widok mieszczący się w limicie potrafił zostać odrzucony dopiero PO
+  // przyciągnięciu — użytkownik dostawał `tooLarge` dla okna, które limit spełnia.
+  // Do dostawcy leci wtedy ramka szersza o co najwyżej 2 × TRAFFIC_BBOX_STEP_DEG
+  // (0,1°) — mieści się to w tolerancji HERE/TomTom.
+  const tooLarge =
+    Math.abs(rawBbox.east - rawBbox.west) > 2 || Math.abs(rawBbox.north - rawBbox.south) > 2;
 
   // HERE ma priorytet: `flows` (linie natężenia). Kształt bez zmian.
   if (hereKey) {

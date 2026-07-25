@@ -28,7 +28,12 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
-import { markChannelRead, setOpenChatChannel, useChatUnread } from "@/lib/chatUnread";
+import {
+  markChannelRead,
+  markChannelReadThrottled,
+  setOpenChatChannel,
+  useChatUnread,
+} from "@/lib/chatUnread";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -155,9 +160,11 @@ export default function ChatPage() {
     return subscribeMessages(getBrowserSupabase(), companyId, (msg) => {
       if ((msg.thread_id ?? null) !== threadIdRef.current) return;
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-      // #368: otwarty kanał czytamy na bieżąco — znacznik przesuwamy od razu,
-      // żeby po opuszczeniu ekranu badge nie zapalił się dla już widzianych treści.
-      if (msg.sender_id !== meRef.current) markChannelRead(threadIdRef.current, companyId);
+      // #368/#369: otwarty kanał czytamy na bieżąco, ale znacznik zapisujemy
+      // ZDŁAWIONY — zapis do bazy na KAŻDĄ wiadomość u każdego patrzącego był
+      // zbędny (RLS liczy `created_at > last_read_at`, więc wystarczy jeden zapis
+      // „na koniec"; domyka go `setOpenChatChannel(null, false)` przy wyjściu).
+      if (msg.sender_id !== meRef.current) markChannelReadThrottled(threadIdRef.current, companyId);
     });
   }, [companyId]);
 
@@ -194,8 +201,11 @@ export default function ChatPage() {
     if (!companyId) return;
     try {
       const sb = getBrowserSupabase();
+      // #369: `threadId` wchodzi do ścieżki w Storage — to on decyduje, kto
+      // odczyta załącznik (RLS 0088). Musi być ten sam wątek co w wiadomości.
       const path = await uploadChatPhotoBinary(sb, companyId, await file.arrayBuffer(), {
         mime: file.type || "image/jpeg",
+        threadId,
       });
       const msg = await sendMessage(sb, companyId, t("chat.photoMessage"), myLabel, {
         threadId,

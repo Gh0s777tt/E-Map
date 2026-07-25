@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-368-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.212.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-369-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.213.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,24 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.213.0] — 🔐 Domknięcie długu z #368: bramka wątku dla załączników czatu
+
+Naprawa trzech rzeczy, które sam wpisałem w #368 jako „znane ograniczenia", plus regresje
+wychwycone przy adwersaryjnej weryfikacji tej paczki (w tym **blocker w pierwszej wersji 0088**).
+
+- `[#369]` 🔒 **Załączniki czatu za bramką wątku** — migracja [0088](supabase/migrations/0088_chat_photos_acl.sql) + nowa ścieżka `{firma}/chat/{wątek|general}/…` ([messages.ts](packages/api/src/data/messages.ts)). Dotąd zdjęcie z **prywatnego** wątku (skan dokumentu, paragon) leżało w `cargo-photos`, którego polityka daje SELECT każdemu członkowi firmy — chroniła je wyłącznie nieodgadywalność UUID-a, mimo że sam wiersz wiadomości jest poprawnie zawężony przez `messages_select`. Polityka odtwarza teraz regułę z 0067: kanał ogólny → firma, wątek → `is_thread_member` albo zarząd, z dodatkowym warunkiem, że wątek należy do firmy z pierwszego folderu.
+  > Pierwsza wersja migracji dziedziczyła ACL starych plików z widoczności wiersza wiadomości — **odrzucone**: `messages_insert` pozwala każdemu członkowi firmy wstawić wiersz do kanału ogólnego z dowolnym `photo_path`, więc dało się podrobić wiersz i odzyskać dostęp do cudzego zdjęcia. Sprawdzenie produkcji rozstrzygnęło sprawę: bucket był **pusty** (0 obiektów, 0 wiadomości z załącznikiem), więc stary prefiks jest po prostu zamknięty (fail-closed), bez podzapytania do `messages` przy każdym podpisaniu URL-a. Klasyfikacja ścieżek zweryfikowana na prod — ładunek, szkody, checklisty i paragony bez zmian, `..` odbite.
+- `[#369]` 🕵️ **Audyt odczytu PII pokazuje skalę** — migracja [0089](supabase/migrations/0089_list_drivers_audit_v2.sql): zamiast pomijać wpis w oknie godziny, podbijamy licznik `hits` i znacznik czasu, więc masowe zassanie kartoteki (pętla skryptu) nie wygląda już identycznie jak jedno wejście na listę. Przy okazji naprawiony błąd z 0087: `actor_id = auth.uid()` nigdy nie trafiało w istniejący wiersz dla `auth.uid() = NULL`. Ślad odmowy to świadomie **tylko** `raise log` — zapis do tabeli byłby martwy, bo `raise exception` wycofuje transakcję, a kosztowałby zużycie identyfikatorów transakcji przy zapętlonych próbach.
+- `[#369]` 🌐 **Panel „Co wymaga uwagi" mówi po angielsku** ([AttentionPanel](apps/web/components/AttentionPanel.tsx)) — etykiety kategorii i statusów przez `t()`, w tym rodzaje i statusy szkód (stałe w `packages/core` są wyłącznie polskie, więc wersja EN pokazywała „Kolizja / wypadek" obok przetłumaczonej kategorii).
+- `[#369]` ⚡ **Cache geokodera znów działa** ([geocode.ts](packages/maps/src/geocode.ts)) — predykat odróżnia **awarię** dostawcy (nie cache'ujemy) od **pustej, poprawnej odpowiedzi** (cache'ujemy). Poprzedni warunek porównywał źródło z preferowanym, a produkcja przekazuje oba klucze — więc dla każdej frazy nieznanej TomTomowi cache był martwy i każde naciśnięcie klawisza kosztowało dwa zapytania.
+- `[#369]` 🔄 **Liczniki czatu odcinane przy wylogowaniu** ([chatUnread](apps/web/lib/chatUnread.ts), [SignOutButton](apps/web/components/SignOutButton.tsx)) — `router.push("/login")` to miękka nawigacja SPA, więc stan modułowy przeżywał wylogowanie: po zalogowaniu na inne konto w tej samej karcie badge pokazywał liczniki **poprzedniej** firmy i trzymał jej subskrypcję realtime. Dodany `resetChatUnread()` (lustrzany do mobilnego) zeruje też okno dławienia.
+- `[#369]` ⏱️ **Znacznik przeczytania zdławiony** ([chatUnread](apps/web/lib/chatUnread.ts)) — zapis do bazy przy **każdej** przychodzącej wiadomości u każdego patrzącego zastąpiony jednym zapisem „na koniec" (RLS i tak liczy `created_at > last_read_at`); badge otwartego kanału nadal się nie zapala. Naprawiony też martwy magazyn po nieudanym starcie (badge pokazywał 0 mimo nieprzeczytanych).
+- `[#369]` 🗺️ **Limit obszaru ruchu** ([/api/traffic](apps/web/app/api/traffic/route.ts)) — `tooLarge` liczone przed przyciągnięciem bboxa, więc widok mieszczący się w limicie dostawcy nie traci warstwy ruchu po rozszerzeniu ramki.
+
+> **Nadal otwarte:** polityki INSERT/DELETE bucketu nie mają symetrycznej bramki wątku — członek firmy może *wgrać* plik pod cudzy prefiks (odczytu nie dostanie, to zaśmiecanie, nie wyciek). `deferredRead` jest jednoelementowy — dziś bezpieczny, bo przełączenie kanału zawsze go domyka.
+
+**Bramki:** biome ✓ · parytet i18n 5/5 ✓ · `tsc` core+maps+api+web+mobile 0 ✓ · testy **701** (core 398, maps 112, api 72, web 78, mobile 36, i18n 5) ✓ · migracje 0088–0089 na prod i zweryfikowane.
 
 ## [1.212.0] — 🚀 Reszta top7 z audytu + paczka bezpieczeństwa (alerty, tacho, cache, czat)
 
