@@ -70,6 +70,15 @@ export function OnboardingChecklist() {
   const doneCount = steps.filter((s) => s.done).length;
   if (doneCount === steps.length) return null; // wszystko gotowe → ukryj
 
+  // #370: nie dublujemy kreatora startu. `CompanyBanner` prowadzi właściciela przez
+  // firmę → pojazd → kierowcę i wisi na górze pulpitu, dopóki tego nie domknie. Ta lista
+  // powtarzała dwa z tych kroków, więc nowy użytkownik widział dwa niemal identyczne
+  // widgety onboardingowe jeden pod drugim. Pokazujemy się dopiero, gdy kreator zniknie
+  // (są pojazd i kierowca) — wtedy zostaje realnie nowa treść: karta paliwowa i zlecenie.
+  const vehicleDone = steps.find((s) => s.key === "veh")?.done ?? false;
+  const driverDone = steps.find((s) => s.key === "drv")?.done ?? false;
+  if (!vehicleDone || !driverDone) return null;
+
   const skip = () => {
     try {
       localStorage.setItem(SKIP_KEY, "1");

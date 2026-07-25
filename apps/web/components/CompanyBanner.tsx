@@ -22,8 +22,17 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Step = "company" | "vehicle" | "invite" | "hidden";
 
+/**
+ * #370: klucz odrzucenia kreatora. Ostatni krok („Zaproś kierowcę") domyka się dopiero,
+ * gdy kierowca FAKTYCZNIE dołączy do firmy — a firma jednoosobowa, w której właściciel
+ * sam prowadzi, nigdy tego nie zrobi. Bez tej furtki kreator wisiałby na pulpicie na
+ * zawsze, bez żadnego sposobu na zamknięcie (checklista obok ma „Pomiń" od #317).
+ */
+const DISMISS_KEY = "el-setup-wizard-skip";
+
 export function CompanyBanner() {
   const [step, setStep] = useState<Step>("hidden");
+  const [dismissed, setDismissed] = useState(true);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +72,12 @@ export function CompanyBanner() {
   }, []);
 
   useEffect(() => {
+    // Domyślnie ukryty do czasu odczytu — inaczej kreator mignąłby odrzucającym go użytkownikom.
+    try {
+      setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
+    } catch {
+      setDismissed(false);
+    }
     evaluate();
   }, [evaluate]);
 
@@ -116,14 +131,36 @@ export function CompanyBanner() {
     }
   }
 
-  if (step === "hidden") return null;
+  if (step === "hidden" || dismissed) return null;
   const stepIndex = step === "company" ? 0 : step === "vehicle" ? 1 : 2;
 
   return (
     <section style={s.wrap} aria-label="Kreator startu firmy">
       <div style={s.head}>
         <strong style={s.title}>🚀 Skonfiguruj E-Logistic w 3 krokach</strong>
-        <span style={s.counter}>{stepIndex + 1}/3</span>
+        {/*
+          #370: licznik pokazuje kroki UKOŃCZONE, a nie numer bieżącego. Wcześniej było
+          `stepIndex + 1`, więc na ostatnim kroku widniało „3/3" obok kroku oznaczonego
+          jako niewykonany — kreator twierdził, że konfiguracja jest kompletna, i mimo to
+          wisiał na pulpicie. Teraz `stepIndex` = liczba kroków za nami (0/3 … 2/3),
+          a 3/3 nie wystąpi nigdy, bo przy komplecie kreator się chowa.
+        */}
+        <span style={s.counter}>{stepIndex}/3</span>
+        <button
+          type="button"
+          style={s.dismiss}
+          onClick={() => {
+            try {
+              localStorage.setItem(DISMISS_KEY, "1");
+            } catch {
+              // brak localStorage (tryb prywatny) — ukryj przynajmniej na tę sesję
+            }
+            setDismissed(true);
+          }}
+          title="Ukryj kreator startu"
+        >
+          Pomiń ✕
+        </button>
       </div>
       <div style={s.steps}>
         {["Firma", "Pierwszy pojazd", "Zaproś kierowcę"].map((label, i) => (
@@ -244,6 +281,16 @@ const s: Record<string, React.CSSProperties> = {
   head: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   title: { color: "#fff", fontSize: 16 },
   counter: { color: palette.red, fontWeight: 800, fontSize: 14 },
+  dismiss: {
+    marginLeft: "auto",
+    background: "transparent",
+    color: palette.smoke,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "3px 10px",
+    fontSize: 12,
+    cursor: "pointer",
+  },
   steps: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" },
   step: { display: "flex", alignItems: "center", gap: 8 },
   dot: {

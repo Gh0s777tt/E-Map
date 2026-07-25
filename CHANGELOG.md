@@ -14,7 +14,7 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## [1.213.1] — 🗺️ Mapa nigdy nie jest czarna (fallback podkładu)
+## [1.213.1] — 🗺️ Mapa nigdy nie jest czarna + porządek w kreatorze startu
 
 Naprawa **regresji z #365** wykrytej na żywej produkcji podczas przeglądu ekranów.
 
@@ -22,7 +22,11 @@ Naprawa **regresji z #365** wykrytej na żywej produkcji podczas przeglądu ekra
 
 > **Do zrobienia po stronie konfiguracji:** wpisać prawdziwy klucz w `NEXT_PUBLIC_TOMTOM_KEY` (Vercel → Production) albo usunąć tę zmienną. Poprawka sprawia, że mapa działa w obu przypadkach, ale pełny podkład TomTom wymaga ważnego klucza.
 
-**Bramki:** biome ✓ · parytet i18n 5/5 ✓ · `tsc` web 0 ✓ · testy web 78/78 ✓.
+- `[#370]` **Kreator startu twierdził, że skończył, i nie znikał** ([CompanyBanner](apps/web/components/CompanyBanner.tsx)) — licznik pokazywał numer BIEŻĄCEGO kroku (`stepIndex + 1`), więc na etapie „Zaproś kierowcę" widniało **3/3** obok kroku oznaczonego jako niewykonany. Teraz liczy kroki ukończone (0/3 … 2/3), a 3/3 nie wystąpi, bo przy komplecie kreator się chowa.
+- `[#370]` **Kreatora dało się wreszcie zamknąć** (tamże) — ostatni krok domyka się dopiero, gdy zaproszony kierowca FAKTYCZNIE dołączy, więc firma jednoosobowa miała go na pulpicie na zawsze. Dodane „Pomiń ✕" (jak w checkliście od #317).
+- `[#370]` **Koniec dwóch onboardingów obok siebie** ([OnboardingChecklist](apps/web/components/OnboardingChecklist.tsx)) — lista powtarzała kroki „pojazd" i „kierowca", którymi już prowadzi kreator. Pokazuje się dopiero, gdy kreator zniknie, i wnosi wtedy realnie nową treść: karta paliwowa i pierwsze zlecenie.
+
+**Bramki:** biome ✓ · parytet i18n 5/5 ✓ · `tsc` web 0 ✓ · testy web 78/78 ✓ · docs:check ✓.
 
 ## [1.213.0] — 🔐 Domknięcie długu z #368: bramka wątku dla załączników czatu
 
