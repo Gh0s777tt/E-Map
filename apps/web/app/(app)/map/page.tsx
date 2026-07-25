@@ -74,6 +74,7 @@ import {
   INCIDENT_COLOR,
   INCIDENT_LABEL,
   MAPTILER_KEY,
+  OSM_STYLE,
   POI_LABEL,
   REPORT_LABEL,
   SAVED_CAT_ICON,
@@ -707,6 +708,30 @@ export default function MapPage() {
       mapRef.current = map;
       map.addControl(new ml.NavigationControl({ visualizePitch: true }), "top-right");
 
+      // #370: mapa NIGDY nie może zostać czarnym prostokątem. Podkład domyślny wybieramy
+      // po tym, czy klucz jest USTAWIONY — a nie czy jest PRAWIDŁOWY. Wystarczył więc
+      // placeholder w zmiennej środowiskowej (zaobserwowane na produkcji: klucz 4-znakowy,
+      // kafelki wracały z 401), by cała mapa została pusta: TomTom odmawiał, a MapTiler
+      // nie był skonfigurowany, więc nie było na co spaść. Jeden nieudany kafelek to nie
+      // powód do przełączania (sieć bywa kapryśna), ale odmowa autoryzacji owszem —
+      // wtedy schodzimy na OSM, który nie wymaga żadnego klucza.
+      let basemapFellBack = false;
+      map.on("error", (e) => {
+        const status = (e as { error?: { status?: number } }).error?.status;
+        const src = (e as { sourceId?: string }).sourceId;
+        const isBasemap = src === "tomtom" || src === "osm" || src === undefined;
+        if (basemapFellBack || !isBasemap) return;
+        if (status !== 401 && status !== 403 && status !== 404) return;
+        basemapFellBack = true;
+        try {
+          (map as MlMap).setStyle(OSM_STYLE);
+          setBasemap("osm");
+          toast(t("mapPage.basemapKeyInvalid"), "error");
+        } catch {
+          // nawet awaryjne przełączenie nie może wywalić ekranu mapy
+        }
+      });
+
       // Klik na mapie w trybie zgłoszeń.
       map.on("click", (e) => {
         if (!reportModeRef.current) return;
@@ -948,7 +973,7 @@ export default function MapPage() {
       for (const m of markersRef.current) m.remove();
       map?.remove();
     };
-  }, [applyOverlays, drawReports, recomputeDisruptions, t]);
+  }, [applyOverlays, drawReports, recomputeDisruptions, t, toast]);
 
   // ── Warstwa ruchu HERE: pobierz dla widoku + odświeżaj przy przesuwaniu ──
   useEffect(() => {

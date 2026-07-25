@@ -1355,6 +1355,8 @@ export const en: Record<MessageKey, string> = {
   "mapPage.poiWash": "Car wash",
   "mapPage.poiWeigh": "Weigh station",
   "mapPage.basemapTomtom": "TomTom",
+  "mapPage.basemapKeyInvalid":
+    "The map provider rejected the key - switched to the OpenStreetMap basemap. Check the TomTom/MapTiler key in your configuration.",
   "mapPage.basemapDark": "Dark",
   "mapPage.basemapSatellite": "Satellite",
   "mapPage.basemapTerrain": "Terrain",

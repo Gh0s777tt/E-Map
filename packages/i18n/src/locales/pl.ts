@@ -1356,6 +1356,8 @@ export const pl = {
   "mapPage.poiWash": "Myjnia",
   "mapPage.poiWeigh": "Waga",
   "mapPage.basemapTomtom": "TomTom",
+  "mapPage.basemapKeyInvalid":
+    "Dostawca map odrzucił klucz — przełączono na podkład OpenStreetMap. Sprawdź klucz TomTom/MapTiler w konfiguracji.",
   "mapPage.basemapDark": "Ciemna",
   "mapPage.basemapSatellite": "Satelita",
   "mapPage.basemapTerrain": "Teren",

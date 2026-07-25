@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-369-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.213.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-370-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.213.1-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,16 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.213.1] — 🗺️ Mapa nigdy nie jest czarna (fallback podkładu)
+
+Naprawa **regresji z #365** wykrytej na żywej produkcji podczas przeglądu ekranów.
+
+- `[#370]` **Mapa na produkcji była całkowicie czarna.** Od #365 podkład domyślny wybieramy po tym, czy klucz TomTom jest USTAWIONY — nie czy jest PRAWIDŁOWY. W Vercel siedział 4-znakowy placeholder, więc kafelki wracały z **401**, a `NEXT_PUBLIC_MAPTILER_KEY` nie był skonfigurowany, czyli nie było na co spaść. Przed #365 domyślny był OSM i mapa działała. Teraz [map/page.tsx](apps/web/app/(app)/map/page.tsx) nasłuchuje błędów źródła i przy odmowie autoryzacji (401/403/404) przełącza podkład na OpenStreetMap, który nie wymaga klucza, oraz mówi o tym użytkownikowi (`mapPage.basemapKeyInvalid`, pl/en). Pojedynczy nieudany kafelek nie przełącza niczego — sieć bywa kapryśna.
+
+> **Do zrobienia po stronie konfiguracji:** wpisać prawdziwy klucz w `NEXT_PUBLIC_TOMTOM_KEY` (Vercel → Production) albo usunąć tę zmienną. Poprawka sprawia, że mapa działa w obu przypadkach, ale pełny podkład TomTom wymaga ważnego klucza.
+
+**Bramki:** biome ✓ · parytet i18n 5/5 ✓ · `tsc` web 0 ✓ · testy web 78/78 ✓.
 
 ## [1.213.0] — 🔐 Domknięcie długu z #368: bramka wątku dla załączników czatu
 
