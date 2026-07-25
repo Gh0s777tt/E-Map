@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-367-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.211.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-368-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.212.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,39 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.212.0] — 🚀 Reszta top7 z audytu + paczka bezpieczeństwa (alerty, tacho, cache, czat)
+
+Domknięcie mapy drogowej z audytu wieloagentowego: pozycje **#2, #3, #5, #6, #7** oraz cztery
+punkty bezpieczeństwa. Adwersaryjna weryfikacja tej paczki wykryła przy okazji **dwa zastane
+błędy krytyczne** (silnik alertów i wyciek między firmami) — opisane niżej.
+
+### 🔴 Naprawy krytyczne wykryte przy weryfikacji
+
+- `[#368]` **Silnik alertów NIGDY nic nie wstawiał** ([alerts.ts](apps/web/lib/alerts.ts)) — `upsert` wskazywał `onConflict: "user_id,dedup_key"`, a indeks `notifications_dedup` (0017) jest **częściowy** (`where dedup_key is not null`); Postgres rzucał `42P10`, co cron połykał (`.catch(() => -1)`) i zwracał 200. Dotyczyło **wszystkich** reguł — opóźnień, AETR i terminów pojazdów, nie tylko nowych. Potwierdzone empirycznie na produkcji (wariant z celem → 42P10, nietargetowany → OK; w bazie **0** powiadomień z crona). Naprawa: `ON CONFLICT DO NOTHING` bez celu + [cron](apps/web/app/api/cron/notify/route.ts) raportuje błędy do Sentry zamiast je połykać.
+- `[#368]` 🔒 **Wyciek treści między firmami** ([chat/notify](apps/web/app/api/chat/notify/route.ts)) — firmę nadawcy wybierało `limit(1)` z jego członkostw, więc konto należące do dwóch firm rozsyłało podgląd wiadomości członkom **niewłaściwej**; od tej paczki treść jest dodatkowo trwale zapisywana w `notifications` i wysyłana Web Pushem. Teraz `companyId` jest jawny i weryfikowany (bez niego dopuszczamy tylko konto z jedną firmą).
+- `[#368]` 🔒 **Brak autoryzacji do wątku** (tamże) — sprawdzano wyłącznie, czy wątek należy do firmy; dowolny jej członek mógł wstrzyknąć treść do powiadomień **prywatnego** kanału i poznać liczbę jego członków. Bramka odzwierciedla teraz RLS z 0067 (zarząd / twórca / członek). Dołożone testy regresyjne.
+- `[#368]` **Tacho datowało przerwę wstecz** ([tachoStop.ts](apps/mobile/lib/tachoStop.ts)) — po powrocie z tła detektor zaliczał jako postój cały czas, gdy ekran był zablokowany (GPS nie chodzi w tle), więc jedno tapnięcie kasowało z zapisu np. 40 min faktycznej jazdy. Punkt odniesienia jest teraz zerowany przy wznowieniu. Dodatkowo próg dystansu 50 m > `distanceInterval` watchera (30 m) czynił dystansowy dowód ruchu **martwym** (pełzanie w korku = „postój") — obniżony do 20 m.
+
+### ✨ Pozycje z mapy drogowej
+
+- `[#368]` 🔔 **#2 Cron-alerty o terminach** ([alerts.ts](apps/web/lib/alerts.ts)) — dokumenty kierowców (prawo jazdy, kod 95, badania, psychotechnika, ADR) i ważność kart paliwowych trafiają wreszcie do push/e-mail, nie tylko do żywego panelu. Horyzont per firma z `companies.notify_days_ahead` (cron miał 30 dni na sztywno i nadpisywał ustawienie właściciela).
+- `[#368]` 🛠️ **#3 Krytyczne usterki do właściciela** ([alerts.ts](apps/web/lib/alerts.ts), [AttentionPanel](apps/web/components/AttentionPanel.tsx)) — otwarte zgłoszenie o wadze „high" lub z kontrolką alarmuje zarząd (okno 30 dni, by pierwszy cykl nie wysłał lawiny zaległości).
+- `[#368]` 💬 **#5 Czat gotowy do pracy** — migracja [0085](supabase/migrations/0085_chat_reads.sql) (`chat_reads` + RPC `chat_mark_read`/`chat_unread_counts`, SECURITY INVOKER pod RLS), liczniki nieprzeczytanych (badge mobile + web), powiadomienia na web (Web Push + centrum) i wysyłka przez outbox z idempotencją.
+- `[#368]` ⏸️ **#6 Auto-pauza jazdy z GPS** ([tacho](apps/mobile/app/tacho.tsx)) — wykryty postój pyta kierowcę, nigdy nie przełącza sam (fałszywy zapis compliance byłby gorszy niż brak). Logika w czystym, przetestowanym module.
+- `[#368]` ⚡ **#7 Cache płatnych API map** ([cache.ts](packages/maps/src/cache.ts), [geocode](packages/maps/src/geocode.ts), [/api/route](apps/web/app/api/route/route.ts), [/api/traffic](apps/web/app/api/traffic/route.ts)) — geokoder, trasa i ruch nie płacą dwa razy za to samo. Trafienie w cache raportuje nagłówek poza produkcją, a nie treść odpowiedzi (inaczej zdradzałaby aktywność innych najemców).
+
+### 🔒 Paczka bezpieczeństwa
+
+- `[#368]` **Limity bucketów Storage** — migracja [0086](supabase/migrations/0086_storage_hardening.sql): rozmiar + whitelista MIME. Publiczny `avatars` (3 MB) bez SVG/HTML — tam leży ryzyko XSS. `cargo-photos` zachowuje `image/svg+xml` (podpis POD generowany przez apkę), a `documents` przyjmuje pakiet biurowy i `octet-stream`, bo sejf ma `<input type="file">` bez `accept` — wąska lista zablokowałaby codzienne użycie.
+- `[#368]` **Koniec fail-open w rate-limicie** ([ratelimit.ts](apps/web/lib/ratelimit.ts)) — brak zmiennych Upstash na produkcji nie wyłącza już po cichu ochrony (fallback in-memory + sygnał do Sentry). Strażnik pamięci eksmituje najstarsze wpisy zamiast `clear()`, który kasował liczniki wszystkich klientów.
+- `[#368]` **Audyt masowego odczytu PII** — migracja [0087](supabase/migrations/0087_list_drivers_audit.sql): `list_drivers` zapisuje `driver.list_pii` (dławione 1/h). PIN i zaproszenia były audytowane, kartoteka RODO nie.
+- `[#368]` **Potwierdzenie przy PIN karty na webie** ([cards](apps/web/app/(app)/cards/page.tsx)) — mobile wymaga Face ID, web odsłaniał jednym kliknięciem. Świadomie bez hasła/passkey: część kont loguje się przez OAuth/magic link i nie ma żadnego z nich, więc twardy step-up odciąłby PIN potrzebny przy automacie.
+- `[#368]` **Wiadomość offline nie wyjdzie z cudzego konta** ([outbox](apps/mobile/lib/outbox.ts)) — wpisy czatu bez właściciela nie są „claimowane" przez pierwszego zalogowanego (dla paliwa/Tripa to świadomy backfill, dla wypowiedzi w czacie — niedopuszczalne).
+
+> **Znane ograniczenia (kandydaci na kolejny update):** załączniki czatu leżą w `cargo-photos` widocznym dla całej firmy, więc zdjęcie z prywatnego wątku chroni nieodgadywalność ścieżki, nie autoryzacja; dławienie audytu 1/h nie odróżnia jednego wejścia od masowego zaciągnięcia kartoteki; `AttentionPanel` nadal ma teksty zaszyte po polsku (cały plik, stan sprzed tej paczki).
+
+**Bramki:** biome ✓ (bez ostrzeżeń) · parytet i18n 5/5 ✓ · `tsc` core+maps+api+web+mobile 0 ✓ · testy **689** (core 398, maps 109, api 68, web 73, mobile 36, i18n 5) ✓ · migracje 0085–0087 na prod.
 
 ## [1.211.0] — ⚡ Paczka tanich zwycięstw z audytu (mapa, obserwowalność, CI, XSS)
 

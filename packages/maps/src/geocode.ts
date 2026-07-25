@@ -3,6 +3,7 @@
  * Pierwszy wybór: MapTiler (gdy jest klucz). Fallback: Nominatim (OSM, bez klucza).
  * Działa po stronie klienta — klucz MapTiler jest publiczny (NEXT_PUBLIC).
  */
+import { cachedCall, normalizeGeoQuery, TtlLruCache } from "./cache";
 
 export interface GeoHit {
   label: string;
@@ -54,17 +55,12 @@ async function geocodeNominatim(query: string, limit: number): Promise<GeoHit[]>
   return out;
 }
 
-/**
- * Wyszukuje miejsce. Priorytet: TomTom (najlepsza jakość, #356) → MapTiler →
- * Nominatim (OSM, bez klucza). Każde źródło z fallbackiem na Nominatim.
- */
-export async function geocode(
-  query: string,
-  opts?: { tomtomKey?: string; maptilerKey?: string; limit?: number },
+/** Faktyczne odpytanie dostawców (bez pamięci podręcznej). */
+async function geocodeFresh(
+  q: string,
+  limit: number,
+  opts?: { tomtomKey?: string; maptilerKey?: string },
 ): Promise<GeoHit[]> {
-  const q = query.trim();
-  if (q.length < 2) return [];
-  const limit = opts?.limit ?? 6;
   try {
     if (opts?.tomtomKey) {
       // Import leniwy — pakiet maps nie musi ładować TomTom, gdy klucza brak.
@@ -82,4 +78,54 @@ export async function geocode(
       return [];
     }
   }
+}
+
+/**
+ * #368: TTL 10 min — nazwy miejsc nie zmieniają się w tym tempie, a użytkownik
+ * poprawiający literówkę wraca do tej samej frazy w ciągu sekund.
+ */
+const GEOCODE_TTL_MS = 10 * 60 * 1000;
+/** Limit wpisów — geokoder leci na każde naciśnięcie klawisza, więc cache MUSI mieć sufit. */
+const GEOCODE_MAX_ENTRIES = 200;
+
+const geocodeCache = new TtlLruCache<Promise<GeoHit[]>>({
+  ttlMs: GEOCODE_TTL_MS,
+  maxEntries: GEOCODE_MAX_ENTRIES,
+});
+
+/** Czyści pamięć podręczną geokodera (testy, wylogowanie, podmiana klucza API). */
+export function clearGeocodeCache(): void {
+  geocodeCache.clear();
+}
+
+/**
+ * Wyszukuje miejsce. Priorytet: TomTom (najlepsza jakość, #356) → MapTiler →
+ * Nominatim (OSM, bez klucza). Każde źródło z fallbackiem na Nominatim.
+ *
+ * #368: wynik jest pamiętany po ZNORMALIZOWANEJ frazie (TTL 10 min, LRU 200 wpisów),
+ * a równoległe zapytania o tę samą frazę dzielą jedno wywołanie API.
+ */
+export async function geocode(
+  query: string,
+  opts?: { tomtomKey?: string; maptilerKey?: string; limit?: number },
+): Promise<GeoHit[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const limit = opts?.limit ?? 6;
+  // Do klucza wchodzi ŹRÓDŁO (różne API dają różne etykiety i kolejność) oraz `limit`.
+  // Samych kluczy API nie wkładamy do klucza cache — pochodzą z env i są stałe
+  // w obrębie instancji aplikacji, a `clearGeocodeCache()` obsługuje ich podmianę.
+  // Język jest dziś zaszyty na sztywno w URL-ach (`pl` / `pl-PL`); gdyby stał się
+  // parametrem, MUSI dołączyć do klucza — inaczej PL i DE dzieliłyby jeden wpis.
+  const source = opts?.tomtomKey ? "tt" : opts?.maptilerKey ? "mt" : "nom";
+  const key = `${source}|${limit}|${normalizeGeoQuery(q)}`;
+  // Pusty wynik NIE trafia do pamięci: `geocodeFresh` zwraca [] zarówno przy
+  // „brak trafień", jak i przy awarii obu dostawców — zamrożenie tego na 10 minut
+  // zamieniłoby chwilową usterkę w martwą wyszukiwarkę.
+  return cachedCall(
+    geocodeCache,
+    key,
+    () => geocodeFresh(q, limit, opts),
+    (hits) => hits.length > 0,
+  );
 }

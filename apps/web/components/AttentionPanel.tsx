@@ -3,6 +3,7 @@
 import {
   latestOdometers,
   listDamageClaims,
+  listDefects,
   listDocuments,
   listDrivers,
   listFuelCardsSafe,
@@ -36,6 +37,8 @@ type Item = {
   /** Im niżej, tym pilniej (dni do terminu; po terminie = ujemne; serwis: km/100). */
   urgency: number;
   href: string;
+  /** #368: własna etykieta stanu (np. „otwarta") zamiast domyślnej po terminie/wkrótce. */
+  statusLabel?: string;
 };
 
 const VEH_FIELDS = [
@@ -54,11 +57,17 @@ const DRV_FIELDS = [
 
 const MAX_SHOWN = 15;
 
+/** #368: usterki uznawane za krytyczne — tak samo klasyfikuje je cron w lib/alerts.ts. */
+function isCriticalDefect(severity: string, dashboardLight: boolean): boolean {
+  return severity === "high" || dashboardLight;
+}
+
 /**
  * Zbiorczy panel „Co wymaga uwagi" — liczony na żywo (niezależnie od crona).
  * Agreguje terminy: dokumenty pojazdów (przegląd/OC/leasing), karty paliwowe,
- * serwis wg przebiegu (km) oraz dokumenty z sejfu. Pokazuje tylko pozycje
- * wymagające reakcji (po terminie / wkrótce), posortowane wg pilności.
+ * serwis wg przebiegu (km), dokumenty z sejfu oraz otwarte usterki pojazdów.
+ * Pokazuje tylko pozycje wymagające reakcji (po terminie / wkrótce / otwarte),
+ * posortowane wg pilności.
  */
 export function AttentionPanel() {
   const [items, setItems] = useState<Item[]>([]);
@@ -71,7 +80,7 @@ export function AttentionPanel() {
         const m = await getCachedMembership(sb);
         // Panel zarządczy (terminy floty/faktur) — tylko owner/dispatcher.
         if (!m || (m.role !== "owner" && m.role !== "dispatcher")) return;
-        const [vehs, cards, tasks, odo, docs, invs, drvs, claims] = await Promise.all([
+        const [vehs, cards, tasks, odo, docs, invs, drvs, claims, defects] = await Promise.all([
           listVehiclesExpiry(sb, m.companyId),
           listFuelCardsSafe(sb, m.companyId),
           listServiceTasks(sb, m.companyId),
@@ -80,6 +89,7 @@ export function AttentionPanel() {
           listInvoices(sb, m.companyId),
           listDrivers(sb, m.companyId).catch(() => []),
           listDamageClaims(sb, m.companyId).catch(() => []),
+          listDefects(sb, { limit: 200 }).catch(() => []),
         ]);
         const today = new Date().toISOString().slice(0, 10);
         const regOf = new Map(vehs.map((v) => [v.id, v.registration]));
@@ -188,6 +198,28 @@ export function AttentionPanel() {
             level: c.status === "reported" ? "expired" : "soon",
             urgency: -daysSince,
             href: "/damages",
+            statusLabel: "otwarta",
+          });
+        }
+
+        // #368: usterki zgłoszone z telefonu — widoczne od razu, bez wchodzenia w Raporty.
+        for (const d of defects) {
+          if (d.status !== "open" && d.status !== "in_progress") continue;
+          const critical = isCriticalDefect(d.severity, d.dashboard_light);
+          const daysSince = Math.round(
+            (Date.parse(today) - Date.parse(d.created_at.slice(0, 10))) / 86_400_000,
+          );
+          out.push({
+            key: `def-${d.id}`,
+            icon: "🔩",
+            category: "Usterka",
+            // 💡 = zapalona kontrolka na desce (ta sama ikona co na liście w Raportach).
+            title: `${regOf.get(d.vehicle_id) ?? "—"} · ${d.part}${d.dashboard_light ? " 💡" : ""}`,
+            detail: d.description.length > 80 ? `${d.description.slice(0, 80)}…` : d.description,
+            level: critical ? "expired" : "soon",
+            urgency: -daysSince,
+            href: "/reports",
+            statusLabel: d.status === "open" ? "zgłoszona" : "w naprawie",
           });
         }
 
@@ -248,11 +280,7 @@ export function AttentionPanel() {
               <span
                 style={{ color, fontWeight: 700, fontSize: 13, minWidth: 110, textAlign: "right" }}
               >
-                {it.category === "Szkoda"
-                  ? "otwarta"
-                  : it.level === "expired"
-                    ? "po terminie"
-                    : "wkrótce"}
+                {it.statusLabel ?? (it.level === "expired" ? "po terminie" : "wkrótce")}
               </span>
             </Link>
           );

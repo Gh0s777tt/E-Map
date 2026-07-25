@@ -1,9 +1,12 @@
 import { round2 } from "@e-logistic/core";
 import {
+  cachedCall,
   createRoutingProvider,
   estimateTollEur,
   estimateTruckDurationMin,
   type RouteRequest,
+  type RoutingProvider,
+  routeCacheKey,
   routeMultiLeg,
   tomtomVignetteCodes,
 } from "@e-logistic/maps";
@@ -11,6 +14,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticateRequest } from "@/lib/apiAuth";
 import { rateLimit } from "@/lib/ratelimit";
+import { type RouteApiPayload, routeCache } from "./cache";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +45,63 @@ const routeBodySchema = z.object({
 });
 
 /**
+ * Wyznaczenie trasy u dostawcy + doszacowania (myto/czas). Wydzielone z handlera,
+ * bo to właśnie ta część kosztuje i to ona idzie do pamięci podręcznej (#368).
+ * Wynik zależy wyłącznie od `body` i dostawcy — czyli od tego, co składa się na
+ * klucz cache (`routeCacheKey`).
+ */
+async function computeRoute(
+  provider: RoutingProvider,
+  body: RouteRequest,
+  avoidCountriesMode: "full" | "partial" | "none" | undefined,
+): Promise<RouteApiPayload> {
+  const result = await routeMultiLeg(provider, body);
+
+  let { segments, tollCost } = result;
+  let tollEstimated = false;
+  // GraphHopper i TomTom nie zwracają myta (TomTom tollCost:0) → doszacowujemy.
+  // HERE podaje realne myto.
+  if (
+    (provider.name === "graphhopper" || provider.name === "tomtom") &&
+    tollCost === 0 &&
+    !body.options?.avoidTolls
+  ) {
+    segments = result.segments.map((s) => ({
+      ...s,
+      tollCost: estimateTollEur(s.distanceKm, { weightKg: body.profile?.weightKg }),
+    }));
+    tollCost = round2(segments.reduce((acc, s) => acc + s.tollCost, 0));
+    tollEstimated = true;
+  }
+
+  // HERE i TomTom zwracają realny ETA z ruchem; mock/GraphHopper(car) — szacujemy
+  // czas jazdy ciężarówki z dystansu (realna średnia TIR), bo profil „car" jest zbyt szybki.
+  const durationMin =
+    provider.name === "here" || provider.name === "tomtom"
+      ? result.durationMin
+      : estimateTruckDurationMin(result.distanceKm);
+  const durationEstimated = provider.name !== "here" && provider.name !== "tomtom";
+
+  return {
+    ...result,
+    durationMin,
+    durationEstimated,
+    segments,
+    tollCost,
+    tollEstimated,
+    avoidCountriesMode,
+  };
+}
+
+/**
  * Serwerowe wytyczanie trasy przez przystanki. Klucze czytane z env po stronie
  * serwera (nigdy w bundlu). Priorytet dostawcy: HERE (realny routing TIR z wymiarami
  * + prawdziwe myto + ruch) → TomTom (TIR + ruch; myto doszacowane, tollCost:0) →
  * GraphHopper (car; myto doszacowane) → mock (bez klucza).
  * Trasa liczona odcinkami (routeMultiLeg) → myto/dystans z podziałem na odcinki.
+ * #368: wynik dostawcy trafia do pamięci podręcznej (`./cache`) — powtórzone
+ * zapytanie o tę samą trasę nie płaci drugi raz. Ścieżka awaryjna (mock) NIE jest
+ * pamiętana, żeby usterka dostawcy nie przykleiła się do trasy na całe TTL.
  */
 export async function POST(request: Request) {
   if (!(await rateLimit(request, "route")).ok) {
@@ -95,43 +151,27 @@ export async function POST(request: Request) {
           ? "partial"
           : "none";
 
+  // #368: klucz obejmuje dostawcę, punkty, profil, opcje `avoid*` i walutę —
+  // czyli komplet danych wpływających na odpowiedź. Trasa policzona przed chwilą
+  // z tymi samymi parametrami (auto-reroute #309, ponowne „Wyznacz trasę")
+  // nie płaci drugi raz.
+  //
+  // Trafienia NIE zdradzamy w treści odpowiedzi: cache jest współdzielony przez wszystkich
+  // zalogowanych, więc `cached: true` mówiłoby użytkownikowi firmy A, że ktoś inny liczył
+  // przed chwilą dokładnie tę trasę (klucz to konkretne współrzędne i profil pojazdu) —
+  // czyli działałoby jak oracle o aktywności innych najemców. Podgląd „czy cache działa"
+  // zostaje, ale jako nagłówek techniczny i tylko poza produkcją.
+  const key = routeCacheKey(body, provider.name);
+  const fromCache = routeCache.get(key) !== undefined;
   try {
-    const result = await routeMultiLeg(provider, body);
-
-    let { segments, tollCost } = result;
-    let tollEstimated = false;
-    // GraphHopper i TomTom nie zwracają myta (TomTom tollCost:0) → doszacowujemy.
-    // HERE podaje realne myto.
-    if (
-      (provider.name === "graphhopper" || provider.name === "tomtom") &&
-      tollCost === 0 &&
-      !body.options?.avoidTolls
-    ) {
-      segments = result.segments.map((s) => ({
-        ...s,
-        tollCost: estimateTollEur(s.distanceKm, { weightKg: body.profile?.weightKg }),
-      }));
-      tollCost = round2(segments.reduce((acc, s) => acc + s.tollCost, 0));
-      tollEstimated = true;
+    const payload = await cachedCall(routeCache, key, () =>
+      computeRoute(provider, body, avoidCountriesMode),
+    );
+    const res = NextResponse.json(payload);
+    if (process.env.NODE_ENV !== "production") {
+      res.headers.set("x-route-cache", fromCache ? "hit" : "miss");
     }
-
-    // HERE i TomTom zwracają realny ETA z ruchem; mock/GraphHopper(car) — szacujemy
-    // czas jazdy ciężarówki z dystansu (realna średnia TIR), bo profil „car" jest zbyt szybki.
-    const durationMin =
-      provider.name === "here" || provider.name === "tomtom"
-        ? result.durationMin
-        : estimateTruckDurationMin(result.distanceKm);
-    const durationEstimated = provider.name !== "here" && provider.name !== "tomtom";
-
-    return NextResponse.json({
-      ...result,
-      durationMin,
-      durationEstimated,
-      segments,
-      tollCost,
-      tollEstimated,
-      avoidCountriesMode,
-    });
+    return res;
   } catch (e) {
     const mock = await routeMultiLeg(createRoutingProvider(), body);
     return NextResponse.json({

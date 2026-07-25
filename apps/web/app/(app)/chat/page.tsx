@@ -3,13 +3,15 @@
 /**
  * #290/#291: Czat firmowy 2.0 — sidebar kanałów (Ogólny + nazwane wątki),
  * tworzenie kanałów z członkami (np. osobny per kierowca), zmiana nazwy,
- * zdjęcia w wiadomościach i push (Expo) do odbiorców po wysłaniu.
+ * zdjęcia w wiadomościach i powiadomienia do odbiorców po wysłaniu.
+ * #368: liczniki nieprzeczytanych przy kanałach + oznaczanie przeczytania.
  */
 import {
   addThreadMembers,
   type ChatMessage,
   type ChatThread,
   type CompanyMember,
+  chatChannelKey,
   chatPhotoUrl,
   createThread,
   listCompanyMembers,
@@ -26,10 +28,13 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
+import { markChannelRead, setOpenChatChannel, useChatUnread } from "@/lib/chatUnread";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
-function notifyChat(threadId: string | null, preview: string): void {
+// #368: `companyId` jawnie w żądaniu — serwer nie może zgadywać firmy nadawcy
+// (konto w dwóch firmach rozsyłało podgląd treści do niewłaściwej).
+function notifyChat(threadId: string | null, preview: string, companyId?: string): void {
   (async () => {
     const { data } = await getBrowserSupabase().auth.getSession();
     const token = data.session?.access_token;
@@ -37,7 +42,7 @@ function notifyChat(threadId: string | null, preview: string): void {
     await fetch("/api/chat/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ threadId, preview: preview.slice(0, 140) }),
+      body: JSON.stringify({ threadId, preview: preview.slice(0, 140), companyId }),
     });
   })().catch(() => {});
 }
@@ -59,8 +64,20 @@ function ChatImg({ path }: { path: string }) {
   );
 }
 
+/** #368: licznik nieprzeczytanych przy kanale (nic nie renderuje przy zerze). */
+function UnreadDot({ count }: { count: number }) {
+  const t = useT();
+  if (count <= 0) return null;
+  return (
+    <span style={s.unread} role="status" title={t("chat.unread")} aria-label={t("chat.unread")}>
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 export default function ChatPage() {
   const t = useT();
+  const unread = useChatUnread();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThread, setActiveThread] = useState<ChatThread | null>(null); // null = Ogólny
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -81,6 +98,8 @@ export default function ChatPage() {
   // Filtr aktywnego wątku dla realtime trzymany w refie — subskrypcja jest jedna
   // per firma (niżej) i nie odtwarza się przy przełączeniu kanału (audyt N15).
   const threadIdRef = useRef<string | null>(threadId);
+  // Własne id w refie — handler realtime powstaje raz (zależność [companyId]).
+  const meRef = useRef<string | null>(null);
 
   // Init: firma, rola, kanały, subskrypcja realtime (jedna na firmę).
   useEffect(() => {
@@ -95,6 +114,7 @@ export default function ChatPage() {
         ]);
         if (!m || !alive) return;
         setMe(userData.user?.id ?? null);
+        meRef.current = userData.user?.id ?? null;
         setMyLabel(userData.user?.email ?? "panel");
         setManage(m.role === "owner" || m.role === "dispatcher");
         setCompanyId(m.companyId);
@@ -135,8 +155,22 @@ export default function ChatPage() {
     return subscribeMessages(getBrowserSupabase(), companyId, (msg) => {
       if ((msg.thread_id ?? null) !== threadIdRef.current) return;
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+      // #368: otwarty kanał czytamy na bieżąco — znacznik przesuwamy od razu,
+      // żeby po opuszczeniu ekranu badge nie zapalił się dla już widzianych treści.
+      if (msg.sender_id !== meRef.current) markChannelRead(threadIdRef.current, companyId);
     });
   }, [companyId]);
+
+  // #368: kanał otwarty na ekranie nie liczy się do badge'a — zgłaszamy go do
+  // wspólnego magazynu i od razu oznaczamy jako przeczytany.
+  useEffect(() => {
+    if (!companyId) return;
+    setOpenChatChannel(threadId, true);
+    markChannelRead(threadId, companyId);
+    return () => {
+      setOpenChatChannel(null, false);
+    };
+  }, [companyId, threadId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll przy każdej nowej wiadomości
   useEffect(() => {
@@ -150,7 +184,7 @@ export default function ChatPage() {
       const msg = await sendMessage(getBrowserSupabase(), companyId, body, myLabel, { threadId });
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
       setText("");
-      notifyChat(threadId, body);
+      notifyChat(threadId, body, companyId);
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("chat.sendError"));
     }
@@ -168,7 +202,7 @@ export default function ChatPage() {
         photoPath: path,
       });
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-      notifyChat(threadId, t("chat.photoMessage"));
+      notifyChat(threadId, t("chat.photoMessage"), companyId);
     } catch {
       setErr(t("chat.photoSendError"));
     }
@@ -241,7 +275,8 @@ export default function ChatPage() {
             style={{ ...s.channel, ...(threadId === null ? s.channelOn : {}) }}
             onClick={() => setActiveThread(null)}
           >
-            📢 {t("chat.general")}
+            <span style={s.channelLabel}>📢 {t("chat.general")}</span>
+            <UnreadDot count={unread.byChannel[chatChannelKey(null)] ?? 0} />
           </button>
           {threads.map((th) => (
             <button
@@ -250,7 +285,8 @@ export default function ChatPage() {
               style={{ ...s.channel, ...(threadId === th.id ? s.channelOn : {}) }}
               onClick={() => setActiveThread(th)}
             >
-              💬 {th.name}
+              <span style={s.channelLabel}>💬 {th.name}</span>
+              <UnreadDot count={unread.byChannel[chatChannelKey(th.id)] ?? 0} />
             </button>
           ))}
           {manage && (
@@ -429,6 +465,21 @@ const s: Record<string, React.CSSProperties> = {
     padding: "10px 12px",
     cursor: "pointer",
     fontSize: 14,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  channelLabel: { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" },
+  unread: {
+    background: palette.red,
+    color: "#fff",
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 700,
+    padding: "1px 6px",
+    minWidth: 18,
+    textAlign: "center",
+    flexShrink: 0,
   },
   channelOn: { borderColor: palette.red, background: "#1d0a0b", fontWeight: 700 },
   newChannel: {

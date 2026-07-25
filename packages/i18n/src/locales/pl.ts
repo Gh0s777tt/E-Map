@@ -93,6 +93,7 @@ export const pl = {
   "nav.group.pinned": "Ulubione",
   "nav.pin": "Przypnij do ulubionych",
   "nav.unpin": "Odepnij z ulubionych",
+  "nav.unread": "Nieprzeczytane wiadomości",
 
   "dashboard.customize": "Dostosuj",
   "dashboard.customize.title": "Widoczne sekcje",
@@ -621,6 +622,9 @@ export const pl = {
 
   "cards.loadError": "Nie udało się pobrać kart.",
   "cards.pinEmpty": "(brak PIN-u)",
+  "cards.pinReveal": "Pokaż PIN",
+  "cards.pinRevealConfirm":
+    "Pokazać PIN karty paliwowej? Odczyt zostanie zapisany w dzienniku audytu. Upewnij się, że nikt nie patrzy na ekran — PIN ukryje się ponownie po 30 sekundach.",
   "cards.pinReadError": "Nie udało się odczytać PIN-u.",
   "cards.noCompany": "Brak firmy — nie można zapisać.",
   "cards.updated": "Zmiany zapisane.",
@@ -1164,6 +1168,7 @@ export const pl = {
   "chat.send": "Wyślij",
   "chat.imgLoading": "wczytywanie…",
   "chat.imgAlt": "Zdjęcie z czatu",
+  "chat.unread": "Nieprzeczytane wiadomości",
 
   "mapPage.title": "Mapa",
   "mapPage.subtitle":

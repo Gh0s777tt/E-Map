@@ -9,6 +9,7 @@ import { type ColorValue, View } from "react-native";
 import { Icon } from "../../components/Icon";
 import { OfflineBar } from "../../components/OfflineBar";
 import { SideMenu } from "../../components/SideMenu";
+import { useChatUnread } from "../../lib/chatUnread";
 import { DrawerProvider } from "../../lib/drawer";
 import { useT } from "../../lib/i18n";
 import { usePositionReporter } from "../../lib/positionShare";
@@ -20,6 +21,8 @@ function icon(name: IconName) {
 export default function TabsLayout() {
   const t = useT();
   usePositionReporter(); // #324: raport pozycji (tylko gdy kierowca włączył w Ustawieniach)
+  // #368: nieprzeczytane wiadomości — badge na zakładce „Czat".
+  const chatUnread = useChatUnread();
   return (
     <DrawerProvider>
       <View style={{ flex: 1, backgroundColor: palette.black }}>
@@ -52,7 +55,17 @@ export default function TabsLayout() {
           />
           <Tabs.Screen
             name="chat"
-            options={{ title: t("m.screen.chat"), tabBarIcon: icon("chat") }}
+            options={{
+              title: t("m.screen.chat"),
+              tabBarIcon: icon("chat"),
+              tabBarBadge:
+                chatUnread.total > 0
+                  ? chatUnread.total > 99
+                    ? "99+"
+                    : chatUnread.total
+                  : undefined,
+              tabBarBadgeStyle: { backgroundColor: palette.red, color: palette.white },
+            }}
           />
           <Tabs.Screen
             name="checklists"

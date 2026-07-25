@@ -1,8 +1,16 @@
-import { buildHereTrafficUrl, parseHereTraffic, tomtomTrafficIncidents } from "@e-logistic/maps";
+import {
+  buildHereTrafficUrl,
+  cachedCall,
+  parseHereTraffic,
+  snapBboxOut,
+  tomtomTrafficIncidents,
+  trafficCacheKey,
+} from "@e-logistic/maps";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticateRequest } from "@/lib/apiAuth";
 import { rateLimit } from "@/lib/ratelimit";
+import { hereFlowCache, tomtomIncidentCache } from "./cache";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +29,8 @@ const bboxSchema = z.object({
  * Kształty NIE są mieszane: HERE dokłada `flows`, TomTom `incidents`.
  * Brak OBU kluczy → 501. Błąd dostawcy → 200 `{ unavailable: true }`,
  * żeby mapa zdegradowała się łagodnie zamiast krzyczeć błędem.
+ * #368: odpowiedź pamiętana przez 45 s po przyciągniętym prostokącie (`./cache`) —
+ * krótko, bo dane o ruchu starzeją się szybko i użytkownik oczekuje świeżości.
  */
 export async function POST(request: Request) {
   if (!(await rateLimit(request, "traffic")).ok) {
@@ -48,8 +58,15 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Nieprawidłowy bbox." }, { status: 400 });
   }
+  // #368: prostokąt przyciągnięty do siatki NA ZEWNĄTRZ. Klient przysyła surowe
+  // `map.getBounds()`, które zmienia się przy każdym drgnięciu mapy — bez przyciągania
+  // każde przesunięcie o piksel byłoby osobnym płatnym zapytaniem. Przyciągnięty
+  // prostokąt ZAWIERA oryginał, więc użytkownik nie zobaczy mniej, niż widzi na ekranie.
+  // Do dostawcy leci ta sama (przyciągnięta) ramka, którą pamiętamy — inaczej wpis
+  // opisywałby inny obszar niż jego klucz.
+  const bbox = snapBboxOut(parsed.data);
+  const { west, south, east, north } = bbox;
   // Zbyt duży obszar → dostawcy odrzucają; ograniczamy do rozsądnego okna (ok. 2°).
-  const { west, south, east, north } = parsed.data;
   const tooLarge = Math.abs(east - west) > 2 || Math.abs(north - south) > 2;
 
   // HERE ma priorytet: `flows` (linie natężenia). Kształt bez zmian.
@@ -58,15 +75,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ configured: true, flows: [], tooLarge: true });
     }
     try {
-      const res = await fetch(buildHereTrafficUrl(parsed.data, hereKey), {
-        headers: { Accept: "application/json" },
+      const flows = await cachedCall(hereFlowCache, trafficCacheKey(bbox, "here"), async () => {
+        const res = await fetch(buildHereTrafficUrl(bbox, hereKey), {
+          headers: { Accept: "application/json" },
+        });
+        // Rzucamy zamiast zwracać puste: dzięki temu awaria (najczęściej plan bez
+        // dodatku Traffic → 403) NIE zostaje w pamięci i po naprawie planu warstwa
+        // wraca od razu, a nie po wygaśnięciu TTL.
+        if (!res.ok) throw new Error(`HERE Traffic ${res.status}`);
+        return parseHereTraffic(await res.json());
       });
-      if (!res.ok) {
-        // Najczęściej: plan bez dodatku Traffic (403) — degradujemy łagodnie.
-        return NextResponse.json({ configured: true, flows: [], unavailable: true });
-      }
-      const json = await res.json();
-      return NextResponse.json({ configured: true, flows: parseHereTraffic(json) });
+      return NextResponse.json({ configured: true, flows });
     } catch {
       return NextResponse.json({ configured: true, flows: [], unavailable: true });
     }
@@ -78,8 +97,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ configured: true, incidents: [], tooLarge: true });
     }
     try {
-      // bbox TomTom: "minLng,minLat,maxLng,maxLat" (kolejność lng,lat!).
-      const incidents = await tomtomTrafficIncidents(`${west},${south},${east},${north}`, ttKey);
+      const incidents = await cachedCall(
+        tomtomIncidentCache,
+        trafficCacheKey(bbox, "tomtom"),
+        // bbox TomTom: "minLng,minLat,maxLng,maxLat" (kolejność lng,lat!).
+        () => tomtomTrafficIncidents(`${west},${south},${east},${north}`, ttKey),
+      );
       return NextResponse.json({ configured: true, incidents });
     } catch {
       return NextResponse.json({ configured: true, incidents: [], unavailable: true });

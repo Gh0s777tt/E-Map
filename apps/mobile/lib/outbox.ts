@@ -6,24 +6,49 @@ import {
   insertDriverExpense,
   insertFuelLog,
   insertTripEvent,
+  upsertMessage,
 } from "@e-logistic/api";
 import { type FuelLogInput, newId, type TripEventInput } from "@e-logistic/core";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { notifyChat } from "./chatNotify";
 import { getSupabase, supabaseConfigured } from "./supabase";
 
 /**
  * Outbox offline-first (AsyncStorage) — odpowiednik webowego `lib/outbox.ts`.
  * Zapis trafia najpierw lokalnie (status `queued`), potem best-effort sync do
- * Supabase. Obsługuje formularze: paliwo, AdBlue i Trip. Fundament pod PowerSync.
+ * Supabase. Obsługuje formularze: paliwo, AdBlue, Trip, checklisty, wydatki
+ * oraz wiadomości czatu (#368). Fundament pod PowerSync.
  */
 const KEY = "el-outbox";
 
-export type OutboxKind = "fuel" | "adblue" | "trip" | "checklist" | "expense";
+export type OutboxKind = "fuel" | "adblue" | "trip" | "checklist" | "expense" | "chat";
+
+/**
+ * #368: wiadomość czatu zakolejkowana lokalnie. `id` wpisu outboxu jest
+ * jednocześnie `messages.id` — dokładnie jak przy paliwie/Tripie — więc ponowny
+ * sync leci jako `ON CONFLICT (id) DO NOTHING` i nie tworzy duplikatu.
+ * `photoPath` wypełniamy TYLKO gdy zdjęcie zdążyło trafić do Storage (upload
+ * wymaga sieci; sam tekst kolejkuje się zawsze).
+ */
+export interface ChatOutboxInput {
+  companyId: string;
+  threadId: string | null;
+  body: string;
+  senderLabel: string;
+  photoPath?: string | null;
+}
+
+export type OutboxInput =
+  | FuelLogInput
+  | TripEventInput
+  | ChecklistSubmissionInput
+  | DriverExpenseInput
+  | ChatOutboxInput;
 
 export interface OutboxItem {
   id: string;
   kind: OutboxKind;
-  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput | DriverExpenseInput;
+  input: OutboxInput;
   status: "queued" | "synced" | "error";
   createdAt: string;
   error?: string;
@@ -140,7 +165,7 @@ async function currentUserId(): Promise<string | null> {
 /** Dodaje wpis do outboxu (zawsze lokalnie) i próbuje od razu zsynchronizować. */
 export async function enqueue(
   kind: OutboxKind,
-  input: FuelLogInput | TripEventInput | ChecklistSubmissionInput | DriverExpenseInput,
+  input: OutboxInput,
   createdAt: string,
 ): Promise<OutboxItem> {
   // #per-user: stempel właściciela z lokalnej sesji (offline-safe, patrz helper).
@@ -201,7 +226,29 @@ async function syncItem(itemId: string): Promise<void> {
     if (!membership) throw new Error("Brak firmy — wpis czeka w kolejce.");
     const ctx = { id: item.id, companyId: membership.companyId, driverId: user.id };
 
-    if (item.kind === "expense") {
+    if (item.kind === "chat") {
+      // #368: wiadomość czatu. `item.id` = `messages.id` → retry nie duplikuje.
+      // Firma musi się zgadzać z bieżącym członkostwem (współdzielony telefon):
+      // inaczej zostawiamy w kolejce, zamiast wysłać treść do obcej firmy.
+      const chat = item.input as ChatOutboxInput;
+      if (chat.companyId !== membership.companyId) return;
+      // Wpis BEZ właściciela (zakolejkowany bez sesji) jest wyżej „claimowany" przez
+      // pierwszego zalogowanego — dla paliwa/Tripa to świadomy backfill własnych danych.
+      // Dla czatu to niedopuszczalne: wiadomość napisana przez kierowcę A wyszłaby
+      // w firmowym czacie jako wypowiedź kierowcy B (sender_id = jego auth.uid).
+      // Wypowiedź musi mieć jednoznacznego autora, więc czekamy na właściciela.
+      if (item.userId == null) return;
+      const sent = await upsertMessage(sb, {
+        id: item.id,
+        companyId: chat.companyId,
+        threadId: chat.threadId,
+        body: chat.body,
+        senderLabel: chat.senderLabel,
+        photoPath: chat.photoPath ?? null,
+      });
+      // Push do odbiorców tylko przy realnym wstawieniu (null = już było, retry).
+      if (sent) notifyChat(chat.threadId, chat.body, chat.companyId);
+    } else if (item.kind === "expense") {
       // #291: wydatek dodany offline — companyId dopinamy przy synchronizacji.
       await insertDriverExpense(sb, {
         ...(item.input as DriverExpenseInput),
@@ -240,6 +287,28 @@ export async function flushQueued(): Promise<void> {
   for (const it of items) {
     if (it.status !== "synced") await trySync(it.id);
   }
+  await pruneSyncedChat();
+}
+
+/**
+ * #368: dostarczona wiadomość czatu żyje już na serwerze — lokalna kopia służy
+ * wyłącznie za dymek „wysyłanie…", więc po chwili jest śmieciem. Kasujemy tylko
+ * `synced` i starsze niż 5 min (świeże zostawiamy, żeby dymek nie mrugnął, zanim
+ * realtime przyniesie prawdziwą wiadomość). Formularzy NIE dotykamy — one są
+ * historią aktywności kierowcy na pulpicie.
+ */
+const CHAT_KEEP_MS = 5 * 60 * 1000;
+
+async function pruneSyncedChat(): Promise<void> {
+  const cutoff = Date.now() - CHAT_KEEP_MS;
+  await withOutboxLock(async () => {
+    const items = await read();
+    const kept = items.filter(
+      (i) =>
+        !(i.kind === "chat" && i.status === "synced" && new Date(i.createdAt).getTime() < cutoff),
+    );
+    if (kept.length !== items.length) await write(kept);
+  });
 }
 
 function errorMessage(e: unknown): string {

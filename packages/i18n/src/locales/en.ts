@@ -95,6 +95,7 @@ export const en: Record<MessageKey, string> = {
   "nav.group.pinned": "Favorites",
   "nav.pin": "Pin to favorites",
   "nav.unpin": "Unpin from favorites",
+  "nav.unread": "Unread messages",
 
   "dashboard.customize": "Customize",
   "dashboard.customize.title": "Visible sections",
@@ -620,6 +621,9 @@ export const en: Record<MessageKey, string> = {
 
   "cards.loadError": "Failed to load cards.",
   "cards.pinEmpty": "(no PIN)",
+  "cards.pinReveal": "Show PIN",
+  "cards.pinRevealConfirm":
+    "Show the fuel card PIN? The access will be recorded in the audit log. Make sure nobody is looking at your screen — the PIN hides again after 30 seconds.",
   "cards.pinReadError": "Failed to read the PIN.",
   "cards.noCompany": "No company — cannot save.",
   "cards.updated": "Changes saved.",
@@ -1163,6 +1167,7 @@ export const en: Record<MessageKey, string> = {
   "chat.send": "Send",
   "chat.imgLoading": "loading…",
   "chat.imgAlt": "Chat photo",
+  "chat.unread": "Unread messages",
 
   "mapPage.title": "Map",
   "mapPage.subtitle":

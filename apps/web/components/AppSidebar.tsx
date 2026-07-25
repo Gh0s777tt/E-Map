@@ -8,6 +8,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { type NavGroup, SidebarNav } from "@/components/SidebarNav";
 import { SignOutButton } from "@/components/SignOutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useChatUnread } from "@/lib/chatUnread";
 import { initOutboxAutoFlush } from "@/lib/outbox";
 
 /**
@@ -29,6 +30,9 @@ export function AppSidebar({
     initOutboxAutoFlush();
   }, []);
 
+  // #368: nieprzeczytane wiadomości czatu — badge przy pozycji „Czat" w nawigacji.
+  const chatUnread = useChatUnread();
+
   const [open, setOpen] = useState(false);
   return (
     <aside className={open ? "app-sidebar open" : "app-sidebar"}>
@@ -49,7 +53,11 @@ export function AppSidebar({
       </div>
       <div className="app-sidebar-body">
         {supabaseConfigured && <GlobalSearch navItems={navGroups.flatMap((g) => g.items)} />}
-        <SidebarNav groups={navGroups} onNavigate={() => setOpen(false)} />
+        <SidebarNav
+          groups={navGroups}
+          onNavigate={() => setOpen(false)}
+          badges={{ "/chat": chatUnread.total }}
+        />
         {supabaseConfigured && (
           <div style={{ marginBottom: 8 }}>
             <NotificationBell />

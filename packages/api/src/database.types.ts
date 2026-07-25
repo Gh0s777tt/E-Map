@@ -180,6 +180,32 @@ export interface Database {
         };
         Relationships: [];
       };
+      chat_reads: {
+        Row: {
+          company_id: string;
+          user_id: string;
+          thread_id: string | null;
+          /** Kolumna generowana (coalesce(thread_id, sentinel)) — tylko do odczytu. */
+          thread_key: string;
+          last_read_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          company_id: string;
+          user_id?: string;
+          thread_id?: string | null;
+          last_read_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          company_id?: string;
+          user_id?: string;
+          thread_id?: string | null;
+          last_read_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       chat_threads: {
         Row: {
           id: string;
@@ -2179,6 +2205,14 @@ export interface Database {
       _pii_key: { Args: Record<PropertyKey, never>; Returns: string };
       accept_invite: { Args: { p_token: string | null }; Returns: string };
       bootstrap_company: { Args: { p_name: string | null }; Returns: string };
+      chat_mark_read: {
+        Args: { p_company: string | null; p_thread?: string | null };
+        Returns: undefined;
+      };
+      chat_unread_counts: {
+        Args: { p_company: string | null };
+        Returns: { thread: string | null; unread: number }[];
+      };
       company_members: {
         Args: Record<PropertyKey, never>;
         Returns: {

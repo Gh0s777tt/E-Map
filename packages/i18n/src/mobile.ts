@@ -54,6 +54,7 @@ const pl = {
   "m.kind.trip": "Trasa",
   "m.kind.checklist": "Checklista",
   "m.kind.expense": "Wydatek",
+  "m.kind.chat": "Wiadomość",
   "m.fab.defect": "Usterka",
 
   "m.offline.pending": "Do wysłania: {n} — dotknij, aby ponowić",
@@ -635,6 +636,12 @@ const pl = {
   "m.tacho.resetConfirm": "Wyzerować licznik i zacząć od 0? Tej operacji nie można cofnąć.",
   "m.tacho.resetDone": "Licznik wyzerowany.",
   "m.tacho.liveOff": "Wybierz czynność, aby uruchomić licznik na żywo.",
+  "m.tacho.stopTitle": "Wykryto postój",
+  "m.tacho.stopBody":
+    "Stoisz od {min} min, a licznik dalej nalicza jazdę. Co zapisać od momentu zatrzymania?",
+  "m.tacho.stopKeep": "Nadal jazda",
+  "m.tacho.stopHint":
+    "Postój dłuższy niż 3 min w trybie jazdy? Aplikacja zapyta, co zapisać — sama nigdy nie przełącza czynności.",
   "m.tacho.notifWarn": "Za 30 min wymagana przerwa (limit 4 h 30 jazdy).",
   "m.tacho.notifNow": "Czas na przerwę — limit 4 h 30 jazdy osiągnięty!",
   "m.tacho.scan": "Skanuj wyświetlacz",
@@ -931,7 +938,10 @@ const pl = {
   "m.chat.createFail": "Nie udało się utworzyć kanału.",
   "m.chat.loadFail": "Nie udało się wczytać czatu — sprawdź zasięg.",
   "m.chat.sendFail": "Nie wysłano — spróbuj ponownie przy zasięgu.",
-  "m.chat.photoFail": "Nie udało się wysłać zdjęcia — spróbuj przy lepszym zasięgu.",
+  "m.chat.photoNeedsNetwork":
+    "Zdjęcie wymaga zasięgu — sam tekst wyśle się także offline. Spróbuj ponownie w zasięgu.",
+  "m.chat.sending": "wysyłanie…",
+  "m.chat.retryQueued": "czeka na zasięg — dotknij, by ponowić",
   "m.chat.membersChangeFail": "Nie udało się zmienić członków.",
   "m.chat.renameFail": "Nie udało się zmienić nazwy.",
   "m.chat.empty": "Brak wiadomości — zacznij rozmowę.",
@@ -1084,6 +1094,7 @@ const en: Record<MobileMessageKey, string> = {
   "m.kind.trip": "Trip",
   "m.kind.checklist": "Checklist",
   "m.kind.expense": "Expense",
+  "m.kind.chat": "Message",
   "m.fab.defect": "Defect",
 
   "m.offline.pending": "Waiting to send: {n} — tap to retry",
@@ -1663,6 +1674,12 @@ const en: Record<MobileMessageKey, string> = {
   "m.tacho.resetConfirm": "Reset the counter and start from 0? This action cannot be undone.",
   "m.tacho.resetDone": "Counter reset.",
   "m.tacho.liveOff": "Pick an activity to start the live counter.",
+  "m.tacho.stopTitle": "Stop detected",
+  "m.tacho.stopBody":
+    "You have been stationary for {min} min while the counter still records driving. What should be logged from the moment you stopped?",
+  "m.tacho.stopKeep": "Still driving",
+  "m.tacho.stopHint":
+    "Standing still for more than 3 min in driving mode? The app asks what to log — it never switches the activity on its own.",
   "m.tacho.notifWarn": "Break required in 30 min (4 h 30 driving limit).",
   "m.tacho.notifNow": "Time for a break — 4 h 30 driving limit reached!",
   "m.tacho.scan": "Scan the display",
@@ -1960,7 +1977,10 @@ const en: Record<MobileMessageKey, string> = {
   "m.chat.createFail": "Couldn't create the channel.",
   "m.chat.loadFail": "Couldn't load the chat — check your signal.",
   "m.chat.sendFail": "Not sent — try again when online.",
-  "m.chat.photoFail": "Couldn't send the photo — try with better signal.",
+  "m.chat.photoNeedsNetwork":
+    "The photo needs a signal — plain text is sent offline too. Try again when online.",
+  "m.chat.sending": "sending…",
+  "m.chat.retryQueued": "waiting for signal — tap to retry",
   "m.chat.membersChangeFail": "Couldn't change members.",
   "m.chat.renameFail": "Couldn't rename.",
   "m.chat.empty": "No messages — start the conversation.",
@@ -2110,6 +2130,7 @@ const de: Record<MobileMessageKey, string> = {
   "m.kind.trip": "Fahrt",
   "m.kind.checklist": "Checkliste",
   "m.kind.expense": "Ausgabe",
+  "m.kind.chat": "Nachricht",
   "m.fab.defect": "Mangel",
 
   "m.offline.pending": "Zu senden: {n} — tippen zum Wiederholen",
@@ -2693,6 +2714,12 @@ const de: Record<MobileMessageKey, string> = {
     "Zähler auf 0 zurücksetzen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
   "m.tacho.resetDone": "Zähler zurückgesetzt.",
   "m.tacho.liveOff": "Wähle eine Tätigkeit, um den Live-Zähler zu starten.",
+  "m.tacho.stopTitle": "Halt erkannt",
+  "m.tacho.stopBody":
+    "Du stehst seit {min} Min., der Zähler zählt aber weiter Lenkzeit. Was soll ab dem Halt eingetragen werden?",
+  "m.tacho.stopKeep": "Weiterhin Fahrt",
+  "m.tacho.stopHint":
+    "Halt länger als 3 Min. im Fahrt-Modus? Die App fragt, was eingetragen wird — sie schaltet die Tätigkeit nie von selbst um.",
   "m.tacho.notifWarn": "In 30 Min. Pause erforderlich (Limit 4 h 30 Lenkzeit).",
   "m.tacho.notifNow": "Zeit für die Pause — Limit 4 h 30 erreicht!",
   "m.tacho.scan": "Display scannen",
@@ -2991,7 +3018,10 @@ const de: Record<MobileMessageKey, string> = {
   "m.chat.createFail": "Kanal konnte nicht erstellt werden.",
   "m.chat.loadFail": "Chat konnte nicht geladen werden — Netz prüfen.",
   "m.chat.sendFail": "Nicht gesendet — bei Netz erneut versuchen.",
-  "m.chat.photoFail": "Foto konnte nicht gesendet werden — bei besserem Netz versuchen.",
+  "m.chat.photoNeedsNetwork":
+    "Das Foto braucht Netz — reiner Text wird auch offline gesendet. Bei Netz erneut versuchen.",
+  "m.chat.sending": "wird gesendet…",
+  "m.chat.retryQueued": "wartet auf Netz — zum Wiederholen tippen",
   "m.chat.membersChangeFail": "Mitglieder konnten nicht geändert werden.",
   "m.chat.renameFail": "Umbenennen fehlgeschlagen.",
   "m.chat.empty": "Keine Nachrichten — beginne das Gespräch.",
@@ -3139,6 +3169,7 @@ const uk: Record<MobileMessageKey, string> = {
   "m.kind.trip": "Рейс",
   "m.kind.checklist": "Чек-лист",
   "m.kind.expense": "Витрата",
+  "m.kind.chat": "Повідомлення",
   "m.fab.defect": "Несправність",
 
   "m.offline.pending": "До надсилання: {n} — торкніться, щоб повторити",
@@ -3719,6 +3750,12 @@ const uk: Record<MobileMessageKey, string> = {
   "m.tacho.resetConfirm": "Скинути лічильник і почати з 0? Цю дію не можна скасувати.",
   "m.tacho.resetDone": "Лічильник скинуто.",
   "m.tacho.liveOff": "Обери діяльність, щоб запустити живий лічильник.",
+  "m.tacho.stopTitle": "Виявлено зупинку",
+  "m.tacho.stopBody":
+    "Ти стоїш {min} хв, а лічильник далі рахує керування. Що записати від моменту зупинки?",
+  "m.tacho.stopKeep": "Далі керування",
+  "m.tacho.stopHint":
+    "Зупинка довша за 3 хв у режимі керування? Застосунок запитає, що записати — сам ніколи не перемикає діяльність.",
   "m.tacho.notifWarn": "Через 30 хв потрібна перерва (ліміт 4 год 30 керування).",
   "m.tacho.notifNow": "Час на перерву — ліміт 4 год 30 досягнуто!",
   "m.tacho.scan": "Сканувати дисплей",
@@ -4016,7 +4053,10 @@ const uk: Record<MobileMessageKey, string> = {
   "m.chat.createFail": "Не вдалося створити канал.",
   "m.chat.loadFail": "Не вдалося завантажити чат — перевірте мережу.",
   "m.chat.sendFail": "Не надіслано — спробуйте за наявності мережі.",
-  "m.chat.photoFail": "Не вдалося надіслати фото — спробуйте за кращого сигналу.",
+  "m.chat.photoNeedsNetwork":
+    "Фото потребує зв'язку — сам текст надішлеться й офлайн. Спробуйте за наявності сигналу.",
+  "m.chat.sending": "надсилання…",
+  "m.chat.retryQueued": "чекає на зв'язок — торкніться, щоб повторити",
   "m.chat.membersChangeFail": "Не вдалося змінити учасників.",
   "m.chat.renameFail": "Не вдалося змінити назву.",
   "m.chat.empty": "Немає повідомлень — почніть розмову.",

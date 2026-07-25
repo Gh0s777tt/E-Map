@@ -1,6 +1,8 @@
 /**
  * #291: Rozmowa w kanale (ogólny lub wątek) — realtime, zdjęcia (📷 → Storage),
  * push do odbiorców po wysłaniu; zarząd zmienia nazwę i członków kanału.
+ * #368: wysyłka idzie przez outbox (offline-first) z dymkiem „wysyłanie…",
+ * a wejście do rozmowy zeruje licznik nieprzeczytanych.
  */
 import {
   addThreadMembers,
@@ -13,7 +15,6 @@ import {
   listThreadMembers,
   removeThreadMember,
   renameThread,
-  sendMessage,
   subscribeMessages,
   uploadChatPhotoBinary,
 } from "@e-logistic/api";
@@ -36,10 +37,31 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../components/AuthProvider";
-import { notifyChat } from "../lib/chatNotify";
+import { markChannelRead, setOpenChatChannel } from "../lib/chatUnread";
 import { tap, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
+import {
+  type ChatOutboxInput,
+  enqueue,
+  flushQueued,
+  listOutbox,
+  removeOutbox,
+  subscribeOutbox,
+} from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
+
+/** Wiadomość czekająca w outboxie — dymek „wysyłanie…" zanim dotrze na serwer. */
+interface PendingMessage {
+  id: string;
+  body: string;
+  photoPath: string | null;
+  createdAt: string;
+  synced: boolean;
+  failed: boolean;
+}
+
+/** Wiersz listy: potwierdzona wiadomość z serwera albo wpis z kolejki. */
+type Row = { kind: "sent"; msg: ChatMessage } | { kind: "pending"; item: PendingMessage };
 
 /** Zdjęcie w dymku — pobiera podpisany URL raz i cache'uje w stanie. */
 function ChatImage({ path }: { path: string }) {
@@ -65,13 +87,14 @@ export default function ChatThreadScreen() {
   const myLabel = session?.user?.email ?? t("m.chat.me");
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [pending, setPending] = useState<PendingMessage[]>([]);
   const [text, setText] = useState("");
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [manage, setManage] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const listRef = useRef<FlatList<ChatMessage>>(null);
+  const listRef = useRef<FlatList<Row>>(null);
   // Panel zarządzania kanałem
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -93,6 +116,8 @@ export default function ChatThreadScreen() {
         cleanup = subscribeMessages(sb, m.companyId, (msg) => {
           if ((msg.thread_id ?? null) !== threadId) return;
           setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+          // #368: rozmowa jest otwarta — czytamy na bieżąco, więc przesuwamy znacznik.
+          if (msg.sender_id !== me) markChannelRead(threadId, m.companyId);
         });
       } catch {
         if (alive) setErr(t("m.chat.loadFail"));
@@ -102,7 +127,68 @@ export default function ChatThreadScreen() {
       alive = false;
       cleanup?.();
     };
-  }, [threadId, t]);
+  }, [threadId, me, t]);
+
+  // #368: otwarty wątek nie liczy się do badge'a — zgłaszamy go magazynowi
+  // liczników i od razu oznaczamy jako przeczytany.
+  useEffect(() => {
+    if (!companyId) return;
+    setOpenChatChannel(threadId, true);
+    markChannelRead(threadId, companyId);
+    return () => {
+      setOpenChatChannel(null, false);
+    };
+  }, [companyId, threadId]);
+
+  // #368: dymki z kolejki offline (ten wątek) — odświeżane przy każdej zmianie outboxu.
+  // `userId` filtrujemy jak w `syncItem` (współdzielony telefon): kierowca B nie
+  // może zobaczyć ani skasować wiadomości kierowcy A czekającej w kolejce.
+  const refreshPending = useCallback(async () => {
+    const items = await listOutbox("chat");
+    setPending(
+      items
+        .filter((it) => {
+          const input = it.input as ChatOutboxInput;
+          return (
+            (input.threadId ?? null) === threadId &&
+            (!companyId || input.companyId === companyId) &&
+            (!it.userId || it.userId === me)
+          );
+        })
+        .map((it) => {
+          const input = it.input as ChatOutboxInput;
+          return {
+            id: it.id,
+            body: input.body,
+            photoPath: input.photoPath ?? null,
+            createdAt: it.createdAt,
+            synced: it.status === "synced",
+            failed: it.status === "error",
+          };
+        })
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    );
+  }, [threadId, companyId, me]);
+
+  useEffect(() => {
+    void refreshPending();
+    return subscribeOutbox(() => {
+      void refreshPending();
+    });
+  }, [refreshPending]);
+
+  // Sprzątanie kolejki: wpis potwierdzony przez serwer (jest już w `messages`)
+  // albo zsynchronizowany dawno temu nie ma po co zajmować outboxu i podbijać
+  // paska „czeka na wysyłkę". Świeżo zsynchronizowane (<60 s) zostawiamy, żeby
+  // dymek nie mrugnął, zanim realtime dostarczy prawdziwą wiadomość.
+  useEffect(() => {
+    const ids = new Set(messages.map((m) => m.id));
+    for (const p of pending) {
+      if (!p.synced) continue;
+      const stale = Date.now() - new Date(p.createdAt).getTime() > 60_000;
+      if (ids.has(p.id) || stale) void removeOutbox(p.id);
+    }
+  }, [messages, pending]);
 
   const send = useCallback(async () => {
     const body = text.trim();
@@ -110,11 +196,13 @@ export default function ChatThreadScreen() {
     setBusy(true);
     setErr(null);
     try {
-      const msg = await sendMessage(getSupabase(), companyId, body, myLabel, { threadId });
+      // #368: wiadomość ląduje NAJPIERW w outboxie (lokalnie, natychmiast) —
+      // bez zasięgu nic nie ginie, a `enqueue` sam odpala próbę wysyłki w tle.
+      // Dymek „wysyłanie…" pochodzi z kolejki; potwierdzoną treść przynosi realtime.
+      const input: ChatOutboxInput = { companyId, threadId, body, senderLabel: myLabel };
+      await enqueue("chat", input, new Date().toISOString());
       tap();
-      setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
       setText("");
-      notifyChat(threadId, body);
     } catch {
       warn();
       setErr(t("m.chat.sendFail"));
@@ -131,18 +219,22 @@ export default function ChatThreadScreen() {
       const res = await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true });
       const asset = res.assets?.[0];
       if (res.canceled || !asset?.base64) return;
-      const sb = getSupabase();
-      const path = await uploadChatPhotoBinary(sb, companyId, decode(asset.base64), {
+      // Sam upload do Storage WYMAGA zasięgu (nie trzymamy zdjęć w AsyncStorage).
+      // Gdy się uda — wiadomość leci już przez outbox, więc chwilowy brak sieci
+      // przy samym INSERT-cie nie gubi zdjęcia.
+      const path = await uploadChatPhotoBinary(getSupabase(), companyId, decode(asset.base64), {
         mime: asset.mimeType ?? "image/jpeg",
       });
-      const msg = await sendMessage(sb, companyId, t("m.chat.photo"), myLabel, {
+      const input: ChatOutboxInput = {
+        companyId,
         threadId,
+        body: t("m.chat.photo"),
+        senderLabel: myLabel,
         photoPath: path,
-      });
-      setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-      notifyChat(threadId, t("m.chat.photo"));
+      };
+      await enqueue("chat", input, new Date().toISOString());
     } catch {
-      setErr(t("m.chat.photoFail"));
+      setErr(t("m.chat.photoNeedsNetwork"));
     } finally {
       setPhotoBusy(false);
     }
@@ -194,6 +286,14 @@ export default function ChatThreadScreen() {
     }
   }
 
+  // Widok = potwierdzone wiadomości + wpisy z kolejki, których serwer jeszcze nie
+  // odesłał (klucz to ten sam UUID, więc po dostarczeniu dymek nie dubluje się).
+  const confirmed = new Set(messages.map((m) => m.id));
+  const rows: Row[] = [
+    ...messages.map((msg): Row => ({ kind: "sent", msg })),
+    ...pending.filter((p) => !confirmed.has(p.id)).map((item): Row => ({ kind: "pending", item })),
+  ];
+
   return (
     <KeyboardAvoidingView
       style={s.screen}
@@ -215,12 +315,31 @@ export default function ChatThreadScreen() {
       />
       <FlatList
         ref={listRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
+        data={rows}
+        keyExtractor={(r) => (r.kind === "sent" ? r.msg.id : r.item.id)}
         contentContainerStyle={s.list}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={<Text style={s.empty}>{err ?? t("m.chat.empty")}</Text>}
-        renderItem={({ item }) => {
+        renderItem={({ item: row }) => {
+          // #368: dymek z kolejki — zawsze własny, ze statusem zamiast godziny.
+          if (row.kind === "pending") {
+            const p = row.item;
+            return (
+              <Pressable style={[s.bubbleRow, s.bubbleRowMine]} onPress={() => flushQueued()}>
+                <View style={[s.bubble, s.bubbleMine, s.bubblePending]}>
+                  {p.photoPath ? (
+                    <ChatImage path={p.photoPath} />
+                  ) : (
+                    <Text style={s.bodyMine}>{p.body}</Text>
+                  )}
+                  <Text style={[s.time, s.timeMine]}>
+                    {p.failed ? t("m.chat.retryQueued") : t("m.chat.sending")}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }
+          const item = row.msg;
           const mine = item.sender_id === me;
           return (
             <View style={[s.bubbleRow, mine && s.bubbleRowMine]}>
@@ -323,6 +442,8 @@ const s = StyleSheet.create({
     borderBottomLeftRadius: 6,
   },
   bubbleMine: { backgroundColor: palette.red, borderBottomRightRadius: 6 },
+  /** #368: dymek jeszcze niedostarczony — przygaszony, dotknięcie ponawia wysyłkę. */
+  bubblePending: { opacity: 0.6 },
   sender: { color: palette.red, fontSize: 11, fontWeight: "700" },
   body: { color: palette.offWhite, fontSize: 15, lineHeight: 20 },
   bodyMine: { color: palette.white, fontSize: 15, lineHeight: 20 },

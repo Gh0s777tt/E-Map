@@ -3,6 +3,7 @@
  * Render (MapLibre) jest po stronie aplikacji; tu jest logika routingu.
  */
 
+export * from "./cache";
 export * from "./disruptions";
 export * from "./factory";
 export * from "./fuelprice";

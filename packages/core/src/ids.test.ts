@@ -11,7 +11,11 @@ describe("newId", () => {
   });
 
   it("działa bez crypto.randomUUID — jak Hermes/React Native (#355)", () => {
-    const real = globalThis.crypto;
+    // #368: `lib` to ES2023 (bez DOM), więc `globalThis.crypto` nie ma typu — rzutujemy
+    // dokładnie tak jak produkcyjny `ids.ts`, zamiast wpuszczać `any` do bramki tsc.
+    const real = (
+      globalThis as unknown as { crypto: { getRandomValues(a: Uint8Array): Uint8Array } }
+    ).crypto;
     vi.stubGlobal("crypto", { getRandomValues: real.getRandomValues.bind(real) });
     expect(newId()).toMatch(UUID_V4);
   });

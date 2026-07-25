@@ -44,9 +44,12 @@ function readPins(): string[] {
 export function SidebarNav({
   groups,
   onNavigate,
+  badges,
 }: {
   groups: NavGroup[];
   onNavigate?: () => void;
+  /** #368: liczniki przy pozycjach nawigacji (klucz = href), np. nieprzeczytany czat. */
+  badges?: Record<string, number>;
 }) {
   const pathname = usePathname();
   const t = useT();
@@ -87,6 +90,7 @@ export function SidebarNav({
   function renderLink(i: NavItem) {
     const active = isActive(pathname, i.href);
     const pinned = pins.includes(i.href);
+    const badge = badges?.[i.href] ?? 0;
     return (
       <div key={i.href} className="app-navrow">
         <Link
@@ -97,6 +101,16 @@ export function SidebarNav({
         >
           {i.icon && <Icon name={i.icon} size={16} strokeWidth={1.8} />}
           <span className="app-navlabel">{i.label}</span>
+          {badge > 0 && (
+            <span
+              className="app-navbadge"
+              role="status"
+              title={t("nav.unread")}
+              aria-label={t("nav.unread")}
+            >
+              {badge > 99 ? "99+" : badge}
+            </span>
+          )}
         </Link>
         <button
           type="button"

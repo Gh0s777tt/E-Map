@@ -48,6 +48,7 @@ const KIND_KEY = {
   trip: "m.kind.trip",
   checklist: "m.kind.checklist",
   expense: "m.kind.expense",
+  chat: "m.kind.chat",
 } as const;
 const KIND_GLYPH: Record<OutboxItem["kind"], string> = {
   fuel: "⛽",
@@ -55,6 +56,7 @@ const KIND_GLYPH: Record<OutboxItem["kind"], string> = {
   trip: "🚚",
   checklist: "✅",
   expense: "🧾",
+  chat: "💬",
 };
 
 function fmt(n: number | null, digits = 0): string {
@@ -82,7 +84,15 @@ export default function StartScreen() {
 
   const load = useCallback(async () => {
     listOutbox()
-      .then((items) => setOutbox([...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))))
+      // #368: „Ostatnie aktywności" to feed formularzy — wiadomości czatu (też
+      // przechodzą przez outbox) mają własny ekran i badge, więc ich tu nie mieszamy.
+      .then((items) =>
+        setOutbox(
+          items
+            .filter((i) => i.kind !== "chat")
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+        ),
+      )
       .catch(() => {});
     reloadCard().catch(() => {});
     reloadOwner().catch(() => {});

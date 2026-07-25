@@ -2,6 +2,7 @@
  * Warstwa danych: czat firmowy (#290, kanały #291) — kanał ogólny firmy
  * (thread_id NULL) + nazwane wątki z członkami (np. osobny per kierowca).
  * Zdjęcia w wiadomościach przez Storage (photo_path). Realtime INSERT.
+ * #368: znaczniki przeczytania (`chat_reads`) + liczniki nieprzeczytanych.
  */
 import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
@@ -63,6 +64,43 @@ export async function sendMessage(
     .single();
   if (error) throw error;
   return data as ChatMessage;
+}
+
+/**
+ * #368: wysyłka **idempotentna** z identyfikatorem klienta (outbox mobile) —
+ * dokładnie wzorzec `insertFuelLog`/`insertTripEvent`: `id` to UUID wygenerowany
+ * na urządzeniu (PK tabeli), więc ponowna synchronizacja tego samego wpisu leci
+ * jako `ON CONFLICT (id) DO NOTHING` — bez duplikatu i bez błędu PK.
+ * `maybeSingle`: przy konflikcie baza nie zwraca wiersza → `null`.
+ */
+export async function upsertMessage(
+  client: SupabaseClient,
+  msg: {
+    id: string;
+    companyId: string;
+    body: string;
+    senderLabel: string;
+    threadId?: string | null;
+    photoPath?: string | null;
+  },
+): Promise<ChatMessage | null> {
+  const { data, error } = await client
+    .from("messages")
+    .upsert(
+      {
+        id: msg.id,
+        company_id: msg.companyId,
+        thread_id: msg.threadId ?? null,
+        body: msg.body,
+        sender_label: msg.senderLabel,
+        photo_path: msg.photoPath ?? null,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    )
+    .select(COLS)
+    .maybeSingle();
+  if (error) throw error;
+  return data as ChatMessage | null;
 }
 
 /**
@@ -212,4 +250,60 @@ export async function chatPhotoUrl(client: SupabaseClient, path: string): Promis
   const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;
   return data.signedUrl;
+}
+
+// ── Nieprzeczytane (#368) ────────────────────────────────────────────────
+
+/** Klucz kanału ogólnego w mapach liczników (thread_id NULL nie jest kluczem obiektu). */
+export const GENERAL_CHANNEL = "general";
+
+/** Liczniki nieprzeczytanych: klucz = id wątku albo `GENERAL_CHANNEL`. */
+export interface ChatUnread {
+  byChannel: Record<string, number>;
+  total: number;
+}
+
+/** Klucz kanału w mapie liczników (null = kanał ogólny firmy). */
+export function chatChannelKey(threadId: string | null): string {
+  return threadId ?? GENERAL_CHANNEL;
+}
+
+/** Pusty zestaw liczników (stan początkowy / offline). */
+export function emptyChatUnread(): ChatUnread {
+  return { byChannel: {}, total: 0 };
+}
+
+/**
+ * Nieprzeczytane per kanał + suma (RPC `chat_unread_counts`, migracja 0085).
+ * Baza liczy tylko wiadomości cudze i nowsze niż znacznik `chat_reads`; RLS
+ * zawęża do kanałów widocznych dla wywołującego.
+ */
+export async function chatUnreadCounts(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<ChatUnread> {
+  const { data, error } = await client.rpc("chat_unread_counts", { p_company: companyId });
+  if (error) throw error;
+  const byChannel: Record<string, number> = {};
+  let total = 0;
+  for (const row of data ?? []) {
+    const n = Number(row.unread) || 0;
+    if (n <= 0) continue;
+    byChannel[chatChannelKey(row.thread)] = n;
+    total += n;
+  }
+  return { byChannel, total };
+}
+
+/** Oznacza kanał jako przeczytany „do teraz” (upsert; znacznik się nie cofa). */
+export async function markChatRead(
+  client: SupabaseClient,
+  companyId: string,
+  threadId: string | null = null,
+): Promise<void> {
+  const { error } = await client.rpc("chat_mark_read", {
+    p_company: companyId,
+    p_thread: threadId,
+  });
+  if (error) throw error;
 }

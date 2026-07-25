@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { geocode } from "./geocode";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearGeocodeCache, geocode } from "./geocode";
 
 /** Mockuje globalny fetch sekwencją odpowiedzi (po jednej na kolejne wywołanie). */
 function stubFetch(...responses: Array<{ ok?: boolean; status?: number; json?: unknown }>) {
@@ -15,6 +15,9 @@ function stubFetch(...responses: Array<{ ok?: boolean; status?: number; json?: u
   return fn;
 }
 
+// #368: geokoder ma pamięć podręczną modułową — bez czyszczenia wynik z jednego
+// testu wyciekałby do następnego (te same frazy).
+beforeEach(() => clearGeocodeCache());
 afterEach(() => vi.unstubAllGlobals());
 
 describe("geocode — Nominatim (bez klucza)", () => {
@@ -103,5 +106,61 @@ describe("geocode — sterowanie i fallback", () => {
     const fetchFn = stubFetch({ json: [] });
     await geocode("Berlin", { limit: 3 });
     expect(String(fetchFn.mock.calls[0]?.[0])).toContain("limit=3");
+  });
+});
+
+describe("geocode — pamięć podręczna (#368)", () => {
+  it("powtórzone zapytanie nie woła API drugi raz", async () => {
+    const fetchFn = stubFetch({ json: [{ display_name: "Berlin, DE", lat: "52", lon: "13" }] });
+    const first = await geocode("Berlin");
+    const second = await geocode("Berlin");
+    expect(second).toEqual(first);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizuje frazę: wielkość liter i nadmiarowe spacje trafiają w ten sam wpis", async () => {
+    const fetchFn = stubFetch({ json: [{ display_name: "Berlin, DE", lat: "52", lon: "13" }] });
+    await geocode("Berlin Mitte");
+    await geocode("  berlin   MITTE ");
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("równoległe zapytania (seria naciśnięć klawisza) dzielą jedno wywołanie", async () => {
+    const fetchFn = stubFetch({ json: [{ display_name: "Berlin, DE", lat: "52", lon: "13" }] });
+    const [a, b] = await Promise.all([geocode("Berlin"), geocode("Berlin")]);
+    expect(a).toEqual(b);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("inny limit = osobny wpis (inna liczba wyników)", async () => {
+    const hit = { json: [{ display_name: "Berlin, DE", lat: "52", lon: "13" }] };
+    const fetchFn = stubFetch(hit, hit);
+    await geocode("Berlin", { limit: 3 });
+    await geocode("Berlin", { limit: 6 });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("inne źródło (MapTiler vs Nominatim) = osobny wpis", async () => {
+    const fetchFn = stubFetch(
+      { json: { features: [{ place_name: "Wien, AT", center: [16.37, 48.2] }] } },
+      { json: [{ display_name: "Wien, AT", lat: "48.2", lon: "16.37" }] },
+    );
+    await geocode("Wien", { maptilerKey: "K" });
+    await geocode("Wien");
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(String(fetchFn.mock.calls[1]?.[0])).toContain("nominatim");
+  });
+
+  it("pusty wynik NIE jest pamiętany — awaria dostawcy nie blokuje wyszukiwarki", async () => {
+    const fetchFn = stubFetch(
+      { ok: false, status: 500 }, // MapTiler padł
+      { ok: false, status: 503 }, // awaryjny Nominatim też → []
+      { json: { features: [{ place_name: "Berlin, DE", center: [13, 52] }] } },
+    );
+    expect(await geocode("Berlin", { maptilerKey: "K" })).toEqual([]);
+    expect(await geocode("Berlin", { maptilerKey: "K" })).toEqual([
+      { label: "Berlin, DE", lat: 52, lng: 13 },
+    ]);
+    expect(fetchFn).toHaveBeenCalledTimes(3);
   });
 });

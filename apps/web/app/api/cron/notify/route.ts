@@ -12,6 +12,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
+ * #368: cichy błąd w cronie = funkcja, która „działa" latami nic nie robiąc. Repo nie
+ * loguje do konsoli, więc jedynym kanałem jest obserwowalność (#306).
+ */
+function reportCronFailure(step: string, err: unknown): void {
+  import("@sentry/nextjs")
+    .then((Sentry) => Sentry.captureException(err, { tags: { cron: step } }))
+    .catch(() => {
+      // brak Sentry (np. bez DSN) — cron i tak kontynuuje pozostałe kroki
+    });
+}
+
+/**
  * Cron (np. Vercel Cron, codziennie): dosyła nieprzeczytane powiadomienia z aplikacji
  * jako push (przeładowanie, wygasające terminy, usterki). Agreguje per użytkownik.
  * Autoryzacja: nagłówek `Authorization: Bearer <CRON_SECRET>` (ustawiany przez Vercel Cron).
@@ -29,10 +41,19 @@ export async function GET(request: Request) {
   const admin = createSupabaseAdminClient();
 
   // #292: najpierw wygeneruj alerty (idempotentne dedup_key), potem dosyłka push.
-  const generated = await generateOperationalAlerts(admin).catch(() => -1);
+  // #368: błąd NIE może ginąć bez śladu — dokładnie to ukrywało przez wiele wydań fakt,
+  // że `insertAlerts` rzucał 42P10 i cron nie wstawiał ANI JEDNEGO alertu (zwracając 200).
+  // Nadal nie przerywamy crona (dosyłka push i raporty mają się wykonać), ale raportujemy.
+  const generated = await generateOperationalAlerts(admin).catch((e) => {
+    reportCronFailure("generateOperationalAlerts", e);
+    return -1;
+  });
   const isMonday = new Date().getUTCDay() === 1;
   const weeklyResult = isMonday
-    ? await generateWeeklyReports(admin).catch(() => null)
+    ? await generateWeeklyReports(admin).catch((e) => {
+        reportCronFailure("generateWeeklyReports", e);
+        return null;
+      })
     : { inserted: 0, reports: [] };
   const weekly = weeklyResult ? weeklyResult.inserted : -1;
 

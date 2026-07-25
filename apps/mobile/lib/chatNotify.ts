@@ -8,7 +8,12 @@ import { getSupabase } from "./supabase";
 
 const NOTIFY_URL = `${WEB_BASE_URL}/api/chat/notify`;
 
-export function notifyChat(threadId: string | null, preview: string): void {
+/**
+ * #368: przekazujemy `companyId` — bez niego serwer musiał zgadywać firmę nadawcy
+ * spośród jego członkostw, co przy koncie w dwóch firmach rozsyłało podgląd treści
+ * do niewłaściwej z nich.
+ */
+export function notifyChat(threadId: string | null, preview: string, companyId?: string): void {
   (async () => {
     const { data } = await getSupabase().auth.getSession();
     const token = data.session?.access_token;
@@ -16,7 +21,7 @@ export function notifyChat(threadId: string | null, preview: string): void {
     await fetch(NOTIFY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ threadId, preview: preview.slice(0, 140) }),
+      body: JSON.stringify({ threadId, preview: preview.slice(0, 140), companyId }),
     });
   })().catch(() => {});
 }

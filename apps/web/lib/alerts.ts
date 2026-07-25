@@ -5,9 +5,18 @@
  *
  * Reguły:
  *  • opóźniona dostawa  — zlecenie w trasie/przypisane po planowanej dacie rozładunku,
- *  • AETR               — wczorajsza jazda > 9 h (warning) / > 10 h (alert),
+ *  • AETR               — wczorajsza jazda > 9 h (warning) / > 10 h (danger),
  *  • terminy pojazdów   — przegląd / OC / leasing w ciągu 30 dni,
+ *  • #368 terminy kierowców — prawo jazdy / kod 95 / badania / psychotechnika / ADR (30 dni),
+ *  • #368 karty paliwowe    — `valid_until` w ciągu 30 dni,
+ *  • #368 usterki krytyczne — otwarte zgłoszenie „high" lub z kontrolką na desce,
  *  • raport tygodniowy  — poniedziałkowe podsumowanie: dostawy, paliwo, wydatki.
+ *
+ * #368: dedup_key terminów jest CELOWO w formacie SQL-owej funkcji
+ * `generate_expiry_notifications` (0031) — `veh:<id>:<kind>:<YYYYMMDD>`,
+ * `drv:…`, `card:…`. Ta funkcja odpala się z przeglądarki (NotificationBell),
+ * cron z admin clienta; wspólny klucz sprawia, że oba źródła są dla siebie
+ * idempotentne i właściciel nie dostaje tego samego alertu dwa razy.
  */
 import type { createSupabaseAdminClient } from "@e-logistic/api/admin";
 
@@ -39,12 +48,24 @@ interface AlertRow {
   dedup_key: string;
 }
 
+/** `YYYY-MM-DD` → `YYYYMMDD` — format daty w dedup_key (zgodny z SQL `to_char`). */
+function compactDate(iso: string): string {
+  return iso.replaceAll("-", "");
+}
+
 async function insertAlerts(admin: Admin, rows: AlertRow[]): Promise<number> {
   if (rows.length === 0) return 0;
-  // upsert ignoreDuplicates = ON CONFLICT DO NOTHING na (user_id, dedup_key).
+  // #368 KRYTYCZNE: BEZ `onConflict`. Indeks `notifications_dedup` (0017) jest CZĘŚCIOWY
+  // (`where dedup_key is not null`), a Postgres nie potrafi dopasować częściowego indeksu do
+  // jawnego celu `ON CONFLICT (user_id, dedup_key)` bez powtórzenia predykatu — rzucał 42P10
+  // („no unique or exclusion constraint matching the ON CONFLICT specification"), co cron
+  // połykał (`.catch(() => -1)`) i zwracał 200. Efekt: silnik alertów NIGDY nic nie wstawiał
+  // (opóźnienia, AETR, terminy pojazdów). Potwierdzone empirycznie na produkcji: wariant
+  // z celem → 42P10, wariant nietargetowany → OK. Nietargetowane `ON CONFLICT DO NOTHING`
+  // korzysta z każdego indeksu unikalnego, w tym częściowego. Ta sama pułapka co w 0018/0069.
   const { error, count } = await admin
     .from("notifications")
-    .upsert(rows, { onConflict: "user_id,dedup_key", ignoreDuplicates: true, count: "exact" });
+    .upsert(rows, { ignoreDuplicates: true, count: "exact" });
   if (error) throw error;
   return count ?? rows.length;
 }
@@ -54,7 +75,21 @@ export async function generateOperationalAlerts(admin: Admin): Promise<number> {
   const managers = await managersByCompany(admin);
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-  const horizon = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  // #368: horyzont ostrzegania jest USTAWIENIEM FIRMY (`companies.notify_days_ahead`,
+  // 1–90, edytowalne w Ustawieniach) i respektuje go bliźniacza funkcja SQL
+  // `generate_expiry_notifications` (0074). Cron miał 30 dni na sztywno, więc po
+  // ujednoliceniu `dedup_key` z tą funkcją nadpisywałby wybór właściciela (firma
+  // z ustawionymi 7 dniami i tak dostawałaby alerty na 30 dni naprzód).
+  const dayMs = 86_400_000;
+  const horizonDefault = new Date(Date.now() + 30 * dayMs).toISOString().slice(0, 10);
+  const { data: horizonRows } = await admin.from("companies").select("id, notify_days_ahead");
+  const horizonOf = new Map(
+    (horizonRows ?? []).map((c) => [
+      c.id as string,
+      new Date(Date.now() + (Number(c.notify_days_ahead) || 30) * dayMs).toISOString().slice(0, 10),
+    ]),
+  );
+  const horizonFor = (companyId: string) => horizonOf.get(companyId) ?? horizonDefault;
   const rows: AlertRow[] = [];
   const fanout = (companyId: string, partial: Omit<AlertRow, "company_id" | "user_id">) => {
     for (const userId of managers.get(companyId) ?? []) {
@@ -93,33 +128,114 @@ export async function generateOperationalAlerts(admin: Admin): Promise<number> {
       type: "aetr",
       title: `🚛 Czas jazdy przekroczony: ${w.driver_name ?? "kierowca"}`,
       body: `${w.work_date}: ${h} h ${m} m jazdy (norma AETR: 9 h, wyjątkowo 10 h).`,
-      severity: (w.driving as number) > 600 ? "alert" : "warning",
+      severity: (w.driving as number) > 600 ? "danger" : "warning",
       dedup_key: `aetr-${w.id}`,
     });
   }
 
-  // 3) Terminy pojazdów w ≤30 dni (dedup per pojazd+pole+data → nowy alert po zmianie daty).
+  // 3) Terminy pojazdów w ≤30 dni (dedup per pojazd+rodzaj+data → nowy alert po zmianie daty).
   const { data: vehicles } = await admin
     .from("vehicles")
     .select("id, company_id, registration, inspection_expiry, insurance_expiry, leasing_end");
+  const regOf = new Map((vehicles ?? []).map((v) => [v.id as string, v.registration as string]));
   const fields = [
-    ["inspection_expiry", "przegląd techniczny"],
-    ["insurance_expiry", "ubezpieczenie OC"],
-    ["leasing_end", "koniec leasingu"],
+    ["inspection_expiry", "inspection", "przegląd techniczny"],
+    ["insurance_expiry", "insurance", "ubezpieczenie OC"],
+    ["leasing_end", "leasing", "koniec leasingu"],
   ] as const;
   for (const v of vehicles ?? []) {
-    for (const [field, label] of fields) {
+    for (const [field, kind, label] of fields) {
       const date = v[field] as string | null;
-      if (!date || date > horizon) continue;
+      if (!date || date > horizonFor(v.company_id as string)) continue;
       const overdue = date < today;
       fanout(v.company_id as string, {
         type: "vehicle_expiry",
         title: `${overdue ? "🔴" : "🟡"} ${v.registration}: ${label} ${overdue ? "po terminie" : "wkrótce"}`,
         body: `Termin: ${date}.`,
-        severity: overdue ? "alert" : "warning",
-        dedup_key: `veh-${v.id}-${field}-${date}`,
+        severity: overdue ? "danger" : "warning",
+        dedup_key: `veh:${v.id}:${kind}:${compactDate(date)}`,
       });
     }
+  }
+
+  // 4) #368 Terminy dokumentów kierowców w ≤30 dni. Świadomie BEZ imienia
+  //    i nazwiska — PII jest szyfrowane w bazie (0022), a service-role przez
+  //    PostgREST i tak go nie odszyfruje; identycznie robi SQL-owa reguła w 0031.
+  const { data: drivers } = await admin
+    .from("drivers")
+    .select(
+      "id, company_id, license_expiry, code95_expiry, medical_expiry, psychotech_expiry, adr_expiry",
+    );
+  const driverFields = [
+    ["license_expiry", "license", "prawo jazdy"],
+    ["code95_expiry", "code95", "kod 95"],
+    ["medical_expiry", "medical", "badania lekarskie"],
+    ["psychotech_expiry", "psychotech", "badania psychotechniczne"],
+    ["adr_expiry", "adr", "uprawnienia ADR"],
+  ] as const;
+  for (const d of drivers ?? []) {
+    for (const [field, kind, label] of driverFields) {
+      const date = d[field] as string | null;
+      if (!date || date > horizonFor(d.company_id as string)) continue;
+      const overdue = date < today;
+      fanout(d.company_id as string, {
+        type: "driver_document_expiry",
+        title: `${overdue ? "🔴" : "🟡"} Kierowca: ${label} ${overdue ? "po terminie" : "wkrótce"}`,
+        body: `Termin: ${date}. Sprawdź kartotekę: panel → Kierowcy.`,
+        severity: overdue ? "danger" : "warning",
+        dedup_key: `drv:${d.id}:${kind}:${compactDate(date)}`,
+      });
+    }
+  }
+
+  // 5) #368 Karty paliwowe — ważność `valid_until` w ≤30 dni.
+  const { data: cards } = await admin
+    .from("fuel_cards")
+    .select("id, company_id, provider, card_number_masked, valid_until, vehicle_id");
+  for (const c of cards ?? []) {
+    const date = c.valid_until as string | null;
+    if (!date || date > horizonFor(c.company_id as string)) continue;
+    const overdue = date < today;
+    const reg = c.vehicle_id ? regOf.get(c.vehicle_id as string) : null;
+    const cardLabel = [String(c.provider).toUpperCase(), c.card_number_masked ?? ""]
+      .filter(Boolean)
+      .join(" ");
+    fanout(c.company_id as string, {
+      type: "card_expiry",
+      title: `${overdue ? "🔴" : "🟡"} Karta ${cardLabel} ${
+        overdue ? "nieważna" : "wkrótce wygasa"
+      }`,
+      body: `Ważna do: ${date}.${reg ? ` Pojazd: ${reg}.` : ""}`,
+      severity: overdue ? "danger" : "warning",
+      dedup_key: `card:${c.id}:${compactDate(date)}`,
+    });
+  }
+
+  // 6) #368 Usterki krytyczne — otwarte zgłoszenie kierowcy o wadze „high"
+  //    albo z zapaloną kontrolką na desce. Dedup po samym id usterki (bez daty),
+  //    więc każde zgłoszenie alarmuje DOKŁADNIE RAZ, a nie w każdym cyklu crona.
+  //    Okno 30 dni: status „open" bywa porzucany na latach, więc bez dolnej granicy
+  //    PIERWSZY cykl po wdrożeniu wysłałby lawinę alertów `danger` o zdarzeniach
+  //    sprzed miesięcy. Cron ma sygnalizować NOWE rzeczy — całą zaległość i tak widać
+  //    w panelu „Co wymaga uwagi".
+  const defectsSince = new Date(Date.now() - 30 * dayMs).toISOString();
+  const { data: defects } = await admin
+    .from("vehicle_defects")
+    .select("id, company_id, vehicle_id, part, severity, dashboard_light, description")
+    .eq("status", "open")
+    .gte("created_at", defectsSince)
+    .or("severity.eq.high,dashboard_light.is.true");
+  for (const d of defects ?? []) {
+    const reg = regOf.get(d.vehicle_id as string) ?? "pojazd";
+    const light = d.dashboard_light === true;
+    const desc = String(d.description ?? "").slice(0, 160);
+    fanout(d.company_id as string, {
+      type: "defect_critical",
+      title: `🔧 ${reg}: usterka ${d.part}${light ? " (kontrolka)" : ""}`,
+      body: `${desc || "Zgłoszenie kierowcy."} Szczegóły: panel → Raporty.`,
+      severity: "danger",
+      dedup_key: `defect:${d.id}`,
+    });
   }
 
   return insertAlerts(admin, rows);

@@ -120,6 +120,17 @@ export default function CardsPage() {
   }
 
   async function reveal(cardId: string) {
+    // #368: na telefonie odsłonięcie PIN-u wymaga Face ID / kodu urządzenia, a na webie
+    // wystarczał jeden klik — przy niezablokowanym laptopie każdy przechodzący obok
+    // zobaczyłby PIN do karty paliwowej. Wymagamy świadomego potwierdzenia i mówimy
+    // wprost, że odczyt jest audytowany (efekt odstraszający + spójność z mobile).
+    //
+    // Świadomie NIE żądamy tu hasła ani passkey: część kont loguje się przez OAuth /
+    // magic link i nie ma ani jednego, ani drugiego — twardy step-up odciąłby im PIN,
+    // którego kierowca potrzebuje przy automacie. Mocniejszy czynnik (passkey, gdy
+    // użytkownik go ma) to kandydat na osobny update.
+    if (!(await confirm(t("cards.pinRevealConfirm"), { confirmLabel: t("cards.pinReveal") })))
+      return;
     try {
       const value = await getFuelCardPin(getBrowserSupabase(), cardId);
       setPins((p) => ({ ...p, [cardId]: value || t("cards.pinEmpty") }));

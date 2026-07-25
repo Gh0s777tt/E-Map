@@ -30,11 +30,23 @@ export async function loadLiveSegments(): Promise<LiveSegment[]> {
   }
 }
 
-export async function setLiveActivity(activity: LiveActivity): Promise<LiveSegment[]> {
+/**
+ * Przełącza czynność licznika LIVE. `atMs` pozwala datować segment WSTECZ —
+ * używa tego auto-wykrywanie postoju (#368): kierowca potwierdza przerwę teraz,
+ * ale faktycznie stoi od kilku minut, więc jazda nie może się do tej chwili
+ * naliczać. Znacznik jest przycinany do przedziału [start ostatniego segmentu,
+ * teraz], żeby segmenty zostały chronologiczne i nie wyprzedziły zegara.
+ */
+export async function setLiveActivity(
+  activity: LiveActivity,
+  atMs?: number,
+): Promise<LiveSegment[]> {
   const segments = await loadLiveSegments();
   const last = segments[segments.length - 1];
   if (last?.activity !== activity) {
-    segments.push({ activity, start: Date.now() });
+    const now = Date.now();
+    const start = Math.max(last?.start ?? 0, Math.min(atMs ?? now, now));
+    segments.push({ activity, start });
     await AsyncStorage.setItem(KEY, JSON.stringify(segments.slice(-500)));
   }
   return segments;

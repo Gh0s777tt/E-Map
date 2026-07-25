@@ -87,6 +87,24 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* #368: licznik przy pozycji nawigacji (np. nieprzeczytane wiadomości czatu) */
+.app-navbadge {
+  margin-left: auto;
+  background: var(--el-red);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  padding: 0 6px;
+  min-width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.app-navlink-active .app-navbadge {
+  background: #fff;
+  color: var(--el-red);
+}
 /* #294: wiersz nawigacji = link + pinezka (widoczna po najechaniu / gdy przypięta) */
 .app-navrow {
   display: flex;

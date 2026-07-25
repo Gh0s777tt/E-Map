@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
+import { resetChatUnread } from "../lib/chatUnread";
 import { flushQueued } from "../lib/outbox";
 import { registerForPush } from "../lib/push";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
@@ -88,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === "SIGNED_OUT") {
           setHasCachedSession(false);
           void AsyncStorage.removeItem(MARKER_KEY).catch(() => {});
+          resetChatUnread(); // #368: badge czatu nie może przeżyć wylogowania
         }
       }).data.subscription.unsubscribe;
     })();

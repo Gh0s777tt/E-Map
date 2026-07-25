@@ -2,10 +2,12 @@
  * #291: Czat 2.0 — lista kanałów: Ogólny (cała firma) + nazwane wątki.
  * Zarząd tworzy kanały (nazwa + członkowie z listy firmy), np. osobny
  * kanał per kierowca. Kierowca widzi kanały, do których należy.
+ * #368: przy każdym kanale licznik nieprzeczytanych wiadomości.
  */
 import {
   type ChatThread,
   type CompanyMember,
+  chatChannelKey,
   createThread,
   getActiveMembership,
   listCompanyMembers,
@@ -26,12 +28,14 @@ import {
 } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
 import { Card, ListRow, PrimaryButton, SectionTitle, wide } from "../../components/ui";
+import { refreshChatUnread, useChatUnread } from "../../lib/chatUnread";
 import { useT } from "../../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../../lib/supabase";
 
 export default function ChatListScreen() {
   const router = useRouter();
   const t = useT();
+  const unread = useChatUnread();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [manage, setManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -54,6 +58,8 @@ export default function ChatListScreen() {
       if (!m) return;
       setManage(m.role === "owner" || m.role === "dispatcher");
       setThreads(await listThreads(sb, m.companyId));
+      // #368: powrót na listę = dobry moment na świeże liczniki (po wyjściu z rozmowy).
+      void refreshChatUnread();
       setErr(null);
     } catch {
       setErr(t("m.chat.loadChannelsFail"));
@@ -114,6 +120,7 @@ export default function ChatListScreen() {
             glyph="📢"
             title={t("m.chat.general")}
             subtitle={t("m.chat.generalSub")}
+            badge={unread.byChannel[chatChannelKey(null)]}
             onPress={() =>
               router.push({
                 pathname: "/chat-thread",
@@ -128,6 +135,7 @@ export default function ChatListScreen() {
               glyph="💬"
               title={th.name}
               subtitle={t("m.chat.privateSub")}
+              badge={unread.byChannel[chatChannelKey(th.id)]}
               onPress={() =>
                 router.push({ pathname: "/chat-thread", params: { id: th.id, name: th.name } })
               }

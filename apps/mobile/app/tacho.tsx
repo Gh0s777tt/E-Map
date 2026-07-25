@@ -34,6 +34,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   Image,
   Linking,
   Pressable,
@@ -61,6 +62,14 @@ import {
   scheduleBreakAlerts,
   setLiveActivity,
 } from "../lib/tachoLive";
+import {
+  idleStopWatch,
+  noteForeground,
+  noteMotion,
+  STOP_TICK_MS,
+  type StopWatchState,
+  stopTick,
+} from "../lib/tachoStop";
 import { useFleet } from "../lib/useFleet";
 
 const BASE = "https://e-logistic-one.vercel.app/tacho";
@@ -342,14 +351,16 @@ export default function TachoScreen() {
   const lastFix = useRef<{ lat: number; lng: number } | null>(null);
   const currentRef = useRef(current);
   currentRef.current = current;
-  const switchRef = useRef<(a: LiveActivity) => void>(() => {});
+  const switchRef = useRef<(a: LiveActivity, atMs?: number) => void>(() => {});
+  // #368: detektor postoju (czysta logika w lib/tachoStop.ts) + monit dla kierowcy.
+  const stopRef = useRef<StopWatchState>(idleStopWatch());
+  const askStopRef = useRef<(stillMin: number, sinceMs: number) => void>(() => {});
   useEffect(() => {
     loadKmToday().then(setKmToday);
   }, []);
   // #audyt tacho: GPS startuje przy WEJŚCIU na ekran (nie dopiero po ręcznym tapnięciu czynności).
   // Dzięki temu km liczą się automatycznie po ruszeniu, a auto-przełączenie >15 km/h samo otwiera
   // sesję „jazda". Licznik km działa, gdy ekran Tacho jest otwarty (foreground).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: watcher raz na montowanie ekranu
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     let cancelled = false;
@@ -367,10 +378,17 @@ export default function TachoScreen() {
             const fix = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             const prev = lastFix.current;
             lastFix.current = fix;
-            if (prev && currentRef.current?.activity === "driving") {
-              const d = haversineKm(prev, fix);
-              if (d > 0.02 && d < 3) addKmToday(d).then(setKmToday);
+            const moved = prev ? haversineKm(prev, fix) : 0;
+            if (prev && currentRef.current?.activity === "driving" && moved > 0.02 && moved < 3) {
+              addKmToday(moved).then(setKmToday);
             }
+            // #368: każdy odczyt karmi detektor postoju — ruch zeruje jego zegar,
+            // a cisza (brak odczytów przy `distanceInterval` 30 m) go nakręca.
+            stopRef.current = noteMotion(stopRef.current, {
+              speedKmh: kmh,
+              movedKm: moved,
+              nowMs: Date.now(),
+            });
             // auto-wypełnianie: ruszyłeś (>15 km/h) → licznik sam przechodzi na jazdę
             if (kmh != null && kmh > 15 && currentRef.current?.activity !== "driving") {
               switchRef.current("driving");
@@ -387,10 +405,13 @@ export default function TachoScreen() {
     };
   }, []);
 
-  async function switchActivity(a: LiveActivity) {
-    const segs = await setLiveActivity(a);
+  /** `atMs` (tylko auto-pauza #368) datuje segment wstecz na moment zatrzymania. */
+  async function switchActivity(a: LiveActivity, atMs?: number) {
+    const segs = await setLiveActivity(a, atMs);
     setSegments([...segs]);
     setNow(Date.now());
+    // Każda zmiana czynności otwiera nowy postój do obserwacji (zegar od zera).
+    stopRef.current = idleStopWatch();
     if (a === "driving") {
       const st = liveStatus(segs, Date.now());
       await scheduleBreakAlerts(st.toBreakMin, {
@@ -402,6 +423,53 @@ export default function TachoScreen() {
     }
   }
   switchRef.current = switchActivity;
+
+  /**
+   * #368: monit auto-pauzy. Świadomie NIE przełączamy segmentu sami — to zapis
+   * compliance, a fałszywa przerwa jest gorsza niż brak wpisu. Pokazujemy go raz
+   * na wykryty postój (o powtórki dba `stopTick`), a wybór kierowcy datujemy
+   * wstecz na `sinceMs`, żeby jazda nie naliczała się przez czas stania.
+   */
+  function askStop(stillMin: number, sinceMs: number) {
+    Alert.alert(
+      t("m.tacho.stopTitle"),
+      t("m.tacho.stopBody", { min: stillMin }),
+      [
+        { text: t("m.tacho.actBreak"), onPress: () => switchActivity("break", sinceMs) },
+        { text: t("m.tacho.actWork"), onPress: () => switchActivity("work", sinceMs) },
+        { text: t("m.tacho.stopKeep"), style: "cancel" },
+      ],
+      { cancelable: false },
+    );
+  }
+  askStopRef.current = askStop;
+
+  // #368: zegar postoju. Postój poznajemy po BRAKU odczytów GPS (watcher chodzi
+  // z `distanceInterval` 30 m, więc na parkingu nic nie przychodzi), dlatego
+  // sprawdzamy cyklicznie, a nie w callbacku pozycji. W tle nie pytamy — po
+  // powrocie na wierzch dajemy karencję na świeży odczyt, bo o czasie spędzonym
+  // poza ekranem nie wiemy nic (timery i GPS foreground są wtedy zamrożone).
+  // Efekt montuje się raz — całość pracuje na refach, więc lista zależności jest pusta.
+  useEffect(() => {
+    const check = () => {
+      const r = stopTick({
+        state: stopRef.current,
+        driving: currentRef.current?.activity === "driving",
+        foreground: AppState.currentState === "active",
+        nowMs: Date.now(),
+      });
+      stopRef.current = r.state;
+      if (r.prompt && r.sinceMs != null) askStopRef.current(r.stillMin, r.sinceMs);
+    };
+    const id = setInterval(check, STOP_TICK_MS);
+    const sub = AppState.addEventListener("change", (st) => {
+      if (st === "active") stopRef.current = noteForeground(stopRef.current, Date.now());
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, []);
 
   // ── #327: kalkulator ręczny ───────────────────────────────────────
   const [continuous, setContinuous] = useState(0);
@@ -522,6 +590,7 @@ export default function TachoScreen() {
           setSpeed(null);
           setKmToday(0);
           lastFix.current = null;
+          stopRef.current = idleStopWatch(); // #368: zegar postoju też od zera
           // #327 kalkulator ręczny → 0
           setContinuous(0);
           setBreakTaken(0);
@@ -604,6 +673,7 @@ export default function TachoScreen() {
               onPress={async () => {
                 await resetLive();
                 setSegments([]);
+                stopRef.current = idleStopWatch();
               }}
             >
               <Text style={s.liveReset}>✕ {t("m.tacho.liveReset")}</Text>
@@ -614,6 +684,7 @@ export default function TachoScreen() {
         )}
         <Text style={s.hint}>{t("m.tacho.liveHint")}</Text>
         <Text style={s.hint}>{t("m.tacho.gpsHint")}</Text>
+        <Text style={s.hint}>{t("m.tacho.stopHint")}</Text>
       </Card>
 
       {/* Pełny reset licznika — zeruje LIVE, km dnia i kalkulator ręczny */}
