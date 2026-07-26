@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-370-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.213.1-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-371-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.213.2-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,13 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.213.2] — 📱 Mobile 1.94.0 do sklepów (aktualny kod czatu)
+
+- `[#371]` **Nowy build mobile z poprawkami #369.** Build 63 (v1.93.0) powstał PRZED paczką #369, więc zapisywał załączniki czatu pod starą ścieżką — a migracja [0088](supabase/migrations/0088_chat_photos_acl.sql) jest już na produkcji i tę ścieżkę BLOKUJE (fail-closed). Wysłanie build 63 do sklepów oznaczałoby zdjęcia w czacie nie do odczytania. Wersja 1.94.0 niesie nową ścieżkę `{firma}/chat/{wątek|general}/…`, naprawiony magazyn liczników nieprzeczytanych i zdławiony znacznik przeczytania.
+- `[#371]` **Android wraca do obiegu** — ostatni build sklepowy to była wersja 1.90.2 (versionCode 42) z 19 lipca, czyli bez trzech wydań. Nowy build wyrównuje obie platformy.
+
+**Bramki:** bez zmian w kodzie względem #370 — to wydanie pakietowe (bump + build).
 
 ## [1.213.1] — 🗺️ Mapa nigdy nie jest czarna + porządek w kreatorze startu
 
