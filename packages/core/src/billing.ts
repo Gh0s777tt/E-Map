@@ -308,6 +308,15 @@ export interface MonthlyFleetSummary {
   month: string;
   rows: MonthlyVehicleRow[];
   totals: { revenueEur: number; fuelCost: number; adblueCost: number; net: number };
+  /**
+   * Ile wpisów z tego miesiąca nie ma kwoty (`priceTotal === null`).
+   *
+   * Kwota jest w formularzu opcjonalna, a suma traktuje brak jak zero — bez tego
+   * licznika ekran pokazywał „0 €" i wyglądało to na koszt równy zeru, zamiast na
+   * brak danych. Interfejs ma obowiązek to rozróżnić: zero to twierdzenie,
+   * brak to brak.
+   */
+  missingPrice: { fuel: number; adblue: number };
 }
 
 /**
@@ -334,11 +343,17 @@ export function monthlyFleetSummary(input: {
     if (o.status !== "delivered" && o.status !== "invoiced") continue;
     add(rev, o.vehicleId, o.price ?? 0);
   }
+  let missingFuel = 0;
+  let missingAdblue = 0;
   for (const f of input.fuel) {
-    if (inMonth(f.date)) add(fc, f.vehicleId, f.priceTotal ?? 0);
+    if (!inMonth(f.date)) continue;
+    if (f.priceTotal == null) missingFuel++;
+    add(fc, f.vehicleId, f.priceTotal ?? 0);
   }
   for (const a of input.adblue) {
-    if (inMonth(a.date)) add(ac, a.vehicleId, a.priceTotal ?? 0);
+    if (!inMonth(a.date)) continue;
+    if (a.priceTotal == null) missingAdblue++;
+    add(ac, a.vehicleId, a.priceTotal ?? 0);
   }
 
   const keys = new Set<string | null>([...rev.keys(), ...fc.keys(), ...ac.keys()]);
@@ -366,6 +381,7 @@ export function monthlyFleetSummary(input: {
       adblueCost: round2(rows.reduce((s, r) => s + r.adblueCost, 0)),
       net: round2(rows.reduce((s, r) => s + r.net, 0)),
     },
+    missingPrice: { fuel: missingFuel, adblue: missingAdblue },
   };
 }
 

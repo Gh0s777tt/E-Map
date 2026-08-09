@@ -12,6 +12,7 @@ import {
   type FuelCardProvider,
   firstZodError,
   INSURERS,
+  maskCardNumber,
   TRAILER_TYPES,
   VEHICLE_MAKE_GROUPS,
   VEHICLE_TYPES,
@@ -863,8 +864,8 @@ export default function VehiclesPage() {
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {cards.map((c) => (
                             <span key={c.id} style={styles.cardTag}>
-                              💳 {providerLabel(c.provider)} {c.card_number_masked} ·{" "}
-                              {c.discount_percent}%
+                              💳 {providerLabel(c.provider)} {maskCardNumber(c.card_number_masked)}{" "}
+                              · {c.discount_percent}%
                             </span>
                           ))}
                         </div>

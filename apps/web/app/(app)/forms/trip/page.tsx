@@ -22,15 +22,12 @@ import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-function splitPlace(label: string): { city: string; country: string } {
-  const parts = label
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return {
-    city: parts[0] ?? label,
-    country: parts.length > 1 ? (parts[parts.length - 1] ?? "") : "",
-  };
+/**
+ * Awaryjna nazwa miejsca, gdy geokoder nie podał `city` — pierwszy człon etykiety.
+ * Kraju NIE zgadujemy z tekstu: pochodzi z pól strukturalnych `GeoHit` (#372).
+ */
+function firstSegment(label: string): string {
+  return label.split(",")[0]?.trim() || label;
 }
 
 /** Czytelna etykieta zlecenia w pickerze: numer · trasa/ładunek. */
@@ -54,6 +51,9 @@ export default function TripFormPage() {
   const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
   const [country, setCountry] = useState("");
   const [location, setLocation] = useState("");
+  // [#372] Kod pocztowy: schemat i tabela `trip_events` miały go od dawna,
+  // brakowało wyłącznie pola na webie — wpisy z panelu traciły go po cichu.
+  const [postcode, setPostcode] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [weightKg, setWeightKg] = useState("");
@@ -176,7 +176,13 @@ export default function TripFormPage() {
     const base = {
       action,
       vehicleId,
-      place: { country, location: location || undefined, lat: coords?.lat, lng: coords?.lng },
+      place: {
+        country,
+        location: location || undefined,
+        postcode: postcode || undefined,
+        lat: coords?.lat,
+        lng: coords?.lng,
+      },
       odometerKm: Number(odometerKm),
       comment: comment || undefined,
     };
@@ -339,9 +345,10 @@ export default function TripFormPage() {
           <span style={{ fontSize: 12, color: palette.smoke }}>Wyszukaj miejsce (adres → GPS)</span>
           <PlaceSearch
             onPick={(h) => {
-              const p = splitPlace(h.label);
-              setLocation(p.city);
-              if (p.country) setCountry(p.country);
+              setLocation(h.city ?? firstSegment(h.label));
+              const c = h.countryCode ?? h.country;
+              if (c) setCountry(c);
+              if (h.postcode) setPostcode(h.postcode);
               setCoords({ lat: h.lat, lng: h.lng });
             }}
           />
@@ -362,6 +369,14 @@ export default function TripFormPage() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Poznań"
+            />
+          </Field>
+          <Field label={t("form.field.postcode")} error={errors["place.postcode"]}>
+            <input
+              style={input}
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              placeholder="61-001"
             />
           </Field>
         </div>

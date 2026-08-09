@@ -4,6 +4,19 @@ export const pl = {
   "app.tagline": "Platforma dla transportu",
 
   "settings.danger.title": "Strefa niebezpieczna",
+  "settings.account.delete.title": "Usunięcie konta",
+  "settings.account.delete.desc":
+    "Usunięcie jest nieodwracalne. Twoje dane osobowe (profil, dane kadrowe, wiadomości, pozycje GPS, klucze dostępu) zostaną skasowane. Wpisy operacyjne firmy — tankowania, zlecenia, dokumenty — zostaną w danych firmy, ale bez powiązania z Twoją osobą.",
+  "settings.account.delete.summary":
+    "Do usunięcia: {fuel} tankowań, {adblue} wpisów AdBlue, {trip} zdarzeń trasy, {messages} wiadomości.",
+  "settings.account.delete.solo": "Twoja firma „{company}” zostanie usunięta razem z kontem.",
+  "settings.account.delete.owner":
+    "Jesteś właścicielem firmy „{company}” z {members} aktywnymi członkami. Usunięcie konta skasuje CAŁĄ firmę wraz z danymi wszystkich pracowników. Jeśli firma ma działać dalej, najpierw przekaż własność innej osobie.",
+  "settings.account.delete.confirmLabel": "Wpisz USUWAM KONTO, aby potwierdzić:",
+  "settings.account.delete.confirmWord": "USUWAM KONTO",
+  "settings.account.delete.button": "Usuń moje konto",
+  "settings.account.delete.working": "Usuwanie…",
+  "settings.account.delete.fail": "Nie udało się usunąć konta.",
   "settings.danger.desc":
     "Trwale usuwa WSZYSTKIE dane firmy: zlecenia, faktury, tankowania, trasy, flotę, kierowców, kontrahentów, dokumenty i rozliczenia. Zostają: firma, zespół i dziennik audytu. Tej operacji nie można cofnąć.",
   "settings.danger.confirmLabel": "Przepisz nazwę firmy, aby potwierdzić:",
@@ -677,7 +690,7 @@ export const pl = {
   "cards.offline": "Zaloguj się i utwórz firmę, aby zarządzać kartami.",
   "cards.editingHint": "✏️ Edytujesz kartę — zostaw PIN pusty, by go nie zmieniać.",
   "cards.fieldProvider": "Dostawca",
-  "cards.fieldMasked": "Numer (zamaskowany)",
+  "cards.fieldMasked": "Ostatnie 4 cyfry numeru",
   "cards.fieldPin": "PIN (4–6 cyfr)",
   "cards.pinUnchangedPlaceholder": "bez zmian",
   "cards.fieldValidUntil": "Ważna do (mies./rok)",

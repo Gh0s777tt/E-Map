@@ -289,6 +289,20 @@ export default function MonthlyPage() {
         onRetry={load}
       />
 
+      {!loading && !loadErr && summary.missingPrice.fuel + summary.missingPrice.adblue > 0 && (
+        <div style={styles.warn}>
+          <strong>Koszt jest niepełny.</strong> W tym miesiącu{" "}
+          {summary.missingPrice.fuel > 0 && `${summary.missingPrice.fuel} tankowań`}
+          {summary.missingPrice.fuel > 0 && summary.missingPrice.adblue > 0 && " i "}
+          {summary.missingPrice.adblue > 0 && `${summary.missingPrice.adblue} wpisów AdBlue`} nie ma
+          wpisanej kwoty — te pozycje liczą się jako 0 €. Uzupełnij je w{" "}
+          <Link href="/forms/history" style={styles.warnLink}>
+            historii formularzy
+          </Link>
+          , aby zestawienie było prawdziwe.
+        </div>
+      )}
+
       {!loading && !loadErr && summary.rows.length > 0 && (
         <>
           <div style={styles.cards}>
@@ -483,6 +497,19 @@ const styles: Record<string, React.CSSProperties> = {
     color: palette.offWhite,
   },
   cards: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 },
+  // Ostrzeżenie o niepełnych danych — brak kwoty ma być widoczny jako brak,
+  // nigdy jako koszt równy zeru.
+  warn: {
+    marginTop: 20,
+    padding: "12px 14px",
+    borderRadius: 10,
+    border: "1px solid #6b4a00",
+    background: "#241c05",
+    color: "#f0d98a",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+  warnLink: { color: "#ffcf4a", textDecoration: "underline" },
   card: {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,

@@ -3,6 +3,7 @@ import {
   type FuelLogInput,
   firstZodError,
   fuelLogSchema,
+  maskCardNumber,
   parseReceiptText,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
@@ -80,7 +81,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
             }[]
           ).map((r) => ({
             id: r.id,
-            label: `${r.provider} ${r.card_number_masked ?? ""}`.trim(),
+            label: `${r.provider} ${maskCardNumber(r.card_number_masked)}`.trim(),
             registration: r.registration ?? null,
           })),
         ),

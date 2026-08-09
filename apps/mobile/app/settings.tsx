@@ -1,12 +1,19 @@
 /** #285: Ustawienia — konto, powiadomienia push, wersja aplikacji, wylogowanie.
  *  #300: wybór języka aplikacji (Systemowy / PL / EN / DE / UK). */
-import { deleteMyPosition } from "@e-logistic/api";
+
+import {
+  deleteMyAccount,
+  deleteMyPosition,
+  getAccountDeletionPreview,
+  OwnerHasMembersError,
+} from "@e-logistic/api";
 import { MOBILE_LOCALES, type MobileLocale, type MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../components/AuthProvider";
 import { Card, GhostButton, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import {
@@ -34,6 +41,23 @@ const LOCALE_LABEL: Record<MobileLocale, string> = {
   uk: "Українська",
 };
 
+/**
+ * [#372] Dane lokalne kasowane razem z kontem. Sesję czyści `signOut`,
+ * ale te klucze przeżyłyby wylogowanie i po zalogowaniu innego użytkownika
+ * na tym samym telefonie wróciłyby jako cudze — m.in. niezsynchronizowane
+ * formularze w kolejce offline i zgoda na udostępnianie pozycji.
+ */
+const LOCAL_KEYS_TO_WIPE = [
+  "el-outbox",
+  "el-share-position",
+  "el-app-lock",
+  "el-tacho-live",
+  "el-tacho-km",
+  "el-tacho-live-notifs",
+  "el-weekly-rest-notifs",
+  "el-live-activities",
+];
+
 // #351: tryby udostępniania pozycji (kolejność w chooserze). "always" tylko w v2.
 const POS_MODES: PositionShareMode[] = ["off", "foreground", "always"];
 const POS_MODE_LABEL: Record<PositionShareMode, MobileMessageKey> = {
@@ -46,6 +70,8 @@ export default function SettingsScreen() {
   const { session, signOut } = useAuth();
   const { pref, setPref, t } = useLocale();
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  // [#372] Blokuje ponowne kliknięcie w trakcie kasowania — operacja jest nieodwracalna.
+  const [deleting, setDeleting] = useState(false);
   // #311: status PowerSync (offline sync) — tylko gdy skonfigurowany
   const [ps, setPs] = useState<PowerSyncStatusInfo | null>(null);
   useEffect(() => {
@@ -133,6 +159,96 @@ export default function SettingsScreen() {
       setPushMsg(t("m.settings.pushEnabled"));
     } catch (e) {
       setPushMsg(e instanceof Error ? e.message : t("m.settings.pushFail"));
+    }
+  }
+
+  /**
+   * [#372] Usunięcie konta — wymóg App Store 5.1.1(v) i Google Play.
+   *
+   * Przebieg: podgląd skutków z bazy → potwierdzenie → (dla właściciela firmy
+   * z pracownikami) drugie, osobne potwierdzenie → kasowanie → czyszczenie
+   * danych lokalnych → wylogowanie.
+   */
+  async function confirmDeleteAccount() {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      const preview = await getAccountDeletionPreview(getSupabase());
+      const lines = [
+        t("m.settings.deleteAccountHint"),
+        "",
+        t("m.settings.deleteAccountSummary", {
+          fuel: String(preview.fuelLogs),
+          adblue: String(preview.adblueLogs),
+          trip: String(preview.tripEvents),
+          messages: String(preview.messages),
+        }),
+      ];
+      for (const c of preview.soloCompanies) {
+        lines.push("", t("m.settings.deleteAccountSolo", { company: c.name }));
+      }
+
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(t("m.settings.deleteAccountConfirmTitle"), lines.join("\n"), [
+          {
+            text: t("m.settings.deleteAccountCancel"),
+            style: "cancel",
+            onPress: () => resolve(false),
+          },
+          {
+            text: t("m.settings.deleteAccountAction"),
+            style: "destructive",
+            onPress: () => resolve(true),
+          },
+        ]);
+      });
+      if (!proceed) return;
+
+      // Właściciel firmy z pracownikami: usunięcie skasuje CUDZE dane,
+      // więc zgoda musi być osobna i jednoznaczna — nie chowamy jej w pierwszym oknie.
+      let deleteCompany = false;
+      const blocking = preview.blockingCompanies[0];
+      if (blocking) {
+        const owned = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            t("m.settings.deleteAccountOwnerTitle"),
+            t("m.settings.deleteAccountOwnerBody", {
+              company: blocking.name,
+              members: String(blocking.activeMembers),
+            }),
+            [
+              {
+                text: t("m.settings.deleteAccountCancel"),
+                style: "cancel",
+                onPress: () => resolve(false),
+              },
+              {
+                text: t("m.settings.deleteAccountOwnerConfirm"),
+                style: "destructive",
+                onPress: () => resolve(true),
+              },
+            ],
+          );
+        });
+        if (!owned) return;
+        deleteCompany = true;
+      }
+
+      await deleteMyAccount(getSupabase(), { deleteCompany });
+      await AsyncStorage.multiRemove(LOCAL_KEYS_TO_WIPE).catch(() => {});
+      await signOut();
+    } catch (e) {
+      // Właściciel z pracownikami bez zgody na kasowanie firmy — baza broni się sama,
+      // nawet gdyby podgląd zdążył się zdezaktualizować między oknami.
+      const msg =
+        e instanceof OwnerHasMembersError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : t("m.settings.deleteAccountFail");
+      Alert.alert(t("m.settings.deleteAccountFail"), msg);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -274,6 +390,22 @@ export default function SettingsScreen() {
       <View style={{ marginTop: 18 }}>
         <GhostButton label={t("m.settings.logout")} onPress={() => signOut()} />
       </View>
+
+      {/* [#372] Wymóg App Store 5.1.1(v): konto musi dać się usunąć w aplikacji. */}
+      <SectionTitle>{t("m.settings.dangerZone")}</SectionTitle>
+      <Card style={{ gap: 10, borderColor: palette.red }}>
+        <Text style={s.hint}>{t("m.settings.deleteAccountHint")}</Text>
+        <Pressable
+          onPress={confirmDeleteAccount}
+          disabled={deleting}
+          accessibilityRole="button"
+          style={[s.danger, deleting && s.dangerBusy]}
+        >
+          <Text style={s.dangerText}>
+            {deleting ? t("m.settings.deleteAccountBusy") : t("m.settings.deleteAccount")}
+          </Text>
+        </Pressable>
+      </Card>
     </ScrollView>
   );
 }
@@ -299,4 +431,14 @@ const s = StyleSheet.create({
   langText: { color: palette.smoke, fontSize: 14, fontWeight: "600" },
   langTextOn: { color: palette.white, fontWeight: "800" },
   langTextDisabled: { color: palette.smoke },
+  // Akcja nieodwracalna — obrys zamiast wypełnienia, żeby nie zapraszała do kliknięcia.
+  danger: {
+    borderColor: palette.red,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  dangerBusy: { opacity: 0.5 },
+  dangerText: { color: palette.red, fontSize: 15, fontWeight: "800" },
 });

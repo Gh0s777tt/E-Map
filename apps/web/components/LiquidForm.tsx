@@ -21,16 +21,12 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 import styles from "./LiquidForm.module.css";
 
-/** Z etykiety geokodera „Miasto, …, Kraj" wyciąga miasto (pierwszy człon) i kraj (ostatni). */
-function splitPlace(label: string): { city: string; country: string } {
-  const parts = label
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return {
-    city: parts[0] ?? label,
-    country: parts.length > 1 ? (parts[parts.length - 1] ?? "") : "",
-  };
+/**
+ * Awaryjna nazwa miejsca, gdy geokoder nie podał `city` — pierwszy człon etykiety.
+ * Kraju NIE zgadujemy: pochodzi wyłącznie z pól strukturalnych `GeoHit`.
+ */
+function firstSegment(label: string): string {
+  return label.split(",")[0]?.trim() || label;
 }
 
 /** Formularz „płynów" — paliwo lub AdBlue (ta sama struktura, `fuelLogSchema`). */
@@ -47,6 +43,9 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const [vehicleId, setVehicleId] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
+  // [#372] Kod pocztowy był w schemacie i w aplikacji mobilnej, ale nie na webie —
+  // wpisy z panelu traciły go po cichu. W UK to on identyfikuje miejsce.
+  const [postcode, setPostcode] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [liters, setLiters] = useState("");
@@ -75,6 +74,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           vehicle_id: string;
           station_country: string;
           station_city: string | null;
+          station_postcode: string | null;
           odometer_km: number;
           liters: number;
           is_full?: boolean;
@@ -86,6 +86,9 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         setVehicleId(row.vehicle_id);
         setCountry(row.station_country);
         setCity(row.station_city ?? "");
+        // Bez tego edycja z panelu kasowałaby kod pocztowy zapisany z telefonu:
+        // pole startowałoby puste i wróciło do bazy jako `undefined`.
+        setPostcode(row.station_postcode ?? "");
         setOdometerKm(String(row.odometer_km));
         setLiters(String(row.liters));
         setIsFull(row.is_full !== false);
@@ -198,7 +201,13 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
     const input = {
       vehicleId,
-      station: { country, city: city || undefined, lat: coords?.lat, lng: coords?.lng },
+      station: {
+        country,
+        city: city || undefined,
+        postcode: postcode || undefined,
+        lat: coords?.lat,
+        lng: coords?.lng,
+      },
       odometerKm: Number(odometerKm),
       liters: Number(liters),
       isFull,
@@ -311,9 +320,13 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           <span style={{ fontSize: 12, color: palette.smoke }}>Wyszukaj miejsce (adres → GPS)</span>
           <PlaceSearch
             onPick={(h) => {
-              const p = splitPlace(h.label);
-              setCity(p.city);
-              if (p.country) setCountry(p.country);
+              // [#372] Pola idą wprost z geokodera. Wcześniej kraj odtwarzano jako
+              // „ostatni człon etykiety po przecinku", a TomTom kraju w etykiecie
+              // nie umieszcza — do pola „Kraj" wpadał kod pocztowy z miastem.
+              setCity(h.city ?? firstSegment(h.label));
+              const c = h.countryCode ?? h.country;
+              if (c) setCountry(c);
+              if (h.postcode) setPostcode(h.postcode);
               setCoords({ lat: h.lat, lng: h.lng });
             }}
           />
@@ -334,6 +347,14 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Berlin"
+            />
+          </Field>
+          <Field label={t("form.field.postcode")} error={errors["station.postcode"]}>
+            <input
+              className={styles.input}
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              placeholder="10115"
             />
           </Field>
         </div>

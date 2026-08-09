@@ -57,9 +57,20 @@ export async function tomtomGeocode(
     const pos = r.position;
     if (typeof pos?.lat !== "number" || typeof pos?.lon !== "number") continue;
     const name = r.poi?.name;
-    const addr = r.address?.freeformAddress;
+    const a = r.address;
+    const addr = a?.freeformAddress;
     const label = name ? (addr ? `${name}, ${addr}` : name) : (addr ?? q);
-    out.push({ label, lat: pos.lat, lng: pos.lon });
+    // [#372] TomTom podaje te pola osobno — wcześniej ginęły i formularz musiał
+    // zgadywać kraj z etykiety, w której kraju w ogóle nie ma.
+    out.push({
+      label,
+      lat: pos.lat,
+      lng: pos.lon,
+      countryCode: a?.countryCode,
+      country: a?.country,
+      city: a?.municipality ?? a?.localName,
+      postcode: a?.postalCode,
+    });
   }
   return out;
 }

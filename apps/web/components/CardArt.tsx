@@ -4,6 +4,7 @@ import {
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
   formatCardExpiry,
+  maskCardNumber,
 } from "@e-logistic/core";
 
 /**
@@ -87,7 +88,7 @@ export function CardArt({
 
       <div>
         <div style={{ fontSize: width * 0.085, letterSpacing: 1, fontFamily: "monospace" }}>
-          {masked || "•••• ••••"}
+          {maskCardNumber(masked)}
         </div>
         <div
           style={{

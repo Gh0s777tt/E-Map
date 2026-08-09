@@ -1,7 +1,7 @@
 "use client";
 
 import { listFuelCardsForUser, listVehicles } from "@e-logistic/api";
-import { FUEL_CARD_PROVIDER_LABELS, type FuelCardProvider } from "@e-logistic/core";
+import { FUEL_CARD_PROVIDER_LABELS, type FuelCardProvider, maskCardNumber } from "@e-logistic/core";
 import { useEffect, useState } from "react";
 import { DEMO_CARDS, DEMO_VEHICLES } from "@/lib/demo";
 import { getCachedMembership } from "@/lib/membership";
@@ -83,7 +83,8 @@ export function useFleet() {
             return {
               id: c.id,
               provider,
-              label: `${brand} ${c.card_number_masked ?? ""}${reg ? ` · ${reg}` : ""}`.trim(),
+              label:
+                `${brand} ${maskCardNumber(c.card_number_masked)}${reg ? ` · ${reg}` : ""}`.trim(),
               registration: reg,
             };
           }),

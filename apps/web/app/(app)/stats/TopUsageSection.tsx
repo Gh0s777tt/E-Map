@@ -1,5 +1,6 @@
 "use client";
 
+import { maskedCardLabel } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import type { FuelRaw } from "./shared";
 
@@ -70,7 +71,7 @@ function RankList({ title, rows, empty }: { title: string; rows: RankRow[]; empt
 
 export function TopUsageSection({ fuel, cards }: { fuel: FuelRaw[]; cards: CardOpt[] }) {
   const cardLabel = new Map(
-    cards.map((c) => [c.id, `${c.provider.toUpperCase()} ${c.card_number_masked}`]),
+    cards.map((c) => [c.id, maskedCardLabel(c.provider, c.card_number_masked)]),
   );
   const topCards = rank(fuel, (r) => {
     const id = (r as { fuel_card_id?: string | null }).fuel_card_id;

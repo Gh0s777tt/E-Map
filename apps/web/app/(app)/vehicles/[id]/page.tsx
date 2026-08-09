@@ -24,6 +24,7 @@ import {
   formatCardExpiry,
   fuelByMonth,
   fuelConsumptionSeries,
+  maskCardNumber,
   monthsEndingAt,
   round2,
   serviceStatus,
@@ -370,7 +371,7 @@ export default function VehicleCardPage() {
               {cards.map((c) => (
                 <span key={c.id} style={styles.tag}>
                   💳 {FUEL_CARD_PROVIDER_LABELS[c.provider as FuelCardProvider] ?? c.provider}{" "}
-                  {c.card_number_masked ?? ""}
+                  {maskCardNumber(c.card_number_masked)}
                   {c.valid_until ? ` · do ${formatCardExpiry(c.valid_until)}` : ""}
                 </span>
               ))}

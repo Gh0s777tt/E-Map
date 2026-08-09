@@ -1,6 +1,12 @@
 "use client";
 
-import { getCompany, updateCompany, wipeCompanyData } from "@e-logistic/api";
+import {
+  deleteMyAccount,
+  getAccountDeletionPreview,
+  getCompany,
+  updateCompany,
+  wipeCompanyData,
+} from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
@@ -51,6 +57,9 @@ export default function SettingsPage() {
   // Strefa niebezpieczna (#259): czyszczenie danych firmy — tylko owner, type-to-confirm.
   const [wipeConfirm, setWipeConfirm] = useState("");
   const [wipeBusy, setWipeBusy] = useState(false);
+  // [#372] Usunięcie własnego konta — osobne od czyszczenia danych firmy.
+  const [delConfirm, setDelConfirm] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
 
   const loadCompany = useCallback(async () => {
     try {
@@ -125,6 +134,66 @@ export default function SettingsPage() {
       toast(e instanceof Error ? e.message : t("settings.danger.mismatch"), "error");
     } finally {
       setWipeBusy(false);
+    }
+  }
+
+  /**
+   * [#372] Usunięcie własnego konta — wymóg App Store 5.1.1(v) i Google Play.
+   *
+   * Odrębne od „wyczyść dane firmy" wyżej: tamto kasuje dane FIRMY i zostawia
+   * konta, to kasuje KONTO użytkownika. Właściciel firmy z pracownikami dostaje
+   * drugie, osobne potwierdzenie — jego usunięcie kasuje też cudze dane.
+   */
+  async function deleteAccount() {
+    if (delBusy) return;
+    if (delConfirm.trim() !== t("settings.account.delete.confirmWord")) {
+      toast(t("settings.account.delete.fail"), "error");
+      return;
+    }
+    setDelBusy(true);
+    try {
+      const sb = getBrowserSupabase();
+      const preview = await getAccountDeletionPreview(sb);
+
+      const lines = [
+        t("settings.account.delete.desc"),
+        t("settings.account.delete.summary")
+          .replace("{fuel}", String(preview.fuelLogs))
+          .replace("{adblue}", String(preview.adblueLogs))
+          .replace("{trip}", String(preview.tripEvents))
+          .replace("{messages}", String(preview.messages)),
+        ...preview.soloCompanies.map((c) =>
+          t("settings.account.delete.solo").replace("{company}", c.name),
+        ),
+      ];
+      const ok = await confirm(lines.join("\n\n"), {
+        danger: true,
+        confirmLabel: t("settings.account.delete.button"),
+      });
+      if (!ok) return;
+
+      let deleteCompany = false;
+      const blocking = preview.blockingCompanies[0];
+      if (blocking) {
+        const owned = await confirm(
+          t("settings.account.delete.owner")
+            .replace("{company}", blocking.name)
+            .replace("{members}", String(blocking.activeMembers)),
+          { danger: true, confirmLabel: t("settings.account.delete.button") },
+        );
+        if (!owned) return;
+        deleteCompany = true;
+      }
+
+      await deleteMyAccount(sb, { deleteCompany });
+      // Konto w auth.users już nie istnieje — sesja jest martwa, więc wychodzimy
+      // na stronę publiczną zamiast czekać, aż kolejne zapytanie zwróci 401.
+      await sb.auth.signOut().catch(() => {});
+      window.location.href = "/";
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("settings.account.delete.fail"), "error");
+    } finally {
+      setDelBusy(false);
     }
   }
 
@@ -565,6 +634,43 @@ export default function SettingsPage() {
           </button>
         </div>
       )}
+
+      {/* [#372] Usunięcie konta musi być dostępne dla KAŻDEGO użytkownika
+          (App Store 5.1.1(v)) — świadomie poza warunkiem `isOwner`. */}
+      <div style={{ ...styles.card, borderColor: palette.red }}>
+        <strong style={{ fontSize: 16, color: palette.red }}>
+          {t("settings.account.delete.title")}
+        </strong>
+        <p style={{ color: palette.smoke, fontSize: 13, margin: 0 }}>
+          {t("settings.account.delete.desc")}
+        </p>
+        <label style={styles.field}>
+          <span style={{ fontSize: 12, color: palette.smoke }}>
+            {t("settings.account.delete.confirmLabel")}
+          </span>
+          <input
+            style={styles.cInput}
+            value={delConfirm}
+            onChange={(e) => setDelConfirm(e.target.value)}
+            placeholder={t("settings.account.delete.confirmWord")}
+            autoComplete="off"
+          />
+        </label>
+        <button
+          type="button"
+          style={{
+            ...styles.danger,
+            opacity:
+              delBusy || delConfirm.trim() !== t("settings.account.delete.confirmWord") ? 0.5 : 1,
+          }}
+          disabled={delBusy || delConfirm.trim() !== t("settings.account.delete.confirmWord")}
+          onClick={deleteAccount}
+        >
+          {delBusy
+            ? t("settings.account.delete.working")
+            : `🗑️ ${t("settings.account.delete.button")}`}
+        </button>
+      </div>
     </div>
   );
 }

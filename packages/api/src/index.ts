@@ -3,6 +3,7 @@
  * Współdzielona przez web i mobile. Build-safe (leniwe tworzenie klienta).
  */
 export * from "./client";
+export * from "./data/account";
 export * from "./data/audit";
 export * from "./data/checklists";
 export * from "./data/companies";

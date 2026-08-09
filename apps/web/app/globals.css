@@ -212,8 +212,15 @@ body {
 
 /* ── Mapa: dymki MapLibre w motywie aplikacji ──
    Domyślny dymek ma białe tło, a strona dziedziczy jasny tekst (#f5f5f5) →
-   biały tekst na białym tle = nieczytelne. Przestawiamy na ciemny motyw. */
-.maplibregl-popup-content {
+   biały tekst na białym tle = nieczytelne. Przestawiamy na ciemny motyw.
+
+   KAŻDY selektor niżej jest świadomie prefiksowany `.maplibregl-popup`.
+   Powód: `maplibre-gl.css` jest importowany na poziomie STRONY (map/page.tsx),
+   a ten plik w layoucie — Next emituje CSS w kolejności layout → page, więc
+   arkusz biblioteki ląduje OSTATNI. Przy równej specyficzności (0,1,0) wygrywał
+   vendor i tło wracało do białego, zostawiając jasny tekst na białym.
+   Prefiks podnosi specyficzność do 0,2,0 i rozstrzyga to niezależnie od kolejności. */
+.maplibregl-popup .maplibregl-popup-content {
   background: #141414;
   color: #f5f5f5;
   border: 1px solid #2a2a2a;
@@ -223,24 +230,26 @@ body {
   line-height: 1.5;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
-.maplibregl-popup-content strong {
+.maplibregl-popup .maplibregl-popup-content strong {
   color: #fff;
 }
-.maplibregl-popup-content a {
+.maplibregl-popup .maplibregl-popup-content a {
   color: #e50914;
   text-decoration: none;
 }
-.maplibregl-popup-content a:hover {
+.maplibregl-popup .maplibregl-popup-content a:hover {
   text-decoration: underline;
 }
-.maplibregl-popup-content code {
+.maplibregl-popup .maplibregl-popup-content code {
   color: #f5f5f5;
   background: #0a0a0a;
   border: 1px solid #2a2a2a;
   border-radius: 5px;
   padding: 1px 5px;
 }
-.maplibregl-popup-content button {
+/* `:not(...)` chroni krzyżyk zamykania — bez tego reguła przycisku akcji
+   malowała go na czerwono, bo MapLibre renderuje go jako <button>. */
+.maplibregl-popup .maplibregl-popup-content button:not(.maplibregl-popup-close-button) {
   background: #e50914;
   color: #fff;
   border: none;
@@ -249,31 +258,33 @@ body {
   font-weight: 700;
   font-size: 12px;
 }
-.maplibregl-popup-close-button {
+.maplibregl-popup .maplibregl-popup-close-button {
   color: #8a8a8a;
   font-size: 18px;
   padding: 0 6px;
   background: transparent;
 }
-.maplibregl-popup-close-button:hover {
+.maplibregl-popup .maplibregl-popup-close-button:hover {
   color: #f5f5f5;
   background: transparent;
 }
-/* Strzałka dymka — strona stykająca się z treścią dostaje kolor tła */
-.maplibregl-popup-anchor-top .maplibregl-popup-tip,
-.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
-.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+/* Strzałka dymka — strona stykająca się z treścią dostaje kolor tła.
+   Tu specyficzność to 0,3,0: klasa kotwicy jest na tym samym elemencie
+   co `.maplibregl-popup`, więc zapis bez spacji celuje w ten sam węzeł. */
+.maplibregl-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
   border-bottom-color: #141414;
 }
-.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
-.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
-.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+.maplibregl-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
   border-top-color: #141414;
 }
-.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+.maplibregl-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
   border-right-color: #141414;
 }
-.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+.maplibregl-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
   border-left-color: #141414;
 }
 

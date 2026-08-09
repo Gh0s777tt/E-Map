@@ -22,14 +22,35 @@ export default function AccountDeletionPage() {
         </h1>
         <p style={styles.meta}>Dotyczy aplikacji mobilnej E-Logistic i panelu web</p>
 
-        <h2 style={styles.h2}>Jak poprosić o usunięcie konta</h2>
-        <ol style={styles.ul}>
+        <h2 style={styles.h2}>Usuń konto samodzielnie — natychmiast</h2>
+        <p style={styles.p}>
+          Konto usuwasz sam, bez kontaktu z nami i bez czekania. Dane znikają od razu.
+        </p>
+        <ul style={styles.ul}>
           <li>
-            Wyślij e-mail na <strong>dzierzawskii98.dam@gmail.com</strong> z adresu, na który
-            zarejestrowane jest konto, z tematem <em>„Usunięcie konta E-Logistic"</em>.
+            <strong>Aplikacja mobilna:</strong> <em>Ustawienia</em> → <em>Strefa niebezpieczna</em>{" "}
+            → <em>Usuń konto i dane</em>.
           </li>
-          <li>Potwierdzimy przyjęcie zgłoszenia i usuniemy konto niezwłocznie, do 30 dni.</li>
-        </ol>
+          <li>
+            <strong>Panel w przeglądarce:</strong>{" "}
+            <a style={styles.link} href="/settings">
+              Ustawienia
+            </a>{" "}
+            → <em>Usunięcie konta</em>.
+          </li>
+        </ul>
+        <p style={styles.p}>
+          Zanim potwierdzisz, zobaczysz podsumowanie: ile Twoich wpisów zostanie usuniętych, a co
+          zostanie w danych firmy bez powiązania z Tobą.
+        </p>
+
+        <h2 style={styles.h2}>Nie masz już dostępu do konta?</h2>
+        <p style={styles.p}>
+          Jeśli nie możesz się zalogować, napisz na <strong>dzierzawskii98.dam@gmail.com</strong> z
+          adresu, na który zarejestrowane jest konto, z tematem{" "}
+          <em>„Usunięcie konta E-Logistic"</em>. Potwierdzimy przyjęcie zgłoszenia i usuniemy konto
+          niezwłocznie, do 30 dni.
+        </p>
         <p style={styles.p}>
           Możesz też poprosić o usunięcie <strong>części danych</strong> (np. zdjęć lub historii
           tankowań) bez usuwania konta — napisz, czego ma dotyczyć żądanie.
@@ -58,12 +79,20 @@ export default function AccountDeletionPage() {
 
         <h2 style={styles.h2}>Account deletion (English summary)</h2>
         <p style={styles.p}>
-          To delete your E-Logistic account and associated data, e-mail{" "}
-          <strong>dzierzawskii98.dam@gmail.com</strong> from the address your account is registered
-          to, subject <em>"Delete my E-Logistic account"</em>. We delete the account, profile, HR
-          data, push tokens, chat messages and photos you uploaded within 30 days. Invoicing records
-          required by tax law are retained for the legally required period; a partial data deletion
-          request (without closing the account) is also possible.
+          You can delete your E-Logistic account yourself, immediately: in the mobile app go to{" "}
+          <em>Settings → Danger zone → Delete account and data</em>, or in the web panel to{" "}
+          <a style={styles.link} href="/settings">
+            Settings
+          </a>{" "}
+          → <em>Delete account</em>. Before confirming you will see exactly what is removed.
+        </p>
+        <p style={styles.p}>
+          If you can no longer sign in, e-mail <strong>dzierzawskii98.dam@gmail.com</strong> from
+          the address your account is registered to, subject <em>"Delete my E-Logistic account"</em>
+          . We delete the account, profile, HR data, push tokens, chat messages and photos you
+          uploaded within 30 days. Invoicing records required by tax law are retained for the
+          legally required period; a partial data deletion request (without closing the account) is
+          also possible.
         </p>
       </article>
     </main>
@@ -92,4 +121,5 @@ const styles: Record<string, CSSProperties> = {
   p: { margin: "8px 0", color: palette.offWhite },
   ul: { margin: "8px 0 8px 20px", display: "grid", gap: 6 },
   hr: { border: "none", borderTop: `1px solid ${palette.graphite}`, margin: "32px 0" },
+  link: { color: palette.red, textDecoration: "underline" },
 };

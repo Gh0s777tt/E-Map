@@ -24,6 +24,10 @@ type Row = {
   vehicle: string;
   title: string;
   sub: string;
+  /** Znacznik czasu ISO — jedyne źródło porządku listy.
+      Wcześniej sortowaliśmy po `sub` („KRAJ · data"), co dawało kolejność
+      alfabetyczną po kraju, a chronologię dopiero w drugiej kolejności. */
+  at: string;
   status: Status;
   error?: string;
   outboxId?: string;
@@ -62,6 +66,7 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
       vehicle: labelOf(i.vehicleId),
       title: `${labelOf(i.vehicleId)} · ${tripActionLabel(t, i.action)} · ${i.odometerKm} km${w}`,
       sub: `${i.place.country} · ${when}`,
+      at: item.createdAt,
       status: item.status,
       error: item.error,
       outboxId: item.id,
@@ -74,6 +79,7 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
     vehicle: labelOf(i.vehicleId),
     title: `${labelOf(i.vehicleId)} · ${i.liters} L · ${i.odometerKm} km`,
     sub: `${i.station.country} · ${when}`,
+    at: item.createdAt,
     status: item.status,
     error: item.error,
     outboxId: item.id,
@@ -119,6 +125,7 @@ export default function FormsHistoryPage() {
             vehicle: labelOf(r.vehicle_id),
             title: `${labelOf(r.vehicle_id)} · ${r.liters} L · ${r.odometer_km} km`,
             sub: `${r.station_country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
+            at: r.created_at,
             status: "synced",
             dbId: r.id,
           }));
@@ -138,6 +145,7 @@ export default function FormsHistoryPage() {
           vehicle: labelOf(r.vehicle_id),
           title: `${labelOf(r.vehicle_id)} · ${tripActionLabel(t, r.action)} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
           sub: `${r.country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
+          at: r.created_at,
           status: "synced",
           dbId: r.id,
         }));
@@ -148,7 +156,7 @@ export default function FormsHistoryPage() {
 
         setRows(
           [...pending, ...fuelRows("fuel", fuel), ...fuelRows("adblue", adblue), ...tripRows].sort(
-            (a, b) => b.sub.localeCompare(a.sub),
+            (a, b) => Date.parse(b.at) - Date.parse(a.at),
           ),
         );
         setSource("baza");

@@ -6,6 +6,20 @@ export const en: Record<MessageKey, string> = {
   "app.tagline": "Platform for transport",
 
   "settings.danger.title": "Danger zone",
+  "settings.account.delete.title": "Delete account",
+  "settings.account.delete.desc":
+    "Deletion is permanent. Your personal data (profile, HR record, messages, GPS positions, passkeys) will be erased. The company's operational records — fuel logs, orders, documents — stay with the company but are detached from you.",
+  "settings.account.delete.summary":
+    "To be deleted: {fuel} fuel entries, {adblue} AdBlue entries, {trip} trip events, {messages} messages.",
+  "settings.account.delete.solo":
+    'Your company "{company}" will be deleted along with the account.',
+  "settings.account.delete.owner":
+    'You own company "{company}" with {members} active members. Deleting your account will delete the ENTIRE company along with all employees\' data. If the company should continue, transfer ownership to someone else first.',
+  "settings.account.delete.confirmLabel": "Type DELETE MY ACCOUNT to confirm:",
+  "settings.account.delete.confirmWord": "DELETE MY ACCOUNT",
+  "settings.account.delete.button": "Delete my account",
+  "settings.account.delete.working": "Deleting…",
+  "settings.account.delete.fail": "Could not delete the account.",
   "settings.danger.desc":
     "Permanently deletes ALL company data: orders, invoices, fuel logs, trips, fleet, drivers, contractors, documents and settlements. Kept: company, team and audit log. This cannot be undone.",
   "settings.danger.confirmLabel": "Type the company name to confirm:",
@@ -676,7 +690,7 @@ export const en: Record<MessageKey, string> = {
   "cards.offline": "Sign in and create a company to manage cards.",
   "cards.editingHint": "✏️ Editing card — leave PIN empty to keep it unchanged.",
   "cards.fieldProvider": "Provider",
-  "cards.fieldMasked": "Number (masked)",
+  "cards.fieldMasked": "Last 4 digits",
   "cards.fieldPin": "PIN (4–6 digits)",
   "cards.pinUnchangedPlaceholder": "unchanged",
   "cards.fieldValidUntil": "Valid until (month/year)",

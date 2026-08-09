@@ -2204,6 +2204,7 @@ export interface Database {
       _card_key: { Args: Record<PropertyKey, never>; Returns: string };
       _pii_key: { Args: Record<PropertyKey, never>; Returns: string };
       accept_invite: { Args: { p_token: string | null }; Returns: string };
+      account_deletion_preview: { Args: Record<PropertyKey, never>; Returns: Json };
       bootstrap_company: { Args: { p_name: string | null }; Returns: string };
       chat_mark_read: {
         Args: { p_company: string | null; p_thread?: string | null };
@@ -2249,6 +2250,10 @@ export interface Database {
       };
       create_invoice: {
         Args: { p_order: string | null; p_vat_rate?: number | null };
+        Returns: Json;
+      };
+      delete_my_account: {
+        Args: { p_confirm: string | null; p_delete_company?: boolean | null };
         Returns: Json;
       };
       dev_stats: { Args: Record<PropertyKey, never>; Returns: Json };

@@ -3,6 +3,7 @@
  * Odwzorowują model danych (docs/DATA-MODEL.md) 1:1 ze specyfikacją formularzy.
  */
 import { z } from "zod";
+import { cardLast4 } from "./cardMask";
 import {
   DEFECT_SEVERITIES,
   DEFECT_STATUSES,
@@ -68,7 +69,17 @@ export type VehicleInput = z.infer<typeof vehicleSchema>;
 
 export const fuelCardSchema = z.object({
   provider: z.enum(FUEL_CARD_PROVIDERS),
-  cardNumberMasked: z.string().min(1),
+  /**
+   * Do bazy trafiają WYŁĄCZNIE cztery ostatnie cyfry. Użytkownik może wkleić
+   * pełny numer (tak jest wygodniej przy przepisywaniu z karty) — schemat
+   * przycina go jeszcze przed zapisem, więc pełny PAN nigdy nie opuszcza
+   * formularza. Patrz packages/core/src/cardMask.ts.
+   */
+  cardNumberMasked: z
+    .string()
+    .min(1)
+    .refine((v) => /\d/.test(v), "Numer karty musi zawierać cyfry")
+    .transform(cardLast4),
   /** Karta przypisana do pojazdu (opcjonalnie) — dla widoczności która karta do którego auta. */
   vehicleId: z.uuid().optional(),
   /** PIN tylko na wejściu — w bazie przechowywany zaszyfrowany (nigdy plaintext). */

@@ -201,6 +201,28 @@ describe("monthlyFleetSummary", () => {
     expect(s.rows[0]?.vehicleId).toBe("v1"); // najwyższy net pierwszy
   });
 
+  it("liczy wpisy bez kwoty, żeby ekran odróżnił zero od braku danych", () => {
+    // Produkcja miała 39 wpisów z price_total = NULL — suma wychodziła „0 €"
+    // i wyglądała na koszt zerowy zamiast na brak wprowadzonych cen.
+    const s = monthlyFleetSummary({
+      month: "2026-06",
+      orders: [],
+      fuel: [
+        { vehicleId: "v1", priceTotal: null, date: "2026-06-03" },
+        { vehicleId: "v1", priceTotal: null, date: "2026-06-04" },
+        { vehicleId: "v1", priceTotal: 200, date: "2026-06-05" },
+        { vehicleId: "v1", priceTotal: null, date: "2026-07-09" }, // inny miesiąc — nie liczy się
+      ],
+      adblue: [{ vehicleId: "v1", priceTotal: null, date: "2026-06-15" }],
+    });
+    expect(s.missingPrice).toEqual({ fuel: 2, adblue: 1 });
+    expect(s.totals.fuelCost).toBe(200);
+  });
+
+  it("komplet kwot daje zerowy licznik braków", () => {
+    expect(monthlyFleetSummary(base).missingPrice).toEqual({ fuel: 0, adblue: 0 });
+  });
+
   it("pozycje bez pojazdu trafiają do wiersza null", () => {
     const s = monthlyFleetSummary({
       month: "2026-06",

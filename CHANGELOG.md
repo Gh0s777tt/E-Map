@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-371-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.213.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-372-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.214.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,42 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.214.0] — 🔐 Usuwanie konta (wymóg App Store) + cztery błędy pokazujące nieprawdę
+
+Faza 0 z przeglądu backlogu (82 pozycje, 10 faz). Kolejność nie jest przypadkowa:
+najpierw to, co blokuje wydanie i co **kłamie użytkownikowi w interfejsie**.
+
+- `[#372]` **Usuwanie konta i danych — pełna ścieżka w aplikacji.** App Store Guideline 5.1.1(v) wymaga, by aplikacja pozwalająca założyć konto pozwalała je usunąć **wewnątrz aplikacji**. Dotąd istniała wyłącznie strona [/account-deletion](apps/web/app/account-deletion/page.tsx) z instrukcją wysłania e-maila — to wymogu nie spełnia. Migracja [0090](supabase/migrations/0090_account_deletion.sql) wnosi `delete_my_account`, `account_deletion_preview` (podgląd skutków dla ekranu potwierdzenia) i kompletne `_company_purge`.
+  - **Mobile** ([settings.tsx](apps/mobile/app/settings.tsx)): sekcja „Strefa niebezpieczna" z podglądem skutków pobranym z bazy i czyszczeniem ośmiu kluczy lokalnych, które przeżyłyby wylogowanie — w tym kolejki offline i zgody na udostępnianie pozycji.
+  - **Web** ([settings/page.tsx](apps/web/app/(app)/settings/page.tsx)): karta z potwierdzeniem przez przepisanie frazy, świadomie **poza** warunkiem `isOwner` — wymóg dotyczy każdego użytkownika, nie tylko właściciela.
+  - Właściciel firmy z aktywnymi pracownikami dostaje **drugie, osobne potwierdzenie**: jego usunięcie kasuje też cudze dane. Baza broni się niezależnie od interfejsu (błąd `23503`), nawet gdyby podgląd zdezaktualizował się między oknami.
+  - Strona publiczna przestała być samą instrukcją mailową — samoobsługa jest pierwsza, e-mail zszedł do przypadku „nie mogę się już zalogować". Google Play nadal wymaga tego URL, więc strona zostaje.
+  - Nowy moduł danych [account.ts](packages/api/src/data/account.ts) + 13 kluczy i18n × 4 języki mobilne i 10 × 2 języki web.
+  - Kontrola bazy wykazała, że **nie ma ani jednego klucza obcego do `auth.users`** — nic nie kaskaduje, więc funkcja obsługuje każdą kolumnę użytkownika jawnie (~35 tabel). Dane osobowe są usuwane, zapisy operacyjne firmy — odpinane od osoby, zgodnie z treścią strony prywatności.
+  - `driver_id` w `fuel_logs`/`adblue_logs`/`trip_events` przestaje być `NOT NULL`. Polityki RLS tych tabel mają postać `driver_id = auth.uid() or has_role(...)`, więc dla `NULL` wpis znika kierowcom, a zostaje właścicielowi i dyspozytorowi; `WITH CHECK` nadal nie dopuszcza wpisu bez kierowcy.
+  - Przy okazji: **`company_wipe_data` pomijała 11 tabel** (cały czat, checklisty, wydatki kierowcy, pozycje GPS, trasy, zdarzenia tacho, tokeny push, ustawienia rozliczeń) — „wyczyszczona" firma zostawiała wiadomości w bazie. Naprawione, bez zmiany sygnatury.
+
+- `[#372]` **Numer karty paliwowej był jawny — także w powiadomieniach.** Kolumna nazywa się `card_number_masked`, ale przechowywała **pełne numery** (15–17 cyfr, zero znaków maskujących), a UI pokazywał je w 13 miejscach. Najgorszy przypadek: [alerts.ts](apps/web/lib/alerts.ts) wklejał numer do **tytułu powiadomienia**, które jest zapisywane w bazie i wysyłane pushem na ekran blokady. Kontrast był wymowny — PIN ma szyfrowanie, audytowane RPC i re-maskowanie po 30 s, a numer karty nie miał nic.
+  - Nowy [cardMask.ts](packages/core/src/cardMask.ts) (13 testów) + normalizacja w `fuelCardSchema`: pełny numer jest przycinany **przed** wysłaniem do bazy, więc nigdy więcej tam nie trafi.
+  - Migracja [0091](supabase/migrations/0091_card_number_trim.sql) przycina dane historyczne i dokłada `CHECK`, który odrzuci pełny numer nawet przy bezpośrednim `INSERT`.
+  - Etykieta pola zmieniona na „Ostatnie 4 cyfry" w 6 lokalizacjach (web pl/en, mobile pl/en/de/uk) — pole ma mówić prawdę o tym, co się wpisuje.
+
+- `[#372]` **Zestawienie miesięczne pokazywało 0 € mimo wpisów.** Diagnoza na produkcji: 20 tankowań i 19 wpisów AdBlue, `price_total` **NULL w 100%** — kwota jest w formularzu opcjonalna i nigdy nie została wypełniona, a `?? 0` cicho zamieniało brak na zero. `monthlyFleetSummary` zwraca teraz `missingPrice`, a [zestawienie](apps/web/app/(app)/monthly/page.tsx) mówi wprost „koszt jest niepełny, N pozycji bez kwoty" zamiast pokazywać zero jako fakt. Zasada obowiązująca dalej w całym backlogu: **brak danych ma być widoczny jako brak, nigdy jako zero**.
+
+- `[#372]` **Dymek na mapie był biały i nieczytelny** ([globals.css](apps/web/app/globals.css)). Ciemny motyw dymka istniał od #148, ale przegrywał kaskadę: `maplibre-gl.css` jest importowany na poziomie strony, nasz arkusz w layoucie, a Next emituje CSS w kolejności layout → page, więc biblioteka ładowała się ostatnia. Przy równej specyficzności (0,1,0) wygrywał vendor. Selektory są teraz kwalifikowane prefiksem `.maplibregl-popup` (0,2,0; strzałka 0,3,0), co rozstrzyga niezależnie od kolejności. Domknięta też druga kolizja — reguła przycisku malowała krzyżyk zamykania na czerwono.
+
+- `[#372]` **Historia formularzy sortowała alfabetycznie po kraju**, nie chronologicznie ([history/page.tsx](apps/web/app/(app)/forms/history/page.tsx)) — porównywany był tekst `„KRAJ · data"`, więc data liczyła się dopiero po nazwie kraju. `Row` niesie teraz `at` (ISO) i sortowanie idzie po czasie.
+
+- `[#372]` **W polu „Kraj" lądował kod pocztowy z miastem.** `GeoHit` był płaski (`label`/`lat`/`lng`), więc formularze odtwarzały kraj heurystyką „ostatni człon etykiety po przecinku" — a TomTom kraju we `freeformAddress` nie umieszcza („Rynek Główny 1, 31-042 Kraków"). Dane były przy tym **pobierane od dostawcy i wyrzucane**: [tomtomSearch.ts](packages/maps/src/tomtomSearch.ts) parsował `countryCode`, `country`, `municipality` i `postalCode`, po czym budował z tego sam `label`.
+  - [GeoHit](packages/maps/src/geocode.ts) niesie teraz pola strukturalne, uzupełniane przez wszystkich trzech dostawców: TomTom (przestaje je gubić), Nominatim (doszedł `addressdetails=1` — bez niego OSM w ogóle nie zwraca adresu, a kod kraju normalizujemy do wielkich liter) i MapTiler (`context[].short_code`).
+  - Zduplikowany `splitPlace` zniknął z obu formularzy webowych. Kraj **nie jest już zgadywany z tekstu**; z etykiety bierzemy co najwyżej awaryjną nazwę miejsca.
+  - Przy okazji domknięty parytet z mobile: web dostał brakujące pole **kod pocztowy** w formularzach paliwa/AdBlue i Trip. Schemat i tabele miały je od dawna — wpisy z panelu traciły je po cichu, a edycja wpisu z telefonu **kasowała** wartość, bo pole startowało puste.
+  - 4 nowe testy w [geocode.test.ts](packages/maps/src/geocode.test.ts) pilnują, żeby kraj znów nie zaczął pochodzić z etykiety.
+
+**Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 413/413 ✓ · maps 116/116 ✓ · web 78/78 ✓ · parytet i18n 5/5 ✓ · `next build` ✓ · `docs:check` ✓ · migracje 0090+0091 na produkcji, uprawnienia zweryfikowane (`anon` bez dostępu) ✓.
+
+> **Pozostaje po stronie danych:** 39 istniejących wpisów paliwa/AdBlue nie ma kwoty. Świadomie ich nie doszacowujemy — wyliczone liczby wyglądałyby jak wprowadzone przez kierowcę i weszłyby do rozliczeń oraz zwrotu VAT. Do uzupełnienia ręcznie w historii formularzy.
 
 ## [1.213.2] — 📱 Mobile 1.94.0 do sklepów (aktualny kod czatu)
 

@@ -19,6 +19,7 @@
  * idempotentne i właściciel nie dostaje tego samego alertu dwa razy.
  */
 import type { createSupabaseAdminClient } from "@e-logistic/api/admin";
+import { maskedCardLabel } from "@e-logistic/core";
 
 type Admin = ReturnType<typeof createSupabaseAdminClient>;
 
@@ -197,9 +198,9 @@ export async function generateOperationalAlerts(admin: Admin): Promise<number> {
     if (!date || date > horizonFor(c.company_id as string)) continue;
     const overdue = date < today;
     const reg = c.vehicle_id ? regOf.get(c.vehicle_id as string) : null;
-    const cardLabel = [String(c.provider).toUpperCase(), c.card_number_masked ?? ""]
-      .filter(Boolean)
-      .join(" ");
+    // Powiadomienie jest zapisywane w bazie i wysyłane pushem na ekran blokady —
+    // do tytułu nie może trafić nic poza czterema ostatnimi cyframi.
+    const cardLabel = maskedCardLabel(String(c.provider), c.card_number_masked as string | null);
     fanout(c.company_id as string, {
       type: "card_expiry",
       title: `${overdue ? "🔴" : "🟡"} Karta ${cardLabel} ${
