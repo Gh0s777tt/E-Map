@@ -1,5 +1,14 @@
 // AUTOGENEROWANE z żywej bazy (introspekcja). Nie edytować ręcznie.
 // Regeneracja: pnpm gen:types (patrz scripts/gen-types.mjs).
+//
+// [#378] WYJĄTEK — ręczna łatka trzech pól, zweryfikowanych na żywym schemacie:
+//   • `driver_id` w fuel_logs / adblue_logs / trip_events jest NULLABLE od 0090
+//     (usuwanie konta anonimizuje wpisy zamiast je kasować). Plik deklarował
+//     `string`, więc statystyki per kierowca dostawały `null`, którego typ nie
+//     przewidywał — TypeScript nie ostrzegał, a wykres cicho gubił wiersze.
+//   • `trip_events.currency` dodane w 0100.
+// Pełna regeneracja wymaga connection stringa do bazy — do zrobienia przy
+// najbliższym dostępie; ta łatka nie zastępuje `pnpm gen:types`.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -37,7 +46,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id: string | null;
           vehicle_id: string;
           station_country: string;
           station_city: string | null;
@@ -66,7 +75,7 @@ export interface Database {
         Insert: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id?: string | null;
           vehicle_id: string;
           station_country: string;
           station_city?: string | null;
@@ -95,7 +104,7 @@ export interface Database {
         Update: {
           id?: string;
           company_id?: string;
-          driver_id?: string;
+          driver_id?: string | null;
           vehicle_id?: string;
           station_country?: string;
           station_city?: string | null;
@@ -969,7 +978,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id: string | null;
           vehicle_id: string;
           station_country: string;
           station_city: string | null;
@@ -998,7 +1007,7 @@ export interface Database {
         Insert: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id?: string | null;
           vehicle_id: string;
           station_country: string;
           station_city?: string | null;
@@ -1027,7 +1036,7 @@ export interface Database {
         Update: {
           id?: string;
           company_id?: string;
-          driver_id?: string;
+          driver_id?: string | null;
           vehicle_id?: string;
           station_country?: string;
           station_city?: string | null;
@@ -2193,7 +2202,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id: string | null;
           vehicle_id: string;
           action: Database["public"]["Enums"]["trip_action"];
           country: string;
@@ -2202,6 +2211,7 @@ export interface Database {
           odometer_km: number;
           weight_kg: number | null;
           amount: number | null;
+          currency: string;
           comment: string | null;
           device_id: string | null;
           occurred_at: string;
@@ -2220,7 +2230,7 @@ export interface Database {
         Insert: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id?: string | null;
           vehicle_id: string;
           action: Database["public"]["Enums"]["trip_action"];
           country: string;
@@ -2229,6 +2239,7 @@ export interface Database {
           odometer_km: number;
           weight_kg?: number | null;
           amount?: number | null;
+          currency?: string;
           comment?: string | null;
           device_id?: string | null;
           occurred_at?: string;
@@ -2247,7 +2258,7 @@ export interface Database {
         Update: {
           id?: string;
           company_id?: string;
-          driver_id?: string;
+          driver_id?: string | null;
           vehicle_id?: string;
           action?: Database["public"]["Enums"]["trip_action"];
           country?: string;
@@ -2256,6 +2267,7 @@ export interface Database {
           odometer_km?: number;
           weight_kg?: number | null;
           amount?: number | null;
+          currency?: string;
           comment?: string | null;
           device_id?: string | null;
           occurred_at?: string;

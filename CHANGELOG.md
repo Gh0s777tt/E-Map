@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-377-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.220.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-378-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.221.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,57 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.221.0] — 🧱 Fundament pod statystyki: kursy wstecz, waluta w Trip, odblokowane kolumny
+
+Faza 7, etap 0. Przed dokładaniem nowych liczb — naprawa tego, na czym mają stanąć.
+Mapowanie podsystemu statystyk (sześć ekranów, **cztery niezależne silniki liczące**)
+pokazało, że większość Fazy 7 jest już napisana i otestowana, tylko nikt jej nie woła,
+a fundament pod nią ma dziury, przez które nowe liczby byłyby gorsze od dzisiejszych.
+
+- `[#378]` **Historia kursów EBC — kluczowy brak.** Cron pobierał wyłącznie kurs z bieżącego
+  dnia, więc w bazie były notowania z **jednego dnia**. Przeliczenia liczą po kursie z DNIA
+  ZDARZENIA (wymóg księgowy), a to znaczy, że każde tankowanie sprzed tego dnia w walucie
+  innej niż euro po prostu **wypadało z sumy**. Wgrane notowania od stycznia 2026 (1 672 kursy,
+  11 walut) — sprawdzone: tankowanie z 15 lipca dostaje kurs z 15 lipca, a niedzielne cofa się
+  do piątku, dokładnie jak wymaga tego rozliczenie.
+
+- `[#378]` **Powtarzalny import historii** ([scripts/fx-backfill.mjs](scripts/fx-backfill.mjs), `pnpm fx:backfill`).
+  Skrypt operatora, nie trasa serverless: plik historyczny EBC ma ~8 MB i nie przejdzie
+  w limicie czasu funkcji. Idempotentny, nie nadpisuje notowań crona. Świeże wdrożenie
+  nie startuje już z pustą historią. **EBC nie publikuje RSD, UAH, BAM ani MKD** — tankowania
+  w Serbii i na Ukrainie nie przeliczą się z żadnego źródła i trzeba to mówić wprost.
+
+- `[#378]` **`listFxRates` ucinało najstarsze kursy** ([referenceRates.ts](packages/api/src/data/referenceRates.ts)).
+  Zapytanie sortuje malejąco po dacie i **nie miało limitu**, więc domyślny pułap PostgREST
+  obcinał notowania od najstarszej strony — czyli dokładnie te, których potrzebuje starszy
+  koniec okna. Objaw podstępny: nowsze miesiące liczą się normalnie, starsze cicho tracą kwoty.
+
+- `[#378]` **`trip_events` nie miało waluty** (migracja [0100](supabase/migrations/0100_stats_currency_foundations.sql)).
+  Kolumna `amount` istnieje od dawna i trzyma koszt serwisu czy myta, ale migracja 0093 dodała
+  `currency` tylko do paliwa i AdBlue. Wymaganie „zdarzenia Trip w statystykach" oznaczałoby
+  więc powtórzenie tego samego błędu: **1200 PLN policzone jako 1200 €**.
+
+- `[#378]` **`fuel_card_id` był zapisywany, ale nieodczytywalny.** Pauzy i koszty trasy zapisują,
+  którą kartą zapłacono — a kolumny nie było w SELECT-ach ([formsPhase6.ts](packages/api/src/data/formsPhase6.ts)).
+  Informacja fizycznie nie dawała się pobrać.
+
+- `[#378]` **Waluty bez walidacji formatu.** `vehicle_costs.currency` i `orders.currency` nie miały
+  CHECK-a na ISO 4217 — „zł" albo „PLN " ze spacją przechodziło, a potem nie dopasowało się
+  do żadnego kursu. Wartości uporządkowane, bramka założona. Doszły indeksy `(company_id,
+  station_country, occurred_at)` pod zwrot VAT, który liczy się per kraj tankowania.
+
+- `[#378]` **Typy bazy kłamały o kierowcy.** `driver_id` jest nullable od migracji 0090 (usunięcie
+  konta anonimizuje wpisy zamiast je kasować), a [database.types.ts](packages/api/src/database.types.ts)
+  deklarował `string`. Statystyki per kierowca dostawały `null`, którego typ nie przewidywał —
+  TypeScript milczał. Pełna regeneracja (`pnpm gen:types`) wymaga dostępu do bazy; ta łatka jej nie zastępuje.
+
+- `[#378]` **Naprawa własnego niedopatrzenia:** test parzystości map krajów TS↔SQL czytał plik
+  migracji z `packages/core`, który **świadomie nie ma typów Node** (dzieli go z Hermesem, gdzie
+  `node:fs` nie istnieje). `tsc` rdzenia był czerwony od poprzedniego wydania, bo mój przebieg
+  bramek objął wtedy web i mobile, ale nie core. Test przeniesiony do `packages/api`.
+
+**Bramki:** biome ✓ (0 ostrzeżeń) · `tsc` **7/7 pakietów** ✓ · testy core 516 · api 81 · maps 116 · web 88 · mobile 36 · i18n 5 ✓ · migracja 0100 zastosowana i zweryfikowana na produkcji (3 CHECK-i + 2 indeksy) ✓.
 
 ## [1.220.0] — 💸 Kierowca może wreszcie wpisać kwotę tankowania
 

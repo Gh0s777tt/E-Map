@@ -322,6 +322,12 @@ export const tripEventSchema = z.discriminatedUnion("action", [
     ...tripBase,
     /** Kwota płatności za serwis — opcjonalna. */
     amount: z.number().nonnegative().optional(),
+    /**
+     * [#378] Waluta kwoty. `optional`, nie `default` — `default` uczyniłoby pole
+     * wymaganym w typie wyjściowym, a stare buildy mobile o nim nie wiedzą.
+     * Wartość domyślną nadaje kolumna w bazie.
+     */
+    currency: currencyCode.optional(),
     /** Co zostało naprawione — wymagane. */
     comment: z.string().min(1).max(2000),
   }),
@@ -329,6 +335,8 @@ export const tripEventSchema = z.discriminatedUnion("action", [
     action: z.literal("other"),
     ...tripBase,
     amount: z.number().nonnegative().optional(),
+    /** [#378] Patrz `service.currency`. */
+    currency: currencyCode.optional(),
     /** Opis wykonywanej akcji — wymagany. */
     comment: z.string().min(1).max(2000),
   }),

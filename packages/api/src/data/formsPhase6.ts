@@ -48,8 +48,13 @@ export interface PauseEventRow {
   comment: string | null;
 }
 
+/**
+ * [#378] `fuel_card_id` jest w tej liście świadomie: kolumna była zapisywana
+ * od 0095, ale nie było jej w SELECT-cie, więc informacja „którą kartą zapłacono
+ * za parking" fizycznie nie dawała się odczytać. To samo dotyczyło kosztów trasy.
+ */
 const PAUSE_COLS =
-  "id, company_id, driver_id, vehicle_id, occurred_at, country, city, location, odometer_km, price_total, currency, secured_parking, payment_method, comment";
+  "id, company_id, driver_id, vehicle_id, occurred_at, country, city, location, odometer_km, price_total, currency, secured_parking, payment_method, fuel_card_id, comment";
 
 /** Zapis postoju we własnym imieniu (RLS wymaga `driver_id = auth.uid()`). */
 export async function insertPauseEvent(
@@ -153,7 +158,7 @@ export interface RouteExtraCostRow {
 }
 
 const ROUTE_COST_COLS =
-  "id, company_id, vehicle_id, order_id, occurred_at, kind, country, city, location, amount, currency, payment_method, comment";
+  "id, company_id, vehicle_id, order_id, occurred_at, kind, country, city, location, amount, currency, payment_method, fuel_card_id, comment";
 
 export async function insertRouteExtraCost(
   client: SupabaseClient,

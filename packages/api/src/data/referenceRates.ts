@@ -28,15 +28,27 @@ export interface VatRateRow {
  * `from` warto podać — bez niego pobralibyśmy całą historię notowań, która
  * rośnie o kilkadziesiąt wierszy dziennie i po roku byłaby sporym transferem
  * przy każdym wejściu na statystyki.
+ *
+ * [#378] Limit jest podnoszony świadomie i wprost. Zapytanie sortuje malejąco
+ * po dacie, więc domyślny pułap PostgREST obcinał **najstarsze** notowania —
+ * czyli dokładnie te, których potrzebuje starszy koniec okna. Objaw był
+ * podstępny: nowsze miesiące przeliczały się normalnie, a starsze po cichu
+ * traciły kwoty, bo `pickFxRate` nie znajdowało kursu. Przy 12 walutach i ~250
+ * dniach roboczych rok historii to ~3000 wierszy, stąd ten rząd wielkości.
  */
+const FX_DEFAULT_LIMIT = 20_000;
+
 export async function listFxRates(
   client: SupabaseClient,
-  opts?: { from?: string; currencies?: string[] },
+  opts?: { from?: string; to?: string; currencies?: string[]; limit?: number },
 ): Promise<FxRateRow[]> {
   let q = client.from("fx_rates").select("as_of, currency, units_per_eur");
   if (opts?.from) q = q.gte("as_of", opts.from);
+  if (opts?.to) q = q.lte("as_of", opts.to);
   if (opts?.currencies?.length) q = q.in("currency", opts.currencies);
-  const { data, error } = await q.order("as_of", { ascending: false });
+  const { data, error } = await q
+    .order("as_of", { ascending: false })
+    .limit(opts?.limit ?? FX_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as FxRateRow[];
 }

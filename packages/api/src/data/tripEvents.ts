@@ -28,6 +28,9 @@ export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
     odometer_km: input.odometerKm,
     weight_kg: "weightKg" in input ? input.weightKg : null,
     amount: "amount" in input ? (input.amount ?? null) : null,
+    // [#378] Waluta kwoty. Pominięcie pola zostawia `default 'EUR'` w bazie —
+    // tak zachowują się buildy mobile, które o tej kolumnie nie wiedzą.
+    ...("currency" in input && input.currency ? { currency: input.currency } : {}),
     comment: input.comment ?? null,
     // [#375] Flagi ładunku — obecne tylko przy załadunku/rozładunku.
     express: "express" in input ? (input.express ?? false) : false,
