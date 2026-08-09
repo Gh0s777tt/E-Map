@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-378-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.223.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-379-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.224.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,44 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.224.0] — 🧾 Zwrot VAT za paliwo — pierwszy raz widoczny
+
+Trzy punkty z listy Fazy 7 (netto/VAT, stawki per kraj, wyliczenie zwrotu) stały na zerze,
+mimo że **cały kod istniał od [#373] i miał testy** — tabela `vat_rates` z 28 krajami,
+`pickVatRate`, `splitFromGross`, `refundableFuelVat`. Brakowało agregacji i ekranu,
+więc przewoźnik nie miał gdzie zobaczyć kwoty, o którą może wystąpić. Przy kilkuset
+tysiącach litrów rocznie idzie to w dziesiątki tysięcy euro.
+
+- `[#379]` **Silnik zestawienia** ([vatRefund.ts](packages/core/src/vatRefund.ts), 10 testów) —
+  grupuje tankowania per kraj i liczy VAT możliwy do odzyskania. **Kolejność działań jest
+  księgowa, nie wygodna:** VAT liczony od kwoty w **walucie zapłaty** (bo taka widnieje
+  na paragonie i taką stawką jest obciążona), a dopiero wynik przeliczany na euro.
+  Odwrotna kolejność daje niemal to samo — ale „niemal" w dokumencie dla urzędu skarbowego
+  jest złym słowem.
+
+- `[#379]` **Trzy stany, których nie wolno zlewać w jeden.** To najgroźniejszy błąd w tym
+  module i dlatego widać go na ekranie:
+  - **kwota** — znamy stawkę i kraj zwraca;
+  - **zero** — kraj jawnie nie zwraca VAT od paliwa (UK, Szwajcaria, Norwegia); to twierdzenie prawdziwe;
+  - **„nie znamy stawki"** — brak danych. Pokazane jako zero **zaniżyłoby wniosek i nikt by się o tym nie dowiedział**, dlatego takie kraje są poza sumą i wymienione z nazwy.
+
+- `[#379]` **Stawka z dnia tankowania, nie z dzisiaj.** Wniosek o zwrot dotyczy okresu
+  historycznego i musi użyć stawki obowiązującej wtedy. Test pilnuje dokładnie tego przypadku.
+
+- `[#379]` **Sekcja na `/stats`** ([VatRefundSection](apps/web/app/(app)/stats/VatRefundSection.tsx))
+  — per kraj: liczba tankowań, litry, brutto, stawka, kwota do odzyskania, plus suma.
+  Tylko dla zarządu: to podstawa wniosku do urzędu, a nie liczba, z którą kierowca ma co zrobić.
+  Zestawienie obejmuje **wyłącznie olej napędowy** — flaga zwrotu w tabeli stawek dotyczy paliwa,
+  więc AdBlue nie jest doliczany i jest to napisane wprost, zamiast cicho założone.
+
+**Weryfikacja na produkcji:** wszystkie 9 krajów, w których ta flota tankuje
+(BE, CZ, DE, ES, FR, GB, LU, PL, SE), ma stawki w tabeli, a **GB poprawnie oznaczone jako
+niezwracające**. Sekcja pokaże jednak pustą listę, dopóki kierowcy nie zaczną wpisywać kwot —
+`price_total` jest dziś NULL w 100% wpisów, bo pole kwoty dodano dopiero w [1.220.0] i wymaga
+nowego builda EAS.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core **526** · api 81 · maps 116 · web 97 · mobile 36 · i18n 5 ✓ · `next build` ✓. Ekran niezweryfikowany wizualnie — jest za logowaniem.
 
 ## [1.223.0] — 💱 Koniec z gubieniem walut na pozostałych ekranach + dokumentacja modelu danych
 

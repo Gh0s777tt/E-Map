@@ -55,6 +55,7 @@ export * from "./sheetImport";
 export * from "./tachoDownload";
 export * from "./tachoTime";
 export * from "./vatRates";
+export * from "./vatRefund";
 export * from "./vehicleCosts";
 export * from "./vehiclePnl";
 export * from "./weeklyRest";

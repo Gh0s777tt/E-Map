@@ -354,6 +354,24 @@ export const en: Record<MessageKey, string> = {
   "history.noResults": "No results for the selected filters.",
   "history.allVehicles": "All vehicles",
   "history.allCountries": "All countries",
+  "vat.title": "Fuel VAT refund",
+  "vat.subtitle":
+    "Per country of purchase, at the rate in force on the day of refuelling. Amounts converted to euro.",
+  "vat.country": "Country",
+  "vat.refuels": "Refuels",
+  "vat.liters": "Litres",
+  "vat.gross": "Gross",
+  "vat.rate": "Rate",
+  "vat.refundable": "Recoverable",
+  "vat.total": "Total recoverable",
+  "vat.noRefund": "country does not refund",
+  "vat.unknownRate": "rate unknown",
+  "vat.unknownNote":
+    "Countries with no known rate are excluded from the total — that is missing data, not zero to recover.",
+  "vat.adblueNote":
+    "This covers diesel only. The rate table carries the refund flag for fuel, so AdBlue is not included here.",
+  "vat.empty": "No refuels with an amount in the selected period.",
+  "vat.missingRate": "entries without an exchange rate — outside the total",
   "history.importCard": "Fuel card the statement comes from",
   "history.importCardNone": "— pick a card —",
   "history.importPickCard":

@@ -351,6 +351,24 @@ export const pl = {
   "history.noResults": "Brak wyników dla wybranych filtrów.",
   "history.allVehicles": "Wszystkie pojazdy",
   "history.allCountries": "Wszystkie kraje",
+  "vat.title": "Zwrot VAT za paliwo",
+  "vat.subtitle":
+    "Per kraj tankowania, po stawce obowiązującej w dniu tankowania. Kwoty przeliczone na euro.",
+  "vat.country": "Kraj",
+  "vat.refuels": "Tankowań",
+  "vat.liters": "Litry",
+  "vat.gross": "Brutto",
+  "vat.rate": "Stawka",
+  "vat.refundable": "Do odzyskania",
+  "vat.total": "Razem do odzyskania",
+  "vat.noRefund": "kraj nie zwraca",
+  "vat.unknownRate": "nie znamy stawki",
+  "vat.unknownNote":
+    "Kraje bez znanej stawki nie wchodzą do sumy — to brak danych, nie zero do odzyskania.",
+  "vat.adblueNote":
+    "Zestawienie obejmuje wyłącznie olej napędowy. Tabela stawek niesie flagę zwrotu dla paliwa, więc AdBlue nie jest tu doliczany.",
+  "vat.empty": "Brak tankowań z kwotą w wybranym okresie.",
+  "vat.missingRate": "pozycji bez notowania waluty — poza sumą",
   "history.importCard": "Karta paliwowa z zestawienia",
   "history.importCardNone": "— wybierz kartę —",
   "history.importPickCard":

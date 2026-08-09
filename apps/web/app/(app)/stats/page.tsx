@@ -6,9 +6,11 @@ import {
   listFxRates,
   listOrders,
   listTripEvents,
+  listVatRates,
   listVehicleCosts,
   listVehicles,
   toFxRates,
+  toVatRates,
   type VehicleCost,
 } from "@e-logistic/api";
 import {
@@ -30,6 +32,7 @@ import {
   rowAmountEur,
   sumCostsByCategory,
   summarizeFuel,
+  type VatRate,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useMemo, useState } from "react";
@@ -42,6 +45,7 @@ import { EmissionsSection } from "./EmissionsSection";
 import { ProfitabilitySection } from "./ProfitabilitySection";
 import { countMissingRate, entry, FleetStat, type FuelRaw, styles, type TripRaw } from "./shared";
 import { type CardOpt, TopUsageSection } from "./TopUsageSection";
+import { VatRefundSection } from "./VatRefundSection";
 import { VehicleDetail } from "./VehicleDetail";
 
 export default function StatsPage() {
@@ -67,6 +71,8 @@ export default function StatsPage() {
   const [costs, setCosts] = useState<VehicleCost[]>([]);
   /** [#378] Kursy EBC — bez nich kwota w innej walucie niż euro nie ma jak wejść do sumy. */
   const [rates, setRates] = useState<FxRate[]>([]);
+  /** [#379] Stawki VAT per kraj — tabela wspólna dla wszystkich firm. */
+  const [vatRates, setVatRates] = useState<VatRate[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -87,7 +93,7 @@ export default function StatsPage() {
         listFuelCardsSafe(sb, m.companyId)
           .then((cs) => setCards(cs as unknown as CardOpt[]))
           .catch(() => {});
-        const [f, a, tr, vs, ord, vc, fxRows] = await Promise.all([
+        const [f, a, tr, vs, ord, vc, fxRows, vatRows] = await Promise.all([
           listFuelLogs(sb, { from, limit: 5000 }),
           listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
           listTripEvents(sb, { from, limit: 5000 }),
@@ -99,8 +105,11 @@ export default function StatsPage() {
           listFxRates(sb, {
             from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
           }),
+          // Zbiór jest mały (kilkadziesiąt wierszy) i wspólny dla firm, więc bez filtrów.
+          listVatRates(sb),
         ]);
         setRates(toFxRates(fxRows));
+        setVatRates(toVatRates(vatRows));
         setFuel(f as FuelRaw[]);
         setAdblue(a as FuelRaw[]);
         setTrips(tr as TripRaw[]);
@@ -582,6 +591,10 @@ export default function StatsPage() {
           )}
 
           {canManage && <TopUsageSection fuel={fuel} cards={cards} rates={rates} />}
+
+          {/* [#379] Zwrot VAT — tylko zarząd: to podstawa wniosku do urzędu,
+              a nie liczba, którą kierowca ma z czym zrobić. */}
+          {canManage && <VatRefundSection fuel={fuel} vatRates={vatRates} rates={rates} />}
 
           {canManage && co2Rows.length > 0 && (
             <EmissionsSection rows={co2Rows} clientRows={co2ClientRows} />
