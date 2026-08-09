@@ -264,6 +264,10 @@ export const tripEventSchema = z.discriminatedUnion("action", [
     weightKg: z.number().int().nonnegative().optional(),
     /** Powiązanie z zleceniem (do auto-zamykania + kosztu transportu). */
     orderId: z.string().uuid().optional(),
+    /** [#375] Zlecenie ekspresowe — wpływa na rozliczenie. */
+    express: z.boolean().optional(),
+    /** [#375] Ładunek wymaga parkingu strzeżonego — planowanie postoju. */
+    securedParking: z.boolean().optional(),
     comment: z.string().max(2000).optional(),
   }),
   z.object({
@@ -271,6 +275,8 @@ export const tripEventSchema = z.discriminatedUnion("action", [
     ...tripBase,
     weightKg: z.number().int().nonnegative().optional(),
     orderId: z.string().uuid().optional(),
+    express: z.boolean().optional(),
+    securedParking: z.boolean().optional(),
     comment: z.string().max(2000).optional(),
   }),
   z.object({

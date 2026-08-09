@@ -54,6 +54,14 @@ export default function TripFormPage() {
   // [#372] Kod pocztowy: schemat i tabela `trip_events` miały go od dawna,
   // brakowało wyłącznie pola na webie — wpisy z panelu traciły go po cichu.
   const [postcode, setPostcode] = useState("");
+  // [#375] Przeładunek wymaga obu rejestracji — schemat je egzekwuje, a formularz
+  // ich NIE MIAŁ: wybór tej akcji kończył się błędem walidacji pól, których
+  // w interfejsie nie było. Akcja była w liście od początku, więc ślepa uliczka.
+  const [fromVehicleReg, setFromVehicleReg] = useState("");
+  const [toVehicleReg, setToVehicleReg] = useState("");
+  // [#375] Flagi ładunku przy załadunku/rozładunku.
+  const [express, setExpress] = useState(false);
+  const [securedParking, setSecuredParking] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [weightKg, setWeightKg] = useState("");
@@ -123,6 +131,8 @@ export default function TripFormPage() {
   }, []);
 
   const needsWeight = action === "load" || action === "unload";
+  const isTransshipment = action === "transshipment";
+  const needsCargoFlags = action === "load" || action === "unload";
   const needsAmount = action === "service" || action === "other";
   const commentRequired = action === "service" || action === "other";
 
@@ -191,10 +201,22 @@ export default function TripFormPage() {
           ...base,
           weightKg: weightKg ? Number(weightKg) : undefined,
           orderId: orderId || undefined,
+          express,
+          securedParking,
         }
-      : needsAmount
-        ? { ...base, amount: amount ? Number(amount) : undefined }
-        : base;
+      : isTransshipment
+        ? {
+            // [#375] Schemat wymaga OBU rejestracji — bez tych pól akcja była
+            // niemożliwa do zapisania z panelu, mimo że widniała na liście.
+            ...base,
+            weightKg: weightKg ? Number(weightKg) : undefined,
+            fromVehicleReg,
+            toVehicleReg,
+            orderId: orderId || undefined,
+          }
+        : needsAmount
+          ? { ...base, amount: amount ? Number(amount) : undefined }
+          : base;
 
     const parsed = tripEventSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -406,7 +428,7 @@ export default function TripFormPage() {
               onChange={(e) => setOdometerKm(e.target.value)}
             />
           </Field>
-          {needsWeight && (
+          {(needsWeight || isTransshipment) && (
             <Field label={t("form.field.weight")} error={errors.weightKg}>
               <input
                 style={input}
@@ -415,6 +437,51 @@ export default function TripFormPage() {
                 onChange={(e) => setWeightKg(e.target.value)}
               />
             </Field>
+          )}
+
+          {/* [#375] Przeładunek: schemat wymaga obu rejestracji. Bez tych pól
+              akcja widniała na liście, ale nie dało się jej zapisać. */}
+          {isTransshipment && (
+            <div style={{ display: "flex", gap: 12 }}>
+              <Field label={t("form.field.fromVehicle")} error={errors.fromVehicleReg}>
+                <input
+                  style={input}
+                  value={fromVehicleReg}
+                  onChange={(e) => setFromVehicleReg(e.target.value)}
+                  placeholder="WX 12345"
+                />
+              </Field>
+              <Field label={t("form.field.toVehicle")} error={errors.toVehicleReg}>
+                <input
+                  style={input}
+                  value={toVehicleReg}
+                  onChange={(e) => setToVehicleReg(e.target.value)}
+                  placeholder="WY 67890"
+                />
+              </Field>
+            </div>
+          )}
+
+          {/* [#375] Flagi ładunku — kierowca zaznacza przy załadunku. */}
+          {needsCargoFlags && (
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={express}
+                  onChange={(e) => setExpress(e.target.checked)}
+                />
+                {t("form.field.express")}
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={securedParking}
+                  onChange={(e) => setSecuredParking(e.target.checked)}
+                />
+                {t("form.field.securedParking")}
+              </label>
+            </div>
           )}
           {needsAmount && (
             <Field label={`${t("form.field.amount")} (opcjonalnie)`} error={errors.amount}>

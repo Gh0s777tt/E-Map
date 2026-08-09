@@ -2028,6 +2028,8 @@ export interface Database {
           comment: string | null;
           device_id: string | null;
           occurred_at: string;
+          express: boolean;
+          secured_parking: boolean;
           revision: number;
           created_at: string;
           updated_at: string;
@@ -2053,6 +2055,8 @@ export interface Database {
           comment?: string | null;
           device_id?: string | null;
           occurred_at?: string;
+          express?: boolean;
+          secured_parking?: boolean;
           revision?: number;
           created_at?: string;
           updated_at?: string;
@@ -2078,6 +2082,8 @@ export interface Database {
           comment?: string | null;
           device_id?: string | null;
           occurred_at?: string;
+          express?: boolean;
+          secured_parking?: boolean;
           revision?: number;
           created_at?: string;
           updated_at?: string;

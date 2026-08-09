@@ -29,6 +29,9 @@ export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
     weight_kg: "weightKg" in input ? input.weightKg : null,
     amount: "amount" in input ? (input.amount ?? null) : null,
     comment: input.comment ?? null,
+    // [#375] Flagi ładunku — obecne tylko przy załadunku/rozładunku.
+    express: "express" in input ? (input.express ?? false) : false,
+    secured_parking: "securedParking" in input ? (input.securedParking ?? false) : false,
     from_vehicle_reg: "fromVehicleReg" in input ? input.fromVehicleReg : null,
     to_vehicle_reg: "toVehicleReg" in input ? input.toVehicleReg : null,
     // [#373] Pominięcie pola zostawia `default now()` w bazie — tak zachowują się
