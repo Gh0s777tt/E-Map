@@ -26,8 +26,8 @@ deklarował, więc dane leżały nieodczytane.
 
 - `[#380]` **Średnia floty ważona kilometrami**, nie średnia ze średnich. Przy jednym aucie
   z 2 000 km i drugim z 20 000 km średnia arytmetyczna po autach dałaby liczbę, której nie
-  przejechał żaden z nich. *(Ten sam błąd siedzi jeszcze w `/stats` na webie — `page.tsx`
-  uśrednia po pojazdach; do naprawy osobno.)*
+  przejechał żaden z nich. **Ten sam błąd poprawiony po stronie webowej** (`/stats`) —
+  nie zostawiam go w kodzie tylko dlatego, że mieścił się w innym pliku.
 
 - `[#380]` **AdBlue i rozbicie na pojazdy** — kierowca jeżdżący dwoma autami nie miał jak
   zobaczyć, które pali więcej.

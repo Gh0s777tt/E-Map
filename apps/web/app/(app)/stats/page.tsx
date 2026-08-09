@@ -280,6 +280,12 @@ export default function StatsPage() {
           /** Paliwo + AdBlue — to jest realny koszt płynów tego auta. */
           liquidSpend: round2(s.totalSpend + a.totalSpend),
           cons: consumptionFullToFull(fEntries),
+          /** Dystans z liczników — waga przy uśrednianiu spalania floty. */
+          km:
+            fEntries.length > 1
+              ? Math.max(...fEntries.map((e) => e.odometerKm)) -
+                Math.min(...fEntries.map((e) => e.odometerKm))
+              : 0,
           tripCount: trips.filter((r) => r.vehicle_id === v.id).length,
           anomalies: detectFuelAnomalies(fuelConsumptionSeries(fEntries)).length,
         };
@@ -326,7 +332,19 @@ export default function StatsPage() {
 
   // Pulpit floty — agregaty po wszystkich pojazdach (raz na zmianę danych).
   const fleet = useMemo(() => {
-    const consVals = tiles.map((tl) => tl.cons).filter((c): c is number => c != null);
+    /**
+     * [#380] Średnia spalania floty ważona PRZEBIEGIEM, nie średnia ze średnich.
+     *
+     * Wcześniej `suma(cons) / liczba_pojazdów` — pojazd, który przejechał 2 000 km,
+     * ważył tyle samo co ten z 200 000 km. Wynikiem była liczba, której nie
+     * przejechał żaden z nich, a przy jednym aucie odstającym potrafiła zafałszować
+     * cały kafelek. To samo poprawione po stronie mobilnej.
+     */
+    const weighted = tiles.filter((tl) => tl.cons != null && tl.km > 0);
+    const consKm = weighted.reduce((a, tl) => a + tl.km, 0);
+    const avgCons = consKm
+      ? round2(weighted.reduce((a, tl) => a + (tl.cons as number) * tl.km, 0) / consKm)
+      : null;
     // [#378] Wcześniej: `o.currency === "EUR"` — zlecenie wystawione w złotówkach
     // znikało z przychodu bez śladu, więc marża floty wychodziła zawyżona.
     // Teraz przeliczamy po kursie z dnia załadunku; nieprzeliczalne zliczamy osobno.
@@ -340,9 +358,7 @@ export default function StatsPage() {
       adblueSpend: round2(tiles.reduce((a, tl) => a + tl.adblueSpend, 0)),
       totalTrips: tiles.reduce((a, tl) => a + tl.tripCount, 0),
       anomalies: tiles.reduce((a, tl) => a + tl.anomalies, 0),
-      avgCons: consVals.length
-        ? round2(consVals.reduce((a, c) => a + c, 0) / consVals.length)
-        : null,
+      avgCons,
       ordersRevenueEur,
       /** Zlecenia z ceną, której nie dało się przeliczyć — suma jest niepełna. */
       revenueMissingRate: revenue.filter((o) => o.price != null && o.priceEur == null).length,
