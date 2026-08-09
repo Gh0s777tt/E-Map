@@ -13,6 +13,7 @@ import {
   type CompanyMember,
   chatChannelKey,
   chatPhotoUrl,
+  copyChatPhotoToThread,
   createThread,
   deleteMessage,
   deleteThread,
@@ -315,11 +316,18 @@ export default function ChatPage() {
     async (msg: ChatMessage, targetThreadId: string | null) => {
       if (!companyId) return;
       try {
-        await sendMessage(getBrowserSupabase(), companyId, msg.body, myLabel, {
+        const sb = getBrowserSupabase();
+        // [#376] Załącznik trzeba SKOPIOWAĆ do folderu wątku docelowego.
+        // Zachowanie ścieżki źródłowej sprawiało, że odbiorca nie mógł podpisać
+        // URL-a (polityka 0088 bramkuje po wątku w nazwie pliku), a przekazanie
+        // z kanału ogólnego do rozmowy prywatnej zostawiało plik czytelny
+        // dla całej firmy.
+        const photoPath = msg.photo_path
+          ? await copyChatPhotoToThread(sb, msg.photo_path, companyId, targetThreadId)
+          : null;
+        await sendMessage(sb, companyId, msg.body, myLabel, {
           threadId: targetThreadId,
-          // Ścieżkę zdjęcia przekazujemy tę samą — plik należy do firmy,
-          // a ACL Storage sprawdza przynależność do wątku po prefiksie.
-          photoPath: msg.photo_path,
+          photoPath,
           kind: msg.kind,
           meta: msg.meta,
         });

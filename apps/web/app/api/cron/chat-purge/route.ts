@@ -26,6 +26,27 @@ export const dynamic = "force-dynamic";
  */
 const SOFT_DELETE_GRACE_DAYS = 30;
 
+/** Ile wierszy bierzemy na jeden przebieg. Reszta poczeka na kolejny (co 15 min). */
+const BATCH_LIMIT = 2000;
+
+/**
+ * Ile identyfikatorów wchodzi do jednego zapytania.
+ *
+ * `postgrest-js` buduje `in()` jako parametr URL, nie ciało żądania — każdy UUID
+ * to 36 znaków plus separator. Przy 5000 pozycjach URL rósł do ~195 KB, czyli
+ * wielokrotnie ponad limit bramy, która odpowiadała 414. Efekt: cron wywracał
+ * się przy KAŻDYM przebiegu i nic nigdy nie zostało fizycznie usunięte —
+ * dokładnie odwrotnie niż obiecuje nagłówek tego pliku.
+ */
+const DELETE_CHUNK = 200;
+
+/** Dzieli tablicę na partie o zadanym rozmiarze. */
+function chunked<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 export async function GET(req: Request) {
   // [#376] Fail-CLOSED. Wcześniejsze `if (secret)` pomijało autoryzację, gdy
   // zmienna nie była ustawiona — a każdy deploy Preview ma publiczny URL i
@@ -47,36 +68,65 @@ export async function GET(req: Request) {
       Date.now() - SOFT_DELETE_GRACE_DAYS * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    // Zdjęcia trzeba zebrać PRZED skasowaniem wierszy — po `delete` nie ma już
-    // czego zapytać o ścieżkę, a plik zostałby w Storage na zawsze.
+    // Ścieżki zbieramy PRZED skasowaniem wierszy — po `delete` nie ma już czego
+    // zapytać, a plik zostałby w Storage na zawsze.
     const { data: doomed, error: selErr } = await admin
       .from("messages")
-      .select("id, photo_path")
+      .select("id, company_id, photo_path")
       .or(`expires_at.lt.${nowIso},deleted_at.lt.${graceIso}`)
-      .limit(5000);
+      .limit(BATCH_LIMIT);
     if (selErr) throw selErr;
 
-    const paths = (doomed ?? [])
-      .map((m) => m.photo_path)
-      .filter((p): p is string => typeof p === "string" && p.length > 0);
-    if (paths.length > 0) {
-      // Nieudane sprzątanie Storage nie może zablokować kasowania wierszy —
-      // osierocony plik jest mniejszym problemem niż treść żyjąca dalej w bazie.
-      await admin.storage.from("cargo-photos").remove(paths);
-    }
+    const rows = doomed ?? [];
+    const ids = rows.map((m) => m.id);
 
-    const ids = (doomed ?? []).map((m) => m.id);
+    // Kandydaci na usunięcie ze Storage: TYLKO załączniki czatu tej samej firmy.
+    // Bez tego filtra wiersz ze sfałszowaną ścieżką (patrz migracja 0096)
+    // kierowałby cron na dowolny plik w buckecie.
+    const candidates = rows
+      .filter(
+        (m): m is typeof m & { photo_path: string } =>
+          typeof m.photo_path === "string" && m.photo_path.startsWith(`${m.company_id}/chat/`),
+      )
+      .map((m) => m.photo_path);
+
+    // Kasujemy WIERSZE najpierw. Odwrotna kolejność (jak było) zostawiała bazę
+    // z wpisami wskazującymi nieistniejące pliki, gdy DELETE się nie powiódł.
+    // Osierocony plik jest mniejszym problemem niż wiadomość bez zdjęcia.
     let removed = 0;
-    if (ids.length > 0) {
+    for (const chunk of chunked(ids, DELETE_CHUNK)) {
       const { error: delErr, count } = await admin
         .from("messages")
         .delete({ count: "exact" })
-        .in("id", ids);
+        .in("id", chunk);
       if (delErr) throw delErr;
-      removed = count ?? ids.length;
+      removed += count ?? chunk.length;
     }
 
-    return NextResponse.json({ removed, photosRemoved: paths.length });
+    // Plik bywa WSPÓŁDZIELONY: przekazanie wiadomości tworzy kopię wskazującą
+    // tę samą ścieżkę. Kasujemy dopiero to, na co nie wskazuje już żaden żywy
+    // wiersz — inaczej wygaśnięcie oryginału zabierało zdjęcie kopii.
+    let photosRemoved = 0;
+    const orphans: string[] = [];
+    for (const chunk of chunked(candidates, DELETE_CHUNK)) {
+      const { data: stillUsed, error: useErr } = await admin
+        .from("messages")
+        .select("photo_path")
+        .in("photo_path", chunk);
+      if (useErr) throw useErr;
+      const used = new Set((stillUsed ?? []).map((r) => r.photo_path));
+      orphans.push(...chunk.filter((p) => !used.has(p)));
+    }
+    for (const chunk of chunked(orphans, DELETE_CHUNK)) {
+      // Nieudane sprzątanie Storage nie może wywrócić przebiegu — wiersze są
+      // już skasowane, a osierocony plik da się posprzątać później.
+      const { error } = await admin.storage.from("cargo-photos").remove(chunk);
+      if (!error) photosRemoved += chunk.length;
+    }
+
+    // `pending` mówi, czy zostały zaległości — przy stałym limicie partii bez
+    // tego nie da się odróżnić „nic nie było do zrobienia" od „nie wyrobiliśmy się".
+    return NextResponse.json({ removed, photosRemoved, pending: ids.length === BATCH_LIMIT });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Błąd czyszczenia czatu." },

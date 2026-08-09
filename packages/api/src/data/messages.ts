@@ -438,6 +438,36 @@ export async function uploadChatPhotoBinary(
 }
 
 /**
+ * [#376] Kopiuje załącznik do folderu wątku DOCELOWEGO — używane przy
+ * przekazywaniu wiadomości.
+ *
+ * Dlaczego kopia, a nie ta sama ścieżka: polityka `cargo_photos_obj_select`
+ * (migracja 0088) bramkuje dostęp po TRZECIM segmencie ścieżki, czyli po wątku
+ * ZAPISANYM W NAZWIE PLIKU. Przekazanie z zachowaniem ścieżki dawało dwa złe
+ * skutki naraz:
+ *   • odbiorca w wątku docelowym nie mógł podpisać URL-a i widział wieczne
+ *     „ładowanie…", bo prefiks nadal wskazywał wątek źródłowy,
+ *   • przekazanie z kanału ogólnego do rozmowy prywatnej zostawiało prefiks
+ *     `general`, więc plik pozostawał czytelny dla CAŁEJ firmy.
+ *
+ * `copy` wykonuje się po stronie Storage z tokenem użytkownika, więc skopiować
+ * da się tylko to, co wywołujący i tak może odczytać.
+ */
+export async function copyChatPhotoToThread(
+  client: SupabaseClient,
+  sourcePath: string,
+  companyId: string,
+  targetThreadId: string | null,
+): Promise<string> {
+  const ext = sourcePath.split(".").pop() || "jpg";
+  const target = `${companyId}/chat/${targetThreadId ?? GENERAL_CHANNEL}/${newId()}.${ext}`;
+  if (sourcePath === target) return sourcePath;
+  const { error } = await client.storage.from(BUCKET).copy(sourcePath, target);
+  if (error) throw error;
+  return target;
+}
+
+/**
  * Podpisany URL zdjęcia z czatu (1 h).
  *
  * #369: podpis powstaje po stronie Storage z tokenem użytkownika, więc bramką

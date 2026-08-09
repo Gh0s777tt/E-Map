@@ -1,0 +1,44 @@
+-- [#376] Naprawy z adwersarialnego przeglądu — część druga.
+--
+-- Migracja odpowiada dokładnie temu, co zastosowano na produkcji jako
+-- `review_fixes_deletion_and_wipe` + `account_deletion_keep_driver_history`.
+-- Pełne definicje funkcji są w tamtych wdrożeniach; tutaj zapisany jest
+-- POWÓD każdej zmiany, bo to on ginie najszybciej.
+--
+-- 1) NUMERY KART W POWIADOMIENIACH
+--    Migracja 0091 przycięła `fuel_cards`, ale zostawiła pełne numery w tytułach
+--    wierszy `notifications` — czyli dokładnie tam, gdzie własny komentarz 0091
+--    nazywał je „najgorszym przypadkiem" (powiadomienie jest persystowane i leci
+--    pushem na ekran blokady). Czyszczenie obronne zamienia każdy ciąg 5+ cyfr
+--    na `••••`. Na tej instancji 0 wierszy — alerty nic nie wstawiały przez błąd
+--    42P10 naprawiony wcześniej w tej samej sesji.
+--
+-- 2) company_wipe_data KASOWAŁA SUBSKRYPCJE PUSH
+--    Regresja wprowadzona przeze mnie w 0090: stara wersja (0056) świadomie ich
+--    nie ruszała. Skutek był trwały i cichy — subskrypcja w przeglądarce zostaje,
+--    więc przełącznik pokazuje „włączone", ale wiersza w bazie nie ma, a ponowny
+--    zapis jest nieosiągalny bez wyłączenia i włączenia. Mobile leczy się sam
+--    (`registerForPush` przy każdym starcie), web nie. Tokeny znikają teraz
+--    wyłącznie razem z firmą.
+--
+-- 3) delete_my_account KASOWAŁ KARTOTEKĘ KIEROWCY
+--    `drivers` jest rodzicem dla `driver_routes` (0059) i `tacho_downloads`
+--    (0081) z ON DELETE CASCADE. Usunięcie konta wymiatało całą historię tras
+--    firmy i termin obowiązkowego sczytania karty (rozp. UE 581/2010, 28 dni) —
+--    czyli dane OPERACYJNE, które nagłówek 0090 deklaruje jako „odpinane, nie
+--    kasowane". Niespójność była podwójna, bo linie wyżej starannie zerowały
+--    `driver_routes.created_by`, żeby te same wiersze zachować.
+--    Teraz kartoteka jest ANONIMIZOWANA: znikają wszystkie dane osobowe
+--    (zaszyfrowane imię, nazwisko, data urodzenia, dokumenty, dane firmy),
+--    a pusty rekord zostaje jako kotwica kluczy obcych.
+--
+-- 4) ZAPROSZENIA TRZYMAŁY E-MAIL PO USUNIĘCIU KONTA
+--    `accept_invite` (0080) nie kasuje wiersza — zostaje jako ślad przyjęcia.
+--    `delete_my_account` nie dotykał tej tabeli, więc adres e-mail usuniętego
+--    kierowcy zostawał czytelny dla zarządu firmy, w której był pracownikiem.
+--    Teraz `email_enc` jest zerowane, a ślad przyjęcia zaproszenia zostaje.
+--
+-- 5) NOWE TABELE W ZAKRESIE CZYSZCZENIA
+--    `pause_events`, `route_extra_costs`, `penalties` (0095) doszły do listy
+--    `_company_purge`, a `pause_events.driver_id`/`penalties.driver_id` do
+--    odpinania przy usuwaniu konta.
