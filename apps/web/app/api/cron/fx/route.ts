@@ -15,6 +15,8 @@
  * więc o tej porze mamy komplet notowań z poprzedniego dnia roboczego, zanim
  * ktokolwiek zacznie pracę.
  */
+
+import { timingSafeEqual } from "node:crypto";
 import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import { NextResponse } from "next/server";
 
@@ -47,14 +49,17 @@ export function parseEcbXml(xml: string): { asOf: string; rates: Record<string, 
 }
 
 export async function GET(req: Request) {
-  // Ten sam sekret co pozostałe crony — endpoint zapisuje dane referencyjne
-  // dla wszystkich firm, więc nie może być otwarty.
+  // [#376] Fail-CLOSED. Wcześniejsze `if (secret)` pomijało autoryzację, gdy
+  // zmienna nie była ustawiona — a każdy deploy Preview ma publiczny URL i
+  // dziedziczy produkcyjny `SUPABASE_SERVICE_ROLE_KEY`. Anonim mógł uruchomić
+  // tę trasę na produkcyjnej bazie. Ten sam wzorzec co /api/cron/notify.
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+  if (!secret) return NextResponse.json({ error: "CRON_SECRET nieustawiony." }, { status: 503 });
+  // Porównanie w stałym czasie — chroni sekret przed atakiem czasowym.
+  const auth = Buffer.from(req.headers.get("authorization") ?? "");
+  const expected = Buffer.from(`Bearer ${secret}`);
+  if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) {
+    return NextResponse.json({ error: "Brak autoryzacji." }, { status: 401 });
   }
 
   try {

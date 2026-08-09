@@ -18,6 +18,7 @@ export * from "./data/driverPayouts";
 export * from "./data/driverRoutes";
 export * from "./data/drivers";
 export * from "./data/expoPush";
+export * from "./data/formsPhase6";
 export * from "./data/fuelCards";
 export * from "./data/fuelLogs";
 export * from "./data/invites";

@@ -11,6 +11,8 @@
  *  • klienci, którzy byli online, mają ją w pamięci do czasu odświeżenia,
  *  • podpisany URL zdjęcia wystawiony wcześniej działa jeszcze przez godzinę.
  */
+
+import { timingSafeEqual } from "node:crypto";
 import { createSupabaseAdminClient } from "@e-logistic/api/admin";
 import { NextResponse } from "next/server";
 
@@ -25,12 +27,17 @@ export const dynamic = "force-dynamic";
 const SOFT_DELETE_GRACE_DAYS = 30;
 
 export async function GET(req: Request) {
+  // [#376] Fail-CLOSED. Wcześniejsze `if (secret)` pomijało autoryzację, gdy
+  // zmienna nie była ustawiona — a każdy deploy Preview ma publiczny URL i
+  // dziedziczy produkcyjny `SUPABASE_SERVICE_ROLE_KEY`. Anonim mógł uruchomić
+  // tę trasę na produkcyjnej bazie. Ten sam wzorzec co /api/cron/notify.
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = req.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+  if (!secret) return NextResponse.json({ error: "CRON_SECRET nieustawiony." }, { status: 503 });
+  // Porównanie w stałym czasie — chroni sekret przed atakiem czasowym.
+  const auth = Buffer.from(req.headers.get("authorization") ?? "");
+  const expected = Buffer.from(`Bearer ${secret}`);
+  if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) {
+    return NextResponse.json({ error: "Brak autoryzacji." }, { status: 401 });
   }
 
   try {
