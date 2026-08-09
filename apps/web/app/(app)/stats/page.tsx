@@ -43,10 +43,21 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { AlertsBanner } from "./AlertsBanner";
 import { EmissionsSection } from "./EmissionsSection";
 import { ProfitabilitySection } from "./ProfitabilitySection";
-import { countMissingRate, entry, FleetStat, type FuelRaw, styles, type TripRaw } from "./shared";
+import {
+  countMissingRate,
+  entry,
+  FleetStat,
+  type FuelRaw,
+  makeMoneyFormatter,
+  styles,
+  type TripRaw,
+} from "./shared";
 import { type CardOpt, TopUsageSection } from "./TopUsageSection";
 import { VatRefundSection } from "./VatRefundSection";
 import { VehicleDetail } from "./VehicleDetail";
+
+/** Waluty do wyboru w prezentacji — te, w których ta flota realnie rozlicza trasy. */
+const DISPLAY_CURRENCIES = ["EUR", "PLN", "CZK", "GBP", "SEK", "NOK", "DKK", "HUF", "RON", "CHF"];
 
 export default function StatsPage() {
   const t = useT();
@@ -73,6 +84,11 @@ export default function StatsPage() {
   const [rates, setRates] = useState<FxRate[]>([]);
   /** [#379] Stawki VAT per kraj — tabela wspólna dla wszystkich firm. */
   const [vatRates, setVatRates] = useState<VatRate[]>([]);
+  /**
+   * [#379] Waluta PREZENTACJI. Nie zmienia rachunku — ten jest i zostaje w euro,
+   * po kursie z dnia zdarzenia. Zmienia tylko to, w czym pokazujemy gotowy wynik.
+   */
+  const [displayCurrency, setDisplayCurrency] = useState("EUR");
   const [canManage, setCanManage] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -150,18 +166,27 @@ export default function StatsPage() {
       vehicles.map((v) => {
         const fEntries = fuel.filter((r) => r.vehicle_id === v.id).map((r) => entry(r, rates));
         const s = summarizeFuel(fEntries);
+        // [#379] AdBlue liczony osobno, ale NIE pomijany. Dotąd ekran pobierał go
+        // z bazy i przekazywał wyłącznie do karty pojazdu — kafelki, P&L i ranking
+        // udawały, że flota jeździ na samym oleju napędowym.
+        const aEntries = adblue.filter((r) => r.vehicle_id === v.id).map((r) => entry(r, rates));
+        const a = summarizeFuel(aEntries);
         return {
           id: v.id,
           registration: v.registration,
           count: s.count,
           totalLiters: s.totalLiters,
           spend: s.totalSpend,
+          adblueLiters: a.totalLiters,
+          adblueSpend: a.totalSpend,
+          /** Paliwo + AdBlue — to jest realny koszt płynów tego auta. */
+          liquidSpend: round2(s.totalSpend + a.totalSpend),
           cons: consumptionFullToFull(fEntries),
           tripCount: trips.filter((r) => r.vehicle_id === v.id).length,
           anomalies: detectFuelAnomalies(fuelConsumptionSeries(fEntries)).length,
         };
       }),
-    [vehicles, fuel, trips, rates],
+    [vehicles, fuel, adblue, trips, rates],
   );
 
   /**
@@ -191,6 +216,8 @@ export default function StatsPage() {
     [costs, rates],
   );
 
+  const money = useMemo(() => makeMoneyFormatter(displayCurrency, rates), [displayCurrency, rates]);
+
   /** Ile pozycji wypadło z sum z braku notowania — pokazujemy to wprost. */
   const missingRate = useMemo(
     () => countMissingRate(fuel, rates) + countMissingRate(adblue, rates),
@@ -209,6 +236,8 @@ export default function StatsPage() {
       vehicles: tiles.length,
       totalLiters: round2(tiles.reduce((a, tl) => a + tl.totalLiters, 0)),
       totalSpend: round2(tiles.reduce((a, tl) => a + tl.spend, 0)),
+      adblueLiters: round2(tiles.reduce((a, tl) => a + tl.adblueLiters, 0)),
+      adblueSpend: round2(tiles.reduce((a, tl) => a + tl.adblueSpend, 0)),
       totalTrips: tiles.reduce((a, tl) => a + tl.tripCount, 0),
       anomalies: tiles.reduce((a, tl) => a + tl.anomalies, 0),
       avgCons: consVals.length
@@ -230,7 +259,9 @@ export default function StatsPage() {
     // [#378] Dwa błędy w jednej mapie: paliwo dodawało surową kwotę (złotówki
     // jak euro, zawyżenie ~4,3×), a koszty pojazdu w innej walucie były po cichu
     // WYRZUCANE. Obie liczby lądowały w tej samej rentowności klienta.
-    const byVeh = fuel.reduce((m, r) => {
+    // [#379] Paliwo I AdBlue — do tej pory nota pod tabelą uczciwie przyznawała,
+    // że AdBlue jest pominięty. Teraz nie musi, bo wchodzi do kosztu.
+    const byVeh = [...fuel, ...adblue].reduce((m, r) => {
       const eur = rowAmountEur(r.price_total, r.currency, r.occurred_at, rates);
       return eur == null ? m : m.set(r.vehicle_id, (m.get(r.vehicle_id) ?? 0) + eur);
     }, new Map<string, number>());
@@ -250,22 +281,29 @@ export default function StatsPage() {
       })),
       vehicleCosts,
     );
-  }, [ordersEur, fuel, costsEur, rates]);
+  }, [ordersEur, fuel, adblue, costsEur, rates]);
 
   // Rachunek zysków i strat floty: przychód − paliwo − pozostałe koszty (tylko EUR).
   const pnl = useMemo(() => {
     // [#378] Nazwa `fuelEur` twierdziła „euro", a kod nie sprawdzał waluty ani razu.
     // Wynik szedł do kafelków „Paliwo", „Koszty razem", „Zysk netto" i „Marża".
-    const fuelEur = fuel.reduce(
-      (a, r) => a + (rowAmountEur(r.price_total, r.currency, r.occurred_at, rates) ?? 0),
-      0,
-    );
+    const sumEur = (rows: FuelRaw[]) =>
+      rows.reduce(
+        (a, r) => a + (rowAmountEur(r.price_total, r.currency, r.occurred_at, rates) ?? 0),
+        0,
+      );
+    const fuelEur = sumEur(fuel);
+    // [#379] AdBlue trzymany osobno do POKAZANIA, ale doliczony do kosztu:
+    // ukrycie go zawyżało zysk floty o pozycję, którą realnie płaci co miesiąc.
+    const adblueEur = sumEur(adblue);
     const converted = costsEur.filter(
       (c): c is typeof c & { amountEur: number } => c.amountEur != null,
     );
     const otherEur = converted.reduce((a, c) => a + c.amountEur, 0);
     return {
-      result: fleetPnl(fleet.ordersRevenueEur, fuelEur, otherEur),
+      fuelEur: round2(fuelEur),
+      adblueEur: round2(adblueEur),
+      result: fleetPnl(fleet.ordersRevenueEur, fuelEur + adblueEur, otherEur),
       byCategory: sumCostsByCategory(
         converted.map((c) => ({
           vehicleId: c.vehicle_id,
@@ -274,11 +312,13 @@ export default function StatsPage() {
         })),
       ),
     };
-  }, [fuel, costsEur, rates, fleet.ordersRevenueEur]);
+  }, [fuel, adblue, costsEur, rates, fleet.ordersRevenueEur]);
 
   // Ranking rentowności floty: P&L per pojazd (przychód − paliwo − koszty, EUR).
   const pnlRows = useMemo(() => {
-    const fuelByVehicle = tiles.map((tl) => ({ vehicleId: tl.id, eur: tl.spend }));
+    // [#379] `liquidSpend` = paliwo + AdBlue. Ranking rentowności pomijający
+    // AdBlue faworyzował auta, które zużywają go najwięcej.
+    const fuelByVehicle = tiles.map((tl) => ({ vehicleId: tl.id, eur: tl.liquidSpend }));
     const costsByVehicle = costsEur
       .filter((c): c is typeof c & { amountEur: number } => c.amountEur != null)
       .map((c) => ({ vehicleId: c.vehicle_id, eur: c.amountEur }));
@@ -393,6 +433,36 @@ export default function StatsPage() {
         }
       />
 
+      {/* [#379] Przełącznik waluty PREZENTACJI. Rachunek zostaje w euro, po kursie
+          z dnia zdarzenia — tu zmienia się wyłącznie to, w czym pokazujemy wynik.
+          Data kursu jest podana wprost, bo bez niej liczba wyglądałaby na kwotę
+          historyczną, a jest przeliczeniem „ile to jest dzisiaj". */}
+      <div style={styles.currencyBar}>
+        <span style={{ color: palette.smoke, fontSize: 13 }}>Pokazuj kwoty w:</span>
+        <select
+          value={displayCurrency}
+          onChange={(e) => setDisplayCurrency(e.target.value)}
+          style={styles.select}
+          aria-label="Waluta prezentacji"
+        >
+          {DISPLAY_CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        {money.asOf && (
+          <span style={{ color: palette.smoke, fontSize: 12 }}>
+            przeliczone po kursie z {money.asOf} — rachunek prowadzony w EUR
+          </span>
+        )}
+        {displayCurrency !== "EUR" && !money.asOf && (
+          <span style={{ color: palette.warning, fontSize: 12 }}>
+            brak notowania {displayCurrency} — pokazuję w EUR
+          </span>
+        )}
+      </div>
+
       {ready && vehicles.length === 0 && (
         <p style={{ color: palette.smoke, marginTop: 24 }}>Brak pojazdów / danych.</p>
       )}
@@ -418,7 +488,12 @@ export default function StatsPage() {
             <div style={styles.fleet}>
               <FleetStat label="Pojazdy" value={String(fleet.vehicles)} />
               <FleetStat label="Paliwo łącznie" value={`${fleet.totalLiters} L`} />
-              <FleetStat label="Wydatek" value={`${fleet.totalSpend} €`} />
+              <FleetStat label="Wydatek na paliwo" value={money.fmt(fleet.totalSpend)} />
+              {/* [#379] AdBlue jako osobna para kafelków, nie doklejony do paliwa:
+                  to inny płyn, inne zużycie i inna cena za litr — zlanie ich
+                  w jedną liczbę ukryłoby jedno i drugie. */}
+              <FleetStat label="💧 AdBlue" value={`${fleet.adblueLiters} L`} />
+              <FleetStat label="Wydatek na AdBlue" value={money.fmt(fleet.adblueSpend)} />
               <FleetStat
                 label="Śr. spalanie floty"
                 value={fleet.avgCons != null ? `${fleet.avgCons} L/100km` : "—"}
@@ -430,7 +505,7 @@ export default function StatsPage() {
                   uczciwa. */}
               <FleetStat
                 label="Przychód (zlecenia)"
-                value={`${fleet.ordersRevenueEur} €`}
+                value={money.fmt(fleet.ordersRevenueEur)}
                 accent="#22c55e"
               />
               <FleetStat
@@ -439,7 +514,9 @@ export default function StatsPage() {
                 accent={fleet.anomalies > 0 ? palette.red : "#22c55e"}
               />
               <FleetStat
-                label="🌱 Ślad węglowy (CO₂)"
+                // AdBlue świadomie poza CO₂: to reagent do redukcji tlenków azotu,
+                // a nie paliwo — doliczenie go do emisji ze spalania byłoby błędem.
+                label="🌱 Ślad węglowy (CO₂, paliwo)"
                 value={formatCo2(dieselCo2Kg(fleet.totalLiters))}
               />
               <FleetStat
@@ -453,22 +530,26 @@ export default function StatsPage() {
             <div style={styles.pnl}>
               <div style={styles.anHead}>
                 💰 Rachunek zysków i strat (P&amp;L){" "}
+                {/* [#378] Było „tylko EUR" — opisywało nie walutę wyniku, lecz to,
+                    że reszta wypadała z rachunku. [#379] AdBlue dopisany, bo od teraz
+                    faktycznie wchodzi do kosztu. */}
                 <span style={{ color: palette.smoke, fontWeight: 400, fontSize: 12 }}>
-                  przychód − paliwo − pozostałe koszty · tylko EUR
+                  przychód − paliwo − AdBlue − pozostałe koszty · kwoty przeliczone na EUR
                 </span>
               </div>
               <div style={styles.fleet}>
                 <FleetStat
                   label="Przychód (EUR)"
-                  value={`${pnl.result.revenueEur} €`}
+                  value={money.fmt(pnl.result.revenueEur)}
                   accent="#22c55e"
                 />
-                <FleetStat label="Paliwo" value={`${pnl.result.fuelEur} €`} />
-                <FleetStat label="Pozostałe koszty" value={`${pnl.result.otherCostEur} €`} />
-                <FleetStat label="Koszty razem" value={`${pnl.result.totalCostEur} €`} />
+                <FleetStat label="Paliwo" value={money.fmt(pnl.fuelEur)} />
+                <FleetStat label="AdBlue" value={money.fmt(pnl.adblueEur)} />
+                <FleetStat label="Pozostałe koszty" value={money.fmt(pnl.result.otherCostEur)} />
+                <FleetStat label="Koszty razem" value={money.fmt(pnl.result.totalCostEur)} />
                 <FleetStat
                   label="Zysk netto"
-                  value={`${pnl.result.profitEur} €`}
+                  value={money.fmt(pnl.result.profitEur)}
                   accent={pnl.result.profitEur >= 0 ? "#22c55e" : palette.red}
                 />
                 <FleetStat
@@ -485,7 +566,7 @@ export default function StatsPage() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
                   {pnl.byCategory.map((c) => (
                     <span key={c.category} style={styles.pnlTag}>
-                      {c.label}: <strong>{c.amountEur} €</strong>
+                      {c.label}: <strong>{money.fmt(c.amountEur)}</strong>
                     </span>
                   ))}
                 </div>
@@ -529,10 +610,12 @@ export default function StatsPage() {
                     >
                       {r.registration}
                     </span>
-                    <span style={styles.profitCol}>{r.revenue} €</span>
-                    <span style={styles.profitCol}>{r.fuel} €</span>
-                    <span style={styles.profitCol}>{r.costs} €</span>
-                    <span style={{ ...styles.profitCol, color, fontWeight: 700 }}>{r.net} €</span>
+                    <span style={styles.profitCol}>{money.fmt(r.revenue)}</span>
+                    <span style={styles.profitCol}>{money.fmt(r.fuel)}</span>
+                    <span style={styles.profitCol}>{money.fmt(r.costs)}</span>
+                    <span style={{ ...styles.profitCol, color, fontWeight: 700 }}>
+                      {money.fmt(r.net)}
+                    </span>
                     <span style={{ ...styles.profitCol, color }}>
                       {r.marginPct != null ? `${r.marginPct}%` : "—"}
                     </span>
@@ -554,7 +637,7 @@ export default function StatsPage() {
                       {s.name}
                     </span>
                     <span style={{ color: palette.smoke, fontSize: 12 }}>{s.count} zl.</span>
-                    <strong style={{ color: "#22c55e" }}>{s.revenueEur} €</strong>
+                    <strong style={{ color: "#22c55e" }}>{money.fmt(s.revenueEur)}</strong>
                   </div>
                 ))}
               </div>
@@ -578,9 +661,7 @@ export default function StatsPage() {
                   }}
                 >
                   <span style={{ flex: 1, color: palette.smoke }}>Śr. stawka (EUR)</span>
-                  <strong style={{ color: palette.red }}>
-                    {analytics.avgRateEur != null ? `${analytics.avgRateEur} €` : "—"}
-                  </strong>
+                  <strong style={{ color: palette.red }}>{money.fmt(analytics.avgRateEur)}</strong>
                 </div>
               </div>
             </div>

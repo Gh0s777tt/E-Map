@@ -8,7 +8,7 @@
  */
 import type { FxRate } from "@e-logistic/core";
 import { describe, expect, it } from "vitest";
-import { countMissingRate, entry, type FuelRaw, monthlyCost } from "./shared";
+import { countMissingRate, entry, type FuelRaw, makeMoneyFormatter, monthlyCost } from "./shared";
 
 const RATES: FxRate[] = [
   { asOf: "2026-07-15", currency: "PLN", unitsPerEur: 4.3 },
@@ -86,5 +86,38 @@ describe("monthlyCost", () => {
   it("pomija wiersz bez kursu zamiast doliczać go 1:1", () => {
     const out = monthlyCost([row(), row({ currency: "CZK", price_total: 1000 })], RATES);
     expect(out).toEqual([{ label: "07.26", value: 100 }]);
+  });
+});
+
+describe("makeMoneyFormatter — waluta prezentacji", () => {
+  it("euro zostaje euro, bez przeliczania", () => {
+    const m = makeMoneyFormatter("EUR", RATES);
+    expect(m.fmt(100)).toBe("100 €");
+    expect(m.asOf).toBeNull();
+  });
+
+  it("przelicza po NAJŚWIEŻSZYM znanym kursie i podaje jego datę", () => {
+    const rates: FxRate[] = [
+      { asOf: "2026-07-15", currency: "PLN", unitsPerEur: 4.3 },
+      { asOf: "2026-07-20", currency: "PLN", unitsPerEur: 4 },
+    ];
+    const m = makeMoneyFormatter("PLN", rates);
+    expect(m.fmt(100)).toBe("400 PLN");
+    expect(m.asOf).toBe("2026-07-20");
+  });
+
+  it("bez notowania zostaje przy euro zamiast pokazywać nieprawdziwy symbol", () => {
+    // Liczba z symbolem waluty, w której jej nie przeliczono, jest gorsza
+    // niż nieprzełączenie widoku.
+    const m = makeMoneyFormatter("HUF", RATES);
+    expect(m.fmt(100)).toBe("100 €");
+    expect(m.code).toBe("EUR");
+    expect(m.asOf).toBeNull();
+  });
+
+  it("brak kwoty to kreska, nie zero", () => {
+    const m = makeMoneyFormatter("EUR", RATES);
+    expect(m.fmt(null)).toBe("—");
+    expect(m.fmt(undefined)).toBe("—");
   });
 });

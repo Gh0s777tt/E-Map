@@ -425,7 +425,7 @@ export const pl = {
   "monthly.csv.result": "Wynik",
 
   "profit.title": "Rentowność klientów",
-  "profit.approx": "(przybliżenie — koszt = paliwo)",
+  "profit.approx": "(przybliżenie — koszt = paliwo + AdBlue)",
   "profit.total.revenue": "Przychód (EUR)",
   "profit.total.cost": "Koszt paliwa (przyp.)",
   "profit.total.profit": "Zysk",
@@ -445,8 +445,8 @@ export const pl = {
   "alerts.fuelAnomaly": "Anomalie spalania",
   "alerts.fuelSpike": "Skok kosztu paliwa m/m",
   "profit.note":
-    "Koszt przypisany = paliwo pojazdu rozdzielone na jego zlecenia proporcjonalnie do przychodu (tylko zlecenia zrealizowane w EUR). Pomija puste przebiegi, myto, pensje, AdBlue i leasing — traktuj jako wskaźnik względny, nie księgowość.",
-  "profit.unattributed": "Nieprzypisany koszt paliwa (pojazdy bez przychodu EUR):",
+    "Koszt przypisany = paliwo i AdBlue pojazdu rozdzielone na jego zlecenia proporcjonalnie do przychodu. Kwoty w innych walutach są przeliczane po kursie z dnia zdarzenia. Pomija puste przebiegi, myto, pensje i leasing — traktuj jako wskaźnik względny, nie księgowość.",
+  "profit.unattributed": "Nieprzypisany koszt płynów (pojazdy bez przychodu):",
   "profit.noVehicle": "Przychód bez przypisanego pojazdu (koszt zaniżony):",
 
   "sync.draft": "Szkic",

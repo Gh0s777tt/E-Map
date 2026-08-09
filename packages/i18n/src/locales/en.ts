@@ -428,7 +428,7 @@ export const en: Record<MessageKey, string> = {
   "monthly.csv.result": "Result",
 
   "profit.title": "Client profitability",
-  "profit.approx": "(approximation — cost = fuel)",
+  "profit.approx": "(approximation — cost = fuel + AdBlue)",
   "profit.total.revenue": "Revenue (EUR)",
   "profit.total.cost": "Fuel cost (attr.)",
   "profit.total.profit": "Profit",
@@ -448,8 +448,8 @@ export const en: Record<MessageKey, string> = {
   "alerts.fuelAnomaly": "Fuel anomalies",
   "alerts.fuelSpike": "Fuel cost spike (mo/mo)",
   "profit.note":
-    "Attributed cost = the vehicle's fuel split across its orders in proportion to revenue (realized EUR orders only). Excludes empty runs, tolls, wages, AdBlue and leasing — treat it as a relative indicator, not accounting.",
-  "profit.unattributed": "Unattributed fuel cost (vehicles with no EUR revenue):",
+    "Attributed cost = the vehicle's fuel and AdBlue split across its orders in proportion to revenue. Amounts in other currencies are converted at the rate of the day of the event. Excludes empty runs, tolls, wages and leasing — treat it as a relative indicator, not accounting.",
+  "profit.unattributed": "Unattributed liquids cost (vehicles with no revenue):",
   "profit.noVehicle": "Revenue without an assigned vehicle (cost understated):",
 
   "sync.draft": "Draft",

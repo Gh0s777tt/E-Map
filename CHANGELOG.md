@@ -3,7 +3,7 @@
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
 ![Updaty](https://img.shields.io/badge/updaty-379-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.224.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.225.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,41 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.225.0] — 💧 AdBlue w statystykach + przełącznik waluty
+
+Dwa kolejne punkty z listy Fazy 7. Pierwszy z nich zamyka najstarszą lukę tego ekranu:
+`/stats` **pobierał AdBlue z bazy od dawna** i przekazywał go wyłącznie do karty pojazdu.
+Kafelki, P&L i ranking rentowności udawały, że flota jeździ na samym oleju napędowym.
+
+- `[#379]` **AdBlue wchodzi do rachunku.** Osobne kafelki (litry i wydatek), osobna pozycja
+  w P&L i doliczenie do kosztu przy rentowności klientów oraz w rankingu pojazdów.
+  Trzymany osobno do **pokazania**, ale wliczony do sumy: ukrycie go zawyżało zysk floty
+  o pozycję, którą flota realnie płaci co miesiąc, a ranking faworyzował auta zużywające
+  go najwięcej.
+
+- `[#379]` **Jeden świadomy wyjątek: CO₂.** AdBlue to reagent do redukcji tlenków azotu,
+  nie paliwo — doliczenie go do emisji ze spalania byłoby po prostu błędem. Kafelek nazywa
+  się teraz „Ślad węglowy (CO₂, paliwo)", żeby wykluczenie było widoczne, a nie domyślne.
+
+- `[#379]` **Noty, które kłamały po zmianie.** Klucze `profit.note` i `profit.approx` wprost
+  obiecywały, że AdBlue **nie** jest liczony („koszt = paliwo", „pomija … AdBlue"). Po tej
+  zmianie byłyby nieprawdą, więc zostały przepisane w obu językach. Nota mówi też teraz,
+  że kwoty w innych walutach są przeliczane — dotąd twierdziła „tylko zlecenia w EUR",
+  co przestało być prawdą w [1.222.0].
+
+- `[#379]` **Przełącznik waluty prezentacji.** Ostatni nietknięty punkt walutowy z listy.
+  Rachunek jest i zostaje w euro, po kursie z **dnia zdarzenia** — to wymóg księgowy.
+  Przełącznik zmienia wyłącznie to, w czym pokazujemy gotowy wynik, po **najświeższym
+  znanym kursie**, i **podaje jego datę wprost**: bez tego liczba wyglądałaby jak kwota
+  historyczna, a jest odpowiedzią na pytanie „ile to jest dzisiaj".
+  Szesnaście miejsc z zaszytym `€` zastąpionych jednym formaterem.
+
+- `[#379]` **Gdy waluty nie da się przeliczyć, ekran zostaje przy euro** zamiast pokazać
+  liczbę z symbolem waluty, w której jej nie przeliczono — i mówi o tym w pasku.
+  Nieprzełączony widok jest lepszy niż wiarygodnie wyglądająca nieprawda.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core 526 · api 81 · maps 116 · **web 101** · mobile 36 · i18n 5 ✓ · `next build` ✓. Ekran niezweryfikowany wizualnie — jest za logowaniem.
 
 ## [1.224.0] — 🧾 Zwrot VAT za paliwo — pierwszy raz widoczny
 

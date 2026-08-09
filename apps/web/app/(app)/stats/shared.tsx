@@ -1,5 +1,11 @@
 /** Wspólne typy, helpery i style ekranu statystyk (współdzielone przez page + podkomponenty). */
-import { type FuelStatsEntry, type FxRate, round2, rowAmountEur } from "@e-logistic/core";
+import {
+  BASE_CURRENCY,
+  type FuelStatsEntry,
+  type FxRate,
+  round2,
+  rowAmountEur,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 
 export type FuelRaw = {
@@ -74,6 +80,43 @@ export function countMissingRate(rows: FuelRaw[], rates: readonly FxRate[]): num
   ).length;
 }
 
+/**
+ * [#379] Formatowanie kwoty w walucie WYBRANEJ DO POKAZANIA.
+ *
+ * Cały rachunek prowadzimy w euro (przeliczenie po kursie z dnia zdarzenia —
+ * to wymóg księgowy). Przełącznik nad ekranem zmienia wyłącznie sposób
+ * prezentacji: bierze najświeższy znany kurs i przelicza gotowy wynik.
+ *
+ * To celowo INNY kurs niż ten użyty do rachunku i tak jest poprawnie — pytanie
+ * „ile to jest w złotówkach" dotyczy dzisiaj, a nie dnia każdego tankowania
+ * z osobna. Ekran mówi o tym wprost, bo bez tego liczba wyglądałaby jak kwota
+ * historyczna.
+ */
+export function makeMoneyFormatter(
+  currency: string,
+  rates: readonly FxRate[],
+): { fmt: (eur: number | null | undefined) => string; asOf: string | null; code: string } {
+  const code = currency.trim().toUpperCase();
+  if (code === BASE_CURRENCY) {
+    return { fmt: (v) => (v == null ? "—" : `${round2(v)} €`), asOf: null, code };
+  }
+  // Najświeższe notowanie, jakie mamy — nie „dzisiaj", bo w weekend notowania
+  // nie ma, a udawanie że jest dałoby cichy fallback do kursu 1:1.
+  const latest = rates
+    .filter((r) => r.currency.toUpperCase() === code)
+    .reduce<FxRate | null>((best, r) => (!best || r.asOf > best.asOf ? r : best), null);
+  if (!latest) {
+    // Brak kursu → zostajemy przy euro. Pokazanie liczby z nieprawdziwym
+    // symbolem waluty byłoby gorsze niż nieprzełączenie się.
+    return { fmt: (v) => (v == null ? "—" : `${round2(v)} €`), asOf: null, code: BASE_CURRENCY };
+  }
+  return {
+    fmt: (v) => (v == null ? "—" : `${round2(v * latest.unitsPerEur)} ${code}`),
+    asOf: latest.asOf,
+    code,
+  };
+}
+
 /** Suma kosztów wg miesiąca (ostatnie 6) — do wykresu słupkowego. W euro. */
 export function monthlyCost(
   rows: FuelRaw[],
@@ -140,6 +183,21 @@ export function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export const styles: Record<string, React.CSSProperties> = {
+  currencyBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    margin: "14px 0 4px",
+  },
+  select: {
+    background: palette.black,
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontSize: 13,
+  },
   rateWarn: {
     border: `1px solid ${palette.warning}`,
     borderRadius: 10,
