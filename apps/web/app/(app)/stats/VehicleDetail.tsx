@@ -3,6 +3,7 @@
 import {
   consumptionFullToFull,
   detectFuelAnomalies,
+  type FxRate,
   fuelConsumptionSeries,
   round2,
   summarizeFuel,
@@ -20,26 +21,29 @@ export function VehicleDetail({
   fuel,
   adblue,
   trips,
+  rates,
   onBack,
 }: {
   reg: string;
   fuel: FuelRaw[];
   adblue: FuelRaw[];
   trips: TripRaw[];
+  /** [#378] Kursy EBC — kwoty przeliczamy na euro po dniu zdarzenia. */
+  rates: readonly FxRate[];
   onBack: () => void;
 }) {
   const t = useT();
-  const cost = useMemo(() => monthlyCost([...fuel, ...adblue]), [fuel, adblue]);
+  const cost = useMemo(() => monthlyCost([...fuel, ...adblue], rates), [fuel, adblue, rates]);
   const consSeries = useMemo(
     () =>
-      fuelConsumptionSeries(fuel.map(entry))
+      fuelConsumptionSeries(fuel.map((r) => entry(r, rates)))
         .slice(-8)
         .map((s, i) => ({ label: String(i + 1), value: s.lPer100km })),
-    [fuel],
+    [fuel, rates],
   );
   const anomalies = useMemo(
-    () => detectFuelAnomalies(fuelConsumptionSeries(fuel.map(entry))),
-    [fuel],
+    () => detectFuelAnomalies(fuelConsumptionSeries(fuel.map((r) => entry(r, rates)))),
+    [fuel, rates],
   );
   return (
     <div style={{ marginTop: 20 }}>
@@ -87,8 +91,8 @@ export function VehicleDetail({
         </div>
       )}
 
-      <FuelBlock title="⛽ Paliwo" rows={fuel} full />
-      <FuelBlock title="💧 AdBlue" rows={adblue} />
+      <FuelBlock title="⛽ Paliwo" rows={fuel} rates={rates} full />
+      <FuelBlock title="💧 AdBlue" rows={adblue} rates={rates} />
 
       <h3 style={{ fontSize: 16, fontWeight: 700, marginTop: 28 }}>🚚 Trasy</h3>
       {trips.length === 0 ? (
@@ -114,14 +118,16 @@ export function VehicleDetail({
 function FuelBlock({
   title,
   rows,
+  rates,
   full = false,
 }: {
   title: string;
   rows: FuelRaw[];
+  rates: readonly FxRate[];
   full?: boolean;
 }) {
   if (rows.length === 0) return null;
-  const entries = rows.map(entry);
+  const entries = rows.map((r) => entry(r, rates));
   const s = summarizeFuel(entries);
   const cons = full ? consumptionFullToFull(entries) : s.avgConsumptionLPer100km;
   const sorted = [...rows].sort((a, b) => b.odometer_km - a.odometer_km);

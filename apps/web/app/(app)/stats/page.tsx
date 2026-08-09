@@ -3,10 +3,12 @@
 import {
   listFuelCardsSafe,
   listFuelLogs,
+  listFxRates,
   listOrders,
   listTripEvents,
   listVehicleCosts,
   listVehicles,
+  toFxRates,
   type VehicleCost,
 } from "@e-logistic/api";
 import {
@@ -17,6 +19,7 @@ import {
   consumptionFullToFull,
   detectFuelAnomalies,
   dieselCo2Kg,
+  type FxRate,
   fleetAlerts,
   fleetPnl,
   fleetPnlByVehicle,
@@ -24,6 +27,7 @@ import {
   fuelConsumptionSeries,
   orderAnalytics,
   round2,
+  rowAmountEur,
   sumCostsByCategory,
   summarizeFuel,
 } from "@e-logistic/core";
@@ -36,7 +40,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { AlertsBanner } from "./AlertsBanner";
 import { EmissionsSection } from "./EmissionsSection";
 import { ProfitabilitySection } from "./ProfitabilitySection";
-import { entry, FleetStat, type FuelRaw, styles, type TripRaw } from "./shared";
+import { countMissingRate, entry, FleetStat, type FuelRaw, styles, type TripRaw } from "./shared";
 import { type CardOpt, TopUsageSection } from "./TopUsageSection";
 import { VehicleDetail } from "./VehicleDetail";
 
@@ -61,6 +65,8 @@ export default function StatsPage() {
     }[]
   >([]);
   const [costs, setCosts] = useState<VehicleCost[]>([]);
+  /** [#378] Kursy EBC — bez nich kwota w innej walucie niż euro nie ma jak wejść do sumy. */
+  const [rates, setRates] = useState<FxRate[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -81,14 +87,20 @@ export default function StatsPage() {
         listFuelCardsSafe(sb, m.companyId)
           .then((cs) => setCards(cs as unknown as CardOpt[]))
           .catch(() => {});
-        const [f, a, tr, vs, ord, vc] = await Promise.all([
+        const [f, a, tr, vs, ord, vc, fxRows] = await Promise.all([
           listFuelLogs(sb, { from, limit: 5000 }),
           listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
           listTripEvents(sb, { from, limit: 5000 }),
           listVehicles(sb, m.companyId),
           listOrders(sb, m.companyId, { from, limit: 5000 }),
           listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
+          // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
+          // publikuje w weekendy i święta — ten sam wzorzec co w /monthly.
+          listFxRates(sb, {
+            from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+          }),
         ]);
+        setRates(toFxRates(fxRows));
         setFuel(f as FuelRaw[]);
         setAdblue(a as FuelRaw[]);
         setTrips(tr as TripRaw[]);
@@ -127,7 +139,7 @@ export default function StatsPage() {
   const tiles = useMemo(
     () =>
       vehicles.map((v) => {
-        const fEntries = fuel.filter((r) => r.vehicle_id === v.id).map(entry);
+        const fEntries = fuel.filter((r) => r.vehicle_id === v.id).map((r) => entry(r, rates));
         const s = summarizeFuel(fEntries);
         return {
           id: v.id,
@@ -140,19 +152,50 @@ export default function StatsPage() {
           anomalies: detectFuelAnomalies(fuelConsumptionSeries(fEntries)).length,
         };
       }),
-    [vehicles, fuel, trips],
+    [vehicles, fuel, trips, rates],
+  );
+
+  /**
+   * [#378] Zlecenia i koszty przeliczone na euro RAZ, u wejścia.
+   *
+   * Silniki w `packages/core` (`clientProfitability`, `fleetPnlByVehicle`)
+   * przyjmują kwotę z walutą i same odsiewają nie-euro. Zamiast zmieniać ich
+   * sygnatury i wszystkich wywołujących, normalizujemy tutaj i przekazujemy dalej
+   * już jako euro — granica przeliczenia jest w jednym miejscu i widać ją wprost.
+   */
+  const ordersEur = useMemo(
+    () =>
+      orders.map((o) => ({
+        ...o,
+        // Data załadunku, a nie utworzenia: kurs ma odpowiadać momentowi kosztu.
+        priceEur: rowAmountEur(o.price, o.currency, o.load_date ?? o.created_at, rates),
+      })),
+    [orders, rates],
+  );
+
+  const costsEur = useMemo(
+    () =>
+      costs.map((c) => ({
+        ...c,
+        amountEur: rowAmountEur(Number(c.amount), c.currency, c.cost_date, rates),
+      })),
+    [costs, rates],
+  );
+
+  /** Ile pozycji wypadło z sum z braku notowania — pokazujemy to wprost. */
+  const missingRate = useMemo(
+    () => countMissingRate(fuel, rates) + countMissingRate(adblue, rates),
+    [fuel, adblue, rates],
   );
 
   // Pulpit floty — agregaty po wszystkich pojazdach (raz na zmianę danych).
   const fleet = useMemo(() => {
     const consVals = tiles.map((tl) => tl.cons).filter((c): c is number => c != null);
-    const ordersRevenueEur = round2(
-      orders
-        .filter(
-          (o) => (o.status === "delivered" || o.status === "invoiced") && o.currency === "EUR",
-        )
-        .reduce((a, o) => a + (o.price ?? 0), 0),
-    );
+    // [#378] Wcześniej: `o.currency === "EUR"` — zlecenie wystawione w złotówkach
+    // znikało z przychodu bez śladu, więc marża floty wychodziła zawyżona.
+    // Teraz przeliczamy po kursie z dnia załadunku; nieprzeliczalne zliczamy osobno.
+    const revenue = ordersEur.filter((o) => o.status === "delivered" || o.status === "invoiced");
+    const ordersRevenueEur = round2(revenue.reduce((a, o) => a + (o.priceEur ?? 0), 0));
     return {
       vehicles: tiles.length,
       totalLiters: round2(tiles.reduce((a, tl) => a + tl.totalLiters, 0)),
@@ -163,8 +206,10 @@ export default function StatsPage() {
         ? round2(consVals.reduce((a, c) => a + c, 0) / consVals.length)
         : null,
       ordersRevenueEur,
+      /** Zlecenia z ceną, której nie dało się przeliczyć — suma jest niepełna. */
+      revenueMissingRate: revenue.filter((o) => o.price != null && o.priceEur == null).length,
     };
-  }, [tiles, orders]);
+  }, [tiles, ordersEur]);
 
   // Analiza zleceń: top nadawcy, najczęstsze trasy, średnia stawka (raz na zmianę zleceń).
   const analytics = useMemo(() => orderAnalytics(orders, 5), [orders]);
@@ -173,62 +218,73 @@ export default function StatsPage() {
   // do przychodu, zsumowany per nadawca. Tylko zlecenia zrealizowane w EUR.
   const profit = useMemo(() => {
     // Koszt per pojazd = paliwo + koszty pozostałe (EUR) — atrybucja proporcjonalna do przychodu.
-    const byVeh = fuel.reduce(
-      (m, r) => m.set(r.vehicle_id, (m.get(r.vehicle_id) ?? 0) + Number(r.price_total ?? 0)),
-      new Map<string, number>(),
-    );
-    for (const c of costs) {
-      if (c.currency !== "EUR") continue;
-      byVeh.set(c.vehicle_id, (byVeh.get(c.vehicle_id) ?? 0) + Number(c.amount));
+    // [#378] Dwa błędy w jednej mapie: paliwo dodawało surową kwotę (złotówki
+    // jak euro, zawyżenie ~4,3×), a koszty pojazdu w innej walucie były po cichu
+    // WYRZUCANE. Obie liczby lądowały w tej samej rentowności klienta.
+    const byVeh = fuel.reduce((m, r) => {
+      const eur = rowAmountEur(r.price_total, r.currency, r.occurred_at, rates);
+      return eur == null ? m : m.set(r.vehicle_id, (m.get(r.vehicle_id) ?? 0) + eur);
+    }, new Map<string, number>());
+    for (const c of costsEur) {
+      if (c.amountEur == null) continue;
+      byVeh.set(c.vehicle_id, (byVeh.get(c.vehicle_id) ?? 0) + c.amountEur);
     }
     const vehicleCosts = [...byVeh].map(([vehicleId, cost]) => ({ vehicleId, cost }));
     return clientProfitability(
-      orders.map((o) => ({
+      ordersEur.map((o) => ({
         shipper: o.shipper,
         vehicleId: o.vehicle_id,
-        price: o.price,
-        currency: o.currency,
+        price: o.priceEur,
+        // Już po przeliczeniu — patrz `ordersEur`.
+        currency: "EUR",
         status: o.status,
       })),
       vehicleCosts,
     );
-  }, [orders, fuel, costs]);
+  }, [ordersEur, fuel, costsEur, rates]);
 
   // Rachunek zysków i strat floty: przychód − paliwo − pozostałe koszty (tylko EUR).
   const pnl = useMemo(() => {
-    const fuelEur = fuel.reduce((a, r) => a + Number(r.price_total ?? 0), 0);
-    const eurCosts = costs.filter((c) => c.currency === "EUR");
-    const otherEur = eurCosts.reduce((a, c) => a + Number(c.amount), 0);
+    // [#378] Nazwa `fuelEur` twierdziła „euro", a kod nie sprawdzał waluty ani razu.
+    // Wynik szedł do kafelków „Paliwo", „Koszty razem", „Zysk netto" i „Marża".
+    const fuelEur = fuel.reduce(
+      (a, r) => a + (rowAmountEur(r.price_total, r.currency, r.occurred_at, rates) ?? 0),
+      0,
+    );
+    const converted = costsEur.filter(
+      (c): c is typeof c & { amountEur: number } => c.amountEur != null,
+    );
+    const otherEur = converted.reduce((a, c) => a + c.amountEur, 0);
     return {
       result: fleetPnl(fleet.ordersRevenueEur, fuelEur, otherEur),
       byCategory: sumCostsByCategory(
-        eurCosts.map((c) => ({
+        converted.map((c) => ({
           vehicleId: c.vehicle_id,
           category: c.category,
-          amountEur: Number(c.amount),
+          amountEur: c.amountEur,
         })),
       ),
     };
-  }, [fuel, costs, fleet.ordersRevenueEur]);
+  }, [fuel, costsEur, rates, fleet.ordersRevenueEur]);
 
   // Ranking rentowności floty: P&L per pojazd (przychód − paliwo − koszty, EUR).
   const pnlRows = useMemo(() => {
     const fuelByVehicle = tiles.map((tl) => ({ vehicleId: tl.id, eur: tl.spend }));
-    const costsByVehicle = costs
-      .filter((c) => c.currency === "EUR")
-      .map((c) => ({ vehicleId: c.vehicle_id, eur: Number(c.amount) }));
+    const costsByVehicle = costsEur
+      .filter((c): c is typeof c & { amountEur: number } => c.amountEur != null)
+      .map((c) => ({ vehicleId: c.vehicle_id, eur: c.amountEur }));
     const regOf = new Map(vehicles.map((v) => [v.id, v.registration]));
     return fleetPnlByVehicle(
-      orders.map((o) => ({
+      ordersEur.map((o) => ({
         vehicleId: o.vehicle_id,
-        price: o.price,
-        currency: o.currency,
+        price: o.priceEur,
+        currency: "EUR",
         status: o.status,
       })),
       fuelByVehicle,
       costsByVehicle,
     ).map((r) => ({ ...r, registration: regOf.get(r.vehicleId) ?? r.vehicleId.slice(0, 8) }));
-  }, [orders, tiles, costs, vehicles]);
+  }, [ordersEur, tiles, costsEur, vehicles]);
 
   // Emisje CO₂ per pojazd (z litrów paliwa) — raport ESG, malejąco.
   const co2Rows = useMemo(
@@ -267,30 +323,30 @@ export default function StatsPage() {
     const months = Array.from({ length: 6 }, (_, i) =>
       new Date(now.getFullYear(), now.getMonth() - 5 + i, 1).toISOString().slice(0, 7),
     );
-    const trendOrders = orders.map((o) => ({
+    const trendOrders = ordersEur.map((o) => ({
       shipper: o.shipper,
       vehicleId: o.vehicle_id,
-      price: o.price,
-      currency: o.currency,
+      price: o.priceEur,
+      currency: "EUR",
       status: o.status,
       month: (o.load_date ?? o.created_at).slice(0, 7),
     }));
     const trendCosts = [
       ...fuel.map((r) => ({
         vehicleId: r.vehicle_id,
-        cost: Number(r.price_total ?? 0),
+        cost: rowAmountEur(r.price_total, r.currency, r.occurred_at, rates) ?? 0,
         month: r.occurred_at.slice(0, 7),
       })),
-      ...costs
-        .filter((c) => c.currency === "EUR")
+      ...costsEur
+        .filter((c): c is typeof c & { amountEur: number } => c.amountEur != null)
         .map((c) => ({
           vehicleId: c.vehicle_id,
-          cost: Number(c.amount),
+          cost: c.amountEur,
           month: c.cost_date.slice(0, 7),
         })),
     ];
     return { months, orders: trendOrders, costs: trendCosts };
-  }, [orders, fuel, costs]);
+  }, [ordersEur, fuel, costsEur, rates]);
 
   // Alerty progowe (ujemna/niska marża, anomalie spalania, skok kosztu paliwa m/m)
   // — liczone z danych już załadowanych na tym ekranie. Tylko zarząd.
@@ -299,9 +355,12 @@ export default function StatsPage() {
     // Wcześniej alert liczył po `created_at`, więc kilka tankowań z końca lipca
     // zsynchronizowanych 1 sierpnia dawało „skok kosztu o 233%", którego nie
     // dało się potwierdzić na wykresie na tym samym ekranie.
+    // [#378] …i po kwocie przeliczonej na euro. Bez tego jedno tankowanie
+    // w złotówkach samo w sobie generowało fałszywy alert „skok kosztu paliwa".
     const byMonth = fuel.reduce((m, r) => {
       const k = r.occurred_at.slice(0, 7);
-      return m.set(k, (m.get(k) ?? 0) + Number(r.price_total ?? 0));
+      const eur = rowAmountEur(r.price_total, r.currency, r.occurred_at, rates);
+      return eur == null ? m : m.set(k, (m.get(k) ?? 0) + eur);
     }, new Map<string, number>());
     const fuelCostByMonth = [...byMonth]
       .map(([month, cost]) => ({ month, cost }))
@@ -314,7 +373,7 @@ export default function StatsPage() {
       })),
       fuelCostByMonth,
     });
-  }, [profit, tiles, fuel]);
+  }, [profit, tiles, fuel, rates]);
 
   return (
     <div>
@@ -333,6 +392,19 @@ export default function StatsPage() {
         <>
           {canManage && alerts.length > 0 && <AlertsBanner alerts={alerts} />}
 
+          {/* [#378] „Brak kwoty" i „brak kursu" to dwie różne rzeczy i nie wolno
+              ich zlewać: użytkownikowi, który wpisał 1200 PLN, komunikat
+              „uzupełnij kwotę" jest nie do wykonania. Tu mówimy wprost, że suma
+              jest niepełna, bo brakuje notowania na dany dzień. */}
+          {(missingRate > 0 || fleet.revenueMissingRate > 0) && (
+            <div style={styles.rateWarn}>
+              ⚠️ Suma niepełna — {missingRate + fleet.revenueMissingRate}{" "}
+              {missingRate + fleet.revenueMissingRate === 1 ? "pozycja" : "pozycji"} w walucie bez
+              notowania na dzień zdarzenia. Kwoty są wpisane; brakuje kursu, więc nie weszły do
+              przeliczenia.
+            </div>
+          )}
+
           {fleet.vehicles > 0 && (
             <div style={styles.fleet}>
               <FleetStat label="Pojazdy" value={String(fleet.vehicles)} />
@@ -343,8 +415,12 @@ export default function StatsPage() {
                 value={fleet.avgCons != null ? `${fleet.avgCons} L/100km` : "—"}
               />
               <FleetStat label="Trasy" value={String(fleet.totalTrips)} />
+              {/* [#378] Było „Przychód (zlecenia EUR)" — nazwa opisywała nie tyle
+                  walutę wyniku, ile fakt, że zlecenia w innych walutach po prostu
+                  wypadały. Teraz wszystko jest przeliczone, więc etykieta może być
+                  uczciwa. */}
               <FleetStat
-                label="Przychód (zlecenia EUR)"
+                label="Przychód (zlecenia)"
                 value={`${fleet.ordersRevenueEur} €`}
                 accent="#22c55e"
               />
@@ -544,6 +620,7 @@ export default function StatsPage() {
           fuel={byV(fuel, selected)}
           adblue={byV(adblue, selected)}
           trips={byV(trips, selected)}
+          rates={rates}
           onBack={() => setSelected(null)}
         />
       )}

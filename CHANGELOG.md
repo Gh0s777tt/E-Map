@@ -3,7 +3,7 @@
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
 ![Updaty](https://img.shields.io/badge/updaty-378-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.221.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.222.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,56 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.222.0] — 💱 Statystyki floty przestały sumować złotówki jak euro
+
+Faza 7, etap 1–2 dla ekranu `/stats`. To nie jest nowa funkcja — to naprawa liczb,
+które ten ekran pokazywał zarządowi jako prawdziwe.
+
+- `[#378]` **Sedno błędu.** `stats/page.tsx` sumował koszt paliwa przez
+  `a + Number(r.price_total ?? 0)` — **bez jednego sprawdzenia waluty**, mimo że
+  zmienna nazywała się `fuelEur`. Tankowanie za 1200 PLN wchodziło do sumy jako
+  1200 €, czyli **ponad czterokrotne zawyżenie**. Ta liczba szła prosto do kafelków
+  „Wydatek", „Koszty razem", „Zysk netto" i „Marża". Równolegle **pięć filtrów
+  `currency === "EUR"`** po cichu **wyrzucało** z sum zlecenia i koszty pojazdu
+  w innych walutach. W jednej mapie `byVeh` obie pomyłki działały naraz: paliwo
+  w złotówkach zawyżone, koszt pojazdu w złotówkach usunięty — a wynik trafiał
+  do rentowności klientów.
+
+- `[#378]` **Przeliczanie na granicy odczytu**, a nie w każdym miejscu sumowania
+  ([shared.tsx](apps/web/app/(app)/stats/shared.tsx)). `entry()` oddaje kwotę już
+  w euro, po kursie z **dnia zdarzenia** — dzięki temu `summarizeFuel`, kafelki,
+  P&L, ranking pojazdów, wykres miesięczny i alerty prostują się jedną zmianą.
+  `FuelRaw` dostał wreszcie `currency`, `price_net`, `vat_rate` i `fuel_card_id`:
+  `select("*")` i tak je pobierał, więc **dane leżały w pamięci przeglądarki nieodczytane**.
+
+- `[#378]` **Kursy jako parametr WYMAGANY.** Wersja z wartością domyślną `= []`
+  kompilowała `.map(entry)` — i cicho przekazywała **indeks tablicy** jako kursy,
+  wracając do sumowania bez przeliczeń. Tak było napisane w trzech miejscach;
+  TypeScript zgłasza to dopiero, gdy parametru nie da się pominąć.
+
+- `[#378]` **„Brak kwoty" ≠ „brak kursu".** Dotąd oba przypadki dawały to samo `null`
+  i ten sam komunikat „uzupełnij kwotę" — instrukcja niewykonalna dla kogoś, kto
+  kwotę wpisał, tylko w złotówkach. Nowy licznik `countMissingRate` i pasek nad
+  kafelkami mówią wprost: suma jest niepełna, bo brakuje **notowania**, nie kwoty.
+
+- `[#378]` **Fałszywe alerty.** Miesięczny koszt paliwa w alertach też sumował
+  mieszane waluty, więc **jedno tankowanie w złotówkach samo z siebie** przekraczało
+  próg 30% i generowało alert „skok kosztu paliwa m/m", którego nie dało się
+  potwierdzić na wykresie obok.
+
+- `[#378]` Etykieta „Przychód (zlecenia EUR)" → „Przychód (zlecenia)". Stara nazwa
+  nie opisywała waluty wyniku, tylko fakt, że reszta wypadała.
+
+- `[#378]` **9 testów** ([shared.test.ts](apps/web/app/(app)/stats/shared.test.ts)):
+  430 PLN @ 4,30 = 100 €, kurs z dnia zdarzenia a nie synchronizacji, brak kursu →
+  `undefined` zamiast zera lub kursu 1:1. Konfiguracja vitest obejmuje teraz `app/**/*.test.ts`
+  — helpery mieszkające obok ekranu były wcześniej nietestowalne.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core 516 · api 81 · maps 116 · **web 97** · mobile 36 · i18n 5 ✓ · `next build` ✓.
+**Zakres:** ten wpis naprawia `/stats`. Te same błędy siedzą jeszcze w `/wyjazdy`, `/analytics`,
+`/settlements`, `vehicles/[id]` i w mobile — razem **11 filtrów `currency === "EUR"`** i kilka
+surowych sum. Nie zostały tknięte i nadal pokazują liczby sprzed tej poprawki.
 
 ## [1.221.0] — 🧱 Fundament pod statystyki: kursy wstecz, waluta w Trip, odblokowane kolumny
 
