@@ -3,7 +3,7 @@
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
 ![Updaty](https://img.shields.io/badge/updaty-375-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.217.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.218.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,26 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.218.0] — 🌍 Kraj jako kod ISO — koniec z „10115 Berlin" w polu kraju
+
+Ostatni z błędów zgłoszonych do formularzy. Pole „Kraj" przyjmowało dowolny
+tekst, więc zepsuty geokoder ([#372]) wstawiał tam kod pocztowy z miejscowością.
+Brzydki wpis to była najmniejsza szkoda: **stawka VAT i zwrot podatku są
+kluczowane po kraju tankowania**, a „10115 Berlin" nie pasuje do żadnej stawki —
+kwota wypadała z rozliczenia bez jednego komunikatu.
+
+- `[#375]` **Walidacja i normalizacja** ([`countries.ts`](packages/core/src/countries.ts)): 43 kody ISO 3166-1 alpha-2 plus 99 aliasów, które ludzie realnie wpisują — „Niemcy", „Germany", „Deutschland", „DEU", a także nieoficjalne „UK" mapowane na `GB`. [`geoLocationSchema`](packages/core/src/schemas.ts) sprowadza wpis do kodu przy zapisie i **odrzuca to, czego nie da się rozpoznać**.
+
+- `[#375]` **Bramka w bazie** (migracja [0099](supabase/migrations/0099_country_normalization.sql)). Sama walidacja Zod nie wystarcza: buildy mobile leżące w sklepach nie mają nowego schematu i nadal wysyłają wolny tekst. Trigger `normalize_country` stoi na sześciu tabelach z formularzami i **normalizuje, a nie odrzuca** — kierowca przy dystrybutorze nie może stracić dokumentacji tankowania przez literówkę w nazwie kraju.
+
+- `[#375]` **Dane historyczne posprzątane.** W bazie były cztery takie wiersze: `LUX` → `LU`, dwa razy `69-100 Słubice` → `PL`, `8630 Veurne` → `BE`. Po migracji **każda wartość w kolumnie kraju to poprawny kod ISO**.
+
+- `[#375]` **Interfejs.** Web dostał [`CountryInput`](apps/web/components/CountryInput.tsx) — `input` z `datalist`, bo kierowca znający kod wpisze „DE" szybciej, niż znajdzie Niemcy na liście czterdziestu pozycji, a nieznający dostaje nazwy. Mobile dostał [`CountryField`](apps/mobile/components/CountryField.tsx): skróty do jedenastu najczęstszych kierunków i **natychmiastowe potwierdzenie rozpoznania** (`✓ DE`) albo ostrzeżenie. Do tej pory kierowca nie miał żadnego sygnału, że w polu „Kraj" wylądowało coś, czego rozliczenie nie zrozumie.
+
+- `[#375]` **Test parzystości TS ↔ SQL** ([`countries.sql.test.ts`](packages/core/src/countries.sql.test.ts)). Ta sama mapa żyje w dwóch miejscach i musi tak zostać — dopisanie aliasu tylko po jednej stronie zapala się w testach, a nie po miesiącu w rozliczeniu VAT.
+
+**Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 506 · api 77 · maps 116 · web 78 · mobile 36 · i18n 5 ✓ · trigger zweryfikowany na żywej bazie z roli `authenticated` (`Niemcy` → `DE`, `united kingdom` → `GB`, `10115 Berlin` → zapis przechodzi bez zmiany, `NULL` → bez błędu) ✓.
 
 ## [1.217.0] — 📋 Formularze: trzy nowe zgłoszenia, usuwanie w historii, naprawa przeładunku
 

@@ -36,6 +36,10 @@ type Row = {
       Wcześniej sortowaliśmy po `sub` („KRAJ · data"), co dawało kolejność
       alfabetyczną po kraju, a chronologię dopiero w drugiej kolejności. */
   at: string;
+  /** [#375] Pola strukturalne — po sklejonym `sub` nie dało się filtrować. */
+  country: string;
+  paymentMethod?: "card" | "cash" | null;
+  isFull?: boolean | null;
   status: Status;
   error?: string;
   outboxId?: string;
@@ -75,6 +79,7 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
       title: `${labelOf(i.vehicleId)} · ${tripActionLabel(t, i.action)} · ${i.odometerKm} km${w}`,
       sub: `${i.place.country} · ${when}`,
       at: item.createdAt,
+      country: i.place.country,
       status: item.status,
       error: item.error,
       outboxId: item.id,
@@ -88,6 +93,9 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
     title: `${labelOf(i.vehicleId)} · ${i.liters} L · ${i.odometerKm} km`,
     sub: `${i.station.country} · ${when}`,
     at: item.createdAt,
+    country: i.station.country,
+    paymentMethod: i.paymentMethod,
+    isFull: i.isFull,
     status: item.status,
     error: item.error,
     outboxId: item.id,
@@ -102,6 +110,9 @@ export default function FormsHistoryPage() {
   const [source, setSource] = useState<"baza" | "lokalne">("lokalne");
   const [kindFilter, setKindFilter] = useState<Kind | "all">("all");
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
+  // [#375] Filtr po kraju — kierowca jeżdżący po pół Europie inaczej nie znajdzie
+  // tankowań z jednego kraju, a od nich zależy zwrot VAT.
+  const [countryFilter, setCountryFilter] = useState<string>("all");
 
   const load = useCallback(async () => {
     const outbox = listOutbox();
@@ -127,6 +138,8 @@ export default function FormsHistoryPage() {
               liters: number;
               odometer_km: number;
               station_country: string;
+              payment_method: "card" | "cash";
+              is_full: boolean | null;
               created_at: string;
               occurred_at: string;
             }[]
@@ -139,6 +152,9 @@ export default function FormsHistoryPage() {
             // [#376] Data ZDARZENIA, nie synchronizacji — wpis zrobiony offline
             // i zsynchronizowany trzy dni później pokazywał w historii złą datę.
             at: r.occurred_at,
+            country: r.station_country,
+            paymentMethod: r.payment_method,
+            isFull: r.is_full,
             status: "synced",
             dbId: r.id,
           }));
@@ -160,6 +176,7 @@ export default function FormsHistoryPage() {
           title: `${labelOf(r.vehicle_id)} · ${tripActionLabel(t, r.action)} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
           sub: `${r.country} · ${new Date(r.occurred_at).toLocaleString("pl-PL")}`,
           at: r.occurred_at,
+          country: r.country,
           status: "synced",
           dbId: r.id,
         }));
@@ -230,14 +247,20 @@ export default function FormsHistoryPage() {
       [...new Set(rows.map((r) => r.vehicle).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [rows],
   );
+  const countryOptions = useMemo(
+    () =>
+      [...new Set(rows.map((r) => r.country).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
   const filtered = useMemo(
     () =>
       rows.filter(
         (r) =>
           (kindFilter === "all" || r.kind === kindFilter) &&
-          (vehicleFilter === "all" || r.vehicle === vehicleFilter),
+          (vehicleFilter === "all" || r.vehicle === vehicleFilter) &&
+          (countryFilter === "all" || r.country === countryFilter),
       ),
-    [rows, kindFilter, vehicleFilter],
+    [rows, kindFilter, vehicleFilter, countryFilter],
   );
 
   const KIND_FILTERS: { value: Kind | "all"; label: string }[] = [
@@ -248,18 +271,26 @@ export default function FormsHistoryPage() {
   ];
 
   function exportCsv() {
+    // [#375] Osobne kolumny zamiast sklejonego tekstu — arkusz ma być filtrowalny
+    // po kraju i metodzie płatności, a nie zmuszać do rozbijania jednej komórki.
     const headers = [
       t("history.csv.type"),
       t("common.vehicle"),
+      t("common.date"),
+      t("form.field.country"),
+      t("forms.common.paymentMethod"),
+      t("history.full"),
       t("history.csv.desc"),
-      t("history.csv.details"),
       t("common.status"),
     ];
     const csvRows = filtered.map((r) => [
       t(`history.kind.${r.kind}`),
       r.vehicle,
+      r.at.slice(0, 16).replace("T", " "),
+      r.country,
+      r.paymentMethod ? t(`pay.${r.paymentMethod}`) : "",
+      r.isFull == null ? "" : r.isFull ? t("history.full") : t("history.partial"),
       r.title,
-      r.sub,
       t(STATUS_KEY[r.status]),
     ]);
     download(`historia_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, csvRows));
@@ -290,6 +321,21 @@ export default function FormsHistoryPage() {
                 </button>
               ))}
             </div>
+            {countryOptions.length > 1 && (
+              <select
+                value={countryFilter}
+                onChange={(e) => setCountryFilter(e.target.value)}
+                style={styles.select}
+                aria-label={t("history.allCountries")}
+              >
+                <option value="all">{t("history.allCountries")}</option>
+                {countryOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            )}
             {vehicleOptions.length > 1 && (
               <select
                 value={vehicleFilter}
@@ -324,6 +370,24 @@ export default function FormsHistoryPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700 }}>{r.title}</div>
                       <div style={{ color: palette.smoke, fontSize: 13 }}>{r.sub}</div>
+                      {/* [#375] Metoda płatności i „do pełna" widoczne od razu —
+                          dotąd trzeba było wejść w edycję, żeby je sprawdzić. */}
+                      {(r.paymentMethod || r.isFull != null) && (
+                        <div style={{ display: "flex", gap: 6, marginTop: 3 }}>
+                          {r.paymentMethod && (
+                            <span style={styles.tag}>
+                              {r.paymentMethod === "card"
+                                ? `💳 ${t("pay.card")}`
+                                : `💵 ${t("pay.cash")}`}
+                            </span>
+                          )}
+                          {r.isFull != null && (
+                            <span style={styles.tag}>
+                              {r.isFull ? t("history.full") : t("history.partial")}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {r.error && <div style={{ color: palette.red, fontSize: 12 }}>{r.error}</div>}
                     </div>
                     <span style={{ ...styles.badge, color, borderColor: color }}>
@@ -364,6 +428,13 @@ export default function FormsHistoryPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  tag: {
+    fontSize: 11,
+    color: palette.smoke,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 999,
+    padding: "1px 7px",
+  },
   row: {
     display: "flex",
     gap: 12,

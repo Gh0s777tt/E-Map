@@ -22,6 +22,7 @@ import {
 import { setupMessage } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
+import { CountryInput } from "@/components/CountryInput";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
@@ -175,7 +176,7 @@ export default function PenaltiesPage() {
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")}>
-            <input style={input} value={country} onChange={(e) => setCountry(e.target.value)} />
+            <CountryInput style={input} value={country} onChange={setCountry} />
           </Field>
           <Field label={t("form.field.location")}>
             <input style={input} value={city} onChange={(e) => setCity(e.target.value)} />

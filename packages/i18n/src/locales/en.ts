@@ -353,6 +353,9 @@ export const en: Record<MessageKey, string> = {
   "history.empty": "No saved forms.",
   "history.noResults": "No results for the selected filters.",
   "history.allVehicles": "All vehicles",
+  "history.allCountries": "All countries",
+  "history.full": "Full tank",
+  "history.partial": "Partial",
   "history.kind.fuel": "Fuel",
   "history.deleteConfirm":
     "Delete this entry permanently? It disappears from history and statistics.",

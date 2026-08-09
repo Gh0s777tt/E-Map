@@ -17,6 +17,7 @@ import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 import { usePermission } from "../lib/usePermission";
+import { CountryField } from "./CountryField";
 import { VehiclePicker } from "./VehiclePicker";
 
 const STATUS_ICON: Record<OutboxItem["status"], string> = {
@@ -288,14 +289,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
           📍 {geoBusy ? t("m.fuel.geoFilling") : t("m.fuel.geoFill")}
         </Text>
       </Pressable>
-      <TextInput
-        style={styles.input}
-        value={country}
-        onChangeText={setCountry}
-        placeholder={t("m.fuel.country")}
-        placeholderTextColor={palette.smoke}
-        autoCapitalize="characters"
-      />
+      <CountryField value={country} onChange={setCountry} placeholder={t("m.fuel.country")} />
       <TextInput
         style={styles.input}
         value={city}

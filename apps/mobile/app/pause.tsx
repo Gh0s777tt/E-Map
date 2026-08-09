@@ -14,6 +14,7 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { AppHeader } from "../components/AppHeader";
+import { CountryField } from "../components/CountryField";
 import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { fillFromLocation, requiresPostcode } from "../lib/geoFill";
@@ -146,14 +147,7 @@ export default function PauseScreen() {
             <Text style={s.gpsText}>{t("m.pause.fillFromGps")}</Text>
           </Pressable>
 
-          <TextInput
-            style={s.input}
-            value={country}
-            onChangeText={setCountry}
-            placeholder={t("m.trip.country")}
-            placeholderTextColor={palette.smoke}
-            autoCapitalize="characters"
-          />
+          <CountryField value={country} onChange={setCountry} placeholder={t("m.trip.country")} />
           <TextInput
             style={s.input}
             value={city}

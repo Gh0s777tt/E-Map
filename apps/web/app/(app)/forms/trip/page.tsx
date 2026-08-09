@@ -13,6 +13,7 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";
+import { CountryInput } from "@/components/CountryInput";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
@@ -378,12 +379,7 @@ export default function TripFormPage() {
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")} error={errors["place.country"]}>
-            <input
-              style={input}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="PL"
-            />
+            <CountryInput style={input} value={country} onChange={setCountry} placeholder="PL" />
           </Field>
           <Field label={t("form.field.location")} error={errors["place.location"]}>
             <input

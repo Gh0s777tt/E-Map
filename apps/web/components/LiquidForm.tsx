@@ -13,6 +13,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CountryInput } from "@/components/CountryInput";
 import { Field } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
@@ -393,12 +394,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")} error={errors["station.country"]}>
-            <input
-              className={styles.input}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="DE"
-            />
+            <CountryInput className={styles.input} value={country} onChange={setCountry} />
           </Field>
           <Field label={t("form.field.location")} error={errors["station.city"]}>
             <input

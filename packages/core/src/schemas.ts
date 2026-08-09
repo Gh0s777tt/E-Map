@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import { cardLast4 } from "./cardMask";
+import { normalizeCountry } from "./countries";
 import {
   DEFECT_SEVERITIES,
   DEFECT_STATUSES,
@@ -37,7 +38,23 @@ export const currencyCode = z
 
 /** Lokalizacja: kraj + miejsce, opcjonalnie współrzędne GPS (auto lub ręcznie). */
 export const geoLocationSchema = z.object({
-  country: z.string().min(2).max(56),
+  /**
+   * [#375] Kraj jako kod ISO 3166-1 alpha-2, znormalizowany przy zapisie.
+   *
+   * Wcześniej `z.string().min(2).max(56)` przepuszczało wszystko — łącznie
+   * z „10115 Berlin", które wstawiał tam zepsuty geokoder (#372). Skutek sięgał
+   * dalej niż brzydki wpis: stawka VAT i zwrot podatku są kluczowane po kraju
+   * tankowania, więc taka wartość cicho wypadała z rozliczenia.
+   *
+   * Transform przyjmuje też nazwy („Niemcy", „Germany", „Deutschland") i skróty,
+   * ale do bazy trafia zawsze dwuliterowy kod.
+   */
+  country: z
+    .string()
+    .min(2)
+    .max(56)
+    .refine((v) => normalizeCountry(v) !== null, "Podaj kraj — np. PL, DE albo Niemcy")
+    .transform((v) => normalizeCountry(v) as string),
   city: z.string().min(1).optional(),
   location: z.string().min(1).optional(),
   /** Kod pocztowy (np. wymagany dla UK/Anglii). */
