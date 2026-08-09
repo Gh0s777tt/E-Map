@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-373-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.215.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-374-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.216.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,31 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.216.0] — 💬 Czat: model wiadomości + załatana dziura cross-tenant
+
+Faza 2, etap 1. Dziewięć funkcji czatu z backlogu (usuń, edytuj, cytuj, przekaż,
+reakcje, znikanie per wiadomość i per kanał, lokalizacja) opiera się na tym samym:
+tabela `messages` miała **wyłącznie** polityki SELECT i INSERT, żadnych kolumn stanu,
+a realtime obsługiwał tylko INSERT. Stąd jedna migracja fundamentowa zamiast siedmiu.
+
+- `[#374]` 🔒 **Wątek dawało się przenieść do innej firmy.** `chat_threads_update` miało `USING` **bez `WITH CHECK`** — Postgres stosuje wtedy wyrażenie `USING` także do NOWEGO wiersza, a warunek `created_by = auth.uid()` jest spełniony niezależnie od tego, co stanie się z `company_id`.
+  - Skutek nie był teoretyczny: polityka Storage z migracji [0088](supabase/migrations/0088_chat_photos_acl.sql) kluczuje dostęp do zdjęć czatu po `thread_company(thread_id)`. Przepisanie wątku do firmy X dawało właścicielowi X **wgląd w zdjęcia z cudzych rozmów**. Pozwalało też wstrzyknąć obcy wątek na listę kanałów innej firmy — wektor podszycia.
+  - Naprawione dwutorowo: `WITH CHECK` na polityce **oraz** wyzwalacz blokujący zmianę `company_id`/`created_by`. Wyzwalacz działa też tam, gdzie RLS jest omijane (`service_role`, migracje) — zweryfikowane na produkcji: próba przeniesienia zostaje odrzucona.
+  - Dziś twórcą wątku jest zawsze zarząd, więc skutek był ograniczony. Po dopuszczeniu kierowców do zakładania wątków (Faza 3) stałby się realny — dlatego łatamy **zanim**, a nie potem.
+
+- `[#374]` **Model wiadomości** (migracja [0094](supabase/migrations/0094_chat_message_model.sql)): `deleted_at`, `edited_at`, `expires_at`, `reply_to_id`, `kind`, `meta` + tabela `message_reactions`.
+  - **Usuwanie jest miękkie.** Twarde `DELETE` byłoby gorsze dla użytkownika: klient, który był offline, nigdy nie zobaczy zdarzenia DELETE i zostanie z wiadomością na ekranie. Przy `deleted_at` dostaje zwykły UPDATE i usuwa ją u siebie.
+  - Tożsamość wiadomości (`company_id`, `thread_id`, `sender_id`, `created_at`) jest niezmienna — wyzwalacz blokuje przepisanie własnej wiadomości do cudzego wątku przez UPDATE. `edited_at` ustawia **baza**, więc klient nie może udawać, że treści nie zmieniano.
+  - Realtime objął UPDATE (`replica identity full`), a `message_reactions` doszło do publikacji. Bez tego edycja, usunięcie i reakcja byłyby widoczne dopiero po odświeżeniu.
+
+- `[#374]` **Znikanie wiadomości — i uczciwość co do tego, czym ono jest.** TTL ustawiany per kanał (zarząd) albo per wiadomość (nadawca); termin wylicza **baza**, bo zegar urządzenia bywa przestawiony.
+  - RLS potrafi wiadomość **ukryć, ale nigdy jej nie usuwa**. Sam filtr zostawiałby treść w tabeli, w kopiach zapasowych i w replikacji. Dlatego doszedł [cron czyszczący](apps/web/app/api/cron/chat-purge/route.ts), który kasuje wiersze i pliki ze Storage — ukrycie zamienia się w faktyczne usunięcie.
+  - Czego cron **nie** naprawia i o czym trzeba mówić wprost: treść wysłana pushem dotarła już na ekran blokady telefonu, klienci online mają ją w pamięci do odświeżenia, a podpisany URL zdjęcia wystawiony wcześniej działa jeszcze przez godzinę. Znikanie jest domyślnie **wyłączone**.
+
+**Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 452 · maps 116 · api 77 · web 78 · mobile 36 · i18n 5 ✓ · `next build` ✓ · migracja 0094 na produkcji, blokada przeniesienia wątku zweryfikowana na żywym wierszu ✓.
+
+> **Etap 2 (w toku):** interfejs — menu kontekstowe dymka, usuwanie i edycja, cytowanie, kopiowanie, reakcje, przekazywanie, wysłanie lokalizacji, UI usuwania kanału. Warstwa danych jest gotowa.
 
 ## [1.215.0] — 💶 Fundament finansowy: data zdarzenia, waluty, kursy EBC, VAT per kraj
 

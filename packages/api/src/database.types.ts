@@ -227,6 +227,7 @@ export interface Database {
           company_id: string;
           name: string;
           created_by: string;
+          ephemeral_ttl_seconds: number | null;
           created_at: string;
         };
         Insert: {
@@ -234,6 +235,7 @@ export interface Database {
           company_id: string;
           name: string;
           created_by?: string;
+          ephemeral_ttl_seconds?: number | null;
           created_at?: string;
         };
         Update: {
@@ -241,6 +243,7 @@ export interface Database {
           company_id?: string;
           name?: string;
           created_by?: string;
+          ephemeral_ttl_seconds?: number | null;
           created_at?: string;
         };
         Relationships: [];
@@ -331,6 +334,7 @@ export interface Database {
           bank_name: string | null;
           bank_account: string | null;
           notify_days_ahead: number;
+          chat_ephemeral_ttl_seconds: number | null;
         };
         Insert: {
           id?: string;
@@ -345,6 +349,7 @@ export interface Database {
           bank_name?: string | null;
           bank_account?: string | null;
           notify_days_ahead?: number;
+          chat_ephemeral_ttl_seconds?: number | null;
         };
         Update: {
           id?: string;
@@ -359,6 +364,7 @@ export interface Database {
           bank_name?: string | null;
           bank_account?: string | null;
           notify_days_ahead?: number;
+          chat_ephemeral_ttl_seconds?: number | null;
         };
         Relationships: [];
       };
@@ -1316,6 +1322,12 @@ export interface Database {
         };
         Relationships: [];
       };
+      message_reactions: {
+        Row: { message_id: string; user_id: string; emoji: string; created_at: string };
+        Insert: { message_id: string; user_id?: string; emoji: string; created_at?: string };
+        Update: { message_id?: string; user_id?: string; emoji?: string; created_at?: string };
+        Relationships: [];
+      };
       messages: {
         Row: {
           id: string;
@@ -1326,6 +1338,13 @@ export interface Database {
           created_at: string;
           thread_id: string | null;
           photo_path: string | null;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          edited_at: string | null;
+          expires_at: string | null;
+          reply_to_id: string | null;
+          kind: string;
+          meta: Json | null;
         };
         Insert: {
           id?: string;
@@ -1336,6 +1355,13 @@ export interface Database {
           created_at?: string;
           thread_id?: string | null;
           photo_path?: string | null;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          edited_at?: string | null;
+          expires_at?: string | null;
+          reply_to_id?: string | null;
+          kind?: string;
+          meta?: Json | null;
         };
         Update: {
           id?: string;
@@ -1346,6 +1372,13 @@ export interface Database {
           created_at?: string;
           thread_id?: string | null;
           photo_path?: string | null;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          edited_at?: string | null;
+          expires_at?: string | null;
+          reply_to_id?: string | null;
+          kind?: string;
+          meta?: Json | null;
         };
         Relationships: [];
       };
