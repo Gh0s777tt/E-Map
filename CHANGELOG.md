@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-375-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.219.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-377-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.220.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,35 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.220.0] — 💸 Kierowca może wreszcie wpisać kwotę tankowania
+
+Przygotowanie do Fazy 7, znalezione przy sprawdzaniu, na czym właściwie mają
+stanąć statystyki pieniężne. Odpowiedź brzmiała: na niczym.
+
+- `[#377]` **Formularz kierowcy nie miał pola kwoty.** Nie „miał zepsute" — nie miał
+  go wcale ([mobile/components/LiquidForm.tsx](apps/mobile/components/LiquidForm.tsx)).
+  Kierowca podawał litry, licznik, kraj i metodę płatności, ale nigdzie sumy z paragonu.
+  Skutek widać w bazie: `price_total` jest **NULL w 100% wpisów** (0 z 20 tankowań
+  i 0 z 19 wpisów AdBlue). Kwotę ma tylko formularz webowy, czyli ten, którego nie
+  otwiera osoba stojąca przy dystrybutorze. Cała pieniężna połowa Fazy 7 —
+  netto/brutto/VAT, zwrot podatku, koszt na kilometr — liczyłaby z pustego zbioru.
+
+- `[#377]` **Skan paragonu wyrzucał to, co sam odczytał.** [`parseReceiptText`](packages/core/src/receipt.ts)
+  zwraca `{ amount, currency, liters }` od czasu #298, a formularz brał z tego
+  **wyłącznie litry**. Dokładnie te dwie wartości, których brakowało, leżały już
+  odczytane i były kasowane. Teraz uzupełniają puste pola — skan ma pomagać,
+  a nie nadpisywać to, co kierowca zdążył wpisać z ręki.
+
+- `[#377]` **Waluta podpowiadana z kraju** (`currencyForCountry`, pierwsze produkcyjne
+  użycie [`fx.ts`](packages/core/src/fx.ts)) — ale **nigdy nie nadpisuje ręcznego wyboru**:
+  tankowanie w Czechach bywa rozliczane kartą w euro i kierowca musi móc to powiedzieć.
+
+- `[#377]` Kwota pozostaje **opcjonalna** — brak paragonu to nie powód, żeby zablokować
+  zapis tankowania. Ale gdy jest, leci razem z walutą: liczba bez waluty jest
+  nieporównywalna z czymkolwiek innym w zestawieniu.
+
+**Bramki:** biome ✓ · `tsc` mobile 0 ✓ · testy core 520 · api 77 · maps 116 · web 88 · mobile 36 · i18n 5 (parytet 4 języków: pl/en/de/uk) ✓. **Wymaga nowego builda EAS**, żeby trafiło do kierowców.
 
 ## [1.219.0] — 📊 Arkusze: eksport z prawdziwymi liczbami i import tankowań z pliku
 
