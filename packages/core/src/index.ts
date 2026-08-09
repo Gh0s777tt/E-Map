@@ -51,6 +51,7 @@ export * from "./savedPlaces";
 export * from "./schemas";
 export * from "./search";
 export * from "./setup";
+export * from "./sheetImport";
 export * from "./tachoDownload";
 export * from "./tachoTime";
 export * from "./vatRates";

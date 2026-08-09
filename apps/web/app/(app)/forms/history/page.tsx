@@ -40,6 +40,20 @@ type Row = {
   country: string;
   paymentMethod?: "card" | "cash" | null;
   isFull?: boolean | null;
+  /**
+   * [#375] Liczby osobno, nie tylko w `title`. Eksport bez nich był do oglądania,
+   * a nie do liczenia: księgowa dostawała komórkę „WX1234 · 620 L · 812345 km"
+   * i musiała rozbijać ją ręcznie, zanim policzyła cokolwiek.
+   */
+  city?: string | null;
+  odometerKm?: number | null;
+  liters?: number | null;
+  priceTotal?: number | null;
+  currency?: string | null;
+  priceNet?: number | null;
+  vatRate?: number | null;
+  action?: string | null;
+  weightKg?: number | null;
   status: Status;
   error?: string;
   outboxId?: string;
@@ -80,6 +94,10 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
       sub: `${i.place.country} · ${when}`,
       at: item.createdAt,
       country: i.place.country,
+      city: i.place.city ?? i.place.location ?? null,
+      odometerKm: i.odometerKm,
+      action: i.action,
+      weightKg: "weightKg" in i ? (i.weightKg ?? null) : null,
       status: item.status,
       error: item.error,
       outboxId: item.id,
@@ -94,6 +112,13 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
     sub: `${i.station.country} · ${when}`,
     at: item.createdAt,
     country: i.station.country,
+    city: i.station.city ?? i.station.location ?? null,
+    odometerKm: i.odometerKm,
+    liters: i.liters,
+    priceTotal: i.priceTotal ?? null,
+    currency: i.currency ?? null,
+    priceNet: i.priceNet ?? null,
+    vatRate: i.vatRate ?? null,
     paymentMethod: i.paymentMethod,
     isFull: i.isFull,
     status: item.status,
@@ -138,6 +163,11 @@ export default function FormsHistoryPage() {
               liters: number;
               odometer_km: number;
               station_country: string;
+              station_city: string | null;
+              price_total: number | null;
+              currency: string | null;
+              price_net: number | null;
+              vat_rate: number | null;
               payment_method: "card" | "cash";
               is_full: boolean | null;
               created_at: string;
@@ -153,6 +183,13 @@ export default function FormsHistoryPage() {
             // i zsynchronizowany trzy dni później pokazywał w historii złą datę.
             at: r.occurred_at,
             country: r.station_country,
+            city: r.station_city,
+            odometerKm: r.odometer_km,
+            liters: r.liters,
+            priceTotal: r.price_total,
+            currency: r.currency,
+            priceNet: r.price_net,
+            vatRate: r.vat_rate,
             paymentMethod: r.payment_method,
             isFull: r.is_full,
             status: "synced",
@@ -166,6 +203,9 @@ export default function FormsHistoryPage() {
             odometer_km: number;
             weight_kg: number | null;
             country: string;
+            // Trip zapisuje „lokalizację" (adres/miejsce), nie miasto —
+            // to jedna kolumna mniej niż w tankowaniu i tak ma zostać.
+            location: string | null;
             created_at: string;
             occurred_at: string;
           }[]
@@ -177,6 +217,10 @@ export default function FormsHistoryPage() {
           sub: `${r.country} · ${new Date(r.occurred_at).toLocaleString("pl-PL")}`,
           at: r.occurred_at,
           country: r.country,
+          city: r.location,
+          odometerKm: r.odometer_km,
+          action: r.action,
+          weightKg: r.weight_kg,
           status: "synced",
           dbId: r.id,
         }));
@@ -270,30 +314,75 @@ export default function FormsHistoryPage() {
     { value: "trip", label: t("history.kind.trip") },
   ];
 
-  function exportCsv() {
-    // [#375] Osobne kolumny zamiast sklejonego tekstu — arkusz ma być filtrowalny
-    // po kraju i metodzie płatności, a nie zmuszać do rozbijania jednej komórki.
+  /**
+   * [#375] Osobne kolumny zamiast sklejonego tekstu — arkusz ma być filtrowalny
+   * po kraju i metodzie płatności i policzalny, a nie zmuszać do rozbijania
+   * jednej komórki. Ten sam zestaw zasila CSV i Excel: gdyby powstały dwa,
+   * rozjechałyby się przy pierwszej dołożonej kolumnie.
+   */
+  const exportTable = useCallback(() => {
     const headers = [
       t("history.csv.type"),
       t("common.vehicle"),
       t("common.date"),
       t("form.field.country"),
+      t("form.field.city"),
+      t("form.field.odometer"),
+      t("form.field.liters"),
+      t("history.col.gross"),
+      t("form.field.currency"),
+      t("history.col.net"),
+      t("invoices.vatPercent"),
       t("forms.common.paymentMethod"),
       t("history.full"),
-      t("history.csv.desc"),
+      t("history.col.action"),
+      t("form.field.weight"),
       t("common.status"),
     ];
-    const csvRows = filtered.map((r) => [
+    // Liczby zostają liczbami: w Excelu tekst „620" nie sumuje się, a właśnie
+    // sumowanie jest jedynym powodem, dla którego ktoś eksportuje ten arkusz.
+    const rowsOut = filtered.map<(string | number | null)[]>((r) => [
       t(`history.kind.${r.kind}`),
       r.vehicle,
       r.at.slice(0, 16).replace("T", " "),
       r.country,
+      r.city ?? "",
+      r.odometerKm ?? null,
+      r.liters ?? null,
+      r.priceTotal ?? null,
+      r.currency ?? "",
+      r.priceNet ?? null,
+      r.vatRate ?? null,
       r.paymentMethod ? t(`pay.${r.paymentMethod}`) : "",
       r.isFull == null ? "" : r.isFull ? t("history.full") : t("history.partial"),
-      r.title,
+      r.action ? tripActionLabel(t, r.action) : "",
+      r.weightKg ?? null,
       t(STATUS_KEY[r.status]),
     ]);
-    download(`historia_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, csvRows));
+    return { headers, rows: rowsOut };
+  }, [filtered, t]);
+
+  function exportCsv() {
+    const { headers, rows: out } = exportTable();
+    download(
+      `historia_${new Date().toISOString().slice(0, 10)}.csv`,
+      toCsv(
+        headers,
+        out.map((row) => row.map((c) => (c == null ? "" : String(c)))),
+      ),
+    );
+  }
+
+  /** Excel doładowywany dynamicznie — `exceljs` jest ciężki i nie ma go w bundlu. */
+  async function exportExcel() {
+    const { headers, rows: out } = exportTable();
+    const { downloadXlsx } = await import("@/lib/xlsx");
+    await downloadXlsx(
+      `historia_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      headers,
+      out,
+      t("common.history"),
+    );
   }
 
   return (
@@ -354,6 +443,12 @@ export default function FormsHistoryPage() {
             <Button variant="ghost" onClick={exportCsv}>
               ⬇️ CSV
             </Button>
+            <Button variant="ghost" onClick={exportExcel}>
+              ⬇️ Excel
+            </Button>
+            <Link href="/forms/import" style={{ textDecoration: "none" }}>
+              <Button variant="ghost">{t("history.importOpen")}</Button>
+            </Link>
             <span style={{ color: palette.smoke, fontSize: 13, whiteSpace: "nowrap" }}>
               {filtered.length} z {rows.length}
             </span>

@@ -351,6 +351,25 @@ export const pl = {
   "history.noResults": "Brak wyników dla wybranych filtrów.",
   "history.allVehicles": "Wszystkie pojazdy",
   "history.allCountries": "Wszystkie kraje",
+  "history.importCard": "Karta paliwowa z zestawienia",
+  "history.importCardNone": "— wybierz kartę —",
+  "history.importPickCard":
+    "wskaż kartę paliwową nad tabelą — bez niej nie wiadomo, z czyjego limitu poszło tankowanie",
+  "history.importNoCompany": "Brak firmy — utwórz ją na Pulpicie, zanim zaimportujesz dane.",
+  "history.importNoSession": "Sesja wygasła — zaloguj się ponownie.",
+  "history.col.gross": "Brutto",
+  "history.col.net": "Netto",
+  "history.col.action": "Akcja",
+  "history.importTitle": "Import tankowań z pliku",
+  "history.importHint":
+    "Wczytaj zestawienie z karty paliwowej (CSV lub Excel) zamiast przepisywać każde tankowanie ręcznie. Kolumny dopasowujemy po nagłówkach — pobierz szablon, jeśli nie wiesz, jak je nazwać.",
+  "history.importOpen": "⬆️ Import z pliku",
+  "history.importVehicleUnknown":
+    "Nie znam pojazdu o rejestracji {reg} — dodaj go najpierw we Flocie.",
+  "history.importNoVehicles":
+    "Najpierw dodaj pojazdy we Flocie — bez nich nie ma do czego przypisać tankowania.",
+  "history.importKind": "Co importujesz",
+  "history.importDone": "Import zakończony.",
   "history.full": "Do pełna",
   "history.partial": "Częściowe",
   "history.kind.fuel": "Paliwo",

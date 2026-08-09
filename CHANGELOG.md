@@ -3,7 +3,7 @@
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
 ![Updaty](https://img.shields.io/badge/updaty-375-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.218.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.219.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,26 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.219.0] — 📊 Arkusze: eksport z prawdziwymi liczbami i import tankowań z pliku
+
+Domknięcie Fazy 6. Eksport historii formularzy przestał być zrzutem tekstu,
+a zestawienia z kart paliwowych da się wgrać zamiast przepisywać.
+
+- `[#375]` **Eksport z kolumnami liczbowymi** ([historia](apps/web/app/(app)/forms/history/page.tsx)). Dotąd arkusz dostawał sklejoną komórkę „WX1234 · 620 L · 812345 km" — do oglądania, nie do liczenia. Teraz przebieg, litry, brutto, waluta, netto i stawka VAT idą **osobnymi kolumnami i jako liczby**, bo tekst „620" w Excelu się nie sumuje, a sumowanie jest jedynym powodem, dla którego ktoś ten arkusz pobiera. Doszedł przycisk **⬇️ Excel** obok CSV (`exceljs` doładowywany dynamicznie, poza bundlem); oba formaty biorą dane z jednego źródła, żeby nie rozjechały się przy pierwszej dołożonej kolumnie.
+
+- `[#375]` **Import tankowań i AdBlue z CSV/Excel** (nowa strona [`/forms/import`](apps/web/app/(app)/forms/import/page.tsx)). Miesięczne zestawienie od operatora karty to dwieście pozycji — kilka godzin przepisywania i tyle samo okazji do pomyłki, a bez tych wpisów nie ma ani zwrotu VAT, ani spalania. Nagłówki dopasowujemy po nazwach (polskich, angielskich i niemieckich), rejestrację po zapisie bez spacji i myślników („WX 1234" = „wx-1234").
+
+- `[#375]` **Czego import świadomie NIE robi:**
+  - **Nie zgaduje stanu licznika.** Wiersz bez przebiegu jest odrzucany, a nie zapisywany z zerem — zero zafałszowałoby spalanie każdego kolejnego tankowania tego auta, bo silnik liczy różnice przebiegów.
+  - **Nie podstawia dzisiejszej daty**, gdy data w pliku jest nieczytelna, i odrzuca daty, które nie istnieją w kalendarzu (`31.02` pasuje do wzorca, a `new Date` przesunęłoby to na marzec i wpis wpadłby do złego miesiąca).
+  - **Nie dubluje.** Duplikaty rozpoznajemy **przed** zapisem po trójce pojazd + moment + litry i pokazujemy w podglądzie — wgranie tego samego zestawienia dwa razy to najbardziej prawdopodobny błąd, a każdy import generuje nowe UUID-y, więc idempotencja po kluczu tu nie działa. Kwota celowo nie wchodzi do klucza: ta sama transakcja bywa na zestawieniu raz w walucie stacji, a raz przeliczona.
+
+- `[#375]` **Odczyt komórek** ([`sheetImport.ts`](packages/core/src/sheetImport.ts), 14 testów) — data w czterech formatach, liczba z polskiego (`1 234,56`) i angielskiego Excela (`1,234.56`) oraz z doklejoną jednostką (`48,30 L`). Cicha pomyłka w odczycie liczby to nie literówka, tylko zła kwota w rozliczeniu, więc ta logika ma testy, a nie tylko komentarz.
+
+- `[#375]` **Logika wiersza wyjęta ze strony** ([`fuelImport.ts`](apps/web/lib/fuelImport.ts), 10 testów). Nie kosmetyka: pierwsza wersja odrzucała **każdy** wiersz, bo schemat wymaga wskazania karty przy płatności kartą, a import ustawiał kartę jako metodę i żadnej nie podawał. Test złapał to od razu; w przeglądarce wyszłoby dopiero po wgraniu pliku. Kartę wybiera się teraz raz dla całego pliku.
+
+**Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 520 · api 77 · maps 116 · web 88 · mobile 36 · i18n 5 ✓ · `next build` ✓ (trasa `/forms/import` w wykazie). **Niezweryfikowane wizualnie** — nowe ekrany są za logowaniem, a kont testowych nie zakładam.
 
 ## [1.218.0] — 🌍 Kraj jako kod ISO — koniec z „10115 Berlin" w polu kraju
 
