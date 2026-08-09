@@ -41,6 +41,8 @@ export interface ChatThread {
   name: string;
   created_by: string;
   created_at: string;
+  /** [#374] Znikanie wiadomości kanału w sekundach. `null` = wyłączone. */
+  ephemeral_ttl_seconds: number | null;
 }
 
 // [#374] Kolumny stanu wiadomości: miękkie usunięcie, edycja, znikanie, cytat.
@@ -315,7 +317,7 @@ export async function listThreads(
 ): Promise<ChatThread[]> {
   const { data, error } = await client
     .from("chat_threads")
-    .select("id, company_id, name, created_by, created_at")
+    .select("id, company_id, name, created_by, created_at, ephemeral_ttl_seconds")
     .eq("company_id", companyId)
     .order("created_at");
   if (error) throw error;
@@ -332,7 +334,7 @@ export async function createThread(
   const { data, error } = await client
     .from("chat_threads")
     .insert({ company_id: companyId, name })
-    .select("id, company_id, name, created_by, created_at")
+    .select("id, company_id, name, created_by, created_at, ephemeral_ttl_seconds")
     .single();
   if (error) throw error;
   const thread = data as ChatThread;

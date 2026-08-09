@@ -37,7 +37,18 @@ a realtime obsługiwał tylko INSERT. Stąd jedna migracja fundamentowa zamiast 
 
 **Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 452 · maps 116 · api 77 · web 78 · mobile 36 · i18n 5 ✓ · `next build` ✓ · migracja 0094 na produkcji, blokada przeniesienia wątku zweryfikowana na żywym wierszu ✓.
 
-> **Etap 2 (w toku):** interfejs — menu kontekstowe dymka, usuwanie i edycja, cytowanie, kopiowanie, reakcje, przekazywanie, wysłanie lokalizacji, UI usuwania kanału. Warstwa danych jest gotowa.
+### Etap 2 — interfejs (web)
+
+- `[#374]` **Menu kontekstowe dymka** — nowy [MessageBubble](apps/web/app/(app)/chat/MessageBubble.tsx) z edycją, usuwaniem, kopiowaniem, cytowaniem, przekazywaniem i reakcjami. Wydzielony z `chat/page.tsx`, który miał już 594 linie.
+- `[#374]` **Reguły uprawnień w `core`** ([chatMessage.ts](packages/core/src/chatMessage.ts), 20 testów) — web i mobile renderują dymek osobno, a bez wspólnego źródła prawdy rozjechałyby się w tym, kto co może. Rozjazd byłby cichy: interfejs pokazałby akcję, a baza odrzuciłaby ją dopiero po kliknięciu.
+  - **Edycja tylko dla autora i tylko przez 15 minut.** Czat w firmie transportowej bywa dowodem, kto wydał polecenie kierowcy — możliwość poprawienia treści sprzed tygodnia, już po zdarzeniu drogowym, podważałaby wartość całej historii.
+  - **Właściciel może usunąć cudzą wiadomość, ale nie może jej zmienić.** Moderacja to co innego niż prawo do przepisywania cudzych słów.
+  - Usuwanie bez limitu czasu dla autora — pomyłkowo wysłanego zdjęcia musi dać się cofnąć także po kwadransie.
+- `[#374]` **Usunięta wiadomość zostaje jako ślad** („Wiadomość usunięta") zamiast znikać bez śladu — inaczej rozmowa traci sens, bo odpowiedzi wiszą w próżni.
+- `[#374]` **Usuwanie kanału — odkopany martwy kod.** Funkcja `deleteThread` i polityka RLS istniały od migracji 0067, ale **żaden interfejs ich nie wywoływał** przez trzy wydania.
+- `[#374]` Ustawienia znikania dla kanału w panelu zarządu, z ostrzeżeniem wprost w interfejsie, że treść wysłana pushem została już dostarczona na telefon i tam zostaje.
+
+> **Do dokończenia:** aplikacja mobilna (cały interfejs czatu), wysyłanie lokalizacji jako wiadomości oraz pełny picker emoji ponad sześć szybkich reakcji.
 
 ## [1.215.0] — 💶 Fundament finansowy: data zdarzenia, waluty, kursy EBC, VAT per kraj
 

@@ -10,6 +10,7 @@ export * from "./billing";
 export * from "./cardExpiry";
 export * from "./cardMask";
 export * from "./catalog";
+export * from "./chatMessage";
 export * from "./checklists";
 export * from "./co2";
 export * from "./csv";
