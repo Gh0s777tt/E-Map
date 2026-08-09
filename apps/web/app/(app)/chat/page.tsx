@@ -18,6 +18,7 @@ import {
   deleteMessage,
   deleteThread,
   editMessage,
+  getCompanyChatTtl,
   listCompanyMembers,
   listMessages,
   listReactions,
@@ -30,6 +31,7 @@ import {
   setChatTtl,
   setReaction,
   subscribeMessages,
+  subscribeReactions,
   uploadChatPhotoBinary,
 } from "@e-logistic/api";
 import { type ChatViewer, mapLink, readChatLocation, TTL_OPTIONS } from "@e-logistic/core";
@@ -131,6 +133,9 @@ export default function ChatPage() {
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  // [#376] Ustawienie znikania kanału OGÓLNEGO mieszka w `companies`, nie
+  // w wątku — bez tego panel zawsze pokazywał „wyłączone", niezależnie od stanu.
+  const [companyTtl, setCompanyTtl] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   // panel tworzenia / edycji
   const [creating, setCreating] = useState(false);
@@ -165,6 +170,7 @@ export default function ChatPage() {
         setRole(m.role as ChatViewer["role"]);
         setCompanyId(m.companyId);
         setThreads(await listThreads(sb, m.companyId));
+        setCompanyTtl(await getCompanyChatTtl(sb, m.companyId).catch(() => null));
       } catch (e) {
         if (alive) setErr(e instanceof Error ? e.message : t("chat.loadError"));
       }
@@ -228,6 +234,20 @@ export default function ChatPage() {
         setMessages((list) => list.map((x) => (x.id === msg.id ? msg : x)));
       },
     );
+  }, [companyId]);
+
+  // [#376] Reakcje na żywo. Bez tej subskrypcji reakcja innej osoby pojawiała
+  // się dopiero po przeładowaniu rozmowy, mimo że tabela była w publikacji.
+  useEffect(() => {
+    if (!companyId) return;
+    return subscribeReactions(getBrowserSupabase(), (r, event) => {
+      setReactions((list) => {
+        const without = list.filter(
+          (x) => !(x.message_id === r.message_id && x.user_id === r.user_id && x.emoji === r.emoji),
+        );
+        return event === "INSERT" ? [...without, r] : without;
+      });
+    });
   }, [companyId]);
 
   // #368: kanał otwarty na ekranie nie liczy się do badge'a — zgłaszamy go do
@@ -360,11 +380,15 @@ export default function ChatPage() {
       if (!companyId) return;
       try {
         await setChatTtl(getBrowserSupabase(), { companyId, threadId }, seconds);
-        setThreads((list) =>
-          list.map((x) =>
-            x.id === activeThread?.id ? { ...x, ephemeral_ttl_seconds: seconds } : x,
-          ),
-        );
+        if (activeThread) {
+          setThreads((list) =>
+            list.map((x) =>
+              x.id === activeThread.id ? { ...x, ephemeral_ttl_seconds: seconds } : x,
+            ),
+          );
+        } else {
+          setCompanyTtl(seconds);
+        }
       } catch (e) {
         toast(e instanceof Error ? e.message : t("chat.loadError"), "error");
       }
@@ -628,7 +652,9 @@ export default function ChatPage() {
               <strong style={{ fontSize: 13 }}>{t("chat.ttl.title")}</strong>
               <div style={s.ttlRow}>
                 {TTL_OPTIONS.map((o) => {
-                  const current = activeThread?.ephemeral_ttl_seconds ?? null;
+                  const current = activeThread
+                    ? (activeThread.ephemeral_ttl_seconds ?? null)
+                    : companyTtl;
                   const on = current === o.seconds;
                   return (
                     <button

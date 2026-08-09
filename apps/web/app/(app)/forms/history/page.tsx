@@ -118,14 +118,17 @@ export default function FormsHistoryPage() {
               odometer_km: number;
               station_country: string;
               created_at: string;
+              occurred_at: string;
             }[]
           ).map<Row>((r) => ({
             key: `${kind}/${r.id}`,
             kind,
             vehicle: labelOf(r.vehicle_id),
             title: `${labelOf(r.vehicle_id)} · ${r.liters} L · ${r.odometer_km} km`,
-            sub: `${r.station_country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
-            at: r.created_at,
+            sub: `${r.station_country} · ${new Date(r.occurred_at).toLocaleString("pl-PL")}`,
+            // [#376] Data ZDARZENIA, nie synchronizacji — wpis zrobiony offline
+            // i zsynchronizowany trzy dni później pokazywał w historii złą datę.
+            at: r.occurred_at,
             status: "synced",
             dbId: r.id,
           }));
@@ -138,14 +141,15 @@ export default function FormsHistoryPage() {
             weight_kg: number | null;
             country: string;
             created_at: string;
+            occurred_at: string;
           }[]
         ).map<Row>((r) => ({
           key: `trip/${r.id}`,
           kind: "trip",
           vehicle: labelOf(r.vehicle_id),
           title: `${labelOf(r.vehicle_id)} · ${tripActionLabel(t, r.action)} · ${r.odometer_km} km${r.weight_kg != null ? ` · ${r.weight_kg} kg` : ""}`,
-          sub: `${r.country} · ${new Date(r.created_at).toLocaleString("pl-PL")}`,
-          at: r.created_at,
+          sub: `${r.country} · ${new Date(r.occurred_at).toLocaleString("pl-PL")}`,
+          at: r.occurred_at,
           status: "synced",
           dbId: r.id,
         }));

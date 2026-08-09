@@ -212,18 +212,39 @@ export async function setChatTtl(
   ttlSeconds: number | null,
 ): Promise<void> {
   if (target.threadId) {
-    const { error } = await client
+    const { error, count } = await client
       .from("chat_threads")
-      .update({ ephemeral_ttl_seconds: ttlSeconds })
+      .update({ ephemeral_ttl_seconds: ttlSeconds }, { count: "exact" })
       .eq("id", target.threadId);
     if (error) throw error;
+    if (!count) throw new Error("Brak uprawnień do zmiany ustawień tego kanału.");
     return;
   }
-  const { error } = await client
+  // [#376] `count: "exact"` jest tu KONIECZNE. Kanał ogólny zapisuje ustawienie
+  // w `companies`, a `companies_update` (0013) dopuszcza wyłącznie właściciela.
+  // Dyspozytorowi RLS nie zwraca błędu — po prostu żaden wiersz nie pasuje,
+  // PostgREST odpowiada 204, `error` jest `null`, więc interfejs pokazywał
+  // sukces i dyspozytor wychodził przekonany, że wiadomości zaczęły znikać.
+  const { error, count } = await client
     .from("companies")
-    .update({ chat_ephemeral_ttl_seconds: ttlSeconds })
+    .update({ chat_ephemeral_ttl_seconds: ttlSeconds }, { count: "exact" })
     .eq("id", target.companyId);
   if (error) throw error;
+  if (!count) throw new Error("Znikanie na kanale ogólnym może ustawić tylko właściciel firmy.");
+}
+
+/** [#376] Bieżące ustawienie znikania dla kanału ogólnego firmy. */
+export async function getCompanyChatTtl(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<number | null> {
+  const { data, error } = await client
+    .from("companies")
+    .select("chat_ephemeral_ttl_seconds")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.chat_ephemeral_ttl_seconds ?? null;
 }
 
 /**
@@ -304,6 +325,38 @@ export function subscribeMessages(
       // Miękkie usunięcie przychodzi tą samą drogą co edycja — widok sam
       // decyduje, czy podmienić treść, czy usunąć dymek (`deleted_at`).
       (payload) => onChange?.(payload.new as ChatMessage),
+    )
+    .subscribe();
+  return () => {
+    channel.unsubscribe();
+  };
+}
+
+/**
+ * [#376] Subskrypcja reakcji firmy.
+ *
+ * `message_reactions` trafiła do publikacji realtime w migracji 0094, ale ŻADEN
+ * klient jej nie subskrybował — reakcja innej osoby pojawiała się dopiero po
+ * przeładowaniu rozmowy. Filtr po firmie nie jest możliwy (tabela nie ma
+ * `company_id`), więc odsiewa wywołujący: i tak trzyma w pamięci tylko
+ * wiadomości otwartego kanału.
+ */
+export function subscribeReactions(
+  client: SupabaseClient,
+  onChange: (r: MessageReaction, event: "INSERT" | "DELETE") => void,
+): () => void {
+  const channel = client
+    .channel(`reactions-${Math.random().toString(36).slice(2, 8)}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "message_reactions" },
+      (p) => onChange(p.new as MessageReaction, "INSERT"),
+    )
+    .on(
+      "postgres_changes",
+      { event: "DELETE", schema: "public", table: "message_reactions" },
+      // DELETE niesie stary wiersz dzięki `replica identity full` (0094).
+      (p) => onChange(p.old as MessageReaction, "DELETE"),
     )
     .subscribe();
   return () => {
