@@ -28,6 +28,13 @@ interface Kpi {
   net: number;
   perDiem: string;
   payout: string;
+  /**
+   * [#378] Pozycje z tego miesiąca, które mają kwotę, ale nie miały kursu na
+   * dzień zdarzenia — silnik policzył je jako zero. Bez tego licznika wynik
+   * wyglądałby na kompletny; suma niepełna udająca pełną jest gorsza niż
+   * suma podpisana jako niepełna.
+   */
+  noRate: number;
 }
 
 const OPEN = new Set(["new", "assigned", "in_progress"]);
@@ -43,6 +50,10 @@ type CostRow = {
  * Pasek KPI na pulpit (owner/dispatcher) — operacyjny skrót na start dnia:
  * zlecenia w toku, do zafakturowania, wynik bieżącego miesiąca (EUR), należne
  * diety i saldo do wypłaty. Liczony na żywo; dla kierowcy nic nie renderuje.
+ *
+ * [#378] Kwoty w innych walutach (zlecenia, paliwo, AdBlue) przeliczane na EUR
+ * po kursie z dnia zdarzenia — tak samo jak na /monthly, żeby oba ekrany podawały
+ * dla tego samego miesiąca tę samą liczbę.
  */
 export function KpiStrip() {
   const [kpi, setKpi] = useState<Kpi | null>(null);
@@ -72,25 +83,48 @@ export function KpiStrip() {
           }),
         ]);
         const rates = toFxRates(fxRows);
-        const toCost = (r: CostRow) => ({
-          vehicleId: r.vehicle_id,
+        const inMonth = (d: string) => d.slice(0, 7) === month;
+        // [#378] Liczymy pozycje, które mają kwotę, ale przepadły na braku
+        // notowania — tylko te z bieżącego miesiąca, bo tylko one wchodzą do KPI.
+        let noRate = 0;
+        const toCost = (r: CostRow) => {
           // [#376] Kwota przeliczona na EUR. Wcześniej wchodziła tu surowa
           // wartość `price_total` — koszt w PLN sumował się jak euro.
-          priceTotal: rowAmountEur(r.price_total, r.currency, r.occurred_at, rates),
-          // [#376] Data ZDARZENIA. Okno zapytania działa na `occurred_at`, więc
-          // grupowanie po `created_at` sprawiało, że wpis zsynchronizowany
-          // w kolejnym miesiącu nie trafiał do KPI w ŻADNYM miesiącu.
-          date: r.occurred_at.slice(0, 10),
+          const priceTotal = rowAmountEur(r.price_total, r.currency, r.occurred_at, rates);
+          if (r.price_total != null && priceTotal == null && inMonth(r.occurred_at)) noRate++;
+          return {
+            vehicleId: r.vehicle_id,
+            priceTotal,
+            // [#376] Data ZDARZENIA. Okno zapytania działa na `occurred_at`, więc
+            // grupowanie po `created_at` sprawiało, że wpis zsynchronizowany
+            // w kolejnym miesiącu nie trafiał do KPI w ŻADNYM miesiącu.
+            date: r.occurred_at.slice(0, 10),
+          };
+        };
+        // [#378] Zlecenia normalizowane do euro TU, na granicy odczytu — ten sam
+        // wzorzec co w /monthly i /stats. Wcześniej szła tu surowa `price` z surową
+        // `currency`, a `monthlyFleetSummary` odsiewa wszystko poza EUR: przychód
+        // z faktury w złotówkach po prostu znikał. Efekt był gorszy niż sama
+        // zaniżona liczba — pulpit i /monthly pokazywały dla tego samego miesiąca
+        // dwie różne kwoty. Silnika nie ruszamy: dostaje kwotę już przeliczoną
+        // i walutę „EUR", więc granica przeliczenia zostaje w jednym miejscu.
+        const orderEntries = orders.map((o) => {
+          // Data ZAŁADUNKU (fallback: utworzenie) — kurs ma odpowiadać zdarzeniu.
+          const date = o.load_date ?? o.created_at.slice(0, 10);
+          const price = rowAmountEur(o.price, o.currency, date, rates);
+          const counted = o.status === "delivered" || o.status === "invoiced";
+          if (counted && o.price != null && price == null && inMonth(date)) noRate++;
+          return {
+            vehicleId: o.vehicle_id,
+            price,
+            currency: "EUR",
+            status: o.status,
+            date,
+          };
         });
         const summary = monthlyFleetSummary({
           month,
-          orders: orders.map((o) => ({
-            vehicleId: o.vehicle_id,
-            price: o.price,
-            currency: o.currency,
-            status: o.status,
-            date: o.load_date ?? o.created_at.slice(0, 10),
-          })),
+          orders: orderEntries,
           fuel: (fuel as CostRow[]).map(toCost),
           adblue: (adblue as CostRow[]).map(toCost),
         });
@@ -121,6 +155,7 @@ export function KpiStrip() {
           payout: payBalances.length
             ? payBalances.map((b) => `${b.balance} ${b.currency}`).join(" · ")
             : "—",
+          noRate,
         });
       } catch {
         // offline / brak dostępu → ukryj pasek
@@ -140,7 +175,13 @@ export function KpiStrip() {
         label={`Wynik ${month} (EUR)`}
         value={`${kpi.net} €`}
         accent={kpi.net >= 0 ? palette.success : palette.red}
-        sub={`przychód ${kpi.revenue} €`}
+        // [#378] Gdy czegoś nie dało się przeliczyć, mówimy to wprost. Kafelek bez
+        // tego dopisku obiecywałby pełny wynik miesiąca, którym nie jest.
+        sub={
+          kpi.noRate > 0
+            ? `przychód ${kpi.revenue} € · ${kpi.noRate} poz. bez kursu (nie wliczono)`
+            : `przychód ${kpi.revenue} €`
+        }
       />
       <Card href="/per-diem" label="Diety (mies.)" value={kpi.perDiem} small />
       <Card href="/payouts" label="Saldo do wypłaty" value={kpi.payout} small />

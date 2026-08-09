@@ -581,7 +581,7 @@ export default function StatsPage() {
             <ProfitabilitySection data={profit} trend={trendInput} />
           )}
 
-          {canManage && <TopUsageSection fuel={fuel} cards={cards} />}
+          {canManage && <TopUsageSection fuel={fuel} cards={cards} rates={rates} />}
 
           {canManage && co2Rows.length > 0 && (
             <EmissionsSection rows={co2Rows} clientRows={co2ClientRows} />

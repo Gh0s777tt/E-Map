@@ -6,10 +6,18 @@ import {
   linkDriverUser,
   listCompanyMembers,
   listDrivers,
+  listFxRates,
   listOrders,
   type Order,
+  toFxRates,
 } from "@e-logistic/api";
-import { type ExpiryLevel, expiryStatus, round2 } from "@e-logistic/core";
+import {
+  type ExpiryLevel,
+  expiryStatus,
+  type FxRate,
+  round2,
+  rowAmountEur,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -44,6 +52,8 @@ export default function DriverCardPage() {
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  /** [#378] Kursy EBC — bez nich zlecenie w walucie innej niż euro nie ma jak wejść do przychodu. */
+  const [rates, setRates] = useState<FxRate[]>([]);
   const [companyId, setCompanyId] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -61,14 +71,29 @@ export default function DriverCardPage() {
         return;
       }
       setCompanyId(m.companyId);
-      const [drivers, mem, ord] = await Promise.all([
+      // [#378] Okno notowań. Ten ekran nie ogranicza zleceń datą, a przed pobraniem
+      // nie wiemy, jak stare jest najstarsze zlecenie kierowcy — bierzemy więc
+      // 36 miesięcy wstecz (dłużej niż typowy staż na jednym pojeździe) plus
+      // 10 dni zapasu, bo kurs bierzemy z dnia zdarzenia, a EBC nie publikuje
+      // w weekendy i święta. Ten sam wzorzec co w /stats i /monthly. Gdyby mimo
+      // to jakiejś pozycji zabrakło kursu, mówimy o tym wprost pod kafelkami,
+      // zamiast po cichu zaniżać sumę.
+      const now = new Date();
+      const fxFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 35, 1))
+        .toISOString()
+        .slice(0, 10);
+      const [drivers, mem, ord, fxRows] = await Promise.all([
         listDrivers(sb, m.companyId),
         listCompanyMembers(sb),
         listOrders(sb, m.companyId),
+        listFxRates(sb, {
+          from: new Date(Date.parse(fxFrom) - 10 * 86_400_000).toISOString().slice(0, 10),
+        }),
       ]);
       setDriver(drivers.find((d) => d.id === id) ?? null);
       setMembers(mem);
       setOrders(ord);
+      setRates(toFxRates(fxRows));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać kartoteki.");
     } finally {
@@ -89,13 +114,41 @@ export default function DriverCardPage() {
     () => (driver?.user_id ? orders.filter((o) => o.assigned_to === driver.user_id) : []),
     [orders, driver],
   );
+  /**
+   * [#378] Przychód kierowcy z dostarczonych zleceń — w euro, po kursie z dnia załadunku.
+   *
+   * Wcześniej filtr `o.currency === "EUR"` po cichu wyrzucał każde zlecenie
+   * rozliczane w złotówkach, koronach czy forintach. Kierowca jeżdżący na
+   * trasach krajowych widział przychód zaniżony — w skrajnym przypadku 0 € przy
+   * kilkudziesięciu dostarczonych zleceniach — i nie było jak tego zauważyć, bo
+   * licznik „Dostarczone" obok pokazywał komplet. Ta liczba bywa podstawą
+   * rozmowy o premii, więc cicha strata jest tu najgorszym możliwym zachowaniem.
+   */
   const stats = useMemo(() => {
     const delivered = myOrders.filter((o) => o.status === "delivered" || o.status === "invoiced");
-    const revenueEur = round2(
-      delivered.filter((o) => o.currency === "EUR").reduce((a, o) => a + (o.price ?? 0), 0),
-    );
-    return { total: myOrders.length, delivered: delivered.length, revenueEur };
-  }, [myOrders]);
+    // Data ZDARZENIA (załadunek), a nie utworzenia wpisu: kurs ma odpowiadać
+    // momentowi wykonania trasy, nie chwili, w której ktoś wklepał zlecenie do
+    // systemu — te dwie daty potrafią dzielić tygodnie i kilka groszy na euro.
+    const priced = delivered.map((o) => ({
+      hasPrice: o.price != null,
+      eur: rowAmountEur(o.price, o.currency, o.load_date ?? o.created_at, rates),
+    }));
+    // `eur === null` NIE zamieniamy na 0 w cichy sposób: zero znaczyłoby „trasa
+    // za darmo". Pomijamy pozycję w sumie i liczymy, ile takich było.
+    const revenueEur = round2(priced.reduce((a, o) => a + (o.eur ?? 0), 0));
+    return {
+      total: myOrders.length,
+      delivered: delivered.length,
+      revenueEur,
+      /**
+       * Zlecenia, które MAJĄ wpisaną kwotę, ale brakuje notowania na dany dzień.
+       * To co innego niż „brak kwoty" i nie wolno tego zlewać w jeden licznik:
+       * komunikat „uzupełnij kwotę" jest nie do wykonania dla kogoś, kto już
+       * wpisał 1200 PLN — jemu brakuje kursu, nie danych.
+       */
+      missingRate: priced.filter((o) => o.hasPrice && o.eur == null).length,
+    };
+  }, [myOrders, rates]);
 
   async function changeLink(userId: string) {
     try {
@@ -219,8 +272,23 @@ export default function DriverCardPage() {
               <div style={styles.statsRow}>
                 <Stat label="Zleceń" value={String(stats.total)} />
                 <Stat label="Dostarczone" value={String(stats.delivered)} />
-                <Stat label="Przychód (EUR)" value={`${stats.revenueEur} €`} accent="#22c55e" />
+                {/* [#378] Etykieta mówiła „Przychód (EUR)", ale opisywała nie walutę
+                    wyniku, tylko to, że zlecenia w innych walutach w ogóle nie były
+                    liczone. Teraz wszystko jest przeliczone, więc nazwa może być
+                    uczciwa, a jednostkę widać przy samej kwocie. */}
+                <Stat label="Przychód" value={`${stats.revenueEur} €`} accent="#22c55e" />
               </div>
+              {/* [#378] „Brak kwoty" i „brak kursu" to dwie różne rzeczy — tu chodzi
+                  wyłącznie o to drugie. Kwoty są wpisane, brakuje notowania na dzień
+                  załadunku, więc suma jest niepełna i mówimy o tym wprost, zamiast
+                  pokazywać zaniżoną liczbę jako komplet. */}
+              {stats.missingRate > 0 && (
+                <div style={styles.rateWarn}>
+                  ⚠️ Suma niepełna — {stats.missingRate}{" "}
+                  {stats.missingRate === 1 ? "zlecenie" : "zleceń"} w walucie bez notowania na dzień
+                  załadunku. Kwoty są wpisane; brakuje kursu, więc nie weszły do przeliczenia.
+                </div>
+              )}
               {myOrders.length === 0 ? (
                 <p style={styles.dim}>Brak zleceń przypisanych do tego kierowcy.</p>
               ) : (
@@ -297,6 +365,17 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 220,
   },
   statsRow: { display: "flex", gap: 12, flexWrap: "wrap" },
+  /** [#378] Ostrzeżenie o niepełnej sumie — ten sam styl co na ekranie statystyk. */
+  rateWarn: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginTop: 12,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+    background: palette.nearBlack,
+  },
   statCard: {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,

@@ -5,12 +5,13 @@
  * (bez zewnętrznego AI): trend i prognoza kosztu paliwa, pojazdy odstające
  * spalaniem i szacunek możliwych oszczędności. Silnik `buildFleetInsights`.
  */
-import { listFuelLogs, listVehicles } from "@e-logistic/api";
+import { listFuelLogs, listFxRates, listVehicles, toFxRates } from "@e-logistic/api";
 import {
   buildFleetInsights,
   consumptionFullToFull,
   type FleetInsights,
   type MonthlyPoint,
+  rowAmountEur,
   type VehicleConsumption,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
@@ -26,6 +27,12 @@ interface FuelRow {
   liters: number | null;
   odometer_km: number | null;
   price_total: number | null;
+  /**
+   * [#378] Waluta kwoty. Typ jej nie deklarował, choć `select("*")` i tak ją
+   * pobierał — kolumna leżała w pamięci przeglądarki nieodczytana, a ekran
+   * sumował złotówki razem z euro jak jedną walutę.
+   */
+  currency: string | null;
   created_at: string;
   /** [#373] Data zdarzenia — po niej grupujemy miesiace. */
   occurred_at: string;
@@ -33,12 +40,36 @@ interface FuelRow {
   is_full: boolean | null;
 }
 
-const zl = (n: number) => `${n.toLocaleString("pl-PL", { maximumFractionDigits: 0 })} zł`;
+/** Ile wierszy wypadło z sumy i dlaczego — dwa różne powody, dwa liczniki. */
+interface FxGap {
+  /** Kwota jest, ale nie ma notowania waluty na dzień tankowania. */
+  missingRate: number;
+  /** Kwoty w ogóle nie wpisano — to jedyny przypadek, który user może naprawić wpisem. */
+  missingAmount: number;
+}
+
+/**
+ * [#378] Ekran formatował kwoty jako złotówki, choć tankowania są w mieszanych
+ * walutach, a cała reszta repo (/stats, /monthly, rozliczenia) liczy w euro.
+ * Etykieta „zł" przy sumie z niemieckich i polskich tankowań kłamała podwójnie:
+ * ani to nie były złotówki, ani jedna waluta.
+ */
+const eur = (n: number) => `${n.toLocaleString("pl-PL", { maximumFractionDigits: 0 })} €`;
+
+/**
+ * Awaryjna cena paliwa, gdy nie da się jej policzyć z danych — TERAZ W EURO.
+ * Wcześniej stało tu 6.5, czyli cena litra w złotówkach; wstawiona do wzoru
+ * liczącego w euro dawała ~28 zł/l, więc „potencjalne oszczędności" i „dodatkowy
+ * koszt" pojazdu odstającego wychodziły ponad czterokrotnie zawyżone.
+ */
+const FALLBACK_FUEL_PRICE_EUR_PER_L = 1.5;
 
 export default function AnalyticsPage() {
   const t = useT();
   const [insights, setInsights] = useState<FleetInsights | null>(null);
   const [series, setSeries] = useState<MonthlyPoint[]>([]);
+  /** [#378] Ile tankowań nie weszło do liczb na ekranie — mówimy to wprost. */
+  const [fxGap, setFxGap] = useState<FxGap>({ missingRate: 0, missingAmount: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,28 +81,61 @@ export default function AnalyticsPage() {
       const m = await getCachedMembership(sb);
       if (!m) throw new Error(t("analytics.noCompany"));
       const from = new Date(Date.now() - 190 * 86_400_000).toISOString();
-      const [logs, vehicles] = await Promise.all([
+      const [logs, vehicles, fxRows] = await Promise.all([
         listFuelLogs(sb, { from, limit: 5000 }) as Promise<FuelRow[]>,
         listVehicles(sb, m.companyId) as Promise<{ id: string; registration: string }[]>,
+        // Zapas 10 dni wstecz: kurs bierzemy z dnia tankowania, a EBC nie publikuje
+        // w weekendy i święta — bez zapasu tankowanie z 1. dnia okna zostałoby bez
+        // notowania. Ten sam wzorzec co w /stats i /monthly.
+        listFxRates(sb, {
+          from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+        }),
       ]);
+      const rates = toFxRates(fxRows);
 
-      // Miesięczny koszt paliwa (ostatnie 6 miesięcy z danymi).
+      /**
+       * [#378] Miesięczny koszt paliwa (ostatnie 6 miesięcy z danymi) — w EURO.
+       *
+       * Wcześniej sumowało się tu surowe `price_total ?? 0` bez spojrzenia na
+       * walutę: tankowanie za 900 PLN wchodziło do sumy jak 900 €, czyli ~4,3×
+       * za dużo. Z tej sumy bierze się WSZYSTKO na tym ekranie — trend, prognoza
+       * na kolejny miesiąc i cena paliwa użyta do wyceny pojazdów odstających —
+       * więc jedno polskie tankowanie w miesiącu potrafiło wygenerować „wzrost
+       * kosztu o 300%", którego nie dało się z niczym uzgodnić.
+       *
+       * Wiersz bez przeliczenia jest POMIJANY, nie zerowany: zero znaczy „paliwo
+       * za darmo" i zaniża trend tak samo cicho, jak wcześniej zawyżały go
+       * złotówki. Przy okazji znika efekt uboczny starego kodu — miesiąc, w którym
+       * żadne tankowanie nie miało kwoty, tworzył słupek 0 zł i ciągnął regresję w dół.
+       */
       const byMonth = new Map<string, number>();
       let totalLiters = 0;
       let totalCost = 0;
+      const gap: FxGap = { missingRate: 0, missingAmount: 0 };
       for (const l of logs) {
+        const eurAmount = rowAmountEur(l.price_total, l.currency, l.occurred_at, rates);
+        if (eurAmount == null) {
+          if (l.price_total == null) gap.missingAmount += 1;
+          else gap.missingRate += 1;
+          continue;
+        }
         const month = l.occurred_at.slice(0, 7);
-        byMonth.set(month, (byMonth.get(month) ?? 0) + (l.price_total ?? 0));
+        byMonth.set(month, (byMonth.get(month) ?? 0) + eurAmount);
+        // Litry liczymy z tych samych wierszy co koszt — inaczej litry tankowania,
+        // którego kwoty nie znamy, zaniżałyby wyliczoną niżej cenę za litr.
         totalLiters += l.liters ?? 0;
-        totalCost += l.price_total ?? 0;
+        totalCost += eurAmount;
       }
+      setFxGap(gap);
       const monthlyFuelCost: MonthlyPoint[] = [...byMonth.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .slice(-6)
         .map(([month, value]) => ({ month, value: Math.round(value) }));
       setSeries(monthlyFuelCost);
 
-      const fuelPricePerL = totalLiters > 0 && totalCost > 0 ? totalCost / totalLiters : 6.5;
+      // Cena paliwa €/l z realnych tankowań (kwota w euro ÷ litry).
+      const fuelPricePerL =
+        totalLiters > 0 && totalCost > 0 ? totalCost / totalLiters : FALLBACK_FUEL_PRICE_EUR_PER_L;
 
       // [#372] Spalanie liczone metodą full-to-full — tą samą, której używa /stats.
       // Wcześniej ten ekran miał własny wzór inline (wszystkie litry / rozpiętość
@@ -141,6 +205,30 @@ export default function AnalyticsPage() {
     <div style={{ maxWidth: 860 }}>
       <PageHeader title={t("analytics.title")} subtitle={t("analytics.subtitle")} />
 
+      {/* [#378] „Brak kwoty" i „brak kursu" to dwie różne rzeczy i nie wolno ich
+          zlewać w jeden komunikat. Ekran w skrajnym przypadku (same tankowania
+          w walucie bez notowania) nie ma czego pokazać i wyświetla „dodaj
+          tankowania z kwotami" — rada nie do wykonania dla kogoś, kto kwoty
+          wpisał w złotówkach. Dlatego ta ramka stoi NAD statusem listy: najpierw
+          prawdziwy powód, potem stan pusty. */}
+      {!loading && !error && (fxGap.missingRate > 0 || fxGap.missingAmount > 0) && (
+        <div style={s.rateWarn}>
+          {fxGap.missingRate > 0 && (
+            <div>
+              ⚠️ Suma niepełna — {fxGap.missingRate}{" "}
+              {fxGap.missingRate === 1 ? "pozycja" : "pozycji"} w walucie bez notowania na dzień
+              tankowania. Kwoty są wpisane; brakuje kursu, więc nie weszły do przeliczenia na euro.
+            </div>
+          )}
+          {fxGap.missingAmount > 0 && (
+            <div style={{ marginTop: fxGap.missingRate > 0 ? 6 : 0 }}>
+              ℹ️ {fxGap.missingAmount} {fxGap.missingAmount === 1 ? "tankowanie" : "tankowań"} bez
+              wpisanej kwoty — tutaj wystarczy uzupełnić kwotę przy wpisie.
+            </div>
+          )}
+        </div>
+      )}
+
       <ListStatus
         loading={loading}
         error={error}
@@ -159,7 +247,7 @@ export default function AnalyticsPage() {
               <div style={s.kpiLbl}>{t("analytics.kpiTrend")}</div>
             </div>
             <div style={s.kpi}>
-              <div style={s.kpiVal}>{trend ? zl(trend.forecastNext) : "—"}</div>
+              <div style={s.kpiVal}>{trend ? eur(trend.forecastNext) : "—"}</div>
               <div style={s.kpiLbl}>{t("analytics.kpiForecast")}</div>
             </div>
             <div style={s.kpi}>
@@ -169,7 +257,7 @@ export default function AnalyticsPage() {
                   color: insights.potentialSavings > 0 ? palette.red : palette.success,
                 }}
               >
-                {zl(insights.potentialSavings)}
+                {eur(insights.potentialSavings)}
               </div>
               <div style={s.kpiLbl}>{t("analytics.kpiSavings")}</div>
             </div>
@@ -178,7 +266,7 @@ export default function AnalyticsPage() {
           <h3 style={s.h3}>{t("analytics.monthlyFuelCost")}</h3>
           <BarChart
             data={series.map((p) => ({ label: p.month.slice(5), value: p.value }))}
-            unit=" zł"
+            unit=" €"
             color={palette.red}
           />
 
@@ -217,7 +305,7 @@ export default function AnalyticsPage() {
                         +{o.overMedianPct}%
                       </td>
                       <td style={{ ...s.td, color: palette.red, fontWeight: 700 }}>
-                        {zl(o.extraCost)}
+                        {eur(o.extraCost)}
                       </td>
                     </tr>
                   ))}
@@ -234,6 +322,17 @@ export default function AnalyticsPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
+  /** [#378] Ta sama ramka co ostrzeżenie o brakujących kursach na /stats. */
+  rateWarn: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginBottom: 14,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+    background: palette.nearBlack,
+  },
   kpiRow: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",

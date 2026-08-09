@@ -111,6 +111,11 @@ const pl = {
   "m.stats.litersDaily": "Litry dziennie (14 dni)",
   "m.stats.empty": "Brak tankowań w ostatnich 30 dniach.",
   "m.stats.loadError": "Nie udało się pobrać statystyk.",
+  "m.stats.costEurNote":
+    "Koszt w euro, po kursie z dnia tankowania. Na paragonie masz kwotę w walucie kraju — przy każdym tankowaniu poniżej pokazujemy obie.",
+  "m.stats.rateMissing":
+    "Suma niepełna — tankowań bez kursu na dany dzień: {n}. Kwoty są wpisane, brakuje notowania waluty, więc nie weszły do kosztu.",
+  "m.stats.noRate": "brak kursu",
   "m.worktime.loadError": "Nie udało się pobrać ewidencji.",
   "m.worktime.currentMonth": "Bieżący miesiąc",
   "m.worktime.dutyDays": "Dni służby",
@@ -1205,6 +1210,11 @@ const en: Record<MobileMessageKey, string> = {
   "m.stats.litersDaily": "Liters per day (14 days)",
   "m.stats.empty": "No refuels in the last 30 days.",
   "m.stats.loadError": "Failed to load statistics.",
+  "m.stats.costEurNote":
+    "Cost in euro, at the rate from the day you refuelled. Your receipt shows the local currency — each refuel below lists both.",
+  "m.stats.rateMissing":
+    "Total incomplete — refuels with no rate for that day: {n}. The amounts are entered; the exchange rate is missing, so they are not in the cost.",
+  "m.stats.noRate": "no rate",
   "m.worktime.loadError": "Couldn't load the records.",
   "m.worktime.currentMonth": "Current month",
   "m.worktime.dutyDays": "Duty days",
@@ -2297,6 +2307,11 @@ const de: Record<MobileMessageKey, string> = {
   "m.stats.litersDaily": "Liter pro Tag (14 Tage)",
   "m.stats.empty": "Keine Betankungen in den letzten 30 Tagen.",
   "m.stats.loadError": "Statistik konnte nicht geladen werden.",
+  "m.stats.costEurNote":
+    "Kosten in Euro, zum Kurs vom Tag der Betankung. Auf dem Beleg steht der Betrag in Landeswährung — unten stehen bei jeder Betankung beide.",
+  "m.stats.rateMissing":
+    "Summe unvollständig — Betankungen ohne Kurs für diesen Tag: {n}. Die Beträge sind erfasst, es fehlt der Wechselkurs, deshalb sind sie nicht in den Kosten.",
+  "m.stats.noRate": "kein Kurs",
   "m.worktime.loadError": "Aufzeichnungen konnten nicht geladen werden.",
   "m.worktime.currentMonth": "Aktueller Monat",
   "m.worktime.dutyDays": "Diensttage",
@@ -3392,6 +3407,11 @@ const uk: Record<MobileMessageKey, string> = {
   "m.stats.litersDaily": "Літри на день (14 днів)",
   "m.stats.empty": "Немає заправок за останні 30 днів.",
   "m.stats.loadError": "Не вдалося завантажити статистику.",
+  "m.stats.costEurNote":
+    "Вартість у євро, за курсом на день заправки. У чеку сума у валюті країни — нижче біля кожної заправки показуємо обидві.",
+  "m.stats.rateMissing":
+    "Сума неповна — заправок без курсу на той день: {n}. Суми внесені, бракує курсу валюти, тому вони не увійшли до вартості.",
+  "m.stats.noRate": "немає курсу",
   "m.worktime.loadError": "Не вдалося завантажити облік.",
   "m.worktime.currentMonth": "Поточний місяць",
   "m.worktime.dutyDays": "Дні служби",

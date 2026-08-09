@@ -35,6 +35,16 @@ import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
+/**
+ * [#378] Kod waluty faktury sprowadzony do porównywalnej postaci.
+ *
+ * Pole waluty w formularzu nowej faktury to zwykły `input` — nikt nie normalizuje
+ * tego ani przy zapisie, ani w bazie. Faktura zapisana jako „eur" albo „ EUR"
+ * wypadała z paska należności dokładnie tak samo cicho jak złotówkowa, tyle że
+ * bez żadnego powodu księgowego. Pusta waluta zostaje „—", żeby nie udawała euro.
+ */
+const curCode = (c: string | null | undefined): string => (c ?? "").trim().toUpperCase() || "—";
+
 export default function InvoicesPage() {
   const t = useT();
   const confirm = useConfirm();
@@ -167,9 +177,17 @@ export default function InvoicesPage() {
     downloadCsv(`faktury_${csvDateStamp()}.csv`, headers, rows);
   }
 
-  /** Eksport księgowy: rejestr VAT sprzedaży za wybrany miesiąc (pozycje + podsumowanie wg stawek). */
+  /**
+   * Eksport księgowy: rejestr VAT sprzedaży za wybrany miesiąc (pozycje + podsumowanie wg stawek).
+   *
+   * [#378] Podsumowanie liczone jest ODDZIELNIE DLA KAŻDEJ WALUTY. Wcześniej
+   * `monthlyVatRegister(invoices, …)` dostawał cały miesiąc naraz i sumował netto,
+   * VAT i brutto po stawce, nie patrząc na walutę: faktura na 1000 PLN i faktura
+   * na 1000 EUR dawały „RAZEM 2000" w kolumnie bez waluty. To nie jest kwota
+   * zawyżona o kurs — to liczba, która nie istnieje w żadnej walucie, a szła
+   * prosto do księgowości jako podstawa rejestru VAT.
+   */
   function exportVatRegister() {
-    const reg = monthlyVatRegister(invoices, vatMonth);
     const headers = [
       t("invoices.csv.number"),
       t("common.date"),
@@ -181,25 +199,44 @@ export default function InvoicesPage() {
       t("invoices.csv.gross"),
       t("orders.csv.currency"),
     ];
-    const rows: (string | number)[][] = invoices
-      .filter((i) => i.status !== "cancelled" && (i.issue_date ?? "").startsWith(vatMonth))
-      .map((i) => [
-        i.number,
-        i.issue_date,
-        i.buyer_name ?? "",
-        i.buyer_tax_id ?? "",
-        i.vat_rate,
-        i.net,
-        i.vat_amount,
-        i.gross,
-        i.currency,
+    const inMonth = invoices.filter(
+      (i) => i.status !== "cancelled" && (i.issue_date ?? "").startsWith(vatMonth),
+    );
+    const rows: (string | number)[][] = inMonth.map((i) => [
+      i.number,
+      i.issue_date,
+      i.buyer_name ?? "",
+      i.buyer_tax_id ?? "",
+      i.vat_rate,
+      i.net,
+      i.vat_amount,
+      i.gross,
+      i.currency,
+    ]);
+    // Blok podsumowań per waluta — i kolumna waluty wypełniona także w wierszach
+    // zbiorczych, żeby po otwarciu pliku w arkuszu nie dało się ich pomylić.
+    for (const code of [...new Set(inMonth.map((i) => curCode(i.currency)))].sort()) {
+      const reg = monthlyVatRegister(
+        inMonth.filter((i) => curCode(i.currency) === code),
+        vatMonth,
+      );
+      rows.push([]);
+      rows.push([`Podsumowanie wg stawek VAT — ${code}`]);
+      for (const r of reg.rows) {
+        rows.push([`Stawka ${r.vatRate}%`, "", "", "", r.vatRate, r.net, r.vat, r.gross, code]);
+      }
+      rows.push([
+        `RAZEM ${code}`,
+        "",
+        "",
+        "",
+        "",
+        reg.totalNet,
+        reg.totalVat,
+        reg.totalGross,
+        code,
       ]);
-    rows.push([]);
-    rows.push(["Podsumowanie wg stawek VAT"]);
-    for (const r of reg.rows) {
-      rows.push([`Stawka ${r.vatRate}%`, "", "", "", r.vatRate, r.net, r.vat, r.gross, ""]);
     }
-    rows.push(["RAZEM", "", "", "", "", reg.totalNet, reg.totalVat, reg.totalGross, ""]);
     downloadCsv(`rejestr_vat_${vatMonth}.csv`, headers, rows);
   }
 
@@ -264,14 +301,92 @@ export default function InvoicesPage() {
       }),
     [withPay, payFilter],
   );
-  // Pasek należności — sumy w EUR (mieszane waluty pomijane), bez anulowanych.
+  /**
+   * Pasek należności — sumy w EUR, bez anulowanych.
+   *
+   * [#378] Filtr po walucie ZOSTAJE — świadomie, wbrew temu, co zrobiliśmy na
+   * ekranie statystyk. Tam sumujemy koszty i przychód, żeby policzyć marżę floty:
+   * potrzebna jest jedna miara, a wynik jest szacunkiem zarządczym, który nie
+   * musi się zgadzać z żadnym dokumentem. Tutaj liczymy NALEŻNOŚCI: faktura jest
+   * dokumentem wystawionym w konkretnej walucie i kontrahent jest winien dokładnie
+   * tyle, ile na niej widnieje. Przeliczenie jej na euro po kursie EBC dałoby
+   * kwotę, której nie ma ani na dokumencie, ani w rejestrze VAT obok (ten idzie do
+   * księgowości w walucie wystawienia), a do tego wciągałoby różnice kursowe do
+   * liczby prezentowanej jako „ile mam do zainkasowania".
+   *
+   * Naprawiamy natomiast CISZĘ, bo ta była groźna: firma fakturująca wyłącznie
+   * w złotówkach widziała „Zafakturowane 0 · Przeterminowane 0" i mogła to
+   * odczytać jako „nikt nie zalega", podczas gdy poza sumą leżał cały jej rejestr.
+   * `otherCurrencies` wylicza to wprost — ile faktur, w jakiej walucie i ile z tego
+   * jest już przeterminowane — każdą walutę w niej samej, bez przeliczania.
+   *
+   * [#378] Każda waluta dostaje TO SAMO rozbicie co pasek EUR obok:
+   * zafakturowane / opłacone / pozostaje. Wcześniej była tu jedna liczba — suma
+   * brutto wszystkich niezanulowanych faktur danej waluty — pokazana w ramce
+   * ostrzegawczej pod zdaniem o należności. `active` odsiewa tylko `cancelled`,
+   * więc do tej sumy wchodziły także faktury opłacone: firma z opłaconym
+   * rejestrem PLN widziała „PLN: 12 faktur · 50 000,00 PLN" i odczytywała to
+   * jako kwotę do zainkasowania, choć nie było już czego inkasować. Salda nie
+   * dało się z tego wyprowadzić, bo brakowało pozycji „opłacone".
+   *
+   * Kwotę nieopłaconą sumujemy osobno zamiast odejmować `gross - paidGross`,
+   * żeby nie kumulować błędu zaokrągleń IEEE-754 (patrz uwaga przy `round2`).
+   */
   const summary = useMemo(() => {
-    const eur = withPay.filter(({ inv }) => inv.currency === "EUR" && inv.status !== "cancelled");
-    const sum = (arr: typeof eur) => round2(arr.reduce((a, { inv }) => a + inv.gross, 0));
+    const active = withPay.filter(({ inv }) => inv.status !== "cancelled");
+    const eur = active.filter(({ inv }) => curCode(inv.currency) === "EUR");
+    const sum = (arr: typeof active) => round2(arr.reduce((a, { inv }) => a + inv.gross, 0));
+    const rest = new Map<
+      string,
+      {
+        count: number;
+        gross: number;
+        paidGross: number;
+        unpaidGross: number;
+        overdue: number;
+        overdueGross: number;
+      }
+    >();
+    for (const { inv, pay } of active) {
+      const code = curCode(inv.currency);
+      if (code === "EUR") continue;
+      const agg = rest.get(code) ?? {
+        count: 0,
+        gross: 0,
+        paidGross: 0,
+        unpaidGross: 0,
+        overdue: 0,
+        overdueGross: 0,
+      };
+      agg.count += 1;
+      agg.gross += inv.gross;
+      if (pay === "paid") agg.paidGross += inv.gross;
+      else agg.unpaidGross += inv.gross;
+      // Przeterminowane to podzbiór nieopłaconych — pokazujemy je jako „w tym".
+      if (pay === "overdue") {
+        agg.overdue += 1;
+        agg.overdueGross += inv.gross;
+      }
+      rest.set(code, agg);
+    }
     return {
       invoicedEur: sum(eur),
       paidEur: sum(eur.filter(({ pay }) => pay === "paid")),
       overdueEur: sum(eur.filter(({ pay }) => pay === "overdue")),
+      /** Faktury poza paskiem — jedna pozycja na walutę, kwoty w walucie wystawienia. */
+      otherCurrencies: [...rest]
+        .map(([currency, a]) => ({
+          currency,
+          count: a.count,
+          gross: round2(a.gross),
+          paidGross: round2(a.paidGross),
+          unpaidGross: round2(a.unpaidGross),
+          overdue: a.overdue,
+          overdueGross: round2(a.overdueGross),
+        }))
+        // Na górze waluta z największą kwotą DO ZAPŁATY — to ona wymaga działania,
+        // nie ta z najgrubszym, ale już zainkasowanym rejestrem.
+        .sort((a, b) => b.unpaidGross - a.unpaidGross || b.gross - a.gross),
     };
   }, [withPay]);
 
@@ -365,6 +480,41 @@ export default function InvoicesPage() {
             {t("invoices.summaryOverdue")}{" "}
             <strong style={{ color: palette.red }}>{summary.overdueEur}</strong>
           </span>
+        </div>
+      )}
+      {/* [#378] Wykluczenie z paska przestaje być ciche. Samo „są też inne waluty"
+          niczego by nie dało — użytkownik musi zobaczyć ILE tego jest i ile z tego
+          zalega, inaczej dalej nie wie, czy zerowe „Przeterminowane" powyżej
+          znaczy „nikt nie zalega", czy „nie patrzymy tam". Kwoty zostają w walucie
+          wystawienia i to jest sedno komunikatu: to nie jest przeliczenie, tylko
+          druga, osobna suma.
+
+          [#378] Każda pozycja jest nazwana wprost i rozbita tak samo jak pasek EUR,
+          bo poprzednia wersja pokazywała gołe brutto (z opłaconymi w środku) tuż pod
+          zdaniem o należności — a liczba w ramce ostrzegawczej, bez etykiety, czyta
+          się jako „tyle mam do zainkasowania". */}
+      {summary.otherCurrencies.length > 0 && (
+        <div style={styles.fxNote}>
+          ⚠️ Poza sumą powyżej — faktury wystawione w innych walutach. Rejestr prowadzimy w walucie
+          wystawienia, więc kwoty nie są przeliczane na euro; poniżej to samo rozbicie co w pasku
+          EUR, osobno dla każdej waluty.
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+            {summary.otherCurrencies.map((c) => (
+              <span key={c.currency}>
+                <strong>{c.currency}</strong>: {c.count} {c.count === 1 ? "faktura" : "faktur"} ·
+                zafakturowane {formatMoney(c.gross, c.currency)} · opłacone{" "}
+                <span style={{ color: "#22c55e" }}>{formatMoney(c.paidGross, c.currency)}</span> ·
+                pozostaje <strong>{formatMoney(c.unpaidGross, c.currency)}</strong>
+                {c.overdue > 0 && (
+                  <span style={{ color: palette.red }}>
+                    {" "}
+                    (w tym przeterminowane: {c.overdue} na {formatMoney(c.overdueGross, c.currency)}
+                    )
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
         </div>
       )}
       {invoices.length > 0 && (
@@ -866,6 +1016,17 @@ const styles: Record<string, React.CSSProperties> = {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,
     fontSize: 14,
+  },
+  /** [#378] Przypis o fakturach poza sumą — ten sam ton co ostrzeżenie kursowe w /stats. */
+  fxNote: {
+    marginTop: 10,
+    padding: "10px 14px",
+    borderRadius: 10,
+    background: palette.nearBlack,
+    border: `1px solid ${palette.warning}`,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
   },
   chips: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 12 },
   chip: {

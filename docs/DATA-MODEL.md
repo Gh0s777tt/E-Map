@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.202.0** (#358 + audyt ETAP 1 — 82 migracje; ostatnia: 0080 ograniczenie roli zaproszeń [eskalacja uprawnień, audyt 2026-07-16]) · 2026-07-16
+> Status: **wdrożone** · stan kodu **v1.223.0** (#378 — 102 migracje; ostatnia: 0100 fundament walutowy statystyk) · 2026-08-10
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -65,6 +65,52 @@ szyfruje platforma Supabase.
 - **`drivers.psychotech_expiry`** (0049) — nowa kolumna: termin badań **psychotechnicznych**. Wpięta w RPC `list_drivers`/`driver_save` oraz `generate_expiry_notifications` (przypomnienia obok prawa jazdy / kodu 95 / badań lekarskich / ADR).
 - **`driver_payouts`** (0050) — rozliczenia kierowcy: `driver_name`, `type` (należność/zaliczka/potrącenie/wypłata), `amount`, `currency`, `entry_date`, notatka. Saldo do wypłaty per waluta liczone `settleDriverPayouts` w core (bez przeliczeń kursowych). RLS: członek czyta, owner/dispatcher zarządza.
 - **`damage_claims`** (0051) — rejestr szkód / OC: `vehicle_id`, kierowca, `claim_date`, rodzaj (kolizja/kradzież/szyby/żywioł/wandalizm/inne), status (zgłoszona/w likwidacji/naprawiona/zamknięta/odrzucona), koszt, ubezpieczyciel, `claim_number`, opis. Podsumowanie (`summarizeDamageClaims` w core) zasila panel „Co wymaga uwagi" (otwarte szkody). RLS: multi-tenant.
+
+### 0.4 Moduły dodane po v1.51 (migracje 0055–0100)
+
+Ta sekcja powstała, gdy dokument rozjechał się z kodem o dwadzieścia migracji —
+opisywał 82 migracje przy 102 faktycznych. Wszystkie kolumny poniżej **odczytane
+z żywego schematu**, nie z plików migracji: to jedyny sposób, żeby dokument
+opisywał stan rzeczywisty, a nie zamierzony. Gwiazdka `*` oznacza `NOT NULL`.
+
+**Czat firmowy**
+- **`chat_threads`** — kanały: `company_id*`, `name*`, `created_by*`, **`ephemeral_ttl_seconds`** (0094 — znikanie wiadomości per kanał). Kanał ogólny jest wirtualny (bez wiersza) i rozpoznawany po `thread_id IS NULL` w wiadomościach.
+- **`chat_members`** — skład kanału prywatnego (`thread_id*`, `user_id*`).
+- **`messages`** — `body*`, `sender_label*`, `thread_id`, `photo_path`, oraz stan dodany w 0094: `deleted_at`/`deleted_by` (kasowanie miękkie), `edited_at`, **`expires_at`** (znikanie per wiadomość), `reply_to_id` (cytat), `kind*` (`text`/`photo`/`location`), `meta` (jsonb — m.in. współrzędne). Polityka SELECT **celowo nie filtruje `deleted_at`**: Realtime musi dostarczyć zdarzenie usunięcia, inaczej wiadomość zniknęłaby tylko autorowi (0096).
+- **`message_reactions`** — `(message_id*, user_id*, emoji*)`.
+- **`chat_reads`** — znacznik przeczytania per użytkownik i kanał; `thread_key` obsługuje kanał ogólny, który nie ma `thread_id`.
+
+**Formularze Fazy 6** (migracja 0095)
+- **`pause_events`** — postój kierowcy: miejsce, `odometer_km`, `price_total` + `currency*`, **`secured_parking*`**, `payment_method`, `fuel_card_id`. Kwota jest **opcjonalna, nie zerowa** — zero znaczyłoby „parking za darmo", brak wpisu znaczy „nie podano".
+- **`route_extra_costs`** — hotele, bramki, autostrady, promy, tunele, pociągi, winiety: `kind*`, `amount*` + `currency*`, `order_id` (jedyne bezpośrednie wiązanie kosztu ze zleceniem), `fuel_card_id`.
+- **`penalties`** — kary i mandaty: `amount*`, `reason*`, `status*` (m.in. kwestionowana, anulowana), `due_date`, `driver_id`. Osobno od kosztów trasy mimo podobnej struktury: kara ma inny obieg i w jednym worku z opłatami drogowymi zaśmiecałaby raporty. **Statystyki muszą filtrować po `status`** — kara anulowana nadal ma `amount > 0`.
+
+**Dane referencyjne** (migracje 0092, 0100) — wspólne dla wszystkich firm, polityka wyłącznie na SELECT, zapis przez `service_role`.
+- **`fx_rates`** — kursy EBC: `(as_of*, currency*)` jako klucz, `units_per_eur*` w formacie EBC („ile jednostek za 1 EUR"), `source*`. Przeliczenia biorą kurs z **dnia zdarzenia**, nie z dzisiaj — wymóg księgowy. Historię ładuje [`scripts/fx-backfill.mjs`](../scripts/fx-backfill.mjs); cron dokłada bieżący dzień.
+- **`vat_rates`** — `(country_code*, valid_from*)`, `rate*`, **`fuel_refundable*`** (`false` dla GB/CH/NO). `pickVatRate` zwraca `null` dla zdarzeń sprzed najstarszego wpisu — to znaczy „nie znamy stawki" i **musi wyglądać inaczej na ekranie** niż `0` („kraj nie zwraca").
+
+**Kierowca w terenie**
+- **`driver_positions`** — ostatnia znana pozycja (`lat*`, `lng*`, `speed_kmh`, `heading`); jeden wiersz na użytkownika, nadpisywany.
+- **`driver_routes`** — trasa zaplanowana kierowcy: `stops*`, `geometry*`, `summary*` (jsonb).
+- **`driver_tacho_events`** — zdarzenia tachografu: `kind*`, `rest_type`, `at*`.
+- **`tacho_downloads`** — terminy sczytań karty/tachografu: `kind*`, `last_download*` → przypomnienia.
+- **`driver_expenses`** — wydatki kierowcy do zwrotu: `category*`, `amount*` + `currency*`, `photo_path`, `status*`.
+
+**Kontrola i rozliczenia**
+- **`checklist_templates`** / **`checklist_submissions`** — szablony kontroli pojazdu (`items*`, `assigned_drivers*`) i wypełnione odpowiedzi (`answers*` jsonb).
+- **`company_settlement_settings`** — parametry rozliczenia kierowcy per firma: stawka dzienna, norma km/dzień, stawka za km, ubezpieczenie, telefon, bonus za dokumenty. Jeden wiersz na firmę.
+- **`parking_reviews`** — oceny parkingów: `rating*`, `has_shower*`/`has_wc*`/`has_food*`, `security*`.
+- **`adblue_log_revisions`** — historia zmian wpisów AdBlue (bliźniacza do `fuel_log_revisions`).
+
+**Usunięcie konta** (migracja 0090, wymóg Apple)
+- **`account_deletions`** — ślad po usuniętym koncie: `user_id*`, `deleted_at*`, `deleted_company*`, `counts*` (ile czego skasowano). **Nie ma polityk RLS i to jest zamierzone**, nie przeoczenie: tabelę zapisuje wyłącznie funkcja `delete_my_account` w trybie SECURITY DEFINER, a żadna rola aplikacyjna nie ma prawa jej czytać ani pisać. Sam wiersz nie zawiera danych osobowych.
+- Ta sama migracja zdjęła `NOT NULL` z **`driver_id`** w `fuel_logs`, `adblue_logs` i `trip_events`: usunięcie konta **anonimizuje** wpisy zamiast je kasować, bo tankowanie sprzed roku jest dokumentem księgowym firmy, a nie własnością kierowcy. Skutek dla zapytań: `driver_id = auth.uid()` daje `NULL` dla takiego wiersza, więc znika on kierowcom, ale zostaje właścicielowi.
+
+**Zmiany kolumn istotne dla statystyk**
+- `fuel_logs` / `adblue_logs` (0093): **`occurred_at`** (data zdarzenia, indeksowana — wpis zrobiony offline i zsynchronizowany trzy dni później wpadał wcześniej do złego miesiąca), `currency`, `price_net`, `vat_rate`, `vat_amount`.
+- `trip_events` (0100): **`currency`** — do tej pory `amount` było kwotą bez jednostki.
+- `vehicle_costs.currency` i `orders.currency` (0100): CHECK na format ISO 4217. Bez niego „zł" albo „PLN " ze spacją przechodziło, a potem nie dopasowało się do żadnego kursu.
+- Kolumny kraju w sześciu tabelach formularzy (0099): trigger `normalize_country` sprowadza wpis do kodu ISO 3166-1 alpha-2. **Normalizuje, nie odrzuca** — buildy mobile ze sklepów nie mają nowej walidacji, a kierowcy przy dystrybutorze nie można zablokować zapisu przez literówkę.
 
 > **Analityka i wykresy bez własnych tabel:** trend przychodu/kosztów/paliwa (`monthlyFleetTrend`, `fuelByMonth`) oraz globalne wyszukiwanie (`searchEntities`) liczone w `packages/core` z danych istniejących tabel; wizualizacja (`BarChart`/`RevenueTrend`) po stronie web.
 

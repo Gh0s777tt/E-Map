@@ -3,7 +3,7 @@
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
 ![Updaty](https://img.shields.io/badge/updaty-378-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.222.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.223.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,52 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.223.0] — 💱 Koniec z gubieniem walut na pozostałych ekranach + dokumentacja modelu danych
+
+Dokończenie tego, co [1.222.0] zaczęło na `/stats`. Jedenaście filtrów `currency === "EUR"`
+i kilka surowych sum na sześciu ekranach pokazywało liczby błędne w obie strony naraz:
+złotówki doliczane jak euro (zawyżenie ~4,3×) i jednocześnie pozycje w obcej walucie
+wyrzucane z sum bez śladu.
+
+**Naprawione ekrany** — wszystkie przeliczają teraz przez `rowAmountEur` po kursie
+z **dnia zdarzenia**:
+
+- `[#378]` **Karta pojazdu** ([vehicles/[id]](apps/web/app/(app)/vehicles/[id]/page.tsx)) — trzy filtry i surowa suma paliwa w jednym widoku: przychód zaniżony, koszt zawyżony, więc auto wyglądało na niedochodowe, choć zarabiało. **Dodatkowo formularz w tym samym pliku zapisywał każdy koszt jako `currency: "EUR"` na sztywno** — koszt wpisany w złotówkach szedł do bazy jako euro. To było gorsze niż stan przed poprawką, bo taki wiersz jest formalnie poprawnym EUR i żaden licznik go nie łapał. Doszedł wybór waluty z podpowiedzią z kraju firmy.
+- `[#378]` **Analityka** — sumowała surowe kwoty i formatowała je jako **złotówki** (`zl()`), gdy reszta aplikacji liczy w euro. Etykieta waluty kłamała niezależnie od liczby.
+- `[#378]` **Zlecenia** — suma nad tabelą nie zawierała zleceń w innych walutach, choć tabela je pokazywała; wyglądało to na błąd arytmetyczny. Osobno: tankowanie bez kursu wchodziło do `orderCost` jako zero, **ale jego licznik nadal rozciągał dystans** — koszt/km wychodził kilkukrotnie za niski. Teraz taki wpis wypada z obu stron ułamka naraz, a karta zlecenia oznacza wynik jako szacunek (`≈`).
+- `[#378]` **Karta kierowcy** — zaniżony przychód z tras rozliczanych w innej walucie, a to bywa podstawą rozmowy o premii.
+- `[#378]` **Zestawienie miesięczne** — koszty pojazdu w obcych walutach wypadały; eksport CSV wpisywał do rejestru dla księgowości **0** zamiast oznaczenia „brak kursu". Ostrzeżenie o niepełnej sumie obejmuje teraz całe okno trendu, nie tylko wybrany miesiąc — inaczej Δ m/m pokazywała wzrost, którego nie było.
+- `[#378]` **Pulpit** ([KpiStrip](apps/web/components/KpiStrip.tsx), [RevenueTrend](apps/web/components/RevenueTrend.tsx)) — po naprawie `/monthly` pulpit i zestawienie pokazywały dla tego samego miesiąca **dwie różne kwoty przychodu**. Dwie różne liczby na dwóch ekranach tej samej aplikacji są gorsze niż jedna zła.
+- `[#378]` **Wyjazdy** — stawka €/km przeliczana kursem z dnia **wpisania stawki** zamiast z dnia wyjazdu; przy starszych stawkach kurs nie znajdował się w ogóle i przychód schodził do „—", a baner obiecywał nieistniejący fallback. Teraz kurs z daty wyjazdu, a fallback (starsza stawka → domyślna firmowa) jest zaimplementowany, nie obiecany.
+- `[#378]` **Statystyki kierowcy (mobile)** — pokazywały datę synchronizacji przy kwocie przeliczonej po kursie z dnia tankowania, obok notki obiecującej „kurs z dnia tankowania". Kierowca sprawdzający liczbę w tabeli EBC nie miał jak trafić. To samo dotyczyło grupowania słupków wykresu.
+- `[#378]` **Ranking kart i stacji** — pole `totalEur` sumowało mieszane waluty, a render wypisywał liczbę **bez symbolu waluty**. To podstawa decyzji „gdzie tankujemy taniej".
+
+**Faktury — świadomie BEZ przeliczania.** Rejestr faktur prowadzi się w walucie wystawienia
+i przeliczanie go na euro byłoby księgowo niepoprawne. Zamiast tego faktury w innych walutach
+przestały być **po cichu** pomijane: mają teraz własny blok z rozbiciem
+zafakturowane / opłacone / pozostaje, każda waluta w niej samej.
+
+**Uczciwość komunikatów.** Kilka poprawek dotyczyło nie liczb, tylko tekstu, który obiecywał
+coś, czego kod nie robił — a to gorsze niż brak komunikatu, bo buduje fałszywą pewność.
+Na `/wyjazdy` baner twierdził, że pozycji bez kursu nie wliczamy jako zero, podczas gdy
+`journeys.ts` robi dokładnie `?? 0`. Wyjazdy o zaniżonym koszcie są teraz **wykrywane**
+(sentinel `NaN` przechodzi przez `??` i zaraża sumę tego jednego wyjazdu) i oznaczane
+na karcie, zamiast pokazywać zawyżony zysk jako liczbę pewną.
+
+- `[#378]` **Model danych opisany na nowo** ([DATA-MODEL.md](docs/DATA-MODEL.md)). Dokument deklarował „82 migracje, ostatnia 0080" przy 102 faktycznych — rozjazd o dwadzieścia migracji, w tym **wszystkie tabele Fazy 6 i 7**. Nowa sekcja 0.4 opisuje 21 nieudokumentowanych tabel (czat, formularze Fazy 6, dane referencyjne, kierowca w terenie, usunięcie konta), z kolumnami **odczytanymi z żywego schematu**, nie z plików migracji. Wyjaśnia też, dlaczego `account_deletions` **nie ma polityk RLS** — to zamierzone, nie przeoczenie.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core 516 · api 81 · maps 116 · web 97 · mobile 36 · i18n 5 (parytet pl/en oraz pl/en/de/uk) ✓.
+
+**Proces:** 19 agentów naprawiło ekrany i sprawdziło je nawzajem, 10 usterek wysokiej wagi
+z weryfikacji zostało naprawionych w drugim przebiegu — **wszystkie potwierdzone jako realne**,
+w tym trzy regresje wprowadzone przez same poprawki. Ekrany nadal **niezweryfikowane wizualnie** —
+są za logowaniem.
+
+**Zostaje:** filtry `currency !== "EUR"` w `packages/core` (`billing.ts:342`, `vehiclePnl.ts:75`,
+`profitability.ts:64`, `co2.ts:88`, `orders.ts:48,57`) są po tej zmianie martwe — wszyscy
+wywołujący podają już kwoty przeliczone. Usunięcie ich (i wymuszenie typem, że wejście jest
+znormalizowane) to osobny krok, żeby nie mieszać go z naprawą liczb.
 
 ## [1.222.0] — 💱 Statystyki floty przestały sumować złotówki jak euro
 

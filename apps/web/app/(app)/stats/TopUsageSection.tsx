@@ -1,12 +1,16 @@
 "use client";
 
-import { maskedCardLabel } from "@e-logistic/core";
+import { type FxRate, maskedCardLabel, rowAmountEur } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import type { FuelRaw } from "./shared";
 
 /**
  * #275: najczęściej używane karty paliwowe i najczęstsze stacje (miasto+kraj)
  * z tankowań okna analizy. Ranking po liczbie tankowań, z litrami i kwotą.
+ *
+ * [#378] Kwota jest w euro — przeliczana po kursie z dnia tankowania. Kolejność
+ * rankingu wyznacza nadal liczba tankowań, więc przeliczenie jej nie zmienia;
+ * naprawia wyłącznie liczbę, którą użytkownik porównuje między kartami i stacjami.
  */
 
 export interface CardOpt {
@@ -20,17 +24,44 @@ interface RankRow {
   count: number;
   liters: number;
   totalEur: number;
+  /**
+   * Tankowania, przy których kwota JEST wpisana, ale nie ma notowania na dzień
+   * tankowania. To co innego niż „nie podano kwoty" i nie wolno tego zlewać
+   * w jeden licznik — kierowcy, który wpisał 800 PLN, nie da się kazać
+   * „uzupełnić kwoty". Suma poniżej jest o te pozycje niepełna.
+   */
+  missingRate: number;
 }
 
-function rank(rows: FuelRaw[], keyOf: (r: FuelRaw) => string | null): RankRow[] {
+/**
+ * [#378] Pole nazywało się `totalEur`, a kod sumował `price_total` prosto z bazy,
+ * nie patrząc na walutę ani razu. Tankowanie za 800 PLN wchodziło do rankingu jako
+ * 800 EUR, czyli ponad czterokrotnie za dużo — i to akurat w tabeli, na podstawie
+ * której firma decyduje, którą kartą i na której stacji tankuje taniej. Karta
+ * używana głównie w Polsce wyglądała na najdroższą w flocie wyłącznie z powodu
+ * kursu.
+ *
+ * Teraz każdy wiersz przeliczamy osobno po kursie z dnia tankowania (`occurred_at`,
+ * nie `created_at` — kurs ma odpowiadać momentowi poniesienia kosztu). Wiersz bez
+ * notowania jest POMIJANY, a nie wliczany jako zero: zero znaczyłoby „zatankowano
+ * za darmo" i zaniżało koszt tak samo cicho, jak wcześniej zawyżała go złotówka
+ * liczona jak euro.
+ */
+function rank(
+  rows: FuelRaw[],
+  keyOf: (r: FuelRaw) => string | null,
+  rates: readonly FxRate[],
+): RankRow[] {
   const map = new Map<string, RankRow>();
   for (const r of rows) {
     const label = keyOf(r);
     if (!label) continue;
-    const cur = map.get(label) ?? { label, count: 0, liters: 0, totalEur: 0 };
+    const cur = map.get(label) ?? { label, count: 0, liters: 0, totalEur: 0, missingRate: 0 };
     cur.count += 1;
     cur.liters += Number(r.liters ?? 0);
-    cur.totalEur += Number(r.price_total ?? 0);
+    const eur = rowAmountEur(r.price_total, r.currency, r.occurred_at, rates);
+    if (eur != null) cur.totalEur += eur;
+    else if (r.price_total != null) cur.missingRate += 1;
     map.set(label, cur);
   }
   return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 8);
@@ -47,9 +78,23 @@ function RankList({ title, rows, empty }: { title: string; rows: RankRow[]; empt
           <div key={r.label}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
               <span style={{ color: palette.offWhite }}>{r.label}</span>
-              <span style={{ color: palette.smoke }}>
+              {/* [#378] Kwota szła na ekran jako goła liczba, bez symbolu waluty —
+                  „410" przy stacji w Polsce i „410" przy stacji w Niemczech
+                  wyglądały identycznie, choć znaczyły zupełnie co innego. Teraz
+                  to zawsze euro i jest to napisane wprost. Osobny licznik mówi,
+                  ile tankowań wypadło z sumy z braku kursu, żeby liczba nie
+                  udawała kompletnej. */}
+              <span
+                style={{ color: palette.smoke }}
+                title={
+                  r.missingRate > 0
+                    ? `${r.missingRate} tankowań ma kwotę w walucie bez notowania na dzień tankowania — nie weszły do sumy.`
+                    : undefined
+                }
+              >
                 {r.count}× · {Math.round(r.liters)} l
-                {r.totalEur > 0 ? ` · ${r.totalEur.toFixed(0)}` : ""}
+                {r.totalEur > 0 ? ` · ${r.totalEur.toFixed(0)} €` : ""}
+                {r.missingRate > 0 ? ` · +${r.missingRate} bez kursu` : ""}
               </span>
             </div>
             <div
@@ -69,18 +114,38 @@ function RankList({ title, rows, empty }: { title: string; rows: RankRow[]; empt
   );
 }
 
-export function TopUsageSection({ fuel, cards }: { fuel: FuelRaw[]; cards: CardOpt[] }) {
+export function TopUsageSection({
+  fuel,
+  cards,
+  rates,
+}: {
+  fuel: FuelRaw[];
+  cards: CardOpt[];
+  /**
+   * [#378] Kursy EBC z ekranu nadrzędnego. Bez nich kwota w innej walucie niż
+   * euro nie ma jak wejść do rankingu — a wcześniej wchodziła, po kursie 1:1.
+   */
+  rates: readonly FxRate[];
+}) {
   const cardLabel = new Map(
     cards.map((c) => [c.id, maskedCardLabel(c.provider, c.card_number_masked)]),
   );
-  const topCards = rank(fuel, (r) => {
-    const id = (r as { fuel_card_id?: string | null }).fuel_card_id;
-    return id ? (cardLabel.get(id) ?? "karta (usunięta)") : null;
-  });
-  const topStations = rank(fuel, (r) => {
-    const city = (r as { station_city?: string | null }).station_city;
-    return city ? `${city}, ${r.station_country}` : r.station_country || null;
-  });
+  const topCards = rank(
+    fuel,
+    (r) => {
+      const id = (r as { fuel_card_id?: string | null }).fuel_card_id;
+      return id ? (cardLabel.get(id) ?? "karta (usunięta)") : null;
+    },
+    rates,
+  );
+  const topStations = rank(
+    fuel,
+    (r) => {
+      const city = (r as { station_city?: string | null }).station_city;
+      return city ? `${city}, ${r.station_country}` : r.station_country || null;
+    },
+    rates,
+  );
 
   return (
     <section style={styles.card}>
