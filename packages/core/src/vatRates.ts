@@ -75,6 +75,55 @@ export function splitFromNet(net: number, ratePct: number): VatSplit {
   return { net: round2(net), vat, gross: round2(round2(net) + vat), rate: ratePct };
 }
 
+/** Kwoty tankowania w dowolnym stopniu uzupełnienia. */
+export interface AmountsInput {
+  /** Kwota zapłacona (brutto) — to widzi kierowca na terminalu. */
+  gross?: number | null;
+  net?: number | null;
+  /** Stawka VAT w procentach. */
+  ratePct?: number | null;
+}
+
+/** Kwoty po uzupełnieniu tego, co dało się wyliczyć. */
+export interface ResolvedAmounts {
+  gross: number | null;
+  net: number | null;
+  vat: number | null;
+  ratePct: number | null;
+}
+
+/**
+ * Uzupełnia brakujące części kwoty — zasada „podaj dwa, policz resztę".
+ *
+ * Nie zgaduje NICZEGO. Jeśli mamy samo brutto i nie znamy stawki, netto i VAT
+ * zostają puste — bo doliczenie domyślnej stawki dałoby liczbę wyglądającą jak
+ * wprowadzona przez człowieka, która weszłaby do rozliczeń i do wniosku
+ * o zwrot VAT. Lepiej puste pole niż wiarygodnie wyglądająca nieprawda.
+ */
+export function resolveAmounts(input: AmountsInput): ResolvedAmounts {
+  const gross = input.gross ?? null;
+  const net = input.net ?? null;
+  const rate = input.ratePct ?? null;
+
+  // Brutto + stawka → reszta. Najczęstszy przypadek: kierowca wpisuje kwotę
+  // z terminala, stawkę bierzemy z kraju tankowania.
+  if (gross !== null && rate !== null) {
+    const s = splitFromGross(gross, rate);
+    return { gross: s.gross, net: s.net, vat: s.vat, ratePct: rate };
+  }
+  // Netto + stawka → reszta. Ścieżka fakturowa.
+  if (net !== null && rate !== null) {
+    const s = splitFromNet(net, rate);
+    return { gross: s.gross, net: s.net, vat: s.vat, ratePct: rate };
+  }
+  // Brutto + netto → stawka wynika z nich, nie trzeba jej znać z zewnątrz.
+  if (gross !== null && net !== null && net > 0) {
+    const vat = round2(gross - net);
+    return { gross: round2(gross), net: round2(net), vat, ratePct: round2((vat / net) * 100) };
+  }
+  return { gross, net, vat: null, ratePct: rate };
+}
+
 /**
  * Kwota VAT możliwa do odzyskania z tankowania.
  *

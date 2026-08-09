@@ -31,6 +31,9 @@ export function tripEventToRow(input: TripEventInput, ctx: TripEventContext) {
     comment: input.comment ?? null,
     from_vehicle_reg: "fromVehicleReg" in input ? input.fromVehicleReg : null,
     to_vehicle_reg: "toVehicleReg" in input ? input.toVehicleReg : null,
+    // [#373] Pominięcie pola zostawia `default now()` w bazie — tak zachowują się
+    // stare buildy mobile, które o `occurred_at` nie wiedzą.
+    ...(input.occurredAt ? { occurred_at: new Date(input.occurredAt).toISOString() } : {}),
     device_id: ctx.deviceId ?? null,
   };
   // order_id dołączany TYLKO gdy wskazany — bez migracji 0052 istniejące trasy (bez zlecenia)
@@ -75,16 +78,17 @@ export async function updateTripEvent(client: SupabaseClient, id: string, input:
 
 /**
  * Lista zdarzeń Trip (RLS zawęża do kierowcy/firmy).
- * Filtry `from`/`to` (zakres `created_at`, ISO) i `limit` ograniczają transfer.
+ * Filtry `from`/`to` (zakres `occurred_at`, ISO) i `limit` ograniczają transfer.
  */
 export async function listTripEvents(
   client: SupabaseClient,
   opts?: { vehicleId?: string; from?: string; to?: string; limit?: number },
 ) {
-  let query = client.from("trip_events").select("*").order("created_at", { ascending: false });
+  // [#373] Zakres po dacie ZDARZENIA — patrz komentarz w `listFuelLogs`.
+  let query = client.from("trip_events").select("*").order("occurred_at", { ascending: false });
   if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
-  if (opts?.from) query = query.gte("created_at", opts.from);
-  if (opts?.to) query = query.lte("created_at", opts.to);
+  if (opts?.from) query = query.gte("occurred_at", opts.from);
+  if (opts?.to) query = query.lte("occurred_at", opts.to);
   if (opts?.limit) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
@@ -98,9 +102,9 @@ export async function listMyTripEvents(
 ) {
   let query = client
     .from("trip_events")
-    .select("id, action, odometer_km, created_at, country, location")
-    .order("created_at", { ascending: false });
-  if (opts?.from) query = query.gte("created_at", opts.from);
+    .select("id, action, odometer_km, created_at, occurred_at, country, location")
+    .order("occurred_at", { ascending: false });
+  if (opts?.from) query = query.gte("occurred_at", opts.from);
   query = query.limit(opts?.limit ?? 200);
   const { data, error } = await query;
   if (error) throw error;

@@ -224,6 +224,8 @@ export const en: Record<MessageKey, string> = {
   "form.field.liters": "Liters",
   "form.field.country": "Country",
   "form.field.postcode": "Postcode",
+  "form.field.occurredAt": "Date and time of event",
+  "form.field.currency": "Currency",
   "form.field.company": "Company name (optional)",
   "form.field.companyPlaceholder": "e.g. Kaufland Warehouse",
   "form.geo.fill": "Fill from location",

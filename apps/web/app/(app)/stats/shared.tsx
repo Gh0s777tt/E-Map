@@ -11,6 +11,7 @@ export type FuelRaw = {
   is_full?: boolean;
   station_country: string;
   created_at: string;
+  occurred_at: string;
 };
 export type TripRaw = {
   id: string;
@@ -20,6 +21,7 @@ export type TripRaw = {
   amount: number | null;
   country: string;
   created_at: string;
+  occurred_at: string;
 };
 
 export const entry = (r: FuelRaw): FuelStatsEntry & { isFull?: boolean } => ({
@@ -34,7 +36,7 @@ export function monthlyCost(rows: FuelRaw[]): { label: string; value: number }[]
   const map = new Map<string, number>();
   for (const r of rows) {
     if (r.price_total == null) continue;
-    const m = r.created_at.slice(0, 7);
+    const m = r.occurred_at.slice(0, 7);
     map.set(m, (map.get(m) ?? 0) + Number(r.price_total));
   }
   return [...map.entries()]

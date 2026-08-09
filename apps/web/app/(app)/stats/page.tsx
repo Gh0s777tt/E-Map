@@ -279,7 +279,7 @@ export default function StatsPage() {
       ...fuel.map((r) => ({
         vehicleId: r.vehicle_id,
         cost: Number(r.price_total ?? 0),
-        month: r.created_at.slice(0, 7),
+        month: r.occurred_at.slice(0, 7),
       })),
       ...costs
         .filter((c) => c.currency === "EUR")

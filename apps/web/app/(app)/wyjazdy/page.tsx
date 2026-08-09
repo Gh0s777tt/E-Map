@@ -19,10 +19,12 @@ interface TripRow {
   weight_kg: number | null;
   amount: number | null;
   created_at: string;
+  occurred_at: string;
 }
 interface FuelRow {
   vehicle_id: string | null;
   created_at: string;
+  occurred_at: string;
   odometer_km: number;
   liters: number;
   price_total: number | null;
@@ -119,11 +121,11 @@ export default function JourneysPage() {
         odometerKm: r.odometer_km,
         weightKg: r.weight_kg,
         amount: r.amount,
-        createdAt: r.created_at,
+        createdAt: r.occurred_at,
       })),
       fuel: fuel.map((r) => ({
         vehicleId: r.vehicle_id,
-        createdAt: r.created_at,
+        createdAt: r.occurred_at,
         odometerKm: r.odometer_km,
         liters: r.liters,
         priceTotal: r.price_total,
@@ -131,7 +133,7 @@ export default function JourneysPage() {
       })),
       adblue: adblue.map((r) => ({
         vehicleId: r.vehicle_id,
-        createdAt: r.created_at,
+        createdAt: r.occurred_at,
         odometerKm: r.odometer_km,
         liters: r.liters,
         priceTotal: r.price_total,

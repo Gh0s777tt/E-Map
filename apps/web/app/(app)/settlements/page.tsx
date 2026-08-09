@@ -34,6 +34,7 @@ type FuelRow = {
   is_full: boolean | null;
   price_total: number | null;
   created_at: string;
+  occurred_at: string;
   station_country: string | null;
   station_city: string | null;
   station_loc: string | null;
@@ -45,6 +46,7 @@ type TripRow = {
   country: string | null;
   location: string | null;
   created_at: string;
+  occurred_at: string;
   comment: string | null;
 };
 
@@ -159,7 +161,7 @@ export default function SettlementsPage() {
         listFuelLogs(sb, { vehicleId, table: "adblue_logs", ...range }),
         listTripEvents(sb, { vehicleId, ...range }),
       ]);
-      // Zakres dat już zastosowany w zapytaniu (gte/lte na created_at) — bez ponownego filtra w JS.
+      // Zakres dat już zastosowany w zapytaniu (gte/lte na occurred_at) — bez ponownego filtra w JS.
       const fFilt = f as FuelRow[];
       const aFilt = a as FuelRow[];
       const tFilt = tripEv as TripRow[];
@@ -195,7 +197,7 @@ export default function SettlementsPage() {
     for (const r of fuel) {
       rows.push([
         r.is_full === false ? "Paliwo (częściowe)" : "Paliwo",
-        r.created_at.slice(0, 10),
+        r.occurred_at.slice(0, 10),
         r.odometer_km,
         r.liters,
         r.price_total,
@@ -203,12 +205,12 @@ export default function SettlementsPage() {
       ]);
     }
     for (const r of adblue) {
-      rows.push(["AdBlue", r.created_at.slice(0, 10), r.odometer_km, r.liters, r.price_total, ""]);
+      rows.push(["AdBlue", r.occurred_at.slice(0, 10), r.odometer_km, r.liters, r.price_total, ""]);
     }
     for (const r of trips) {
       rows.push([
         tripLabel(r.action),
-        r.created_at.slice(0, 10),
+        r.occurred_at.slice(0, 10),
         r.odometer_km,
         null,
         r.amount,
@@ -392,13 +394,13 @@ export default function SettlementsPage() {
             </thead>
             <tbody>
               {fuel.map((r) => (
-                <tr key={`f-${r.created_at}-${r.odometer_km}-${r.liters}`}>
+                <tr key={`f-${r.occurred_at}-${r.odometer_km}-${r.liters}`}>
                   <td className={styles.td}>
                     {r.is_full === false
                       ? t("settlements.fuelPartialShort")
                       : t("settlements.fuel")}
                   </td>
-                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.occurred_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km}</td>
                   <td className={styles.td}>{r.liters}</td>
                   <td className={styles.td}>
@@ -407,9 +409,9 @@ export default function SettlementsPage() {
                 </tr>
               ))}
               {adblue.map((r) => (
-                <tr key={`a-${r.created_at}-${r.odometer_km}-${r.liters}`}>
+                <tr key={`a-${r.occurred_at}-${r.odometer_km}-${r.liters}`}>
                   <td className={styles.td}>AdBlue</td>
-                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.occurred_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km}</td>
                   <td className={styles.td}>{r.liters}</td>
                   <td className={styles.td}>
@@ -418,9 +420,9 @@ export default function SettlementsPage() {
                 </tr>
               ))}
               {trips.map((r) => (
-                <tr key={`t-${r.created_at}-${r.action}-${r.odometer_km}`}>
+                <tr key={`t-${r.occurred_at}-${r.action}-${r.odometer_km}`}>
                   <td className={styles.td}>{tripLabel(r.action)}</td>
-                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.occurred_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km ?? "—"}</td>
                   <td className={styles.td}>—</td>
                   <td className={styles.td}>{r.amount != null ? `${round2(r.amount)} €` : "—"}</td>

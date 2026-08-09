@@ -21,6 +21,21 @@ import { getSupabase, supabaseConfigured } from "./supabase";
  */
 const KEY = "el-outbox";
 
+/**
+ * [#373] Dopina datę zdarzenia z momentu ZAKOLEJKOWANIA, nie synchronizacji.
+ *
+ * To jest sedno błędu, który naprawiamy: kolejka od zawsze trzymała `createdAt`
+ * lokalnie, ale nigdy go nie wysyłała. Tankowanie wpisane w terenie bez zasięgu
+ * i zsynchronizowane trzy dni później dostawało w bazie datę synchronizacji,
+ * więc wpadało do złego miesiąca i cicho psuło zestawienie.
+ *
+ * Jawnie podana data z formularza ma pierwszeństwo — użytkownik mógł wpisać
+ * tankowanie sprzed tygodnia.
+ */
+function withOccurredAt<T extends { occurredAt?: string }>(input: T, queuedAt: string): T {
+  return input.occurredAt ? input : { ...input, occurredAt: queuedAt };
+}
+
 export type OutboxKind = "fuel" | "adblue" | "trip" | "checklist" | "expense" | "chat";
 
 /**
@@ -262,11 +277,11 @@ async function syncItem(itemId: string): Promise<void> {
         item.input as ChecklistSubmissionInput,
       );
     } else if (item.kind === "trip") {
-      await insertTripEvent(sb, item.input as TripEventInput, ctx);
+      await insertTripEvent(sb, withOccurredAt(item.input as TripEventInput, item.createdAt), ctx);
     } else {
       await insertFuelLog(
         sb,
-        item.input as FuelLogInput,
+        withOccurredAt(item.input as FuelLogInput, item.createdAt),
         ctx,
         item.kind === "adblue" ? "adblue_logs" : "fuel_logs",
       );

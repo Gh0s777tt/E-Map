@@ -221,6 +221,8 @@ export const pl = {
   "form.field.liters": "Litry",
   "form.field.country": "Kraj",
   "form.field.postcode": "Kod pocztowy",
+  "form.field.occurredAt": "Data i godzina zdarzenia",
+  "form.field.currency": "Waluta",
   "form.field.company": "Nazwa firmy (opcjonalnie)",
   "form.field.companyPlaceholder": "np. Kaufland Magazyn",
   "form.geo.fill": "Uzupełnij z lokalizacji",

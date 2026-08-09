@@ -2,6 +2,7 @@
 
 import { getFuelLog, listFuelLogs, updateFuelLog } from "@e-logistic/api";
 import {
+  currencyForCountry,
   fuelLogSchema,
   latestUnitPrice,
   PAYMENT_METHODS,
@@ -29,6 +30,40 @@ function firstSegment(label: string): string {
   return label.split(",")[0]?.trim() || label;
 }
 
+/**
+ * [#373] „Teraz" w formacie pola `datetime-local`, czyli w czasie LOKALNYM
+ * przeglądarki. `toISOString()` dałoby UTC i kierowca w Polsce zobaczyłby
+ * godzinę przesuniętą o dwie wstecz.
+ */
+/**
+ * Waluty do wyboru w formularzu. Lista celowo krótka — to waluty, którymi
+ * realnie płaci się za paliwo na trasach floty. Wszystkie mają notowanie w EBC,
+ * więc każda kwota da się przeliczyć.
+ */
+const CURRENCY_OPTIONS = [
+  "EUR",
+  "PLN",
+  "CZK",
+  "HUF",
+  "RON",
+  "SEK",
+  "DKK",
+  "NOK",
+  "GBP",
+  "CHF",
+] as const;
+
+function localNow(): string {
+  return toLocalInput(new Date().toISOString());
+}
+
+/** Znacznik czasu z bazy (UTC) → wartość pola `datetime-local` w czasie lokalnym. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 /** Formularz „płynów" — paliwo lub AdBlue (ta sama struktura, `fuelLogSchema`). */
 export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const t = useT();
@@ -46,6 +81,11 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   // [#372] Kod pocztowy był w schemacie i w aplikacji mobilnej, ale nie na webie —
   // wpisy z panelu traciły go po cichu. W UK to on identyfikuje miejsce.
   const [postcode, setPostcode] = useState("");
+  // [#373] Data zdarzenia i waluta kwoty.
+  const [occurredAt, setOccurredAt] = useState(localNow);
+  const [currency, setCurrency] = useState("EUR");
+  /** Czy użytkownik sam wybrał walutę — wtedy nie nadpisujemy jej przy zmianie kraju. */
+  const [currencyTouched, setCurrencyTouched] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [liters, setLiters] = useState("");
@@ -75,6 +115,8 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           station_country: string;
           station_city: string | null;
           station_postcode: string | null;
+          currency: string | null;
+          occurred_at: string | null;
           odometer_km: number;
           liters: number;
           is_full?: boolean;
@@ -89,6 +131,13 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         // Bez tego edycja z panelu kasowałaby kod pocztowy zapisany z telefonu:
         // pole startowałoby puste i wróciło do bazy jako `undefined`.
         setPostcode(row.station_postcode ?? "");
+        // [#373] Ta sama pułapka dotyczy waluty i daty zdarzenia — bez wczytania
+        // edycja cofnęłaby walutę do EUR i przestawiła datę na „teraz".
+        if (row.currency) {
+          setCurrency(row.currency);
+          setCurrencyTouched(true);
+        }
+        if (row.occurred_at) setOccurredAt(toLocalInput(row.occurred_at));
         setOdometerKm(String(row.odometer_km));
         setLiters(String(row.liters));
         setIsFull(row.is_full !== false);
@@ -214,6 +263,11 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
       paymentMethod,
       fuelCardId: paymentMethod === "card" ? fuelCardId || undefined : undefined,
       priceTotal: priceTotal ? Number(priceTotal) : undefined,
+      currency,
+      // Pole `datetime-local` daje czas lokalny bez strefy — `new Date()`
+      // interpretuje go w strefie przeglądarki, a `toISOString()` normalizuje
+      // do UTC, w którym baza trzyma znaczniki czasu.
+      occurredAt: occurredAt ? new Date(occurredAt).toISOString() : undefined,
       comment: comment || undefined,
     };
 
@@ -326,6 +380,11 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
               setCity(h.city ?? firstSegment(h.label));
               const c = h.countryCode ?? h.country;
               if (c) setCountry(c);
+              // Kierowca w Polsce płaci złotówkami — podpowiadamy walutę kraju,
+              // ale nie nadpisujemy wyboru, jeśli sam już ją ustawił.
+              if (h.countryCode && !currencyTouched) {
+                setCurrency(currencyForCountry(h.countryCode));
+              }
               if (h.postcode) setPostcode(h.postcode);
               setCoords({ lat: h.lat, lng: h.lng });
             }}
@@ -432,13 +491,42 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           </Field>
         )}
 
-        <Field label={`${t("form.field.amount")} (opcjonalnie)`} error={errors.priceTotal}>
+        {/* [#373] Data zdarzenia — bez niej wpis dodany po fakcie (albo zrobiony
+            offline i zsynchronizowany później) wpadał do złego miesiąca. */}
+        <Field label={t("form.field.occurredAt")} error={errors.occurredAt}>
           <input
             className={styles.input}
-            type="number"
-            value={priceTotal}
-            onChange={(e) => setPriceTotal(e.target.value)}
+            type="datetime-local"
+            value={occurredAt}
+            onChange={(e) => setOccurredAt(e.target.value)}
           />
+        </Field>
+
+        <Field label={`${t("form.field.amount")} (brutto, opcjonalnie)`} error={errors.priceTotal}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className={styles.input}
+              type="number"
+              value={priceTotal}
+              onChange={(e) => setPriceTotal(e.target.value)}
+            />
+            <select
+              className={styles.input}
+              style={{ maxWidth: 110 }}
+              value={currency}
+              onChange={(e) => {
+                setCurrency(e.target.value);
+                setCurrencyTouched(true);
+              }}
+              aria-label={t("form.field.currency")}
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
           {lastPrice != null && (
             <span style={{ fontSize: 12, color: palette.smoke }}>
               Ostatnia cena: <strong style={{ color: palette.offWhite }}>{lastPrice} /l</strong>

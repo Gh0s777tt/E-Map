@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-372-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.214.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-373-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.215.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,36 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.215.0] — 💶 Fundament finansowy: data zdarzenia, waluty, kursy EBC, VAT per kraj
+
+Faza 1 z przeglądu backlogu. Osiem pozycji ze statystyk było **niewykonalnych**,
+dopóki tankowania nie miały waluty ani rozbicia kwoty, a jedenaście miejsc w kodzie
+cicho odrzucało wszystko, co nie jest EUR — koszt w PLN po prostu znikał z sumy.
+
+- `[#373]` **Data zdarzenia ≠ data zapisu** (migracja [0093](supabase/migrations/0093_occurred_at_and_amounts.sql)). Datą tankowania było `created_at` z `default now()`, a kolejka offline trzymała `createdAt` lokalnie i **nigdy go nie wysyłała**. Wpis zrobiony w terenie bez zasięgu i zsynchronizowany trzy dni później dostawał datę synchronizacji, wpadał do złego miesiąca i cicho psuł zestawienie.
+  - Nowe `occurred_at` na `fuel_logs`/`adblue_logs`/`trip_events`, z backfillem z `created_at` — po migracji żadna liczba się nie zmieniła, i o to chodziło.
+  - Oba outboxy (web i mobile) dopinają teraz datę **zakolejkowania**; jawna data z formularza ma pierwszeństwo.
+  - Zakres i sortowanie w `listFuelLogs`/`listTripEvents` idą po `occurred_at`; raporty (zestawienie, analityka, statystyki, rozliczenia, wyjazdy, karta pojazdu) grupują po dacie zdarzenia.
+  - Formularz webowy dostał pole daty i godziny. Stare buildy mobile nie znają tego pola — kolumna ma `default now()`, a maper **nie wysyła klucza**, gdy data nie została podana, żeby nie nadpisać wartości domyślnej.
+
+- `[#373]` **Waluta i rozbicie kwoty** (tamże). `price_total` był jedyną kwotą w systemie — bez waluty, bez netto, bez VAT. Doszły `currency`, `price_net`, `vat_rate`, `vat_amount`; `price_total` **zostaje** jako brutto, bo zmiana nazwy dotknęłaby ponad trzydziestu miejsc w kodzie i wszystkich buildów w sklepach.
+  - `resolveAmounts` w [vatRates.ts](packages/core/src/vatRates.ts) realizuje zasadę „podaj dwa, policz resztę". Samo brutto **nie dorabia** stawki — domyślne 23% dałoby liczbę wyglądającą jak wpisana przez człowieka, która weszłaby do rozliczeń i wniosku o zwrot VAT.
+  - Formularz podpowiada walutę kraju stacji (kierowca w Polsce płaci złotówkami), ale nie nadpisuje ręcznego wyboru.
+
+- `[#373]` **Kursy walut z EBC** (migracja [0092](supabase/migrations/0092_fx_and_vat_rates.sql) + [fx.ts](packages/core/src/fx.ts) + [cron](apps/web/app/api/cron/fx/route.ts)). Jedyne kursy w repo to dotąd hardcode dla myta i kursy pobierane w `/api/fuel-eu`, nigdzie niezapisywane.
+  - **Kierunek kursu jest jawny i testowany wprost**: `units_per_eur` = ile jednostek waluty za 1 EUR, dokładnie jak publikuje EBC. Brak inwersji przy imporcie jest celowy — odwrócony kurs to błąd, którego nikt nie zauważy, dopóki nie policzy zwrotu VAT. Sprawdzone na realnej liczbie: 1000 PLN = 232,65 EUR.
+  - Przeliczanie po kursie z **dnia zdarzenia**, nie dzisiejszym. Kurs z przyszłości odrzucany; w weekend (EBC nie publikuje) sięgamy po ostatni znany.
+  - **Brak kursu to `null`, nigdy zero.** `sumInCurrency` zwraca listę pominiętych pozycji, żeby ekran mógł powiedzieć „suma niepełna" zamiast pokazać zaniżoną liczbę wyglądającą na kompletną.
+  - Publiczny kanał XML EBC — bez klucza, bez limitu. Parser zweryfikowany na żywym kanale (29 walut), cron o 06:00 UTC.
+
+- `[#373]` **Stawki VAT per kraj** (tamże + [vatRates.ts](packages/core/src/vatRates.ts)). Istniała wyłącznie `companies.default_vat_rate` — jedna stawka firmowa do faktur sprzedaży. Do zwrotu VAT potrzebna jest stawka **kraju tankowania**.
+  - Seed 28 krajów, wersjonowany od `valid_from` — test używa niemieckiej obniżki covidowej (16% w 2020) i sprawdza, że wniosek za tamten okres dostaje stawkę z tamtego czasu.
+  - `fuel_refundable` odróżnia kraje, które VAT-u od paliwa nie oddają (GB, CH, NO) — bez tego zwrot wychodziłby zawyżony. Nieznany kraj daje `null`, nie domyślne 23%.
+
+- `[#373]` **Dwa ekrany liczyły spalanie inaczej.** `/analytics` miał własny wzór inline (wszystkie litry / rozpiętość licznika), który **zawyża** — wliczał pierwsze tankowanie, choć napędziło ono drogę sprzed pierwszego odczytu. Oba ekrany używają teraz `consumptionFullToFull`.
+
+**Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 452 · maps 116 · api 77 · web 78 · mobile 36 · i18n 5 ✓ · `next build` ✓ · migracje 0092 i 0093 na produkcji, backfill zweryfikowany (39/39 wierszy) ✓.
 
 ## [1.214.0] — 🔐 Usuwanie konta (wymóg App Store) + cztery błędy pokazujące nieprawdę
 

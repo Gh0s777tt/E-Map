@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   pickVatRate,
   refundableFuelVat,
+  resolveAmounts,
   splitFromGross,
   splitFromNet,
   type VatRate,
@@ -89,5 +90,61 @@ describe("refundableFuelVat", () => {
   it("używa stawki historycznej, nie bieżącej", () => {
     // 116 brutto przy 16% = 16 VAT (Niemcy, druga połowa 2020).
     expect(refundableFuelVat(116, "DE", "2020-09-15", RATES)).toBe(16);
+  });
+});
+
+describe("resolveAmounts — zasada „podaj dwa, policz resztę”", () => {
+  it("brutto + stawka → netto i VAT", () => {
+    expect(resolveAmounts({ gross: 123, ratePct: 23 })).toEqual({
+      gross: 123,
+      net: 100,
+      vat: 23,
+      ratePct: 23,
+    });
+  });
+
+  it("netto + stawka → brutto i VAT", () => {
+    expect(resolveAmounts({ net: 100, ratePct: 19 })).toEqual({
+      gross: 119,
+      net: 100,
+      vat: 19,
+      ratePct: 19,
+    });
+  });
+
+  it("brutto + netto → wylicza stawkę, nie trzeba jej znać z zewnątrz", () => {
+    expect(resolveAmounts({ gross: 123, net: 100 })).toEqual({
+      gross: 123,
+      net: 100,
+      vat: 23,
+      ratePct: 23,
+    });
+  });
+
+  it("samo brutto NIE dorabia stawki — puste pole zamiast wiarygodnej nieprawdy", () => {
+    // Domyślne 23% dałoby liczbę wyglądającą jak wpisana przez człowieka,
+    // która weszłaby do rozliczeń i do wniosku o zwrot VAT.
+    expect(resolveAmounts({ gross: 500 })).toEqual({
+      gross: 500,
+      net: null,
+      vat: null,
+      ratePct: null,
+    });
+  });
+
+  it("pusty wejściowo zostaje pusty", () => {
+    expect(resolveAmounts({})).toEqual({ gross: null, net: null, vat: null, ratePct: null });
+  });
+
+  it("netto zero nie powoduje dzielenia przez zero przy wyliczaniu stawki", () => {
+    const r = resolveAmounts({ gross: 50, net: 0 });
+    expect(Number.isFinite(r.ratePct ?? 0)).toBe(true);
+  });
+
+  it("wynik zawsze się spina: netto + VAT = brutto", () => {
+    for (const g of [123.45, 0.07, 999.99, 61.5]) {
+      const r = resolveAmounts({ gross: g, ratePct: 19 });
+      expect((r.net ?? 0) + (r.vat ?? 0)).toBeCloseTo(r.gross ?? 0, 10);
+    }
   });
 });

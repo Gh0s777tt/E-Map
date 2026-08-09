@@ -16,6 +16,25 @@ import { VEHICLE_COST_CATEGORIES } from "./vehicleCosts";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data w formacie YYYY-MM-DD");
 
+/**
+ * [#373] Data i godzina zdarzenia. Celowo pobłażliwa: pole `datetime-local`
+ * w przeglądarce daje „2026-08-09T14:30" (bez sekund i strefy), a picker mobilny
+ * pełne ISO. Oba są poprawne — normalizacja do znacznika czasu należy do mapera.
+ */
+const isoDateTime = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, "Data i godzina w formacie ISO");
+
+/**
+ * [#373] Waluta kwoty. Kod ISO 4217 wielkimi literami — inaczej tabela `fx_rates`
+ * nigdy nie dopasuje kursu i kwota po cichu wypadnie z każdej sumy.
+ */
+export const currencyCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{3}$/, "Waluta jako kod ISO, np. EUR lub PLN");
+
 /** Lokalizacja: kraj + miejsce, opcjonalnie współrzędne GPS (auto lub ręcznie). */
 export const geoLocationSchema = z.object({
   country: z.string().min(2).max(56),
@@ -194,7 +213,28 @@ export const fuelLogSchema = z
     isFull: z.boolean().default(true),
     paymentMethod: z.enum(PAYMENT_METHODS),
     fuelCardId: z.uuid().optional(),
+    /**
+     * Kwota zapłacona = BRUTTO. Nazwa została z czasów, gdy była to jedyna kwota
+     * w systemie; zmiana dotknęłaby ponad trzydziestu miejsc w kodzie i wszystkich
+     * buildów mobile w sklepach, więc pole zostaje, a znaczenie jest udokumentowane.
+     */
     priceTotal: z.number().nonnegative().optional(),
+    /**
+     * [#373] Waluta kwoty. `optional`, a nie `default("EUR")` — `default` czyni pole
+     * WYMAGANYM w typie wyjściowym, co zmusiłoby każdego istniejącego wywołującego
+     * (i każdy stary build mobile) do przekazywania waluty. Wartość domyślną nadaje
+     * maper i kolumna w bazie.
+     */
+    currency: currencyCode.optional(),
+    /** [#373] Netto i stawka VAT. Opcjonalne: kierowca na stacji widzi samo brutto. */
+    priceNet: z.number().nonnegative().optional(),
+    vatRate: z.number().min(0).max(100).optional(),
+    /**
+     * [#373] Kiedy tankowanie faktycznie miało miejsce. Bez tego wpis zrobiony
+     * offline i zsynchronizowany trzy dni później wpadał do złego miesiąca.
+     * Opcjonalne — brak oznacza „teraz" (baza ma `default now()`).
+     */
+    occurredAt: isoDateTime.optional(),
     comment: z.string().max(2000).optional(),
   })
   .refine((d) => d.paymentMethod !== "card" || d.fuelCardId !== undefined, {
@@ -213,6 +253,8 @@ const tripBase = {
   vehicleId: z.uuid(),
   place: geoLocationSchema,
   odometerKm: z.number().int().nonnegative(),
+  /** [#373] Kiedy zdarzenie faktycznie miało miejsce — patrz `fuelLogSchema.occurredAt`. */
+  occurredAt: isoDateTime.optional(),
 };
 
 export const tripEventSchema = z.discriminatedUnion("action", [

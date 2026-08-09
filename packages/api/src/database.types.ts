@@ -57,6 +57,11 @@ export interface Database {
           is_full: boolean;
           station_postcode: string | null;
           station_company: string | null;
+          currency: string;
+          price_net: number | null;
+          vat_rate: number | null;
+          vat_amount: number | null;
+          occurred_at: string;
         };
         Insert: {
           id: string;
@@ -81,6 +86,11 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Update: {
           id?: string;
@@ -105,6 +115,11 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Relationships: [];
       };
@@ -968,6 +983,11 @@ export interface Database {
           is_full: boolean;
           station_postcode: string | null;
           station_company: string | null;
+          currency: string;
+          price_net: number | null;
+          vat_rate: number | null;
+          vat_amount: number | null;
+          occurred_at: string;
         };
         Insert: {
           id: string;
@@ -992,6 +1012,11 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Update: {
           id?: string;
@@ -1016,6 +1041,11 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Relationships: [];
       };
@@ -1964,6 +1994,7 @@ export interface Database {
           amount: number | null;
           comment: string | null;
           device_id: string | null;
+          occurred_at: string;
           revision: number;
           created_at: string;
           updated_at: string;
@@ -1988,6 +2019,7 @@ export interface Database {
           amount?: number | null;
           comment?: string | null;
           device_id?: string | null;
+          occurred_at?: string;
           revision?: number;
           created_at?: string;
           updated_at?: string;
@@ -2012,6 +2044,7 @@ export interface Database {
           amount?: number | null;
           comment?: string | null;
           device_id?: string | null;
+          occurred_at?: string;
           revision?: number;
           created_at?: string;
           updated_at?: string;

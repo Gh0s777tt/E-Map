@@ -32,6 +32,40 @@ export interface FxRate {
 export const BASE_CURRENCY = "EUR";
 
 /**
+ * Waluta, którą realnie zapłacisz w danym kraju. Formularz podpowiada ją po
+ * wybraniu kraju stacji — kierowca w Polsce płaci złotówkami i nie powinien
+ * musieć o tym pamiętać ani przestawiać ręcznie.
+ *
+ * Wymienione są tylko kraje strefy euro ORAZ te z własną walutą, w których
+ * realnie jeździ flota. Reszta dostaje EUR jako sensowną wartość wyjściową,
+ * którą i tak można zmienić w formularzu.
+ */
+const COUNTRY_CURRENCY: Record<string, string> = {
+  PL: "PLN",
+  CZ: "CZK",
+  HU: "HUF",
+  RO: "RON",
+  BG: "BGN",
+  SE: "SEK",
+  DK: "DKK",
+  NO: "NOK",
+  GB: "GBP",
+  UK: "GBP",
+  CH: "CHF",
+  UA: "UAH",
+  TR: "TRY",
+  IS: "ISK",
+  MD: "MDL",
+  RS: "RSD",
+};
+
+/** Podpowiedź waluty dla kraju (kod ISO2). Domyślnie EUR. */
+export function currencyForCountry(countryCode: string | null | undefined): string {
+  const cc = (countryCode ?? "").trim().toUpperCase();
+  return COUNTRY_CURRENCY[cc] ?? BASE_CURRENCY;
+}
+
+/**
  * Najświeższe notowanie waluty NIE NOWSZE niż `onDate`.
  *
  * Kurs z przyszłości jest świadomie odrzucany: przeliczenie tankowania sprzed

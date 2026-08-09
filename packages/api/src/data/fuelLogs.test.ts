@@ -54,11 +54,15 @@ describe("fuelLogToRow (czysta funkcja)", () => {
 });
 
 describe("listFuelLogs (kształt zapytania)", () => {
-  it("domyślnie tabela fuel_logs, sort created_at desc, bez filtrów", async () => {
+  // [#373] Zakres i sortowanie idą po `occurred_at`, nie `created_at`. Wpis zrobiony
+  // offline i zsynchronizowany później miał datę ZAPISU, więc wypadał poza zapytany
+  // miesiąc i cicho znikał z zestawienia. Ten test pilnuje, żeby nie wrócić do
+  // filtrowania po dacie zapisu.
+  it("domyślnie tabela fuel_logs, sort occurred_at desc, bez filtrów", async () => {
     const { client, called, argsOf } = mockSupabase({ data: [], error: null });
     await listFuelLogs(client);
     expect(called("from", "fuel_logs")).toBe(true);
-    expect(argsOf("order")?.[0]).toBe("created_at");
+    expect(argsOf("order")?.[0]).toBe("occurred_at");
     expect(called("eq")).toBe(false);
     expect(called("limit")).toBe(false);
   });
@@ -74,8 +78,8 @@ describe("listFuelLogs (kształt zapytania)", () => {
     });
     expect(called("from", "adblue_logs")).toBe(true);
     expect(argsOf("eq")).toEqual(["vehicle_id", "veh-9"]);
-    expect(argsOf("gte")).toEqual(["created_at", "2026-01-01"]);
-    expect(argsOf("lte")).toEqual(["created_at", "2026-02-01"]);
+    expect(argsOf("gte")).toEqual(["occurred_at", "2026-01-01"]);
+    expect(argsOf("lte")).toEqual(["occurred_at", "2026-02-01"]);
     expect(argsOf("limit")?.[0]).toBe(500);
   });
 
@@ -109,5 +113,45 @@ describe("insertFuelLog (idempotentny upsert — offline-first)", () => {
   it("rzuca przy realnym błędzie zapisu (nie-konflikt)", async () => {
     const { client } = mockSupabase({ data: null, error: new Error("RLS") });
     await expect(insertFuelLog(client, baseInput, ctx)).rejects.toThrow("RLS");
+  });
+});
+
+describe("fuelLogToRow — data zdarzenia i waluta [#373]", () => {
+  const base = {
+    vehicleId: "11111111-1111-4111-8111-111111111111",
+    station: { country: "PL" },
+    odometerKm: 1000,
+    liters: 100,
+    isFull: true,
+    paymentMethod: "cash" as const,
+  };
+  const ctx = { id: "id-1", companyId: "c-1", driverId: "d-1" };
+
+  it("brak occurredAt NIE trafia do wiersza — baza ma zostawić `default now()`", () => {
+    // Stare buildy mobile w sklepach nie znają tego pola. Wysłanie `null`
+    // nadpisałoby wartość domyślną i wywróciło ograniczenie NOT NULL.
+    expect("occurred_at" in fuelLogToRow(base, ctx)).toBe(false);
+  });
+
+  it("podane occurredAt jest normalizowane do ISO/UTC", () => {
+    const row = fuelLogToRow({ ...base, occurredAt: "2026-07-15T08:30:00.000Z" }, ctx);
+    expect(row.occurred_at).toBe("2026-07-15T08:30:00.000Z");
+  });
+
+  it("waluta domyślnie EUR — założenie, na którym opierał się dotychczasowy kod", () => {
+    expect(fuelLogToRow(base, ctx).currency).toBe("EUR");
+  });
+
+  it("VAT liczony jako różnica brutto − netto, żeby suma zawsze się spinała", () => {
+    const row = fuelLogToRow({ ...base, priceTotal: 123, priceNet: 100, vatRate: 23 }, ctx);
+    expect(row.price_total).toBe(123);
+    expect(row.price_net).toBe(100);
+    expect(row.vat_amount).toBe(23);
+  });
+
+  it("samo brutto zostawia netto i VAT puste — nic nie dorabiamy", () => {
+    const row = fuelLogToRow({ ...base, priceTotal: 500 }, ctx);
+    expect(row.price_net).toBeNull();
+    expect(row.vat_amount).toBeNull();
   });
 });

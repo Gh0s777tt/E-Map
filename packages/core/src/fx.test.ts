@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { convert, type FxRate, fromEur, pickFxRate, sumInCurrency, toEur } from "./fx";
+import {
+  convert,
+  currencyForCountry,
+  type FxRate,
+  fromEur,
+  pickFxRate,
+  sumInCurrency,
+  toEur,
+} from "./fx";
 
 const RATES: FxRate[] = [
   { asOf: "2026-06-01", currency: "PLN", unitsPerEur: 4.3 },
@@ -105,5 +113,23 @@ describe("sumInCurrency", () => {
     );
     expect(r.total).toBe(200);
     expect(r.skipped).toHaveLength(0);
+  });
+});
+
+describe("currencyForCountry", () => {
+  it("podpowiada walutę lokalną tam, gdzie nie ma euro", () => {
+    expect(currencyForCountry("PL")).toBe("PLN");
+    expect(currencyForCountry("CZ")).toBe("CZK");
+    expect(currencyForCountry("GB")).toBe("GBP");
+  });
+
+  it("strefa euro i kraje nieznane dostają EUR", () => {
+    expect(currencyForCountry("DE")).toBe("EUR");
+    expect(currencyForCountry("XX")).toBe("EUR");
+    expect(currencyForCountry(null)).toBe("EUR");
+  });
+
+  it("ignoruje wielkość liter i spacje", () => {
+    expect(currencyForCountry(" pl ")).toBe("PLN");
   });
 });

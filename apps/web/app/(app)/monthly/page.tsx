@@ -98,17 +98,21 @@ export default function MonthlyPage() {
       const toCost = (r: {
         vehicle_id: string;
         price_total: number | null;
-        created_at: string;
+        occurred_at: string;
       }) => ({
         vehicleId: r.vehicle_id,
         priceTotal: r.price_total,
-        date: r.created_at.slice(0, 10),
+        date: r.occurred_at.slice(0, 10),
       });
       setFuel(
-        (f as { vehicle_id: string; price_total: number | null; created_at: string }[]).map(toCost),
+        (f as { vehicle_id: string; price_total: number | null; occurred_at: string }[]).map(
+          toCost,
+        ),
       );
       setAdblue(
-        (a as { vehicle_id: string; price_total: number | null; created_at: string }[]).map(toCost),
+        (a as { vehicle_id: string; price_total: number | null; occurred_at: string }[]).map(
+          toCost,
+        ),
       );
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych.");

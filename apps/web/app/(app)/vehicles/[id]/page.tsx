@@ -65,6 +65,7 @@ type FuelRaw = {
   price_total: number | null;
   is_full: boolean | null;
   created_at: string;
+  occurred_at: string;
 };
 
 const EXPIRY_COLOR: Record<ExpiryLevel, string> = {
@@ -164,7 +165,7 @@ export default function VehicleCardPage() {
     const months = monthsEndingAt(new Date().toISOString().slice(0, 7), 6);
     return fuelByMonth(
       fuel.map((r) => ({
-        date: r.created_at.slice(0, 10),
+        date: r.occurred_at.slice(0, 10),
         liters: Number(r.liters),
         spend: Number(r.price_total ?? 0),
       })),

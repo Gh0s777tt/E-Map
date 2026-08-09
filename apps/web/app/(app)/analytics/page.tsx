@@ -27,6 +27,8 @@ interface FuelRow {
   odometer_km: number | null;
   price_total: number | null;
   created_at: string;
+  /** [#373] Data zdarzenia — po niej grupujemy miesiace. */
+  occurred_at: string;
   /** [#372] Potrzebne do metody full-to-full — patrz `consumptionFullToFull`. */
   is_full: boolean | null;
 }
@@ -58,7 +60,7 @@ export default function AnalyticsPage() {
       let totalLiters = 0;
       let totalCost = 0;
       for (const l of logs) {
-        const month = l.created_at.slice(0, 7);
+        const month = l.occurred_at.slice(0, 7);
         byMonth.set(month, (byMonth.get(month) ?? 0) + (l.price_total ?? 0));
         totalLiters += l.liters ?? 0;
         totalCost += l.price_total ?? 0;

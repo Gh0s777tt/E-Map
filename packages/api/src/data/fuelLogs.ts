@@ -30,6 +30,19 @@ export function fuelLogToRow(input: FuelLogInput, ctx: FuelLogContext) {
     payment_method: input.paymentMethod,
     fuel_card_id: input.fuelCardId ?? null,
     price_total: input.priceTotal ?? null,
+    // [#373] Waluta i rozbicie kwoty. `price_total` to BRUTTO — nazwa historyczna.
+    currency: input.currency ?? "EUR",
+    price_net: input.priceNet ?? null,
+    vat_rate: input.vatRate ?? null,
+    // VAT liczymy jako różnicę brutto − netto, nie osobnym mnożeniem: inaczej
+    // suma potrafi rozminąć się z brutto o grosz przez zaokrąglenia.
+    vat_amount:
+      input.priceTotal != null && input.priceNet != null
+        ? Math.round((input.priceTotal - input.priceNet) * 100) / 100
+        : null,
+    // Pominięcie pola zostawia `default now()` w bazie — tak zachowują się
+    // stare buildy mobile, które o `occurred_at` nie wiedzą.
+    ...(input.occurredAt ? { occurred_at: new Date(input.occurredAt).toISOString() } : {}),
     comment: input.comment ?? null,
     device_id: ctx.deviceId ?? null,
   };
@@ -84,7 +97,7 @@ export async function updateFuelLog(
 
 /**
  * Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy).
- * Filtry `from`/`to` (zakres `created_at`, ISO) i `limit` ograniczają transfer —
+ * Filtry `from`/`to` (zakres `occurred_at`, ISO) i `limit` ograniczają transfer —
  * statystyki/rozliczenia/historia nie ładują całej tabeli do pamięci.
  */
 export async function listFuelLogs(
@@ -100,10 +113,13 @@ export async function listFuelLogs(
   let query = client
     .from(opts?.table ?? "fuel_logs")
     .select("*")
-    .order("created_at", { ascending: false });
+    // [#373] Sortowanie i zakres po `occurred_at`, nie `created_at`. Wpis zrobiony
+    // offline i zsynchronizowany trzy dni później miał datę zapisu, więc wypadał
+    // poza zapytany miesiąc i cicho znikał z zestawienia.
+    .order("occurred_at", { ascending: false });
   if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
-  if (opts?.from) query = query.gte("created_at", opts.from);
-  if (opts?.to) query = query.lte("created_at", opts.to);
+  if (opts?.from) query = query.gte("occurred_at", opts.from);
+  if (opts?.to) query = query.lte("occurred_at", opts.to);
   if (opts?.limit) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
