@@ -1670,6 +1670,54 @@ export interface Database {
         };
         Relationships: [];
       };
+      fx_rates: {
+        Row: {
+          as_of: string;
+          currency: string;
+          units_per_eur: number;
+          source: string;
+          fetched_at: string;
+        };
+        Insert: {
+          as_of: string;
+          currency: string;
+          units_per_eur: number;
+          source?: string;
+          fetched_at?: string;
+        };
+        Update: {
+          as_of?: string;
+          currency?: string;
+          units_per_eur?: number;
+          source?: string;
+          fetched_at?: string;
+        };
+        Relationships: [];
+      };
+      vat_rates: {
+        Row: {
+          country_code: string;
+          valid_from: string;
+          rate: number;
+          fuel_refundable: boolean;
+          note: string | null;
+        };
+        Insert: {
+          country_code: string;
+          valid_from: string;
+          rate: number;
+          fuel_refundable?: boolean;
+          note?: string | null;
+        };
+        Update: {
+          country_code?: string;
+          valid_from?: string;
+          rate?: number;
+          fuel_refundable?: boolean;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;

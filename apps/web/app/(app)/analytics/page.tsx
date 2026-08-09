@@ -8,6 +8,7 @@
 import { listFuelLogs, listVehicles } from "@e-logistic/api";
 import {
   buildFleetInsights,
+  consumptionFullToFull,
   type FleetInsights,
   type MonthlyPoint,
   type VehicleConsumption,
@@ -26,6 +27,8 @@ interface FuelRow {
   odometer_km: number | null;
   price_total: number | null;
   created_at: string;
+  /** [#372] Potrzebne do metody full-to-full — patrz `consumptionFullToFull`. */
+  is_full: boolean | null;
 }
 
 const zl = (n: number) => `${n.toLocaleString("pl-PL", { maximumFractionDigits: 0 })} zł`;
@@ -68,21 +71,38 @@ export default function AnalyticsPage() {
 
       const fuelPricePerL = totalLiters > 0 && totalCost > 0 ? totalCost / totalLiters : 6.5;
 
-      // Spalanie per pojazd: litry / rozpiętość licznika × 100 (gdy ≥2 tankowania i sensowny dystans).
+      // [#372] Spalanie liczone metodą full-to-full — tą samą, której używa /stats.
+      // Wcześniej ten ekran miał własny wzór inline (wszystkie litry / rozpiętość
+      // licznika), który ZAWYŻA wynik: wliczał pierwsze tankowanie, choć napędziło
+      // ono drogę sprzed pierwszego odczytu licznika. Dwie zakładki pokazywały
+      // różne liczby z tych samych danych i nie było wiadomo, której wierzyć.
       const regOf = new Map(vehicles.map((v) => [v.id, v.registration]));
-      const perVehicle = new Map<string, { liters: number; odos: number[] }>();
+      const perVehicle = new Map<
+        string,
+        { odometerKm: number; liters: number; isFull: boolean }[]
+      >();
       for (const l of logs) {
         if (!l.vehicle_id) continue;
-        const cur = perVehicle.get(l.vehicle_id) ?? { liters: 0, odos: [] };
-        cur.liters += l.liters ?? 0;
-        if (typeof l.odometer_km === "number" && l.odometer_km > 0) cur.odos.push(l.odometer_km);
+        if (typeof l.odometer_km !== "number" || l.odometer_km <= 0) continue;
+        const cur = perVehicle.get(l.vehicle_id) ?? [];
+        cur.push({
+          odometerKm: l.odometer_km,
+          liters: l.liters ?? 0,
+          // Wpisy sprzed kolumny `is_full` traktujemy jak pełny bak — tak samo
+          // jak `consumptionFullToFull` interpretuje brak wartości.
+          isFull: l.is_full !== false,
+        });
         perVehicle.set(l.vehicle_id, cur);
       }
       const vehicleConsumption: VehicleConsumption[] = [...perVehicle.entries()].map(
-        ([id, { liters, odos }]) => {
+        ([id, entries]) => {
+          const odos = entries.map((e) => e.odometerKm);
           const km = odos.length >= 2 ? Math.max(...odos) - Math.min(...odos) : 0;
-          const avgConsumption = km > 50 ? Math.round((liters / km) * 100 * 10) / 10 : null;
-          return { registration: regOf.get(id) ?? "—", avgConsumption, km };
+          return {
+            registration: regOf.get(id) ?? "—",
+            avgConsumption: consumptionFullToFull(entries),
+            km,
+          };
         },
       );
 
