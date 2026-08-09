@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-379-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.225.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-380-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.226.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,39 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.226.0] — 🅿️ Koszty operacyjne trasy w rachunku + sekcje zwijane
+
+Domknięcie pętli, którą Faza 6 zostawiła otwartą: formularze pauzy, kosztów trasy
+i kar zbierają dane od [#375], a **żaden ekran statystyk ich nie czytał**. To samo
+dotyczyło kwot przy zdarzeniach Trip. Błąd był jednostronny i zawsze w tę samą stronę —
+koszt floty pokazywany bez parkingów, myta, promów i mandatów, więc **zysk wychodził
+systematycznie zawyżony**, a im więcej firma jeździła po płatnych drogach, tym bardziej.
+
+- `[#380]` **Silnik kosztów operacyjnych** ([operatingCosts.ts](packages/core/src/operatingCosts.ts), 10 testów) —
+  cztery źródła (pauzy, koszty trasy, kary, zdarzenia Trip) sprowadzone do jednego kształtu,
+  przeliczone po kursie z dnia zdarzenia, pogrupowane po rodzaju i podrodzaju.
+  Wchodzą do pozycji „Pozostałe koszty" w P&L.
+
+- `[#380]` **Kara anulowana nadal ma kwotę w bazie.** Wliczenie jej to wydatek, którego
+  nie było — więc wypada z kosztu, a licznik pokazuje, ile ich pominięto. **Kara
+  kwestionowana to inna sprawa:** pieniądze mogą jeszcze wypłynąć, więc liczona jest
+  osobno i poza sumą, zamiast rozstrzygać za użytkownika, czy ją zapłaci.
+
+- `[#380]` **Sekcje zwijane** ([Collapsible](apps/web/components/Collapsible.tsx)) — punkt z listy.
+  Świadomie na natywnym `<details>`, a nie na własnym stanie React: działa przed hydratacją,
+  daje obsługę klawiatury i rolę dla czytników ekranu za darmo, a **wyszukiwanie w stronie
+  (Ctrl+F) znajduje tekst w zwiniętej sekcji i sam ją rozwija**. Przy `display: none`
+  użytkownik szukający numeru rejestracyjnego dostałby „brak wyników", mimo że dane
+  są na ekranie. Podsumowanie zostaje w nagłówku, żeby zwinięcie nie kosztowało informacji.
+
+**Stan danych — ważne zastrzeżenie.** Sekcja pokaże się dopiero, gdy pojawią się wpisy:
+`pause_events`, `route_extra_costs`, `penalties` i `trip_events` mają dziś na produkcji
+**po zero wierszy**. Formularze są świeże (Faza 6) i nikt ich jeszcze nie użył. Kod jest
+gotowy i otestowany, ale na ekranie nie będzie nic widać do pierwszego zgłoszenia —
+piszę to wprost, żeby brak sekcji nie został wzięty za usterkę.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core **536** · api 81 · maps 116 · web 101 · mobile 36 · i18n 5 ✓ · `next build` ✓.
 
 ## [1.225.0] — 💧 AdBlue w statystykach + przełącznik waluty
 

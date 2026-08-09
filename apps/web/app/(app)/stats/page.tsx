@@ -5,6 +5,9 @@ import {
   listFuelLogs,
   listFxRates,
   listOrders,
+  listPauseEvents,
+  listPenalties,
+  listRouteExtraCosts,
   listTripEvents,
   listVatRates,
   listVehicleCosts,
@@ -27,15 +30,18 @@ import {
   fleetPnlByVehicle,
   formatCo2,
   fuelConsumptionSeries,
+  type OperatingCostEntry,
   orderAnalytics,
   round2,
   rowAmountEur,
   sumCostsByCategory,
   summarizeFuel,
+  summarizeOperatingCosts,
   type VatRate,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useMemo, useState } from "react";
+import { Collapsible } from "@/components/Collapsible";
 import { useT } from "@/components/LocaleProvider";
 import { Badge, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -58,6 +64,14 @@ import { VehicleDetail } from "./VehicleDetail";
 
 /** Waluty do wyboru w prezentacji — te, w których ta flota realnie rozlicza trasy. */
 const DISPLAY_CURRENCIES = ["EUR", "PLN", "CZK", "GBP", "SEK", "NOK", "DKK", "HUF", "RON", "CHF"];
+
+/** Etykiety rodzajów kosztu operacyjnego. */
+const OPS_LABEL: Record<string, string> = {
+  pause: "Postoje i parkingi",
+  route: "Opłaty drogowe i przejazdy",
+  penalty: "Kary i mandaty",
+  trip: "Zdarzenia trasy (serwis, inne)",
+};
 
 export default function StatsPage() {
   const t = useT();
@@ -89,6 +103,12 @@ export default function StatsPage() {
    * po kursie z dnia zdarzenia. Zmienia tylko to, w czym pokazujemy gotowy wynik.
    */
   const [displayCurrency, setDisplayCurrency] = useState("EUR");
+  /**
+   * [#380] Koszty operacyjne: parkingi, opłaty drogowe, kary i kwoty przy
+   * zdarzeniach Trip. Formularze zbierają je od [#375], ale żaden ekran
+   * statystyk ich nie czytał — zysk floty wychodził przez to zawyżony.
+   */
+  const [opsRaw, setOpsRaw] = useState<OperatingCostEntry[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -109,23 +129,101 @@ export default function StatsPage() {
         listFuelCardsSafe(sb, m.companyId)
           .then((cs) => setCards(cs as unknown as CardOpt[]))
           .catch(() => {});
-        const [f, a, tr, vs, ord, vc, fxRows, vatRows] = await Promise.all([
-          listFuelLogs(sb, { from, limit: 5000 }),
-          listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
-          listTripEvents(sb, { from, limit: 5000 }),
-          listVehicles(sb, m.companyId),
-          listOrders(sb, m.companyId, { from, limit: 5000 }),
-          listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
-          // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
-          // publikuje w weekendy i święta — ten sam wzorzec co w /monthly.
-          listFxRates(sb, {
-            from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
-          }),
-          // Zbiór jest mały (kilkadziesiąt wierszy) i wspólny dla firm, więc bez filtrów.
-          listVatRates(sb),
-        ]);
+        const [f, a, tr, vs, ord, vc, fxRows, vatRows, pauses, routeCosts, penalties] =
+          await Promise.all([
+            listFuelLogs(sb, { from, limit: 5000 }),
+            listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
+            listTripEvents(sb, { from, limit: 5000 }),
+            listVehicles(sb, m.companyId),
+            listOrders(sb, m.companyId, { from, limit: 5000 }),
+            listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
+            // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
+            // publikuje w weekendy i święta — ten sam wzorzec co w /monthly.
+            listFxRates(sb, {
+              from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+            }),
+            // Zbiór jest mały (kilkadziesiąt wierszy) i wspólny dla firm, więc bez filtrów.
+            listVatRates(sb),
+            // [#380] Koszty operacyjne. Limity jawne — ekran obejmuje 24 miesiące,
+            // a domyślne 500 z warstwy danych ucięłoby dane bez słowa.
+            listPauseEvents(sb, { from, limit: 5000 }),
+            listRouteExtraCosts(sb, { from, limit: 5000 }),
+            listPenalties(sb, { from, limit: 5000 }),
+          ]);
         setRates(toFxRates(fxRows));
         setVatRates(toVatRates(vatRows));
+        // Trzy tabele + kwoty przy zdarzeniach Trip sprowadzone do jednego kształtu,
+        // żeby silnik nie musiał znać ich osobnych schematów.
+        setOpsRaw([
+          ...(
+            pauses as {
+              occurred_at: string;
+              price_total: number | null;
+              currency: string;
+              vehicle_id: string | null;
+            }[]
+          ).map(
+            (r): OperatingCostEntry => ({
+              kind: "pause",
+              subKind: "parking",
+              amount: r.price_total,
+              currency: r.currency,
+              occurredAt: r.occurred_at,
+              vehicleId: r.vehicle_id,
+            }),
+          ),
+          ...(
+            routeCosts as {
+              occurred_at: string;
+              kind: string;
+              amount: number;
+              currency: string;
+              vehicle_id: string | null;
+            }[]
+          ).map(
+            (r): OperatingCostEntry => ({
+              kind: "route",
+              subKind: r.kind,
+              amount: r.amount,
+              currency: r.currency,
+              occurredAt: r.occurred_at,
+              vehicleId: r.vehicle_id,
+            }),
+          ),
+          ...(
+            penalties as {
+              occurred_at: string;
+              amount: number;
+              currency: string;
+              status: string;
+              vehicle_id: string | null;
+            }[]
+          ).map(
+            (r): OperatingCostEntry => ({
+              kind: "penalty",
+              subKind: "mandat",
+              amount: r.amount,
+              currency: r.currency,
+              occurredAt: r.occurred_at,
+              vehicleId: r.vehicle_id,
+              status: r.status,
+            }),
+          ),
+          // Kwoty przy zdarzeniach Trip (serwis, inne) — `trip_events.currency`
+          // istnieje od migracji 0100; wcześniej to była liczba bez jednostki.
+          ...(tr as TripRaw[])
+            .filter((r) => r.amount != null)
+            .map(
+              (r): OperatingCostEntry => ({
+                kind: "trip",
+                subKind: r.action,
+                amount: r.amount,
+                currency: r.currency,
+                occurredAt: r.occurred_at,
+                vehicleId: r.vehicle_id,
+              }),
+            ),
+        ]);
         setFuel(f as FuelRaw[]);
         setAdblue(a as FuelRaw[]);
         setTrips(tr as TripRaw[]);
@@ -216,6 +314,8 @@ export default function StatsPage() {
     [costs, rates],
   );
 
+  const ops = useMemo(() => summarizeOperatingCosts(opsRaw, rates), [opsRaw, rates]);
+
   const money = useMemo(() => makeMoneyFormatter(displayCurrency, rates), [displayCurrency, rates]);
 
   /** Ile pozycji wypadło z sum z braku notowania — pokazujemy to wprost. */
@@ -299,7 +399,11 @@ export default function StatsPage() {
     const converted = costsEur.filter(
       (c): c is typeof c & { amountEur: number } => c.amountEur != null,
     );
-    const otherEur = converted.reduce((a, c) => a + c.amountEur, 0);
+    // [#380] Koszty pojazdu + koszty operacyjne trasy. Bez tej drugiej części
+    // „Pozostałe koszty" pomijały parkingi, myto, promy i mandaty, więc zysk
+    // floty wychodził tym bardziej zawyżony, im więcej firma jeździła
+    // po płatnych drogach.
+    const otherEur = converted.reduce((a, c) => a + c.amountEur, 0) + ops.totalEur;
     return {
       fuelEur: round2(fuelEur),
       adblueEur: round2(adblueEur),
@@ -312,7 +416,7 @@ export default function StatsPage() {
         })),
       ),
     };
-  }, [fuel, adblue, costsEur, rates, fleet.ordersRevenueEur]);
+  }, [fuel, adblue, costsEur, ops, rates, fleet.ordersRevenueEur]);
 
   // Ranking rentowności floty: P&L per pojazd (przychód − paliwo − koszty, EUR).
   const pnlRows = useMemo(() => {
@@ -669,6 +773,57 @@ export default function StatsPage() {
 
           {canManage && profit.clients.length > 0 && (
             <ProfitabilitySection data={profit} trend={trendInput} />
+          )}
+
+          {/* [#380] Rozbicie kosztów operacyjnych — zwijane, bo to szczegół
+              do wglądu, a nie liczba, na którą patrzy się codziennie. Suma
+              zostaje widoczna po złożeniu sekcji. */}
+          {canManage && ops.groups.length > 0 && (
+            <Collapsible title="🅿️ Koszty operacyjne trasy" summary={money.fmt(ops.totalEur)}>
+              <p
+                style={{ color: palette.smoke, fontSize: 13, margin: "0 0 10px", lineHeight: 1.5 }}
+              >
+                Parkingi, opłaty drogowe, kary i kwoty przy zdarzeniach trasy — wliczone do pozycji
+                „Pozostałe koszty" w rachunku wyżej.
+              </p>
+              {ops.groups.map((g) => (
+                <div key={g.kind} style={styles.opsGroup}>
+                  <div style={styles.opsHead}>
+                    <strong>{OPS_LABEL[g.kind]}</strong>
+                    <span style={{ color: palette.smoke, fontSize: 12 }}>
+                      {g.count} {g.count === 1 ? "pozycja" : "pozycji"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontWeight: 700 }}>{money.fmt(g.eur)}</span>
+                  </div>
+                  {g.bySubKind.length > 1 &&
+                    g.bySubKind.map((sk) => (
+                      <div key={sk.subKind} style={styles.opsSub}>
+                        <span>{sk.subKind}</span>
+                        <span style={{ color: palette.smoke }}>×{sk.count}</span>
+                        <span style={{ marginLeft: "auto" }}>{money.fmt(sk.eur)}</span>
+                      </div>
+                    ))}
+                </div>
+              ))}
+
+              {/* Trzy stany kar rozdzielone, bo znaczą co innego dla pieniędzy. */}
+              {ops.contestedCount > 0 && (
+                <p style={styles.opsNote}>
+                  ⚖️ Kary kwestionowane: {ops.contestedCount} na {money.fmt(ops.contestedEur)} —
+                  <strong> poza sumą</strong>, bo sprawa nie jest rozstrzygnięta.
+                </p>
+              )}
+              {ops.cancelledCount > 0 && (
+                <p style={styles.opsNote}>
+                  Kary anulowane: {ops.cancelledCount} — nie liczone, wydatku nie było.
+                </p>
+              )}
+              {ops.missingRate > 0 && (
+                <p style={styles.opsNote}>
+                  ⚠️ {ops.missingRate} poz. w walucie bez notowania na dzień zdarzenia — poza sumą.
+                </p>
+              )}
+            </Collapsible>
           )}
 
           {canManage && <TopUsageSection fuel={fuel} cards={cards} rates={rates} />}

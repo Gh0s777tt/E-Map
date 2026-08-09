@@ -183,6 +183,24 @@ export function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export const styles: Record<string, React.CSSProperties> = {
+  opsGroup: { marginBottom: 10 },
+  opsHead: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "6px 0",
+    borderBottom: `1px solid ${palette.graphite}`,
+    fontSize: 14,
+  },
+  opsSub: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "4px 0 4px 16px",
+    fontSize: 13,
+    color: palette.offWhite,
+  },
+  opsNote: { color: palette.smoke, fontSize: 12, lineHeight: 1.6, marginTop: 8 },
   currencyBar: {
     display: "flex",
     alignItems: "center",
