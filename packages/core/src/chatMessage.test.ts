@@ -6,7 +6,9 @@ import {
   canManageChannel,
   EDIT_WINDOW_MS,
   isDeleted,
+  mapLink,
   quotePreview,
+  readChatLocation,
   summarizeReactions,
 } from "./chatMessage";
 
@@ -151,5 +153,50 @@ describe("quotePreview", () => {
 
   it("krótki tekst zostaje bez zmian", () => {
     expect(quotePreview({ body: "OK", kind: "text" }, labels)).toBe("OK");
+  });
+});
+
+describe("readChatLocation", () => {
+  it("odczytuje poprawne współrzędne", () => {
+    expect(readChatLocation({ lat: 52.23, lng: 21.01, label: "Warszawa" })).toEqual({
+      lat: 52.23,
+      lng: 21.01,
+      label: "Warszawa",
+    });
+  });
+
+  it("zachowuje równik i południk zerowy — 0 to poprawna współrzędna", () => {
+    expect(readChatLocation({ lat: 0, lng: 0 })).toEqual({ lat: 0, lng: 0, label: undefined });
+  });
+
+  it("odrzuca dane spoza Ziemi zamiast rysować pinezkę w próżni", () => {
+    expect(readChatLocation({ lat: 91, lng: 0 })).toBeNull();
+    expect(readChatLocation({ lat: 0, lng: 181 })).toBeNull();
+  });
+
+  it("nie wywala się na śmieciach — wadliwa wiadomość nie może zepsuć listy", () => {
+    // `meta` to jsonb: może przyjść cokolwiek — stary wpis, uszkodzone dane,
+    // zmodyfikowany klient. Zwracamy null, nie rzucamy.
+    for (const junk of [null, undefined, "tekst", 42, [], {}, { lat: "52", lng: "21" }]) {
+      expect(readChatLocation(junk)).toBeNull();
+    }
+  });
+
+  it("pusta etykieta jest traktowana jak brak", () => {
+    expect(readChatLocation({ lat: 1, lng: 2, label: "   " })?.label).toBeUndefined();
+  });
+});
+
+describe("mapLink", () => {
+  const loc = { lat: 52.2297, lng: 21.0122 };
+
+  it("na telefonie daje geo: — otwiera natywną mapę", () => {
+    expect(mapLink(loc, "native")).toBe("geo:52.229700,21.012200?q=52.229700,21.012200");
+  });
+
+  it("w przeglądarce daje adres HTTP — geo: nic by tam nie otworzyło", () => {
+    const url = mapLink(loc, "web");
+    expect(url.startsWith("https://")).toBe(true);
+    expect(url).toContain("52.2297");
   });
 });

@@ -31,7 +31,7 @@ import {
   subscribeMessages,
   uploadChatPhotoBinary,
 } from "@e-logistic/api";
-import { type ChatViewer, TTL_OPTIONS } from "@e-logistic/core";
+import { type ChatViewer, mapLink, readChatLocation, TTL_OPTIONS } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -88,6 +88,27 @@ function UnreadDot({ count }: { count: number }) {
     <span style={s.unread} role="status" title={t("chat.unread")} aria-label={t("chat.unread")}>
       {count > 99 ? "99+" : count}
     </span>
+  );
+}
+
+/** [#374] Pinezka w dymku — współrzędne + odnośnik do map. */
+function LocationCard({ meta }: { meta: unknown }) {
+  const t = useT();
+  const loc = readChatLocation(meta);
+  // Wadliwe `meta` (stary wpis, uszkodzone dane) nie może wywalić listy rozmowy.
+  if (!loc) return <div>{t("chat.msg.location")}</div>;
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      <div>📍 {loc.label ?? t("chat.msg.location")}</div>
+      <a
+        href={mapLink(loc, "web")}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "inherit", textDecoration: "underline", fontSize: 12 }}
+      >
+        {t("chat.location.open")} · {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}
+      </a>
+    </div>
   );
 }
 
@@ -342,6 +363,41 @@ export default function ChatPage() {
     },
     [companyId, threadId, activeThread, t, toast],
   );
+
+  /**
+   * [#374] Wysłanie własnej lokalizacji jako wiadomości.
+   *
+   * Świadomie JEDNORAZOWY zrzut pozycji, nie śledzenie na żywo: udostępnianie
+   * ciągłe to zupełnie inna kategoria danych (i zgód) — mieszkają w osobnym
+   * przełączniku w Ustawieniach, z własną podstawą prawną.
+   */
+  const sendLocation = useCallback(() => {
+    if (!companyId) return;
+    if (!navigator.geolocation) {
+      toast(t("chat.location.unavailable"), "error");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const msg = await sendMessage(getBrowserSupabase(), companyId, "", myLabel, {
+            threadId,
+            kind: "location",
+            meta: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+            replyToId: replyTo?.id ?? null,
+          });
+          setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+          setReplyTo(null);
+        } catch (e) {
+          toast(e instanceof Error ? e.message : t("chat.location.unavailable"), "error");
+        }
+      },
+      // Odmowa zgody albo brak sygnału GPS — mówimy o tym wprost, zamiast
+      // zostawiać użytkownika z przyciskiem, który „nic nie robi".
+      () => toast(t("chat.location.unavailable"), "error"),
+      { enableHighAccuracy: true, timeout: 12_000 },
+    );
+  }, [companyId, myLabel, threadId, replyTo, t, toast]);
 
   const send = useCallback(async () => {
     const body = text.trim();
@@ -605,7 +661,13 @@ export default function ChatPage() {
                 onReact={onReact}
                 onCopy={onCopy}
               >
-                {m.photo_path ? <ChatImg path={m.photo_path} /> : <div>{m.body}</div>}
+                {m.kind === "location" ? (
+                  <LocationCard meta={m.meta} />
+                ) : m.photo_path ? (
+                  <ChatImg path={m.photo_path} />
+                ) : (
+                  <div>{m.body}</div>
+                )}
               </MessageBubble>
             ))}
             <div ref={endRef} />
@@ -660,6 +722,17 @@ export default function ChatPage() {
           )}
 
           <div style={s.composer}>
+            {/* [#374] Jednorazowy zrzut pozycji jako wiadomość. Śledzenie ciągłe
+                to osobna kategoria danych i mieszka w przełączniku w Ustawieniach. */}
+            <button
+              type="button"
+              style={s.attach}
+              onClick={sendLocation}
+              title={t("chat.location.send")}
+              aria-label={t("chat.location.send")}
+            >
+              📍
+            </button>
             <label style={s.attach}>
               📷
               <input

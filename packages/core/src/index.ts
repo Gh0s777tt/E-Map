@@ -20,6 +20,7 @@ export * from "./ddd";
 export * from "./driverSettlement";
 export * from "./duration";
 export * from "./ecoRoute";
+export * from "./emoji";
 export * from "./enums";
 export * from "./expiry";
 export * from "./fakturownia";

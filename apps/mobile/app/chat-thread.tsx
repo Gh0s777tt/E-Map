@@ -19,6 +19,7 @@ import {
   type MessageReaction,
   removeThreadMember,
   renameThread,
+  sendMessage,
   setReaction,
   subscribeMessages,
   uploadChatPhotoBinary,
@@ -27,15 +28,19 @@ import {
   type ChatViewer,
   canDeleteMessage,
   canEditMessage,
+  EMOJI_CATEGORIES,
   isDeleted,
+  mapLink,
   QUICK_REACTIONS,
   quotePreview,
+  readChatLocation,
   summarizeReactions,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { decode } from "base64-arraybuffer";
 import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -43,6 +48,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -78,6 +84,22 @@ interface PendingMessage {
 
 /** Wiersz listy: potwierdzona wiadomość z serwera albo wpis z kolejki. */
 type Row = { kind: "sent"; msg: ChatMessage } | { kind: "pending"; item: PendingMessage };
+
+/** [#374] Pinezka w dymku — dotknięcie otwiera natywną mapę telefonu. */
+function LocationBubble({ meta, mine }: { meta: unknown; mine: boolean }) {
+  const t = useT();
+  const loc = readChatLocation(meta);
+  // Wadliwe `meta` nie może wywalić całej listy rozmowy.
+  if (!loc) return <Text style={mine ? s.bodyMine : s.body}>{t("m.chat.locationLabel")}</Text>;
+  return (
+    <Pressable onPress={() => Linking.openURL(mapLink(loc, "native")).catch(() => {})}>
+      <Text style={mine ? s.bodyMine : s.body}>📍 {loc.label ?? t("m.chat.locationLabel")}</Text>
+      <Text style={[s.time, mine && s.timeMine, { textDecorationLine: "underline" }]}>
+        {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}
+      </Text>
+    </Pressable>
+  );
+}
 
 /** Zdjęcie w dymku — pobiera podpisany URL raz i cache'uje w stanie. */
 function ChatImage({ path }: { path: string }) {
@@ -119,6 +141,9 @@ export default function ChatThreadScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [reactions, setReactions] = useState<MessageReaction[]>([]);
+  /** Pełny picker w arkuszu — domyślnie schowany za sześcioma szybkimi reakcjami. */
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [catIdx, setCatIdx] = useState(0);
   const [nameDraft, setNameDraft] = useState("");
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [threadMemberIds, setThreadMemberIds] = useState<Set<string>>(new Set());
@@ -324,6 +349,40 @@ export default function ChatThreadScreen() {
     setActionFor(msg);
   }, []);
 
+  /**
+   * [#374] Wysłanie własnej lokalizacji jako wiadomości — jednorazowy zrzut.
+   *
+   * Świadomie NIE korzysta z outboxu: pozycja sprzed godzin jest bezwartościowa
+   * albo myląca („jestem tutaj" o miejscu, w którym kierowcy dawno nie ma).
+   * Bez zasięgu mówimy wprost, że się nie udało.
+   */
+  const sendLocationMsg = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted) {
+        warn();
+        setErr(t("m.chat.locationDenied"));
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const msg = await sendMessage(getSupabase(), companyId, "", myLabel, {
+        threadId,
+        kind: "location",
+        meta: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        replyToId: replyTo?.id ?? null,
+      });
+      setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+      setReplyTo(null);
+      tap();
+    } catch {
+      warn();
+      setErr(t("m.chat.locationDenied"));
+    }
+  }, [companyId, myLabel, threadId, replyTo, t]);
+
   const send = useCallback(async () => {
     const body = text.trim();
     if (!body || !companyId || busy) return;
@@ -527,7 +586,9 @@ export default function ChatThreadScreen() {
                       </Text>
                     </View>
                   )}
-                  {item.photo_path ? (
+                  {item.kind === "location" ? (
+                    <LocationBubble meta={item.meta} mine={mine} />
+                  ) : item.photo_path ? (
                     <ChatImage path={item.photo_path} />
                   ) : (
                     <Text style={mine ? s.bodyMine : s.body}>{item.body}</Text>
@@ -568,7 +629,13 @@ export default function ChatThreadScreen() {
         animationType="slide"
         onRequestClose={() => setActionFor(null)}
       >
-        <Pressable style={s.actionBackdrop} onPress={() => setActionFor(null)}>
+        <Pressable
+          style={s.actionBackdrop}
+          onPress={() => {
+            setActionFor(null);
+            setPickerOpen(false);
+          }}
+        >
           <Pressable style={s.actionSheet} onPress={(e) => e.stopPropagation()}>
             <Text style={s.actionTitle}>{t("m.chat.msgActions")}</Text>
 
@@ -591,7 +658,44 @@ export default function ChatThreadScreen() {
                   </Pressable>
                 );
               })}
+              <Pressable onPress={() => setPickerOpen((v) => !v)}>
+                <Text style={s.sheetEmoji}>{pickerOpen ? "✕" : "➕"}</Text>
+              </Pressable>
             </View>
+
+            {/* Pełny zestaw dopiero na żądanie — siatka 140 znaków otwarta
+                domyślnie zajęłaby cały arkusz na małym ekranie. */}
+            {pickerOpen && (
+              <View style={s.pickerBox}>
+                <View style={s.pickerTabs}>
+                  {EMOJI_CATEGORIES.map((c, i) => (
+                    <Pressable
+                      key={c.labelKey}
+                      onPress={() => setCatIdx(i)}
+                      style={[s.pickerTab, i === catIdx && s.pickerTabOn]}
+                    >
+                      <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <ScrollView style={{ maxHeight: 180 }}>
+                  <View style={s.pickerGrid}>
+                    {EMOJI_CATEGORIES[catIdx]?.emojis.map((emoji) => (
+                      <Pressable
+                        key={emoji}
+                        onPress={() => {
+                          if (actionFor) doReact(actionFor.id, emoji, true);
+                          setPickerOpen(false);
+                          setActionFor(null);
+                        }}
+                      >
+                        <Text style={s.sheetEmoji}>{emoji}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
 
             <Pressable
               style={s.sheetItem}
@@ -683,6 +787,9 @@ export default function ChatThreadScreen() {
       <View style={s.composer}>
         <Pressable style={s.photo} onPress={sendPhoto} disabled={photoBusy}>
           <Text style={s.photoText}>{photoBusy ? "…" : "📷"}</Text>
+        </Pressable>
+        <Pressable style={s.photo} onPress={sendLocationMsg}>
+          <Text style={s.photoText}>📍</Text>
         </Pressable>
         <TextInput
           style={s.input}
@@ -797,6 +904,11 @@ const s = StyleSheet.create({
   sheetQuick: { flexDirection: "row", gap: 6, marginBottom: 10, flexWrap: "wrap" },
   sheetEmoji: { fontSize: 26, padding: 4 },
   sheetItem: { paddingVertical: 13 },
+  pickerBox: { borderTopWidth: 1, borderTopColor: "#2a2a2a", paddingTop: 8, marginBottom: 6 },
+  pickerTabs: { flexDirection: "row", gap: 4, marginBottom: 6 },
+  pickerTab: { padding: 4, borderRadius: 8 },
+  pickerTabOn: { backgroundColor: "#2a2a2a" },
+  pickerGrid: { flexDirection: "row", flexWrap: "wrap", gap: 2 },
   sheetItemText: { color: palette.offWhite, fontSize: 16 },
   sheetItemDanger: { color: palette.red },
   editBar: {

@@ -117,6 +117,45 @@ export function quotePreview(
   return body.length > maxLen ? `${body.slice(0, maxLen - 1)}…` : body;
 }
 
+/** Współrzędne z wiadomości typu `location`. */
+export interface ChatLocation {
+  lat: number;
+  lng: number;
+  /** Opis miejsca, jeśli udało się go ustalić. */
+  label?: string;
+}
+
+/**
+ * Bezpiecznie odczytuje współrzędne z `meta`.
+ *
+ * `meta` to kolumna `jsonb` — może przyjść tam cokolwiek: stara wiadomość bez
+ * pola, uszkodzony wpis, albo dane od zmodyfikowanego klienta. Zwracamy `null`
+ * zamiast rzucać, bo pojedyncza wadliwa wiadomość nie może wywalić całej listy
+ * rozmowy. Zakres współrzędnych sprawdzamy, żeby nie renderować pinezki
+ * w miejscu, którego nie ma na Ziemi.
+ */
+export function readChatLocation(meta: unknown): ChatLocation | null {
+  if (typeof meta !== "object" || meta === null) return null;
+  const m = meta as Record<string, unknown>;
+  const lat = typeof m.lat === "number" ? m.lat : Number.NaN;
+  const lng = typeof m.lng === "number" ? m.lng : Number.NaN;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  const label = typeof m.label === "string" && m.label.trim() ? m.label.trim() : undefined;
+  return { lat, lng, label };
+}
+
+/**
+ * Odnośnik do map dla współrzędnych. `geo:` obsługują natywne aplikacje map na
+ * telefonie; w przeglądarce potrzebny jest zwykły adres HTTP, więc rozdzielamy.
+ */
+export function mapLink(loc: ChatLocation, target: "web" | "native"): string {
+  const c = `${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`;
+  return target === "native"
+    ? `geo:${c}?q=${c}`
+    : `https://www.openstreetmap.org/?mlat=${loc.lat}&mlon=${loc.lng}#map=16/${loc.lat}/${loc.lng}`;
+}
+
 /** Opcje znikania kanału, w sekundach. `null` = wyłączone. */
 export const TTL_OPTIONS: { seconds: number | null; labelKey: string }[] = [
   { seconds: null, labelKey: "chat.ttl.off" },

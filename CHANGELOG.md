@@ -58,7 +58,14 @@ a realtime obsługiwał tylko INSERT. Stąd jedna migracja fundamentowa zamiast 
 
 > ⚠️ **Wymaga nowego buildu EAS.** Kopiowanie do schowka używa `expo-clipboard` — to moduł natywny, więc buildy już obecne w TestFlight i Google Play go nie mają. Sama aktualizacja JS nie wystarczy.
 
-> **Do dokończenia w czacie:** wysyłanie lokalizacji jako wiadomości (baza i `kind='location'` gotowe, brakuje przycisku i renderu pinezki) oraz pełny picker emoji ponad sześć szybkich reakcji.
+### Etap 4 — lokalizacja i emoji (domknięcie Fazy 2)
+
+- `[#374]` **Wysłanie lokalizacji jako wiadomości** — przycisk 📍 w obu aplikacjach, pinezka w dymku, dotknięcie otwiera natywną mapę (`geo:` na telefonie, OpenStreetMap w przeglądarce). Świadomie **jednorazowy zrzut pozycji**, nie śledzenie na żywo: udostępnianie ciągłe to inna kategoria danych i zgód, i mieszka w osobnym przełączniku w Ustawieniach.
+  - `readChatLocation` czyta `meta` (kolumna `jsonb`) obronnie i sprawdza zakres współrzędnych — pojedynczy uszkodzony wpis nie może wywalić całej listy rozmowy ani narysować pinezki w miejscu, którego nie ma na Ziemi.
+  - Na mobile **celowo poza kolejką offline**: pozycja sprzed godzin jest bezwartościowa albo myląca („jestem tutaj" o miejscu, w którym kierowcy dawno nie ma).
+- `[#374]` **Picker emoji** — ~140 znaków w sześciu kategoriach dobranych pod rozmowę w transporcie (miny, gesty, transport, ładunek, pogoda, czas). Rozwijany na żądanie z paska sześciu szybkich reakcji; siatka ma własne przewijanie, żeby nie przykryć rozmowy.
+  - **Nie jest to pełna tablica Unicode** i to świadoma decyzja: pełny picker wymagałby pakietu danych z nazwami w czterech językach — kilkaset kilobajtów w buildzie mobilnym po to, żeby dało się wysłać flagę Wysp Owczych.
+  - Test pilnuje, że każdy znak mieści się w limicie `CHECK` z bazy (16 znaków — emoji złożone bywają dłuższe) i że szybkie reakcje są podzbiorem pełnego zestawu.
 
 ## [1.215.0] — 💶 Fundament finansowy: data zdarzenia, waluty, kursy EBC, VAT per kraj
 

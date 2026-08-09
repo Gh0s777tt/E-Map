@@ -15,6 +15,7 @@ import {
   type ChatViewer,
   canDeleteMessage,
   canEditMessage,
+  EMOJI_CATEGORIES,
   isDeleted,
   QUICK_REACTIONS,
   quotePreview,
@@ -55,6 +56,9 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
+  /** Pełny picker rozwijany z paska szybkich reakcji — domyślnie schowany. */
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [catIdx, setCatIdx] = useState(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(m.body);
   const mine = m.sender_id === viewer.userId;
@@ -173,7 +177,56 @@ export function MessageBubble({
                       </button>
                     );
                   })}
+                  {/* Pełny zestaw dopiero na żądanie — sześć szybkich reakcji
+                      pokrywa większość przypadków, a siatka 140 znaków otwarta
+                      domyślnie przykryłaby całą rozmowę. */}
+                  <button
+                    type="button"
+                    style={styles.quick}
+                    aria-label={t("chat.msg.react")}
+                    aria-expanded={pickerOpen}
+                    onClick={() => setPickerOpen((v) => !v)}
+                  >
+                    ➕
+                  </button>
                 </div>
+
+                {pickerOpen && (
+                  <div style={styles.picker}>
+                    <div style={styles.pickerTabs}>
+                      {EMOJI_CATEGORIES.map((c, i) => (
+                        <button
+                          key={c.labelKey}
+                          type="button"
+                          style={{ ...styles.pickerTab, ...(i === catIdx ? styles.quickOn : null) }}
+                          aria-label={t(c.labelKey as Parameters<typeof t>[0])}
+                          onClick={() => setCatIdx(i)}
+                        >
+                          {c.icon}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={styles.pickerGrid}>
+                      {EMOJI_CATEGORIES[catIdx]?.emojis.map((e) => {
+                        const on = summary.some((r) => r.emoji === e && r.mine);
+                        return (
+                          <button
+                            key={e}
+                            type="button"
+                            style={styles.quick}
+                            onClick={() => {
+                              onReact(m.id, e, !on);
+                              setPickerOpen(false);
+                              setMenuOpen(false);
+                            }}
+                          >
+                            {e}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <MenuItem
                   label={t("chat.msg.reply")}
                   onClick={() => {
@@ -342,6 +395,29 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 6,
   },
   quickOn: { background: palette.graphite },
+  picker: {
+    borderTop: `1px solid ${palette.graphite}`,
+    paddingTop: 6,
+    marginBottom: 4,
+    maxWidth: 250,
+  },
+  pickerTabs: { display: "flex", gap: 2, marginBottom: 4 },
+  pickerTab: {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    fontSize: 15,
+    padding: 3,
+    borderRadius: 6,
+  },
+  // Siatka ma własne przewijanie — inaczej menu urosłoby poza ekran.
+  pickerGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 1,
+    maxHeight: 150,
+    overflowY: "auto",
+  },
   reactions: { display: "flex", gap: 4, flexWrap: "wrap" },
   chip: {
     background: palette.graphite,
