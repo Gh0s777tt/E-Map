@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-374-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.216.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-375-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.217.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,25 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.217.0] — 📋 Formularze: trzy nowe zgłoszenia, usuwanie w historii, naprawa przeładunku
+
+Faza 6. Zmiany oparte wprost na Twojej liście: pauza, dodatkowe koszty trasy,
+kary, usuwanie wpisów, ekspres i parking strzeżony.
+
+- `[#375]` **Trzy nowe formularze** (migracja [0095](supabase/migrations/0095_forms_phase6.sql) + [warstwa danych](packages/api/src/data/formsPhase6.ts)):
+  - **Pauza / postój** — wypełnia kierowca: gdzie stoi, przy jakim przebiegu, czy parking był płatny i strzeżony, jaką metodą zapłacono. Kwota jest **opcjonalna, nie zerowa** — zero znaczyłoby „parking za darmo", a brak wpisu znaczy „nie podano".
+  - **Dodatkowe koszty trasy** — hotele, bramki, autostrady, promy, tunele, pociągi, winiety. Wypełnia zarząd po zakończeniu trasy, z opcjonalnym powiązaniem ze zleceniem, co pozwoli policzyć pełny koszt trasy w Fazie 7.
+  - **Kary i mandaty** — osobna tabela mimo bardzo podobnej struktury: kara ma inny obieg (kwestionowanie, termin płatności, przypisanie winy) i w jednym worku z opłatami drogowymi zaśmiecałaby raporty. **Kierowca widzi karę, która jego dotyczy**, ale nie może jej dodać ani zmienić — inaczej dowiadywałby się o mandacie dopiero z potrącenia w wypłacie.
+  - Metody płatności to `text` + `CHECK`, nie rozszerzenie wspólnego enuma `payment_method`: ten enum używają tankowania i buildy obecne w sklepach, więc dodanie do niego `snap` czy `travis` zmusiłoby je do obsługi wartości, o których nie wiedzą.
+
+- `[#375]` **Usuwanie wpisów z historii.** Dotąd kasować dało się wyłącznie pozycje czekające w kolejce offline — zsynchronizowany wpis zostawał na zawsze, a kierowca mógł go tylko edytować, zostawiając w bazie zdarzenie, które nigdy nie miało miejsca. Funkcje sprawdzają `count`, nie tylko `error`: przy braku uprawnień RLS nie zwraca błędu, więc interfejs pokazałby „usunięto", a wpis by został.
+
+- `[#375]` **Przeładunek dał się wreszcie zapisać z panelu.** Formularz Trip **oferował** tę akcję w liście, ale nie miał pól `fromVehicleReg`/`toVehicleReg`, których schemat wymaga jako obowiązkowych — wybór kończył się błędem walidacji pól, których w interfejsie nie ma. Ślepa uliczka od momentu dodania akcji.
+
+- `[#375]` **Ekspres i parking strzeżony** przy załadunku/rozładunku — schemat, maper, kolumny i checkboxy.
+
+**Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 489 · api 77 · web 78 · i18n 5 ✓ · `next build` ✓.
 
 ## [1.216.0] — 💬 Czat: model wiadomości + załatana dziura cross-tenant
 
