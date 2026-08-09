@@ -51,6 +51,11 @@ export interface ChatOutboxInput {
   body: string;
   senderLabel: string;
   photoPath?: string | null;
+  /**
+   * [#374] Cytowana wiadomość. Opcjonalne — wpisy, które leżą już w kolejce
+   * ze starego buildu, nie mają tego pola i muszą przejść bez zmian.
+   */
+  replyToId?: string | null;
 }
 
 export type OutboxInput =
@@ -260,6 +265,7 @@ async function syncItem(itemId: string): Promise<void> {
         body: chat.body,
         senderLabel: chat.senderLabel,
         photoPath: chat.photoPath ?? null,
+        replyToId: chat.replyToId ?? null,
       });
       // Push do odbiorców tylko przy realnym wstawieniu (null = już było, retry).
       if (sent) notifyChat(chat.threadId, chat.body, chat.companyId);

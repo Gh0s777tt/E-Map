@@ -242,6 +242,8 @@ export async function upsertMessage(
     senderLabel: string;
     threadId?: string | null;
     photoPath?: string | null;
+    /** [#374] Cytat. Stare wpisy w kolejce go nie mają — stąd opcjonalność. */
+    replyToId?: string | null;
   },
 ): Promise<ChatMessage | null> {
   const { data, error } = await client
@@ -254,6 +256,7 @@ export async function upsertMessage(
         body: msg.body,
         sender_label: msg.senderLabel,
         photo_path: msg.photoPath ?? null,
+        reply_to_id: msg.replyToId ?? null,
       },
       { onConflict: "id", ignoreDuplicates: true },
     )

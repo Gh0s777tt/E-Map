@@ -48,7 +48,17 @@ a realtime obsługiwał tylko INSERT. Stąd jedna migracja fundamentowa zamiast 
 - `[#374]` **Usuwanie kanału — odkopany martwy kod.** Funkcja `deleteThread` i polityka RLS istniały od migracji 0067, ale **żaden interfejs ich nie wywoływał** przez trzy wydania.
 - `[#374]` Ustawienia znikania dla kanału w panelu zarządu, z ostrzeżeniem wprost w interfejsie, że treść wysłana pushem została już dostarczona na telefon i tam zostaje.
 
-> **Do dokończenia:** aplikacja mobilna (cały interfejs czatu), wysyłanie lokalizacji jako wiadomości oraz pełny picker emoji ponad sześć szybkich reakcji.
+### Etap 3 — interfejs mobilny
+
+- `[#374]` **Kierowca dostał te same akcje co panel** ([chat-thread.tsx](apps/mobile/app/chat-thread.tsx)): długie przytrzymanie dymka otwiera arkusz z odpowiedzią, kopiowaniem, edycją, usunięciem i sześcioma szybkimi reakcjami. Modal zamiast menu przy dymku — na telefonie palec zasłaniałby własne menu.
+- `[#374]` Cytowanie działa **przez kolejkę offline**: `ChatOutboxInput` niesie `replyToId` jako pole opcjonalne, więc wpisy zakolejkowane starym buildem przechodzą bez zmian.
+- `[#374]` Reakcje i realtime `UPDATE` tak samo jak na webie — reakcje jednym zapytaniem na widok, nie per dymek (przy dłuższej rozmowie i słabym zasięgu to różnica między jednym a setkami żądań).
+- `[#374]` Tryb edycji korzysta ze **zwykłego pola wpisywania** zamiast osobnego okna — kierowca poprawia treść tam, gdzie zawsze pisze; pasek nad polem mówi, w którym trybie jest.
+- 17 kluczy i18n × 4 języki. Przy okazji `tsc` wyłapał zduplikowane klucze (`m.chat.cancel`, `m.chat.save`), których test parytetu nie widzi — sprawdza zgodność **między** językami, nie unikalność w obrębie jednego.
+
+> ⚠️ **Wymaga nowego buildu EAS.** Kopiowanie do schowka używa `expo-clipboard` — to moduł natywny, więc buildy już obecne w TestFlight i Google Play go nie mają. Sama aktualizacja JS nie wystarczy.
+
+> **Do dokończenia w czacie:** wysyłanie lokalizacji jako wiadomości (baza i `kind='location'` gotowe, brakuje przycisku i renderu pinezki) oraz pełny picker emoji ponad sześć szybkich reakcji.
 
 ## [1.215.0] — 💶 Fundament finansowy: data zdarzenia, waluty, kursy EBC, VAT per kraj
 
