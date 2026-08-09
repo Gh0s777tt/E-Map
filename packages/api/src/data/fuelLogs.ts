@@ -96,6 +96,27 @@ export async function updateFuelLog(
 }
 
 /**
+ * [#375] Usunięcie wpisu paliwa/AdBlue.
+ *
+ * RLS (migracja 0095) dopuszcza AUTORA wpisu oraz właściciela firmy. Dotąd
+ * kasować mógł wyłącznie właściciel, więc kierowca, który pomylił się przy
+ * tankowaniu, mógł wpis jedynie edytować — zostawiając w bazie zdarzenie,
+ * które nigdy nie miało miejsca.
+ *
+ * `count` rozstrzyga, czy cokolwiek zniknęło: przy braku uprawnień RLS nie
+ * zwraca błędu, tylko nie dopasowuje wiersza, a interfejs pokazałby sukces.
+ */
+export async function deleteFuelLog(
+  client: SupabaseClient,
+  id: string,
+  table: "fuel_logs" | "adblue_logs" = "fuel_logs",
+): Promise<void> {
+  const { error, count } = await client.from(table).delete({ count: "exact" }).eq("id", id);
+  if (error) throw error;
+  if (!count) throw new Error("Brak uprawnień do usunięcia tego wpisu.");
+}
+
+/**
  * Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy).
  * Filtry `from`/`to` (zakres `occurred_at`, ISO) i `limit` ograniczają transfer —
  * statystyki/rozliczenia/historia nie ładują całej tabeli do pamięci.

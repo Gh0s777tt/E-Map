@@ -308,6 +308,10 @@ export const en: Record<MessageKey, string> = {
   "history.noResults": "No results for the selected filters.",
   "history.allVehicles": "All vehicles",
   "history.kind.fuel": "Fuel",
+  "history.deleteConfirm":
+    "Delete this entry permanently? It disappears from history and statistics.",
+  "history.deleted": "Entry deleted.",
+  "history.deleteError": "Could not delete the entry.",
   "history.kind.adblue": "AdBlue",
   "history.kind.trip": "Trip",
   "history.csv.type": "Type",

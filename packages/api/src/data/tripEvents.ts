@@ -79,6 +79,13 @@ export async function updateTripEvent(client: SupabaseClient, id: string, input:
   if (error) throw error;
 }
 
+/** [#375] Usunięcie zdarzenia Trip. RLS: autor albo właściciel (patrz 0095). */
+export async function deleteTripEvent(client: SupabaseClient, id: string): Promise<void> {
+  const { error, count } = await client.from("trip_events").delete({ count: "exact" }).eq("id", id);
+  if (error) throw error;
+  if (!count) throw new Error("Brak uprawnień do usunięcia tego wpisu.");
+}
+
 /**
  * Lista zdarzeń Trip (RLS zawęża do kierowcy/firmy).
  * Filtry `from`/`to` (zakres `occurred_at`, ISO) i `limit` ograniczają transfer.

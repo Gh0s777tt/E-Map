@@ -1,12 +1,20 @@
 "use client";
 
-import { listFuelLogs, listTripEvents, listVehicles } from "@e-logistic/api";
+import {
+  deleteFuelLog,
+  deleteTripEvent,
+  listFuelLogs,
+  listTripEvents,
+  listVehicles,
+} from "@e-logistic/api";
 import { type FuelLogInput, type TripEventInput, toCsv } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useT } from "@/components/LocaleProvider";
+import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
 import { vehicleLabel } from "@/lib/demo";
 import { tripActionLabel } from "@/lib/labels";
@@ -88,6 +96,8 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
 
 export default function FormsHistoryPage() {
   const t = useT();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [rows, setRows] = useState<Row[]>([]);
   const [source, setSource] = useState<"baza" | "lokalne">("lokalne");
   const [kindFilter, setKindFilter] = useState<Kind | "all">("all");
@@ -185,6 +195,34 @@ export default function FormsHistoryPage() {
   function remove(outboxId: string) {
     removeOutbox(outboxId);
     void load();
+  }
+
+  /**
+   * [#375] Usunięcie wpisu z BAZY. Dotąd kasować dało się wyłącznie pozycje
+   * czekające w kolejce — zsynchronizowany wpis zostawał na zawsze, a kierowca,
+   * który pomylił się przy tankowaniu, mógł go tylko edytować.
+   */
+  async function removeFromDb(row: Row) {
+    if (!row.dbId) return;
+    const ok = await confirm(t("history.deleteConfirm"), { danger: true });
+    if (!ok) return;
+    try {
+      if (row.kind === "trip") {
+        await deleteTripEvent(getBrowserSupabase(), row.dbId);
+      } else {
+        await deleteFuelLog(
+          getBrowserSupabase(),
+          row.dbId,
+          row.kind === "adblue" ? "adblue_logs" : "fuel_logs",
+        );
+      }
+      // Usuwamy z widoku od razu — `load()` i tak przeładuje, ale bez tego
+      // wiersz mrugnąłby jeszcze raz przed zniknięciem.
+      setRows((list) => list.filter((x) => x.key !== row.key));
+      toast(t("history.deleted"), "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("history.deleteError"), "error");
+    }
   }
 
   const vehicleOptions = useMemo(
@@ -292,12 +330,17 @@ export default function FormsHistoryPage() {
                       {t(STATUS_KEY[r.status])}
                     </span>
                     {r.status === "synced" && r.dbId && (
-                      <Link
-                        href={`/forms/${r.kind}?edit=${r.dbId}`}
-                        style={{ ...styles.btn, textDecoration: "none" }}
-                      >
-                        {t("common.edit")}
-                      </Link>
+                      <>
+                        <Link
+                          href={`/forms/${r.kind}?edit=${r.dbId}`}
+                          style={{ ...styles.btn, textDecoration: "none" }}
+                        >
+                          {t("common.edit")}
+                        </Link>
+                        <Button variant="danger" onClick={() => removeFromDb(r)}>
+                          {t("common.delete")}
+                        </Button>
+                      </>
                     )}
                     {r.status !== "synced" && r.outboxId && (
                       <>
