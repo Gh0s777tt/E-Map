@@ -295,8 +295,12 @@ export default function StatsPage() {
   // Alerty progowe (ujemna/niska marża, anomalie spalania, skok kosztu paliwa m/m)
   // — liczone z danych już załadowanych na tym ekranie. Tylko zarząd.
   const alerts = useMemo(() => {
+    // [#376] Grupowanie po dacie ZDARZENIA — tak samo jak wykres obok.
+    // Wcześniej alert liczył po `created_at`, więc kilka tankowań z końca lipca
+    // zsynchronizowanych 1 sierpnia dawało „skok kosztu o 233%", którego nie
+    // dało się potwierdzić na wykresie na tym samym ekranie.
     const byMonth = fuel.reduce((m, r) => {
-      const k = r.created_at.slice(0, 7);
+      const k = r.occurred_at.slice(0, 7);
       return m.set(k, (m.get(k) ?? 0) + Number(r.price_total ?? 0));
     }, new Map<string, number>());
     const fuelCostByMonth = [...byMonth]

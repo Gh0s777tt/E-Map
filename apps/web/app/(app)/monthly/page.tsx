@@ -3,10 +3,12 @@
 import {
   getCompany,
   listFuelLogs,
+  listFxRates,
   listOrders,
   listPerDiemTrips,
   listVehicleCosts,
   type PerDiemTrip,
+  toFxRates,
   type VehicleCost,
 } from "@e-logistic/api";
 import {
@@ -20,6 +22,7 @@ import {
   monthlyFleetTrend,
   monthsEndingAt,
   round2,
+  rowAmountEur,
   sumPerDiem,
   VEHICLE_COST_CATEGORY_LABELS,
   type VehicleCostCategory,
@@ -75,14 +78,21 @@ export default function MonthlyPage() {
       const toDate = new Date(`${month}-01T00:00:00Z`);
       toDate.setUTCMonth(toDate.getUTCMonth() + 1);
       const to = toDate.toISOString().slice(0, 10); // 1. dzień kolejnego miesiąca
-      const [ord, f, a, vc, pd, comp] = await Promise.all([
+      const [ord, f, a, vc, pd, comp, fxRows] = await Promise.all([
         listOrders(sb, m.companyId, { from, to }),
         listFuelLogs(sb, { from, to, limit: 5000 }),
         listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
         listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
         listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
         getCompany(sb, m.companyId),
+        // Zapas wstecz: kurs z dnia zdarzenia, a EBC nie publikuje w weekendy.
+        listFxRates(sb, {
+          from: from
+            ? new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10)
+            : undefined,
+        }),
       ]);
+      const rates = toFxRates(fxRows);
       setCompanyName(comp?.name ?? "");
       setCosts(vc);
       setPerDiems(pd);
@@ -95,25 +105,21 @@ export default function MonthlyPage() {
           date: o.load_date ?? o.created_at.slice(0, 10),
         })),
       );
-      const toCost = (r: {
+      type Raw = {
         vehicle_id: string;
         price_total: number | null;
+        currency: string | null;
         occurred_at: string;
-      }) => ({
+      };
+      const toCost = (r: Raw) => ({
         vehicleId: r.vehicle_id,
-        priceTotal: r.price_total,
+        // [#376] Przeliczenie na EUR po kursie z dnia zdarzenia. Wcześniej
+        // wchodziła tu surowa kwota — 1200 PLN sumowało się jako 1200 €.
+        priceTotal: rowAmountEur(r.price_total, r.currency, r.occurred_at, rates),
         date: r.occurred_at.slice(0, 10),
       });
-      setFuel(
-        (f as { vehicle_id: string; price_total: number | null; occurred_at: string }[]).map(
-          toCost,
-        ),
-      );
-      setAdblue(
-        (a as { vehicle_id: string; price_total: number | null; occurred_at: string }[]).map(
-          toCost,
-        ),
-      );
+      setFuel((f as Raw[]).map(toCost));
+      setAdblue((a as Raw[]).map(toCost));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych.");
     } finally {

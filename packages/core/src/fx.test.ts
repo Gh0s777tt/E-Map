@@ -5,6 +5,7 @@ import {
   type FxRate,
   fromEur,
   pickFxRate,
+  rowAmountEur,
   sumInCurrency,
   toEur,
 } from "./fx";
@@ -131,5 +132,30 @@ describe("currencyForCountry", () => {
 
   it("ignoruje wielkość liter i spacje", () => {
     expect(currencyForCountry(" pl ")).toBe("PLN");
+  });
+});
+
+describe("rowAmountEur — punkt wejścia dla ekranów", () => {
+  it("przelicza kwotę w obcej walucie po kursie z dnia zdarzenia", () => {
+    // 430 PLN przy 4.30 = 100 EUR. Bez tego wiersz wchodziłby do sumy jako 430 €.
+    expect(rowAmountEur(430, "PLN", "2026-06-05T12:00:00Z", RATES)).toBe(100);
+  });
+
+  it("EUR przechodzi bez kursu", () => {
+    expect(rowAmountEur(99.5, "EUR", "2026-06-05T12:00:00Z", [])).toBe(99.5);
+  });
+
+  it("brak waluty traktujemy jak EUR — tak zachowywały się dane sprzed #373", () => {
+    expect(rowAmountEur(50, null, "2026-06-05T12:00:00Z", [])).toBe(50);
+  });
+
+  it("brak kwoty i brak kursu dają null — NIE zero", () => {
+    // Zero to twierdzenie („nic nie kosztowało"), a my po prostu nie wiemy.
+    expect(rowAmountEur(null, "PLN", "2026-06-05T12:00:00Z", RATES)).toBeNull();
+    expect(rowAmountEur(100, "CZK", "2026-06-05T12:00:00Z", RATES)).toBeNull();
+  });
+
+  it("przyjmuje pełny znacznik czasu, nie tylko datę", () => {
+    expect(rowAmountEur(430, "PLN", "2026-06-05T23:59:59.999Z", RATES)).toBe(100);
   });
 });

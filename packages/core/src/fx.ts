@@ -138,6 +138,28 @@ export function convert(
   return fromEur(eur, to, rates, onDate);
 }
 
+/**
+ * Przelicza kwotę pojedynczego wiersza na EUR — punkt wejścia dla ekranów,
+ * które dalej liczą wyłącznie w euro.
+ *
+ * Zwraca `null`, gdy kwoty nie ma ALBO gdy nie znamy kursu. Wywołujący MUSI
+ * rozróżnić te przypadki od zera: dotąd cały kod robił `price_total ?? 0`,
+ * przez co koszt w PLN wchodził do sumy jak euro (zawyżenie ~4,3×), a brak
+ * kwoty wyglądał jak zerowy koszt.
+ *
+ * `dateIso` to data ZDARZENIA — kurs bierzemy z dnia, w którym poniesiono
+ * wydatek, nie z dzisiaj.
+ */
+export function rowAmountEur(
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+  dateIso: string,
+  rates: readonly FxRate[],
+): number | null {
+  if (amount == null) return null;
+  return toEur(amount, currency ?? BASE_CURRENCY, rates, dateIso.slice(0, 10));
+}
+
 /** Wynik sumowania kwot w różnych walutach. */
 export interface SumResult {
   /** Suma tego, co udało się przeliczyć. */

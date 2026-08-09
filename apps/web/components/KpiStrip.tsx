@@ -1,9 +1,17 @@
 "use client";
 
-import { listDriverPayouts, listFuelLogs, listOrders, listPerDiemTrips } from "@e-logistic/api";
+import {
+  listDriverPayouts,
+  listFuelLogs,
+  listFxRates,
+  listOrders,
+  listPerDiemTrips,
+  toFxRates,
+} from "@e-logistic/api";
 import {
   computePerDiem,
   monthlyFleetSummary,
+  rowAmountEur,
   settleDriverPayouts,
   sumPerDiem,
 } from "@e-logistic/core";
@@ -24,7 +32,12 @@ interface Kpi {
 
 const OPEN = new Set(["new", "assigned", "in_progress"]);
 
-type CostRow = { vehicle_id: string; price_total: number | null; created_at: string };
+type CostRow = {
+  vehicle_id: string;
+  price_total: number | null;
+  currency: string | null;
+  occurred_at: string;
+};
 
 /**
  * Pasek KPI na pulpit (owner/dispatcher) — operacyjny skrót na start dnia:
@@ -45,17 +58,29 @@ export function KpiStrip() {
         const toD = new Date(`${month}-01T00:00:00Z`);
         toD.setUTCMonth(toD.getUTCMonth() + 1);
         const to = toD.toISOString().slice(0, 10);
-        const [orders, fuel, adblue, pds, pays] = await Promise.all([
+        const [orders, fuel, adblue, pds, pays, fxRows] = await Promise.all([
           listOrders(sb, m.companyId),
           listFuelLogs(sb, { from, to, limit: 5000 }),
           listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
           listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
           listDriverPayouts(sb, m.companyId, { limit: 5000 }),
+          // Kursy z zapasem wstecz: kurs bierzemy z DNIA zdarzenia, a EBC nie
+          // publikuje w weekendy, więc wpis z 1. dnia miesiąca może potrzebować
+          // notowania sprzed kilku dni.
+          listFxRates(sb, {
+            from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+          }),
         ]);
+        const rates = toFxRates(fxRows);
         const toCost = (r: CostRow) => ({
           vehicleId: r.vehicle_id,
-          priceTotal: r.price_total,
-          date: r.created_at.slice(0, 10),
+          // [#376] Kwota przeliczona na EUR. Wcześniej wchodziła tu surowa
+          // wartość `price_total` — koszt w PLN sumował się jak euro.
+          priceTotal: rowAmountEur(r.price_total, r.currency, r.occurred_at, rates),
+          // [#376] Data ZDARZENIA. Okno zapytania działa na `occurred_at`, więc
+          // grupowanie po `created_at` sprawiało, że wpis zsynchronizowany
+          // w kolejnym miesiącu nie trafiał do KPI w ŻADNYM miesiącu.
+          date: r.occurred_at.slice(0, 10),
         });
         const summary = monthlyFleetSummary({
           month,
