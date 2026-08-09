@@ -3,7 +3,7 @@
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
 ![Updaty](https://img.shields.io/badge/updaty-380-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.226.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.227.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,36 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.227.0] — ⛽ Spalanie na telefonie kierowcy
+
+Statystyki mobilne pokazywały kierowcy litry, koszt i wykres — ale **nie spalanie**,
+czyli jedyną liczbę, którą realnie kontroluje w trasie. Musiał ją liczyć w głowie.
+Kolumny `odometer_km` i `is_full` istniały w bazie od dawna; typ `FuelRow` ich nie
+deklarował, więc dane leżały nieodczytane.
+
+- `[#380]` **L/100 km, liczone od pełna do pełna** — tankowanie częściowe nie zamyka
+  odcinka, więc wchodzi do litrów i kosztu, ale nie do spalania. Ekran mówi o tym wprost.
+
+- `[#380]` **Średnia floty ważona kilometrami**, nie średnia ze średnich. Przy jednym aucie
+  z 2 000 km i drugim z 20 000 km średnia arytmetyczna po autach dałaby liczbę, której nie
+  przejechał żaden z nich. *(Ten sam błąd siedzi jeszcze w `/stats` na webie — `page.tsx`
+  uśrednia po pojazdach; do naprawy osobno.)*
+
+- `[#380]` **AdBlue i rozbicie na pojazdy** — kierowca jeżdżący dwoma autami nie miał jak
+  zobaczyć, które pali więcej.
+
+- `[#380]` **Limit podniesiony ze 100 do 2000 wpisów** i **komunikat o obcięciu**. Przy dwóch
+  tankowaniach dziennie trzydziestodniowe okno mieściło się w starym limicie ledwo,
+  a obcięcie było ciche — kierowca dostawałby zaniżone litry bez żadnego sygnału.
+
+**Weryfikacja na produkcji:** dane pozwalają policzyć tę liczbę — 20 tankowań, 13 do pełna,
+21 718 km, 2 603 L, czyli około **12 L/100 km**. To **pierwsza funkcja Fazy 7, która pokaże
+realne dane** — zwrot VAT i koszty operacyjne czekają na wpisy, których jeszcze nie ma.
+Rozbicie na pojazdy się nie pojawi: flota ma dziś jedno auto z tankowaniami, a sekcja
+renderuje się od dwóch.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core 536 · api 81 · maps 116 · web 101 · mobile 36 · i18n 5 (parytet 4 języków) ✓. **Wymaga nowego builda EAS**, żeby trafiło do kierowców.
 
 ## [1.226.0] — 🅿️ Koszty operacyjne trasy w rachunku + sekcje zwijane
 

@@ -3,7 +3,7 @@
  * wykres słupkowy litrów z 14 dni i lista tankowań z 30 dni.
  */
 import { listFuelLogs, listFxRates, toFxRates } from "@e-logistic/api";
-import { type FxRate, rowAmountEur } from "@e-logistic/core";
+import { consumptionFullToFull, type FxRate, round2, rowAmountEur } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -27,6 +27,14 @@ interface FuelRow {
   station_country: string | null;
   station_city: string | null;
   /**
+   * [#380] Przebieg i „do pełna" — bez tych dwóch pól spalania nie da się policzyć.
+   * Kolumny istniały od zawsze, ale typ ich nie deklarował, więc kierowca miał
+   * na ekranie litry i koszt, a jedyną liczbę, którą realnie kontroluje w trasie,
+   * musiał liczyć w głowie.
+   */
+  odometer_km: number | null;
+  is_full: boolean | null;
+  /**
    * [#378] Data ZDARZENIA — po niej bierzemy kurs, po niej grupujemy słupki i ją
    * pokazujemy przy pozycji. `created_at` to moment synchronizacji: tankowanie
    * zrobione offline w niedzielę, a wysłane w środę, przeliczyłoby się kursem ze
@@ -41,6 +49,8 @@ interface FuelRow {
 }
 
 const DAYS = 14;
+/** Ile wpisów najwyżej pobieramy — patrz komentarz przy `listFuelLogs`. */
+const LIMIT = 2000;
 
 /**
  * [#378] Kod waluty do pokazania. Brak wartości traktujemy jak euro — tak samo
@@ -52,6 +62,7 @@ export default function StatsScreen() {
   const { vehicles } = useFleet();
   const t = useT();
   const [logs, setLogs] = useState<FuelRow[]>([]);
+  const [adblue, setAdblue] = useState<FuelRow[]>([]);
   /** [#378] Kursy EBC — bez nich tankowanie w innej walucie niż euro nie ma jak wejść do sumy. */
   const [rates, setRates] = useState<FxRate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,8 +77,11 @@ export default function StatsScreen() {
     try {
       const sb = getSupabase();
       const from = new Date(Date.now() - 30 * 86_400_000).toISOString();
-      const [rows, fxRows] = await Promise.all([
-        listFuelLogs(sb, { from, limit: 100 }),
+      const [rows, adblueRows, fxRows] = await Promise.all([
+        // [#380] Limit podniesiony ze 100: przy dwóch tankowaniach dziennie
+        // trzydziestodniowe okno mieściło się w nim ledwo, a obcięcie było ciche.
+        listFuelLogs(sb, { from, limit: LIMIT }),
+        listFuelLogs(sb, { table: "adblue_logs", from, limit: LIMIT }),
         // [#378] Zapas 10 dni wstecz: kurs bierzemy z dnia tankowania, a EBC nie
         // publikuje w weekendy i święta. Bez zapasu tankowanie z soboty na starszym
         // końcu okna zostawałoby bez notowania i wypadało z sumy.
@@ -76,6 +90,7 @@ export default function StatsScreen() {
         }),
       ]);
       setLogs(rows as FuelRow[]);
+      setAdblue(adblueRows as FuelRow[]);
       setRates(toFxRates(fxRows));
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("m.stats.loadError"));
@@ -113,6 +128,59 @@ export default function StatsScreen() {
   const missingRate = priced.filter((p) => p.eur == null && p.log.price_total != null).length;
   const regOf = (id: string | null) =>
     id ? (vehicles.find((v) => v.id === id)?.registration ?? "—") : "—";
+
+  /**
+   * [#380] Spalanie L/100 km — jedyna liczba na tym ekranie, którą kierowca
+   * realnie kontroluje w trasie, a której dotąd nie było.
+   *
+   * Liczone PER POJAZD i dopiero potem uśredniane po przejechanych kilometrach,
+   * a nie jako średnia ze średnich: przy jednym aucie z 2 000 km i drugim
+   * z 20 000 km średnia arytmetyczna po autach dałaby liczbę, której nie
+   * przejechał żaden z nich. Metoda „od pełna do pełna" — tankowanie częściowe
+   * nie zamyka odcinka, więc nie da się z niego policzyć zużycia.
+   */
+  const byVehicle = (() => {
+    const ids = [...new Set(logs.map((l) => l.vehicle_id).filter((v): v is string => !!v))];
+    return ids
+      .map((id) => {
+        const mine = logs.filter((l) => l.vehicle_id === id);
+        const entries = mine.map((l) => ({
+          odometerKm: l.odometer_km ?? 0,
+          liters: Number(l.liters ?? 0),
+          isFull: l.is_full !== false,
+        }));
+        const km = entries.length
+          ? Math.max(...entries.map((e) => e.odometerKm)) -
+            Math.min(...entries.map((e) => e.odometerKm))
+          : 0;
+        return {
+          id,
+          reg: regOf(id),
+          liters: round2(mine.reduce((a, l) => a + Number(l.liters ?? 0), 0)),
+          adblueLiters: round2(
+            adblue
+              .filter((l) => l.vehicle_id === id)
+              .reduce((a, l) => a + Number(l.liters ?? 0), 0),
+          ),
+          cons: consumptionFullToFull(entries),
+          km,
+        };
+      })
+      .sort((a, b) => b.liters - a.liters);
+  })();
+
+  /** Średnia floty ważona kilometrami — patrz komentarz wyżej. */
+  const fleetCons = (() => {
+    const usable = byVehicle.filter((v) => v.cons != null && v.km > 0);
+    if (usable.length === 0) return null;
+    const km = usable.reduce((a, v) => a + v.km, 0);
+    if (km === 0) return null;
+    return round2(usable.reduce((a, v) => a + (v.cons as number) * v.km, 0) / km);
+  })();
+
+  const adblueLiters = round2(adblue.reduce((a, l) => a + Number(l.liters ?? 0), 0));
+  /** Czy zapytanie mogło uciąć dane — mówimy o tym, zamiast milczeć. */
+  const truncated = logs.length >= LIMIT || adblue.length >= LIMIT;
 
   // Słupki: suma litrów per dzień, ostatnie DAYS dni (najstarszy z lewej).
   const days: { key: string; label: string; liters: number }[] = [];
@@ -160,7 +228,49 @@ export default function StatsScreen() {
           <Text style={s.kpiValueRed}>{Math.round(cost)} €</Text>
         </Card>
       </View>
+
+      {/* [#380] Spalanie i AdBlue — drugi rząd kafelków. Spalanie stoi obok litrów,
+          bo to ta sama wielkość widziana z dwóch stron, a kierowca porównuje je odruchowo. */}
+      <View style={s.row}>
+        <Card style={s.kpi}>
+          <Text style={s.kpiLabel}>{t("m.stats.consumption")}</Text>
+          <Text style={s.kpiValueRed}>{fleetCons != null ? `${fleetCons}` : "—"}</Text>
+          <Text style={s.kpiUnit}>L/100 km</Text>
+        </Card>
+        <Card style={s.kpi}>
+          <Text style={s.kpiLabel}>{t("m.stats.adblue")}</Text>
+          <Text style={s.kpiValue}>{Math.round(adblueLiters)}</Text>
+          <Text style={s.kpiUnit}>L</Text>
+        </Card>
+      </View>
+      {logs.length > 0 && (
+        <Text style={s.hint}>
+          {fleetCons != null ? t("m.stats.consumptionNote") : t("m.stats.consumptionNone")}
+        </Text>
+      )}
+
+      {/* [#380] Rozbicie na pojazdy — kierowca jeżdżący dwoma autami nie miał jak
+          zobaczyć, które z nich pali więcej. */}
+      {byVehicle.length > 1 && (
+        <>
+          <SectionTitle>{t("m.stats.perVehicle")}</SectionTitle>
+          <Card style={{ gap: 8 }}>
+            {byVehicle.map((v) => (
+              <View key={v.id} style={s.vehRow}>
+                <Text style={s.vehReg}>{v.reg}</Text>
+                <Text style={s.vehCell}>{Math.round(v.liters)} L</Text>
+                {v.adblueLiters > 0 && (
+                  <Text style={s.vehCellDim}>+{Math.round(v.adblueLiters)} L AdBlue</Text>
+                )}
+                <Text style={s.vehCons}>{v.cons != null ? `${v.cons} L/100` : "—"}</Text>
+              </View>
+            ))}
+          </Card>
+        </>
+      )}
+
       {logs.length > 0 && <Text style={s.hint}>{t("m.stats.costEurNote")}</Text>}
+      {truncated && <Text style={s.rateWarn}>⚠️ {t("m.stats.truncated", { n: LIMIT })}</Text>}
       {/* [#378] „Brak kwoty" i „brak kursu" to dwie różne sprawy i nie wolno ich
           zlewać — tu mówimy wprost, że suma jest niepełna z braku notowania. */}
       {missingRate > 0 && (
@@ -235,6 +345,12 @@ const s = StyleSheet.create({
   content: { padding: 16, gap: 10, paddingBottom: 32 },
   row: { flexDirection: "row", gap: 10 },
   kpi: { flex: 1, gap: 4 },
+  kpiUnit: { color: palette.smoke, fontSize: 11, marginTop: 2 },
+  vehRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  vehReg: { color: palette.offWhite, fontSize: 15, fontWeight: "700", minWidth: 90 },
+  vehCell: { color: palette.offWhite, fontSize: 14 },
+  vehCellDim: { color: palette.smoke, fontSize: 12 },
+  vehCons: { color: palette.red, fontSize: 14, fontWeight: "700", marginLeft: "auto" },
   kpiLabel: { color: palette.smoke, fontSize: 12 },
   kpiValue: { color: palette.offWhite, fontSize: 24, fontWeight: "800" },
   kpiValueRed: { color: palette.red, fontSize: 24, fontWeight: "800" },
