@@ -31,6 +31,14 @@ export default function FormsHub() {
       hot: false,
     },
     {
+      // [#375] Postój wypelnia kierowca na parkingu — stad w hubie, nie w panelu.
+      glyph: "⏸",
+      title: t("m.pause.title"),
+      sub: t("m.pause.hint"),
+      href: "/pause",
+      hot: false,
+    },
+    {
       glyph: "🔧",
       title: t("m.fab.defect"),
       sub: t("m.forms.defectSub"),
