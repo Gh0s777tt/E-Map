@@ -10,22 +10,11 @@
 import type { GeoHit } from "@e-logistic/maps";
 
 /**
- * Waluty do wyboru. Lista celowo krótka — to te, którymi realnie płaci się
- * na trasach floty, i wszystkie mają notowanie w EBC, więc każda kwota
- * da się przeliczyć na EUR.
+ * [#388] Waluty do wyboru — lista przeniesiona do `@e-logistic/core`, bo ta sama
+ * musi obowiązywać w telefonie. Re-eksport zostaje, żeby nie ruszać kilkunastu
+ * importów w formularzach.
  */
-export const CURRENCIES = [
-  "EUR",
-  "PLN",
-  "CZK",
-  "HUF",
-  "RON",
-  "SEK",
-  "DKK",
-  "NOK",
-  "GBP",
-  "CHF",
-] as const;
+export { CURRENCIES } from "@e-logistic/core";
 
 /**
  * Metody płatności nowych formularzy — szerszy zestaw niż enum `payment_method`

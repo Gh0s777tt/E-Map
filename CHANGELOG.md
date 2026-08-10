@@ -2,13 +2,65 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-387-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.233.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-388-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.234.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.234.0] — 💱 Waluta przestaje być polem tekstowym: koniec z kosztem, którego nikt nie policzy
+
+Przegląd zamknął dziesięć usterek walutowych na webie. Ta sama klasa błędu została
+w telefonie, w ekranie, którego tamten przegląd nie obejmował.
+
+- `[#388]` **Formularz kosztu pojazdu w aplikacji brał walutę WOLNYM TEKSTEM**
+  ([manage-vehicle-costs.tsx](apps/mobile/app/manage-vehicle-costs.tsx)) — `TextInput`
+  z `maxLength={3}` i podpowiedzią „EUR". Kto wpisał `PL` zamiast `PLN`, zapisywał wiersz
+  **poprawny dla bazy i dla `vehicleCostSchema`** (`z.string().min(1)`), ale nie do
+  przeliczenia: `pickFxRate` nie zna kodu `PL`, więc koszt cicho wypadał z każdej sumy
+  w euro. Formularz mówił „zapisano", kwota po prostu nie dochodziła — i nic tego nie
+  zgłaszało, bo z punktu widzenia bazy wszystko było w porządku.
+
+  Teraz wybór z listy (te same chipy, co przy kategoriach), z walutą podpowiedzianą
+  **z kraju firmy** — jak na webie od `[#378]`.
+
+- `[#388]` **Podpowiedź z kraju przepuszczona przez bramkę** — i to nie jest ostrożność
+  na wyrost. `currencyForCountry` zwraca `UAH` dla Ukrainy, `MDL`, `RSD`, `BGN` dla
+  sąsiadów, a **sprawdzenie w produkcyjnej tabeli `fx_rates` pokazuje, że żadna z tych
+  czterech nie ma ani jednego notowania** (EBC ich nie publikuje). Bez `isSupportedCurrency`
+  firma zarejestrowana na Ukrainie dostałaby domyślnie walutę, w której każdy zapisany
+  koszt byłby martwy. Dziesięć walut z listy ma komplet 153 notowań od stycznia.
+
+- `[#388]` **Jedna lista walut dla całego produktu** ([fx.ts](packages/core/src/fx.ts)).
+  Żyła w czterech kopiach — [formShared.ts](apps/web/app/(app)/forms/formShared.ts) (10 walut),
+  [pause.tsx](apps/mobile/app/pause.tsx) i [expenses.tsx](apps/mobile/app/expenses.tsx)
+  (4, kolejność „PLN, EUR…"), [LiquidForm.tsx](apps/mobile/components/LiquidForm.tsx)
+  (4, kolejność „EUR, PLN…") — z **różną walutą domyślną w różnych ekranach tej samej
+  aplikacji**. Do rdzenia trafia `CURRENCIES`, typ `Currency` i `isSupportedCurrency`.
+
+  Krótkie listy w ekranach wpisywanych jedną ręką w kabinie **zostają** — cztery chipy
+  zamiast dziesięciu to świadomy wybór, nie niedopatrzenie. Zmienia się to, że są teraz
+  typowane `Currency`, więc literówka albo kod bez notowania w EBC **nie kompiluje się**,
+  zamiast tworzyć wpis nie do przeliczenia.
+
+- `[#388]` **Sześć testów** ([fx.test.ts](packages/core/src/fx.test.ts)) — w tym ten, który
+  pilnuje sedna: `PL` i `PLNN` odrzucone, ` pln ` i `Eur` przyjęte (bo tyle wpisuje
+  człowiek), a waluta istniejąca naprawdę, lecz bez notowań, **odrzucona mimo to**.
+
+**Weryfikacja dziesięciu usterek z przeglądu:** sprawdzone w kodzie po kolei, nie z raportu —
+wszystkie dziesięć jest naprawionych (faktury: `paidGross`/`unpaidGross`; mobile /stats:
+data z `occurred_at`; zlecenia: filtr `priced` zdejmujący wiersz z obu stron ułamka;
+koszty pojazdu: selekt waluty; pulpit: `KpiStrip` i `RevenueTrend` przeliczają;
+/monthly: licznik braków na całym oknie trendu; /wyjazdy: zapas `LEAD_MONTHS`, kurs
+z dnia wyjazdu, `costKnown` blokujący zawyżoną marżę).
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1007** ✓ · `next build` ✓ · `docs:check` ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

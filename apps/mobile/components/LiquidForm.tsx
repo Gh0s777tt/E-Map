@@ -1,5 +1,6 @@
 import { listFuelCardsForUser } from "@e-logistic/api";
 import {
+  type Currency,
   currencyForCountry,
   type FuelLogInput,
   firstZodError,
@@ -22,7 +23,13 @@ import { CountryField } from "./CountryField";
 import { VehiclePicker } from "./VehiclePicker";
 
 /** Waluty w zasięgu tras tej floty. Inną można wpisać z panelu web. */
-const CURRENCIES = ["EUR", "PLN", "CZK", "GBP"] as const;
+/**
+ * [#388] Skrót do czterech walut, ale **typowany kodami z rdzenia** (`Currency`).
+ * Ekran wpisywany jedną ręką w kabinie nie może pokazywać dziesięciu chipów,
+ * więc podzbiór zostaje — natomiast literówka albo kod bez notowania w EBC
+ * przestaje się kompilować, zamiast tworzyć wpis nie do przeliczenia.
+ */
+const CURRENCIES: readonly Currency[] = ["EUR", "PLN", "CZK", "GBP"];
 
 const STATUS_ICON: Record<OutboxItem["status"], string> = {
   queued: "⏳",

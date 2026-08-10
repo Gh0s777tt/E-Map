@@ -32,6 +32,42 @@ export interface FxRate {
 export const BASE_CURRENCY = "EUR";
 
 /**
+ * [#388] Waluty do wyboru w formularzach — **jedna lista dla całego produktu**.
+ *
+ * Lista jest krótka celowo: to waluty, którymi realnie płaci się na trasach
+ * floty, i **każda z nich ma notowanie w EBC**, więc każda kwota da się
+ * przeliczyć na euro. Waluta spoza tego zbioru nie jest błędem formularza —
+ * jest wierszem, którego już nikt nie policzy, bo nie ma po czym.
+ *
+ * Wcześniej ta lista żyła w czterech kopiach (web `formShared.ts` oraz trzy
+ * ekrany mobilne), w różnej kolejności i z różną walutą domyślną, a piąty ekran
+ * (`manage-vehicle-costs`) brał walutę **wolnym tekstem**. Wystarczyło wpisać
+ * `PL` zamiast `PLN`, żeby koszt zapisał się poprawnie i zniknął z każdego
+ * podsumowania w euro — bez ostrzeżenia, bo z punktu widzenia bazy wiersz był
+ * w porządku.
+ */
+export const CURRENCIES = [
+  "EUR",
+  "PLN",
+  "CZK",
+  "HUF",
+  "RON",
+  "SEK",
+  "DKK",
+  "NOK",
+  "GBP",
+  "CHF",
+] as const;
+
+/** Kod waluty obsługiwanej przez formularze. */
+export type Currency = (typeof CURRENCIES)[number];
+
+/** Czy kod jest jedną z walut, które umiemy przeliczyć na euro. */
+export function isSupportedCurrency(code: string | null | undefined): code is Currency {
+  return (CURRENCIES as readonly string[]).includes((code ?? "").trim().toUpperCase());
+}
+
+/**
  * Waluta, którą realnie zapłacisz w danym kraju. Formularz podpowiada ją po
  * wybraniu kraju stacji — kierowca w Polsce płaci złotówkami i nie powinien
  * musieć o tym pamiętać ani przestawiać ręcznie.

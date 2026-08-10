@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  BASE_CURRENCY,
+  CURRENCIES,
   convert,
   currencyForCountry,
   type FxRate,
   fromEur,
+  isSupportedCurrency,
   pickFxRate,
   rowAmountEur,
   sumInCurrency,
@@ -157,5 +160,48 @@ describe("rowAmountEur — punkt wejścia dla ekranów", () => {
 
   it("przyjmuje pełny znacznik czasu, nie tylko datę", () => {
     expect(rowAmountEur(430, "PLN", "2026-06-05T23:59:59.999Z", RATES)).toBe(100);
+  });
+});
+
+describe("CURRENCIES — lista walut formularzy", () => {
+  it("zawiera walutę bazową", () => {
+    // Bez EUR na liście formularz nie pozwoliłby wpisać kwoty w walucie,
+    // do której wszystko jest przeliczane.
+    expect(CURRENCIES).toContain(BASE_CURRENCY);
+  });
+
+  it("same trzyliterowe kody ISO, bez powtórzeń", () => {
+    for (const c of CURRENCIES) expect(c).toMatch(/^[A-Z]{3}$/);
+    expect(new Set(CURRENCIES).size).toBe(CURRENCIES.length);
+  });
+
+  it("każdy kod z listy przechodzi walidację", () => {
+    for (const c of CURRENCIES) expect(isSupportedCurrency(c)).toBe(true);
+  });
+
+  it("odrzuca literówkę, która wcześniej przechodziła jako wolny tekst", () => {
+    // To jest sedno [#388]: `PL` zamiast `PLN` zapisywało się poprawnie
+    // i tworzyło koszt, którego żaden kurs nie umiał przeliczyć.
+    expect(isSupportedCurrency("PL")).toBe(false);
+    expect(isSupportedCurrency("PLNN")).toBe(false);
+    expect(isSupportedCurrency("")).toBe(false);
+    expect(isSupportedCurrency(null)).toBe(false);
+    expect(isSupportedCurrency(undefined)).toBe(false);
+  });
+
+  it("wybacza wielkość liter i spacje, bo tyle wpisuje człowiek", () => {
+    expect(isSupportedCurrency(" pln ")).toBe(true);
+    expect(isSupportedCurrency("Eur")).toBe(true);
+  });
+
+  it("waluta spoza listy jest odrzucana, nawet gdy istnieje naprawdę", () => {
+    // `currencyForCountry` zna UAH (Ukraina) i MDL (Mołdawia), ale EBC ich nie
+    // notuje — kwota w nich zapisana nigdy nie weszłaby do sumy w euro.
+    // Dlatego podpowiedź z kraju musi przejść przez tę bramkę.
+    expect(currencyForCountry("UA")).toBe("UAH");
+    expect(isSupportedCurrency("UAH")).toBe(false);
+    expect(isSupportedCurrency(currencyForCountry("MD"))).toBe(false);
+    // Kraj obsługiwany przechodzi bez przeszkód.
+    expect(isSupportedCurrency(currencyForCountry("CZ"))).toBe(true);
   });
 });

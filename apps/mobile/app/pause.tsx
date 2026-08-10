@@ -10,6 +10,7 @@
  * udawać, że zapisano, mówimy wprost, że trzeba zasięgu.
  */
 import { getActiveMembership, insertPauseEvent, listFuelCardsForUser } from "@e-logistic/api";
+import type { Currency } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -23,7 +24,13 @@ import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 
-const CURRENCIES = ["PLN", "EUR", "GBP", "CZK"] as const;
+/**
+ * [#388] Skrót do czterech walut, ale **typowany kodami z rdzenia** (`Currency`).
+ * Ekran wpisywany jedną ręką w kabinie nie może pokazywać dziesięciu chipów,
+ * więc podzbiór zostaje — natomiast literówka albo kod bez notowania w EBC
+ * przestaje się kompilować, zamiast tworzyć wpis nie do przeliczenia.
+ */
+const CURRENCIES: readonly Currency[] = ["PLN", "EUR", "GBP", "CZK"];
 /** Zgodne z `_is_payment_method` z migracji 0095. */
 const PAYMENTS = ["cash", "card", "toll_box", "snap", "travis", "other"] as const;
 /** Etykiety metod płatności — krótkie, bez tłumaczenia (nazwy własne usług). */
