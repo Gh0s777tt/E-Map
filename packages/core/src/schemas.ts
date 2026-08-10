@@ -112,6 +112,33 @@ export const vehicleSchema = z.object({
 });
 export type VehicleInput = z.infer<typeof vehicleSchema>;
 
+// ── Linki firmowe ───────────────────────────────────────────────────
+
+/**
+ * [#404] Skrót do strony zewnętrznej (portal myta, prom, ubezpieczyciel).
+ *
+ * `url` sprawdzany REGEXEM na `http(s)`, a nie samym `z.url()`. Powód jest
+ * bezpieczeństwem, nie estetyką: `z.url()` przyjmuje także `javascript:alert(1)`
+ * i `data:text/html,...`, a ten adres aplikacja kierowcy otwiera jednym
+ * dotknięciem. Ten sam warunek stoi jako CHECK w bazie (migracja 0109) — obie
+ * warstwy muszą się zgadzać, bo inaczej formularz przyjmuje coś, co baza odrzuci.
+ */
+export const companyLinkSchema = z.object({
+  label: z.string().trim().min(1).max(60),
+  url: z
+    .string()
+    .trim()
+    .regex(/^https?:\/\/.+/i, "Adres musi zaczynać się od http:// lub https://")
+    .max(2000),
+  /** Emoji albo krótki znak — kierowca szuka wzrokiem ikony, nie tekstu. */
+  icon: z.string().trim().max(8).optional(),
+  note: z.string().trim().max(200).optional(),
+  /** `true` = tylko owner/dispatcher; `false` = każdy członek firmy. */
+  managementOnly: z.boolean().default(false),
+  sortOrder: z.number().int().min(0).max(9999).default(0),
+});
+export type CompanyLinkInput = z.infer<typeof companyLinkSchema>;
+
 // ── Karta paliwowa ──────────────────────────────────────────────────
 
 export const fuelCardSchema = z.object({

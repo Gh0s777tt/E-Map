@@ -311,6 +311,20 @@ export const en: Record<MessageKey, string> = {
   "fleet.state.planned": "Planned",
   "fleet.state.idle": "Idle",
 
+  "links.title": "Company links",
+  "links.subtitle":
+    "Shortcuts your drivers will see in the app: toll portal, ferry booking, claim reporting, customer check-in. Enter once — the driver no longer retypes an address from memory at a truck stop.",
+  "links.empty": "No links yet. Add the first one — drivers will see it in the app.",
+  "links.add": "Add link",
+  "links.saved": "Link saved.",
+  "links.saveError": "Could not save the link.",
+  "links.deleteConfirm": "Delete this link?",
+  "links.managementOnly": "management only",
+  "links.managementOnlyHint": "Visible to owner and dispatcher only",
+  "links.labelPlaceholder": "Name, e.g. Austria toll (ASFINAG)",
+  "links.notePlaceholder": "Short note, e.g. pay before entry",
+  "links.moveUp": "Move up",
+  "links.moveDown": "Move down",
   "settings.subtitle":
     "Account security — two-factor authentication (2FA) with a code from an app (Google Authenticator, Authy, 1Password…).",
   "settings.company.title": "🏢 Company details (seller on invoices/CMR)",

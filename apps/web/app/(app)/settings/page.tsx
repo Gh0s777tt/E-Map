@@ -1,12 +1,18 @@
 "use client";
 
 import {
+  type CompanyLink,
+  deleteCompanyLink,
   deleteMyAccount,
   getAccountDeletionPreview,
   getCompany,
+  insertCompanyLink,
+  listCompanyLinks,
   updateCompany,
+  updateCompanyLink,
   wipeCompanyData,
 } from "@e-logistic/api";
+import { companyLinkSchema, firstZodError } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
@@ -41,6 +47,97 @@ export default function SettingsPage() {
   // Dane firmy (sprzedawca na fakturach/CMR) — edycja tylko dla właściciela.
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+
+  /**
+   * [#404] Linki firmowe — skróty, które właściciel definiuje dla kierowców.
+   *
+   * Dziś przewoźnik wysyła adres portalu myta czy awizacji na czacie albo
+   * dyktuje przez telefon, a kierowca przepisuje go z pamięci na parkingu.
+   * Tu wpisuje się go raz.
+   */
+  const [links, setLinks] = useState<CompanyLink[]>([]);
+  const [linkForm, setLinkForm] = useState<{
+    id: string | null;
+    label: string;
+    url: string;
+    icon: string;
+    note: string;
+    managementOnly: boolean;
+  } | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+
+  const reloadLinks = useCallback(async (id: string) => {
+    setLinks(await listCompanyLinks(getBrowserSupabase(), id).catch(() => []));
+  }, []);
+
+  async function saveLink() {
+    if (!companyId || !linkForm || linkBusy) return;
+    const parsed = companyLinkSchema.safeParse({
+      label: linkForm.label,
+      url: linkForm.url,
+      icon: linkForm.icon.trim() || undefined,
+      note: linkForm.note.trim() || undefined,
+      managementOnly: linkForm.managementOnly,
+      // Nowy link ląduje na końcu listy; kolejność zmienia się strzałkami.
+      sortOrder: linkForm.id
+        ? (links.find((l) => l.id === linkForm.id)?.sort_order ?? 0)
+        : links.length,
+    });
+    if (!parsed.success) {
+      toast(firstZodError(parsed.error), "error");
+      return;
+    }
+    setLinkBusy(true);
+    try {
+      const sb = getBrowserSupabase();
+      if (linkForm.id) await updateCompanyLink(sb, linkForm.id, parsed.data);
+      else await insertCompanyLink(sb, parsed.data, companyId);
+      await reloadLinks(companyId);
+      setLinkForm(null);
+      toast(t("links.saved"), "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("links.saveError"), "error");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  async function removeLink(id: string) {
+    if (!companyId) return;
+    if (!(await confirm(t("links.deleteConfirm")))) return;
+    try {
+      await deleteCompanyLink(getBrowserSupabase(), id);
+      await reloadLinks(companyId);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("links.saveError"), "error");
+    }
+  }
+
+  /** Przesuwa link o jedno miejsce; zapisujemy OBA zamieniane wiersze. */
+  async function moveLink(id: string, kierunek: -1 | 1) {
+    if (!companyId) return;
+    const i = links.findIndex((l) => l.id === id);
+    const j = i + kierunek;
+    const a = links[i];
+    const b = links[j];
+    if (!a || !b) return;
+    try {
+      const sb = getBrowserSupabase();
+      const wspolne = (l: CompanyLink, order: number) => ({
+        label: l.label,
+        url: l.url,
+        icon: l.icon ?? undefined,
+        note: l.note ?? undefined,
+        managementOnly: l.management_only,
+        sortOrder: order,
+      });
+      await updateCompanyLink(sb, a.id, wspolne(a, b.sort_order));
+      await updateCompanyLink(sb, b.id, wspolne(b, a.sort_order));
+      await reloadLinks(companyId);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("links.saveError"), "error");
+    }
+  }
   const [exporting, setExporting] = useState(false);
   const [cName, setCName] = useState("");
   const [cTaxId, setCTaxId] = useState("");
@@ -67,6 +164,8 @@ export default function SettingsPage() {
       const m = await getCachedMembership(sb);
       if (!m) return;
       setIsOwner(m.role === "owner");
+      // [#404] Linki ładujemy razem z resztą ustawień — RLS sam zawęzi zbiór.
+      void reloadLinks(m.companyId);
       setCompanyId(m.companyId);
       const c = await getCompany(sb, m.companyId);
       if (c) {
@@ -83,7 +182,11 @@ export default function SettingsPage() {
     } catch {
       // brak firmy / dostępu
     }
-  }, []);
+    // [#404] `reloadLinks` w zależnościach — jest stabilne (`useCallback` z pustą
+    // listą), więc nie powoduje ponownych wywołań, ale bez wpisania go tutaj
+    // reguła wyczerpujących zależności jest złamana, a to właśnie ona chroni
+    // przed domknięciem trzymającym nieaktualny stan.
+  }, [reloadLinks]);
 
   async function saveCompany() {
     if (!companyId) return;
@@ -407,6 +510,135 @@ export default function SettingsPage() {
 
       {companyId && isOwner && (
         <div style={styles.card}>
+          <strong style={{ fontSize: 16 }}>🔗 {t("links.title")}</strong>
+          <p style={{ color: palette.smoke, fontSize: 13, margin: "6px 0 10px", lineHeight: 1.6 }}>
+            {t("links.subtitle")}
+          </p>
+
+          {links.length === 0 && (
+            <p style={{ color: palette.smoke, fontSize: 13 }}>{t("links.empty")}</p>
+          )}
+
+          {links.map((l, i) => (
+            <div key={l.id} style={styles.linkRow}>
+              <span style={{ fontSize: 18, width: 24 }}>{l.icon || "🔗"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ fontSize: 14 }}>{l.label}</strong>
+                {l.management_only && (
+                  <span style={styles.linkBadge}>{t("links.managementOnly")}</span>
+                )}
+                <div style={styles.linkUrl}>{l.url}</div>
+                {l.note && <div style={{ color: palette.smoke, fontSize: 12 }}>{l.note}</div>}
+              </div>
+              {/* Strzałki zamiast przeciągania: lista ma kilkanaście pozycji,
+                  a przeciąganie na telefonie w rękawicach nie działa. */}
+              <button
+                type="button"
+                style={styles.linkMove}
+                disabled={i === 0}
+                onClick={() => moveLink(l.id, -1)}
+                aria-label={t("links.moveUp")}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                style={styles.linkMove}
+                disabled={i === links.length - 1}
+                onClick={() => moveLink(l.id, 1)}
+                aria-label={t("links.moveDown")}
+              >
+                ↓
+              </button>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  setLinkForm({
+                    id: l.id,
+                    label: l.label,
+                    url: l.url,
+                    icon: l.icon ?? "",
+                    note: l.note ?? "",
+                    managementOnly: l.management_only,
+                  })
+                }
+              >
+                {t("common.edit")}
+              </Button>
+              <Button variant="ghost" onClick={() => removeLink(l.id)}>
+                {t("common.delete")}
+              </Button>
+            </div>
+          ))}
+
+          {linkForm ? (
+            <div style={styles.linkForm}>
+              <input
+                style={styles.input}
+                placeholder={t("links.labelPlaceholder")}
+                value={linkForm.label}
+                onChange={(e) => setLinkForm({ ...linkForm, label: e.target.value })}
+              />
+              <input
+                style={styles.input}
+                placeholder="https://…"
+                value={linkForm.url}
+                onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  style={{ ...styles.input, width: 70 }}
+                  placeholder="🛣️"
+                  maxLength={8}
+                  value={linkForm.icon}
+                  onChange={(e) => setLinkForm({ ...linkForm, icon: e.target.value })}
+                />
+                <input
+                  style={{ ...styles.input, flex: 1 }}
+                  placeholder={t("links.notePlaceholder")}
+                  value={linkForm.note}
+                  onChange={(e) => setLinkForm({ ...linkForm, note: e.target.value })}
+                />
+              </div>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={linkForm.managementOnly}
+                  onChange={(e) => setLinkForm({ ...linkForm, managementOnly: e.target.checked })}
+                />
+                {t("links.managementOnlyHint")}
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button onClick={saveLink} disabled={linkBusy}>
+                  {t("common.save")}
+                </Button>
+                <Button variant="ghost" onClick={() => setLinkForm(null)}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setLinkForm({
+                  id: null,
+                  label: "",
+                  url: "",
+                  icon: "",
+                  note: "",
+                  managementOnly: false,
+                })
+              }
+            >
+              ➕ {t("links.add")}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {companyId && isOwner && (
+        <div style={styles.card}>
           <strong style={{ fontSize: 16 }}>Eksport danych firmy</strong>
           <p style={{ color: palette.smoke, fontSize: 13, margin: "6px 0 10px" }}>
             Jeden plik Excel (.xlsx) ze wszystkim: kontrahenci, pojazdy, kierowcy, zlecenia, koszty,
@@ -711,6 +943,46 @@ export default function SettingsPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  // [#404] Linki firmowe.
+  linkRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 0",
+    borderTop: `1px solid ${palette.graphite}`,
+  },
+  linkUrl: {
+    color: palette.smoke,
+    fontSize: 12,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  linkBadge: {
+    marginLeft: 8,
+    fontSize: 11,
+    color: palette.warning,
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 6,
+    padding: "1px 6px",
+  },
+  linkMove: {
+    background: "transparent",
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    width: 30,
+    height: 30,
+    cursor: "pointer",
+  },
+  linkForm: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTop: `1px solid ${palette.graphite}`,
+  },
   card: {
     marginTop: 20,
     padding: 20,

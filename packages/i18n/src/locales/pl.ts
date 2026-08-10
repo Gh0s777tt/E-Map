@@ -307,6 +307,20 @@ export const pl = {
   "fleet.state.planned": "Zaplanowane",
   "fleet.state.idle": "Wolny",
 
+  "links.title": "Linki firmowe",
+  "links.subtitle":
+    "Skróty, które zobaczą kierowcy w aplikacji: portal myta, rezerwacja promu, zgłoszenie szkody, awizacja u klienta. Wpisujesz raz — kierowca nie przepisuje adresu z pamięci na parkingu.",
+  "links.empty": "Brak linków. Dodaj pierwszy — pojawi się kierowcom w aplikacji.",
+  "links.add": "Dodaj link",
+  "links.saved": "Zapisano link.",
+  "links.saveError": "Nie udało się zapisać linku.",
+  "links.deleteConfirm": "Usunąć ten link?",
+  "links.managementOnly": "tylko zarząd",
+  "links.managementOnlyHint": "Widoczny tylko dla właściciela i dyspozytora",
+  "links.labelPlaceholder": "Nazwa, np. Myto Austria (ASFINAG)",
+  "links.notePlaceholder": "Krótkie wyjaśnienie, np. opłata przed wjazdem",
+  "links.moveUp": "Wyżej",
+  "links.moveDown": "Niżej",
   "settings.subtitle":
     "Bezpieczeństwo konta — weryfikacja dwuetapowa (2FA) kodem z aplikacji (Google Authenticator, Authy, 1Password…).",
   "settings.company.title": "🏢 Dane firmy (sprzedawca na fakturach/CMR)",

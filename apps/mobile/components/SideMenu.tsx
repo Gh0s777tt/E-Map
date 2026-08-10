@@ -65,6 +65,8 @@ const GROUPS: Group[] = [
       { glyph: "🧳", labelKey: "m.screen.perDiem", href: "/per-diem", module: "settlements" },
       { glyph: "💰", labelKey: "m.screen.payouts", href: "/payouts", module: "settlements" },
       { glyph: "🛢", labelKey: "m.screen.fuelPrices", href: "/fuel-prices" },
+      // [#404] Skróty od właściciela: myto, promy, awizacja.
+      { glyph: "🔗", labelKey: "m.screen.links", href: "/links" },
       { glyph: "📊", labelKey: "m.screen.stats", href: "/stats", module: "stats" },
     ],
   },

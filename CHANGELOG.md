@@ -2,13 +2,59 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-403-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.241.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-404-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.242.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.242.0] — 🔗 Linki firmowe: koniec dyktowania adresu przez telefon
+
+Drugi z nietkniętych punktów backlogu. Funkcja mała, ale zdejmuje z kierowcy czynność,
+którą i tak wykonuje — tylko gorzej.
+
+- `[#404]` **Właściciel definiuje skróty, kierowca ma je w aplikacji**
+  (migracja [0109](supabase/migrations/0109_company_links.sql),
+  [companyLinks.ts](packages/api/src/data/companyLinks.ts),
+  sekcja w [ustawieniach](apps/web/app/(app)/settings/page.tsx),
+  ekran [links.tsx](apps/mobile/app/links.tsx)).
+
+  Kierowca w trasie potrzebuje kilku adresów, które nie należą do tej aplikacji i nigdy
+  nie będą: portal myta (ASFINAG, Toll Collect, viaTOLL), rezerwacja promu, zgłoszenie
+  szkody u ubezpieczyciela, awizacja u konkretnego klienta. Dotąd każdy przewoźnik
+  rozwiązywał to identycznie — wysyłał link na czacie albo dyktował przez telefon,
+  a kierowca przepisywał go z pamięci na parkingu, w rękawicach, przy złym zasięgu.
+
+  Nazwa, adres, emoji i krótkie wyjaśnienie „do czego to jest" — bo link do portalu myta
+  bez podpisu „opłata przed wjazdem do Austrii" niczego nie tłumaczy komuś, kto jedzie
+  tam pierwszy raz. Kolejność ustawia właściciel strzałkami: `ASFINAG` przed `viaTOLL`
+  ma wynikać z tego, gdzie flota jeździ, a nie z alfabetu.
+
+  **Dwa stopnie widoczności**, nie trzy: wszyscy albo tylko zarząd. Trzeci stopień
+  oznaczałby wejście w matrycę uprawnień, a ta czeka na Twoją decyzję (`#393`) —
+  wolę zostawić tu dwa działające niż trzy, z których jeden byłby pozorny.
+  **Sprawdzone doświadczalnie** na produkcji (transakcja zakończona ROLLBACK, rola
+  zmieniona na czas testu): kierowca widzi link ogólny, a zarządowego nie widzi.
+
+  **`url` sprawdzany regexem na `http(s)` w OBU warstwach** — schemat Zod i CHECK
+  w bazie. To nie estetyka: `z.url()` przyjmuje także `javascript:alert(1)`
+  i `data:text/html,…`, a ten adres aplikacja kierowcy otwiera jednym dotknięciem.
+
+  Świadomie **wąski zakres**, żeby nie zrobić z tego drugiego CMS-a: bez folderów
+  (lista wystarcza przy kilkunastu pozycjach, a kilkuset nikt tu nie doda), bez
+  uprawnień per link, bez śledzenia kliknięć — to skrót do cudzej strony, nie kampania.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1036** ✓ · `next build` ✓ · `docs:check` ✓ ·
+migracja 0109 zastosowana, RLS zweryfikowany na obu rolach
+
+> Ekranów nie oglądałem w przeglądarce ani na telefonie — wymagają zalogowania.
+> Zweryfikowane: RLS zapytaniem na żywej bazie, reszta kompilacją i testami.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

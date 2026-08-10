@@ -329,6 +329,47 @@ export interface Database {
         };
         Relationships: [];
       };
+      // [#404] Migracja 0109. Dopisane ręcznie: `pnpm gen:types` wymaga poświadczeń
+      // do bazy, których nie ma w tym środowisku. Kształt odpowiada migracji 1:1.
+      company_links: {
+        Row: {
+          id: string;
+          company_id: string;
+          label: string;
+          url: string;
+          icon: string | null;
+          note: string | null;
+          management_only: boolean;
+          sort_order: number;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          label: string;
+          url: string;
+          icon?: string | null;
+          note?: string | null;
+          management_only?: boolean;
+          sort_order?: number;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          label?: string;
+          url?: string;
+          icon?: string | null;
+          note?: string | null;
+          management_only?: boolean;
+          sort_order?: number;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       companies: {
         Row: {
           id: string;

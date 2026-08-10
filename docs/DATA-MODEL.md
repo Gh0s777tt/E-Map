@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.241.0** (#403 — 110 migracji; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
+> Status: **wdrożone** · stan kodu **v1.242.0** (#404 — 111 migracji; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -94,6 +94,11 @@ opisywał stan rzeczywisty, a nie zamierzony. Gwiazdka `*` oznacza `NOT NULL`.
 - **`vat_rates`** — `(country_code*, valid_from*)`, `rate*`, **`fuel_refundable*`** (`false` dla GB/CH/NO). `pickVatRate` zwraca `null` dla zdarzeń sprzed najstarszego wpisu — to znaczy „nie znamy stawki" i **musi wyglądać inaczej na ekranie** niż `0` („kraj nie zwraca").
 
 **Kierowca w terenie**
+- **`company_links`** (0109, #404) — skróty do stron zewnętrznych definiowane przez
+  właściciela (myto, promy, ubezpieczyciel, awizacja). `management_only` daje dwa stopnie
+  widoczności: wszyscy członkowie / tylko owner+dispatcher. `url` ma CHECK na `^https?://`
+  — ten sam warunek co schemat Zod, bo adres jest otwierany jednym dotknięciem w aplikacji
+  kierowcy, a `javascript:` albo `data:` nie mogą tam trafić.
 - **`driver_positions`** — ostatnia znana pozycja (`lat*`, `lng*`, `speed_kmh`, `heading`); jeden wiersz na
   użytkownika, nadpisywany. **RLS UPDATE ma `WITH CHECK` (0101)** — wcześniej polityka miała samo `USING
   (user_id = auth.uid())`, a `company_id` nie występował w warunku w ogóle, więc kierowca mógł przepiąć
