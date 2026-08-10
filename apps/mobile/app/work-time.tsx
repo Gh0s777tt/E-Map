@@ -12,6 +12,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 import { Card, SectionTitle, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
+import { pelneNazwisko } from "../lib/useProfile";
 
 // Ewidencja trzyma czas w GODZINACH (dziesiętnie), jak web/.ddd/checklist (min→h przez /60).
 // Poprzednio dzielone /60 (jak minuty) → licznik pokazywał ~0; teraz godziny→min i rozbicie.
@@ -54,7 +55,16 @@ export default function WorkTimeScreen() {
         const me = await getMyDriverIdentity(sb).catch(() => null);
         setLinked(Boolean(me?.id));
         setEntries(
-          me?.id ? await listWorkTimeEntries(sb, m.companyId, { driverId: me.id, limit: 90 }) : [],
+          // [#397] Nazwisko obok kartoteki: wpisy z importu `.ddd` mają wyłącznie
+          // `driver_name`, więc filtr po samym `driver_id` gubił godziny z tachografu
+          // — a razem z nimi alarm przekroczenia WTD, który nie zapaliłby się nigdy.
+          me?.id
+            ? await listWorkTimeEntries(sb, m.companyId, {
+                driverId: me.id,
+                driverName: pelneNazwisko(me),
+                limit: 90,
+              })
+            : [],
         );
       }
     } catch (e) {

@@ -163,8 +163,20 @@ export default function InvoicesPage() {
       t("invoices.csv.vat"),
       t("invoices.csv.gross"),
       t("orders.csv.currency"),
+      // [#398] Status w pliku. Bez niego anulowana faktura wygląda w arkuszu
+      // dokładnie tak samo jak wystawiona — a różni je to, czy w ogóle istnieje.
+      t("invoices.csv.status"),
     ];
-    const rows = invoices.map((i) => [
+    /*
+     * [#398] Eksportujemy TO, CO WIDAĆ NA EKRANIE (`filtered`), a nie cały zbiór.
+     *
+     * Wcześniej szedł surowy `invoices`: użytkownik zawężał listę do
+     * nieopłaconych, klikał „eksportuj" i dostawał plik ze wszystkimi fakturami,
+     * łącznie z anulowanymi — bez kolumny statusu, więc bez szansy je odsiać
+     * w arkuszu. Eksport ma potwierdzać to, co użytkownik przed chwilą wybrał;
+     * inny zbiór pod tym samym przyciskiem to pułapka, nie funkcja.
+     */
+    const rows = filtered.map(({ inv: i }) => [
       i.number,
       i.issue_date,
       i.buyer_name ?? "",
@@ -173,6 +185,7 @@ export default function InvoicesPage() {
       i.vat_amount,
       i.gross,
       i.currency,
+      i.status,
     ]);
     downloadCsv(`faktury_${csvDateStamp()}.csv`, headers, rows);
   }
@@ -187,7 +200,7 @@ export default function InvoicesPage() {
    * zawyżona o kurs — to liczba, która nie istnieje w żadnej walucie, a szła
    * prosto do księgowości jako podstawa rejestru VAT.
    */
-  function exportVatRegister() {
+  async function exportVatRegister() {
     const headers = [
       t("invoices.csv.number"),
       t("common.date"),
@@ -202,17 +215,68 @@ export default function InvoicesPage() {
     const inMonth = invoices.filter(
       (i) => i.status !== "cancelled" && (i.issue_date ?? "").startsWith(vatMonth),
     );
-    const rows: (string | number)[][] = inMonth.map((i) => [
-      i.number,
-      i.issue_date,
-      i.buyer_name ?? "",
-      i.buyer_tax_id ?? "",
-      i.vat_rate,
-      i.net,
-      i.vat_amount,
-      i.gross,
-      i.currency,
-    ]);
+
+    /*
+     * [#398] Stawka z POZYCJI, nie z nagłówka faktury.
+     *
+     * Nagłówkowe `invoices.vat_rate` opisuje fakturę jednorodną. Faktura mieszana
+     * — fracht 23% plus refaktura opłaty drogowej 0%, w tej branży rzecz zwykła —
+     * ma pozycje o RÓŻNYCH stawkach, a w nagłówku zostaje jedna z nich. Rejestr
+     * VAT budowany z nagłówka wpisywał więc całą kwotę pod tę jedną stawkę:
+     * podatek naliczony od kwoty, która mu nie podlega, albo odwrotnie.
+     *
+     * To trafia wprost do księgowości i do deklaracji, więc bierzemy pozycje
+     * i wystawiamy po jednym wierszu na (faktura, stawka).
+     *
+     * Faktury BEZ pozycji (wystawione jednym opisem — `create_invoice` tak potrafi)
+     * zachowują się jak dotąd: jeden wiersz z nagłówka. To nie jest przybliżenie
+     * — dla faktury bez pozycji nagłówek JEST pełną informacją o stawce.
+     */
+    const pozycjeFaktur = await Promise.all(
+      inMonth.map((i) => listInvoiceItems(getBrowserSupabase(), i.id).catch(() => [])),
+    );
+
+    const rows: (string | number)[][] = [];
+    inMonth.forEach((i, idx) => {
+      const pozycje = pozycjeFaktur[idx] ?? [];
+      if (pozycje.length === 0) {
+        rows.push([
+          i.number,
+          i.issue_date,
+          i.buyer_name ?? "",
+          i.buyer_tax_id ?? "",
+          i.vat_rate,
+          i.net,
+          i.vat_amount,
+          i.gross,
+          i.currency,
+        ]);
+        return;
+      }
+      // Grupowanie po stawce: jedna faktura z dwiema stawkami daje dwa wiersze,
+      // co jest dokładnie tym, czego oczekuje rejestr VAT.
+      const wgStawki = new Map<number, { net: number; vat: number; gross: number }>();
+      for (const poz of pozycje) {
+        const biezace = wgStawki.get(poz.vat_rate) ?? { net: 0, vat: 0, gross: 0 };
+        biezace.net += Number(poz.net);
+        biezace.vat += Number(poz.vat_amount);
+        biezace.gross += Number(poz.gross);
+        wgStawki.set(poz.vat_rate, biezace);
+      }
+      for (const [stawka, kwoty] of [...wgStawki.entries()].sort(([a], [b]) => a - b)) {
+        rows.push([
+          i.number,
+          i.issue_date,
+          i.buyer_name ?? "",
+          i.buyer_tax_id ?? "",
+          stawka,
+          round2(kwoty.net),
+          round2(kwoty.vat),
+          round2(kwoty.gross),
+          i.currency,
+        ]);
+      }
+    });
     // Blok podsumowań per waluta — i kolumna waluty wypełniona także w wierszach
     // zbiorczych, żeby po otwarciu pliku w arkuszu nie dało się ich pomylić.
     for (const code of [...new Set(inMonth.map((i) => curCode(i.currency)))].sort()) {

@@ -2,13 +2,106 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-396-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.238.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-399-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.239.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.239.0] — 🔍 Trzecia runda audytu — i dwa trafienia w moją własną robotę
+
+Pierwsza runda, w której weryfikatorzy **coś obalili** (2 z 12). Obiektyw wycelowany
+w zmiany z tej sesji znalazł dwie rzeczy, które sam popsułem — i o to w nim chodziło.
+
+### Moje własne błędy
+
+- `[#397]` **Regresja, którą wprowadziła poprawka `[#389]`** ([workTimeEntries.ts](packages/api/src/data/workTimeEntries.ts)).
+  Zawężenie ewidencji czasu pracy do `driver_id` wyglądało na oczywiste — ale wpisy
+  powstają dwiema drogami. Ręczny wpis z panelu ustawia kartotekę; **import pliku `.ddd`
+  z karty kierowcy ustawia tylko `driver_name`**, bo plik zna kierowcę po nazwisku
+  z karty, nie po naszym UUID.
+
+  Dane z tachografu stały się więc dla kierowcy niewidoczne: ekran „Czas pracy" pokazywał
+  0 h, a status WTD 2002/15/WE liczył się z pustego zbioru — **alarm przekroczenia nie
+  zapaliłby się nigdy**. To gorsze niż stan sprzed `[#389]`, gdzie alarm zapalał się
+  fałszywie: ostrzeżenie nadmiarowe da się zauważyć, brakującego nie.
+
+  Wiersz jest mój, jeśli wskazuje na moją kartotekę **albo** nie ma kartoteki w ogóle
+  i zgadza się nazwisko. Warunek „bez kartoteki" jest istotny — bez niego dopasowanie po
+  nazwisku przyciągałoby wpisy przypisane wprost do kogoś innego, a imiennicy w firmie
+  transportowej nie są rzadkością.
+
+- `[#397]` **Test, który niczego nie pilnował** ([outbox.test.ts](apps/web/lib/outbox.test.ts)).
+  Test „usunięcie wpisu w trakcie synchronizacji nie wskrzesza go" zaciskał bramkę
+  dopiero PO zakolejkowaniu, więc wpis miał już status `synced`, a `trySync` wychodził
+  od razu na strażniku — nigdy nie docierał do miejsca, które test miał sprawdzać.
+  Końcową asercję spełniało samo `removeOutbox`.
+
+  Sprawdziłem to mutacją: po przywróceniu starego `write(items)` **test przechodził**.
+  Po poprawce oba testy padają na mutancie i przechodzą na kodzie naprawionym — teraz
+  faktycznie coś pilnują.
+
+  Przy okazji wyszła rzecz o mnie: skrypt nakładający poprawki **przerwał się w połowie**
+  na nietrafionej asercji, a ja uznałem, że wszystkie edycje weszły. Stąd pierwszy wynik
+  mutacji, który mi się nie zgadzał. Nie zgadywałem, tylko dołożyłem sondę — i to ona
+  pokazała, że plik testu jest niezmieniony.
+
+### Księgowość
+
+- `[#398]` **Rejestr VAT brał stawkę z nagłówka faktury, ignorując stawki pozycji**
+  ([invoices/page.tsx](apps/web/app/(app)/invoices/page.tsx)). Faktura mieszana — fracht
+  23% plus refaktura opłaty drogowej 0%, w tej branży rzecz zwykła — ma pozycje o różnych
+  stawkach, a w nagłówku zostaje jedna z nich. Cała kwota szła więc do rejestru pod tę
+  jedną stawkę: podatek naliczony od kwoty, która mu nie podlega, albo odwrotnie.
+  To trafia wprost do deklaracji.
+
+  Teraz jeden wiersz na parę (faktura, stawka), a faktury bez pozycji zachowują się jak
+  dotąd — dla nich nagłówek JEST pełną informacją o stawce, więc to nie przybliżenie.
+
+- `[#398]` **Eksport listy faktur pomijał filtr z ekranu.** Użytkownik zawężał listę do
+  nieopłaconych, klikał „eksportuj" i dostawał plik ze wszystkimi fakturami, łącznie
+  z anulowanymi — bez kolumny statusu, więc bez szansy je odsiać w arkuszu. Eksport ma
+  potwierdzać to, co użytkownik przed chwilą wybrał.
+
+- `[#399]` **Kanał powiadomień zakładany po odmontowaniu komponentu**
+  ([NotificationBell.tsx](apps/web/components/NotificationBell.tsx)). Subskrypcja powstaje
+  po kilku `await`; jeśli komponent zniknie w tym czasie — a znika przy każdym odczytaniu
+  powiadomienia — sprzątanie wykonuje się, gdy kanału jeszcze nie ma, a chwilę później
+  kanał powstaje i nikt go już nie zamyka. Przy panelu otwartym cały dzień zbiera się
+  kilkadziesiąt osieroconych subskrypcji.
+
+### Znalezisko, które odrzuciłem mimo „potwierdzenia"
+
+`damage_claims` rzekomo zostawiało dowody szkody w buckecie po usunięciu wpisu.
+Sprawdziłem schemat na żywej bazie: tabela **nie ma żadnej kolumny na plik**, a ekran
+szkód niczego nie wgrywa. Usunięcie szkody nie może osierocić plików, bo szkoda ich nie
+posiada. Agent i weryfikator pomylili się oba — weryfikator „potwierdził" prawdziwe, ale
+puste spostrzeżenie, że `deleteDamageClaim` nie dotyka Storage.
+
+### Co ZOSTAJE (opisane, nie ukryte)
+
+`[#400]` **Pliki w Storage nie są kasowane przy usuwaniu firmy ani konta** — `_company_purge`
+kasuje wiersze, ale ani jednego obiektu z bucketów `documents` i `cargo-photos`. Naprawa
+NIE jest jednym `delete from storage.objects`: to kasuje tylko metadane, a plik zostaje
+w S3 jako niepodpięty blob — gorzej niż dziś, bo znika nawet ewidencja. Potrzebna jest
+trasa serwerowa kasująca przez API Storage kluczem `service_role`. Dziś w buckecie jest
+**0 obiektów**, więc to luka do zamknięcia przed pozyskaniem ruchu, nie trwający incydent.
+
+`[#401]` Rozmowa nie dociąga wiadomości po powrocie telefonu z tła (Postgres Changes nie
+odtwarza zdarzeń po rejoinie) · `[#402]` okno zgody na usunięcie konta mówi „do skasowania
+N tankowań", a kod je odpina, nie kasuje — dla kierowcy nieprawda, dla właściciela prawda;
+6 ciągów do przeredagowania.
+
+**Audyt, runda 3:** 6 obiektywów · 18 agentów · 12 znalezisk · **2 obalone przez
+weryfikatorów** · 1 odrzucone przeze mnie po sprawdzeniu schematu.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1023** ✓ · `next build` ✓ · `docs:check` ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

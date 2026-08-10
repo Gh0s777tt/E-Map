@@ -19,6 +19,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native
 import { Card, SectionTitle, wide } from "../components/ui";
 import { useT } from "../lib/i18n";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
+import { pelneNazwisko } from "../lib/useProfile";
 
 const zl = (n: number) => `${n.toFixed(2).replace(".", ",")} zł`;
 
@@ -62,8 +63,14 @@ export default function SettlementScreen() {
         getSettlementSettings(sb, m.companyId),
         // Bez kartoteki nie ma czym filtrować — wtedy NIE pobieramy nic i mówimy
         // o tym wprost. Liczba policzona z cudzych dni jest gorsza niż jej brak.
+        // [#397] Jak w „Czas pracy": wpisy z importu `.ddd` nie mają kartoteki,
+        // więc bez nazwiska dni służby z tachografu nie weszłyby do rozliczenia.
         me?.id
-          ? listWorkTimeEntries(sb, m.companyId, { driverId: me.id, limit: 90 })
+          ? listWorkTimeEntries(sb, m.companyId, {
+              driverId: me.id,
+              driverName: pelneNazwisko(me),
+              limit: 90,
+            })
           : Promise.resolve([]),
       ]);
       setSettings(st);

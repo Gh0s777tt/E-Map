@@ -34,6 +34,21 @@ export function NotificationBell() {
   useEffect(() => {
     const sb = getBrowserSupabase();
     let channel: { unsubscribe: () => void } | null = null;
+    /*
+     * [#399] Znacznik życia efektu.
+     *
+     * Kanał zakładany jest PO kilku `await` (sesja, dogenerowanie przypomnień,
+     * odświeżenie listy). Jeśli komponent zniknie w tym czasie — a znika przy
+     * każdej zmianie `refresh`, czyli przy każdym odczytaniu powiadomienia —
+     * funkcja sprzątająca wykona się, gdy `channel` jest jeszcze `null`, i nie
+     * ma czego odsubskrybować. Chwilę później kod dobiega do końca i zakłada
+     * kanał, którego już nikt nie zamknie.
+     *
+     * Efekt narasta cicho: przy panelu otwartym przez cały dzień zbiera się
+     * kilkadziesiąt osieroconych subskrypcji, każda z własnym `refresh()`
+     * na każdym nowym powiadomieniu.
+     */
+    let zywy = true;
     (async () => {
       try {
         const {
@@ -50,6 +65,9 @@ export function NotificationBell() {
           // ignoruj
         }
         await refresh();
+        // Komponent mógł zniknąć w trakcie powyższych `await` — wtedy nie ma
+        // po co zakładać kanału, bo sprzątanie już się wykonało.
+        if (!zywy) return;
         channel = sb
           .channel("notifications")
           .on(
@@ -67,7 +85,10 @@ export function NotificationBell() {
         // offline / brak sesji
       }
     })();
-    return () => channel?.unsubscribe();
+    return () => {
+      zywy = false;
+      channel?.unsubscribe();
+    };
   }, [refresh]);
 
   const unread = items.filter((i) => !i.read_at).length;

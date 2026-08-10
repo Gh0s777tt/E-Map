@@ -414,6 +414,7 @@ export const pl = {
   "orders.csv.loadDate": "Załadunek",
   "orders.csv.unloadDate": "Rozładunek",
 
+  "invoices.csv.status": "Status",
   "invoices.csv.number": "Numer",
   "invoices.csv.buyer": "Nabywca",
   "invoices.csv.taxId": "NIP",

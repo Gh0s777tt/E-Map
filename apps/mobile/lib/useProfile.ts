@@ -68,3 +68,18 @@ export function useProfile(): Profile {
 export function initialOf(email: string | null): string {
   return (email?.trim()[0] ?? "?").toUpperCase();
 }
+
+/**
+ * [#397] Nazwisko w postaci, w jakiej trafia do `work_time_entries.driver_name`.
+ *
+ * Import pliku `.ddd` nie zna kartoteki i zapisuje sam `driver_name`, więc żeby
+ * kierowca zobaczył SWOJE godziny z tachografu, musimy umieć dopasować go po
+ * nazwisku. Sklejenie musi być identyczne jak w panelu (`${first} ${last}`.trim()),
+ * inaczej dopasowanie po prostu nie trafi.
+ */
+export function pelneNazwisko(
+  osoba: { firstName?: string | null; lastName?: string | null } | null | undefined,
+): string | undefined {
+  const pelne = `${osoba?.firstName ?? ""} ${osoba?.lastName ?? ""}`.trim();
+  return pelne.length > 0 ? pelne : undefined;
+}

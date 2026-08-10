@@ -417,6 +417,7 @@ export const en: Record<MessageKey, string> = {
   "orders.csv.loadDate": "Loading",
   "orders.csv.unloadDate": "Unloading",
 
+  "invoices.csv.status": "Status",
   "invoices.csv.number": "No.",
   "invoices.csv.buyer": "Buyer",
   "invoices.csv.taxId": "Tax ID",

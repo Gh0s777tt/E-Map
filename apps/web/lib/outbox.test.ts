@@ -102,21 +102,39 @@ describe("kolejka offline na webie — przeplatające się zapisy", () => {
      * użytkownik zdążył skasować, więc zapis go przywracał. Efekt dla
      * użytkownika: „skasowałem, a wrócił" — i nie dało się go usunąć trwale.
      */
-    await enqueue("fuel", { ...WPIS }, "2026-08-11T10:00:00.000Z");
-    const doUsuniecia = listOutbox("fuel")[0];
-    expect(doUsuniecia).toBeDefined();
-
+    /*
+     * [#397] Poprzednia wersja tego testu BYŁA BEZWARTOŚCIOWA: bramkę zaciskała
+     * dopiero PO `enqueue`, więc wpis miał już status `synced`, a ręczny `trySync`
+     * wychodził od razu na strażniku `if (item.status === "synced") return` —
+     * nigdy nie docierał do miejsca, które test miał sprawdzać. Końcową asercję
+     * spełniało samo `removeOutbox`, więc test przechodził także na kodzie z błędem.
+     * Sprawdzone mutacją: po przywróceniu starego `write(items)` test 1 padał,
+     * a ten przechodził.
+     *
+     * Teraz bramka zaciska się PRZED zakolejkowaniem, a asercja na statusie
+     * `queued` pilnuje, żeby nie zdegenerował się ponownie.
+     */
     let zwolnij: () => void = () => {};
     wstrzymaj = new Promise<void>((r) => {
       zwolnij = r;
     });
-    const synchronizacja = trySync(doUsuniecia?.id ?? "");
+
+    const synchronizacja = enqueue("fuel", { ...WPIS }, "2026-08-11T10:00:00.000Z");
     await Promise.resolve();
 
+    const doUsuniecia = listOutbox("fuel")[0];
+    // Dowód, że wpis NAPRAWDĘ wisi w trakcie synchronizacji — bez tego cały
+    // scenariusz jest pozorny i test niczego nie pilnuje.
+    expect(doUsuniecia?.status).toBe("queued");
+
     removeOutbox(doUsuniecia?.id ?? "");
+    expect(listOutbox("fuel")).toHaveLength(0);
+
     zwolnij();
     await synchronizacja;
 
+    // Dopiero tutaj zapada decyzja: `patchItem` widzi, że wpisu już nie ma,
+    // i NIE przywraca go. Stary `write(items)` wskrzesiłby go ze snapshotu.
     expect(listOutbox("fuel")).toHaveLength(0);
   });
 
