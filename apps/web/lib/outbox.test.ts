@@ -47,7 +47,11 @@ vi.mock("@e-logistic/api", () => ({
   insertTripEvent: async () => {},
 }));
 
-const { enqueue, listOutbox, removeOutbox, trySync } = await import("./outbox");
+// `trySync` celowo NIE jest importowany: po [#397] oba testy współbieżności
+// przechodzą przez `enqueue`, bo tylko ta droga zostawia wpis w statusie
+// `queued` w trakcie synchronizacji. Ręczne wołanie `trySync` na wpisie już
+// zsynchronizowanym wychodziło na strażniku i test niczego nie sprawdzał.
+const { enqueue, listOutbox, removeOutbox } = await import("./outbox");
 
 const WPIS = {
   vehicleId: "11111111-1111-4111-8111-111111111111",
