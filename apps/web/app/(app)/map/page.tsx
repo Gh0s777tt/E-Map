@@ -12,6 +12,7 @@ import {
   listDriverPositions,
   listDrivers,
   listSavedPlaces,
+  listVehicles,
   parkingSummaries,
   type SavedPlace,
   sendDriverRoute,
@@ -32,8 +33,12 @@ import {
   stationMatchesProviders,
 } from "@e-logistic/core";
 import {
+  ADR_TUNNEL_CODES,
+  type AdrTunnelCode,
   anyWithinKm,
   buildGridIndex,
+  EMISSION_CLASSES,
+  type EmissionClass,
   type FuelStationPrice,
   fetchPois,
   type GeoHit,
@@ -48,6 +53,7 @@ import {
   tomtomReverseGeocode,
   tomtomSearchAlongRoute,
   tomtomTrafficIncidents,
+  type VehicleProfile,
 } from "@e-logistic/maps";
 import { cssPalette, palette } from "@e-logistic/ui";
 import type { Map as MlMap, Marker as MlMarker } from "maplibre-gl";
@@ -71,7 +77,16 @@ import {
   savedFeatures,
   tollSectionFeatures,
 } from "./mapFeatures";
-import { FuelPricesPanel, RouteSummary, SavedPlacesChips, StopsEditor } from "./mapPanels";
+import {
+  FuelPricesPanel,
+  formatProfileDims,
+  MISSING_DIM_LABEL,
+  missingDimensions,
+  type PlannedProfile,
+  RouteSummary,
+  SavedPlacesChips,
+  StopsEditor,
+} from "./mapPanels";
 import {
   BASEMAPS,
   basemapStyle,
@@ -116,6 +131,81 @@ const CLICKABLE_LAYERS = [
  * (z licznikiem, ile ukryto), zamiast pokazywać je nieodróżnialnie od świeżych.
  */
 const STALE_POSITION_MIN = 30;
+
+/**
+ * [#385] Pojazd z kartoteki w zakresie, który wchodzi do profilu routingu.
+ *
+ * `null` znaczy „kolumna w kartotece pusta" i MA tak zostać aż do ekranu — podstawienie
+ * „typowej" wysokości 4 m czy pięciu osi byłoby zgadywaniem, a zgadywanie kończy się
+ * zestawem pod niskim wiaduktem albo mytem policzonym dla cudzej klasy pojazdu.
+ */
+interface RouteVehicle {
+  id: string;
+  registration: string;
+  heightCm: number | null;
+  widthCm: number | null;
+  lengthCm: number | null;
+  curbWeightKg: number | null;
+  maxPayloadKg: number | null;
+  axleCount: number | null;
+  adrTunnelCode: AdrTunnelCode | null;
+  emissionClass: EmissionClass | null;
+}
+
+type VehicleRow = Awaited<ReturnType<typeof listVehicles>>[number];
+
+/** `vehicles.adr_tunnel_code` to w bazie zwykły `text` z CHECK-iem — zawężamy do enumu. */
+function asAdrTunnelCode(v: string | null | undefined): AdrTunnelCode | null {
+  return (ADR_TUNNEL_CODES as readonly string[]).includes(v ?? "") ? (v as AdrTunnelCode) : null;
+}
+function asEmissionClass(v: string | null | undefined): EmissionClass | null {
+  return (EMISSION_CLASSES as readonly string[]).includes(v ?? "") ? (v as EmissionClass) : null;
+}
+
+function toRouteVehicle(v: VehicleRow): RouteVehicle {
+  return {
+    id: v.id,
+    registration: v.registration,
+    heightCm: v.height_cm ?? null,
+    widthCm: v.width_cm ?? null,
+    lengthCm: v.length_cm ?? null,
+    curbWeightKg: v.curb_weight_kg ?? null,
+    maxPayloadKg: v.max_payload_kg ?? null,
+    axleCount: v.axle_count ?? null,
+    adrTunnelCode: asAdrTunnelCode(v.adr_tunnel_code),
+    emissionClass: asEmissionClass(v.emission_class),
+  };
+}
+
+/**
+ * [#385] DMC = masa własna + ładowność. Liczymy TYLKO gdy znane są OBIE (wzorzec
+ * z `apps/mobile/lib/vehicleProfile.ts`): sama masa własna zaniża wynik dla załadowanego
+ * zestawu, a zaniżona masa to przejazd przez most z ograniczeniem tonażu.
+ */
+function grossWeightKg(v: RouteVehicle): number | null {
+  return v.curbWeightKg != null && v.maxPayloadKg != null ? v.curbWeightKg + v.maxPayloadKg : null;
+}
+
+/**
+ * [#385] Pole formularza → liczba albo BRAK. Puste, ujemne i nieliczbowe dają
+ * `undefined`, żeby parametr został POMINIĘTY w żądaniu zamiast polecieć jako zero.
+ * Dotąd było `Number(weightT) || 24` — czyszcząc pole dostawało się w ciszy 24 tony.
+ */
+function positiveNumber(v: string): number | undefined {
+  const raw = v.replace(",", ".").trim();
+  if (raw === "") return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+function positiveInt(v: string): number | undefined {
+  const n = positiveNumber(v);
+  return n == null ? undefined : Math.round(n);
+}
+
+/** Liczba do pola formularza; `null` z kartoteki zostaje pustym polem, nie zerem. */
+function fieldValue(n: number | null): string {
+  return n == null ? "" : String(n);
+}
 
 export default function MapPage() {
   const t = useT();
@@ -225,6 +315,22 @@ export default function MapPage() {
   const [widthCm, setWidthCm] = useState("255");
   const [lengthCm, setLengthCm] = useState("1650");
   const [axles, setAxles] = useState("5");
+  /**
+   * [#385] Wybór pojazdu z kartoteki. Do tej pory ekran wysyłał do routingu wyłącznie
+   * powyższe stałe ze stanu komponentu (24 t / 400 / 255 / 1650 cm / 5 osi), a panel
+   * wymiarów był domyślnie ZWINIĘTY — solówka i pięcioosiowy zestaw dostawały tę samą
+   * trasę i to samo myto, bo nikt tych pól nie otwierał.
+   *
+   * Pojazdy ładujemy tutaj, a nie przez `useFleet()`: ten hook wystawia tylko
+   * `{id, registration, maxPayloadKg}`, a do profilu potrzeba gabarytów, osi, ADR
+   * i klasy emisji. `listVehicles` robi `select("*")`, więc te kolumny i tak przychodzą.
+   */
+  const [fleet, setFleet] = useState<RouteVehicle[]>([]);
+  const [vehicleId, setVehicleId] = useState("");
+  const [adrTunnelCode, setAdrTunnelCode] = useState("");
+  const [emissionClass, setEmissionClass] = useState("");
+  /** Profil, którym policzono AKTUALNIE pokazaną trasę (nie ten z formularza — patrz `plan()`). */
+  const [plannedProfile, setPlannedProfile] = useState<PlannedProfile | null>(null);
   const [cardFilterOn, setCardFilterOn] = useState(false);
   const [cardProviders, setCardProviders] = useState<Set<FuelCardProvider>>(new Set());
   const [fuelPrices, setFuelPrices] = useState<FuelStationPrice[]>([]);
@@ -233,6 +339,91 @@ export default function MapPage() {
 
   // Marki kart użytkownika (odduplikowane) — do filtra stacji. Memo: nowa tablica tylko gdy zmienią się karty.
   const cardOptions = useMemo(() => Array.from(new Set(cards.map((c) => c.provider))), [cards]);
+
+  const selectedVehicle = useMemo(
+    () => fleet.find((v) => v.id === vehicleId) ?? null,
+    [fleet, vehicleId],
+  );
+
+  /**
+   * [#385] Profil, który NAPRAWDĘ poleci do `/api/route`: pola formularza (wypełnione
+   * z kartoteki przy wyborze pojazdu, potem swobodnie nadpisywalne). Puste pole = parametr
+   * POMINIĘTY, a nie zero i nie stała — dostawca ma wtedy własną wartość domyślną i to ona
+   * jest uczciwsza niż nasza zmyślona.
+   *
+   * Pusty `adrTunnelCode` znaczy „ładunek zwykły", a nie „nie wiemy" — zestaw bez ADR to
+   * normalny stan i nie ma o nim czego zgłaszać.
+   */
+  const truckProfile = useMemo<VehicleProfile>(() => {
+    const tons = positiveNumber(weightT);
+    const h = positiveInt(heightCm);
+    const w = positiveInt(widthCm);
+    const l = positiveInt(lengthCm);
+    const ax = positiveInt(axles);
+    const adr = asAdrTunnelCode(adrTunnelCode);
+    const emission = asEmissionClass(emissionClass);
+    return {
+      kind: "truck",
+      ...(tons != null ? { weightKg: Math.round(tons * 1000) } : {}),
+      ...(h != null ? { heightCm: h } : {}),
+      ...(w != null ? { widthCm: w } : {}),
+      ...(l != null ? { lengthCm: l } : {}),
+      ...(ax != null ? { axleCount: ax } : {}),
+      ...(adr ? { adrTunnelCode: adr } : {}),
+      ...(emission ? { emissionClass: emission } : {}),
+    };
+  }, [weightT, heightCm, widthCm, lengthCm, axles, adrTunnelCode, emissionClass]);
+
+  /** Braki w profilu wysyłanym do dostawcy — puste przy trasie osobowej (gabaryty nieużywane). */
+  const missingDims = useMemo(
+    () => (kindHeavy ? missingDimensions(truckProfile) : []),
+    [kindHeavy, truckProfile],
+  );
+
+  /**
+   * [#385] Czy formularz rozjechał się z kartoteką wybranego pojazdu. Nadpisanie jest
+   * dozwolone (spedytor liczy trasę dla zestawu, którego jeszcze nie ma w kartotece),
+   * ale nie może wyglądać tak samo jak dane z kartoteki — dlatego mówimy o nim wprost.
+   */
+  const profileOverridden = useMemo(() => {
+    const v = selectedVehicle;
+    if (!v) return false;
+    return (
+      truckProfile.heightCm !== (v.heightCm ?? undefined) ||
+      truckProfile.widthCm !== (v.widthCm ?? undefined) ||
+      truckProfile.lengthCm !== (v.lengthCm ?? undefined) ||
+      truckProfile.axleCount !== (v.axleCount ?? undefined) ||
+      truckProfile.weightKg !== (grossWeightKg(v) ?? undefined) ||
+      truckProfile.adrTunnelCode !== (v.adrTunnelCode ?? undefined) ||
+      truckProfile.emissionClass !== (v.emissionClass ?? undefined)
+    );
+  }, [selectedVehicle, truckProfile]);
+
+  /**
+   * [#385] Wybór pojazdu przepisuje kartotekę do pól formularza. Pusta kolumna zostaje
+   * PUSTYM polem — brak ma być widoczny, a nie zamaskowany dotychczasową stałą (inaczej
+   * po wybraniu solówki bez wpisanej wysokości w polu dalej stałoby „400" z poprzedniego auta).
+   *
+   * Gdy czegoś brakuje, panel wymiarów rozwijamy — zwinięty panel to dokładnie ten stan,
+   * w którym użytkownik wysyłał cudzy zestaw, nie swój.
+   */
+  function pickVehicle(id: string) {
+    setVehicleId(id);
+    const v = fleet.find((x) => x.id === id);
+    // „— bez pojazdu —": pola zostają takie, jakie są. Stają się wartościami ręcznymi,
+    // a pasek pod wyborem mówi wprost, że nie pochodzą z kartoteki.
+    if (!v) return;
+    const dmc = grossWeightKg(v);
+    setWeightT(dmc == null ? "" : String(dmc / 1000));
+    setHeightCm(fieldValue(v.heightCm));
+    setWidthCm(fieldValue(v.widthCm));
+    setLengthCm(fieldValue(v.lengthCm));
+    setAxles(fieldValue(v.axleCount));
+    setAdrTunnelCode(v.adrTunnelCode ?? "");
+    setEmissionClass(v.emissionClass ?? "");
+    const incomplete = v.heightCm == null || v.widthCm == null || v.lengthCm == null || dmc == null;
+    if (incomplete && kindHeavy) setDimsOpen(true);
+  }
 
   useEffect(() => {
     reportModeRef.current = reportMode;
@@ -249,7 +440,15 @@ export default function MapPage() {
         const m = await getCachedMembership(sb);
         if (!m) return;
         setCompanyId(m.companyId);
-        setSaved(await listSavedPlaces(sb, m.companyId));
+        // [#385] Kartoteka pojazdów obok zapisanych miejsc — jedno przejście po tej samej
+        // firmie. `catch` osobno dla floty: brak uprawnień do `vehicles` nie może zabrać
+        // użytkownikowi zapisanych miejsc (wybór pojazdu zostaje wtedy pustą listą).
+        const [places, vehicleRows] = await Promise.all([
+          listSavedPlaces(sb, m.companyId),
+          listVehicles(sb, m.companyId).catch(() => [] as VehicleRow[]),
+        ]);
+        setSaved(places);
+        setFleet(vehicleRows.map(toRouteVehicle));
       } catch {
         // offline / brak firmy → brak zapisanych miejsc
       }
@@ -1705,21 +1904,19 @@ export default function MapPage() {
     setBusy(true);
     try {
       const waypoints = override ?? stops.map((st) => ({ lat: st.lat, lng: st.lng }));
+      /*
+        [#385] Profil idzie z formularza zasilonego kartoteką pojazdu, a nie ze stałych
+        w tym miejscu. Poprzednia wersja robiła `Number(weightT) || 24` i `|| undefined`
+        na wymiarach, więc wyczyszczone pole cicho zamieniało się w 24 tony, a wpisane
+        „0" znikało bez śladu. Teraz brak parametru jest brakiem — i widać go na ekranie.
+      */
+      const profile: VehicleProfile = kindHeavy ? truckProfile : { kind: "van", weightKg: 3000 };
       const res = await fetch("/api/route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           waypoints,
-          profile: kindHeavy
-            ? {
-                kind: "truck",
-                weightKg: Math.round((Number(weightT) || 24) * 1000),
-                heightCm: Number(heightCm) || undefined,
-                widthCm: Number(widthCm) || undefined,
-                lengthCm: Number(lengthCm) || undefined,
-                axleCount: Number(axles) || undefined,
-              }
-            : { kind: "van", weightKg: 3000 },
+          profile,
           options: { avoidTolls, avoidFerries, avoidCountries: avoidCH ? ["CH"] : [] },
         }),
       });
@@ -1739,6 +1936,27 @@ export default function MapPage() {
         return null;
       }
       setResult(r);
+      /*
+        [#385] Zapamiętujemy profil UŻYTY do tej trasy, a nie bieżący stan formularza:
+        po przeliczeniu użytkownik może zmienić wymiary, a pasek pod wynikiem miałby
+        wtedy opisywać trasę, której nikt nie liczył.
+      */
+      setPlannedProfile({
+        registration: selectedVehicle?.registration ?? null,
+        profile,
+        missing: kindHeavy ? missingDimensions(profile) : [],
+        heavy: kindHeavy,
+      });
+      /*
+        [#385] Uwaga krytyczna (np. `profileDowngradedToCar`) mówi, że dostawca policzył
+        trasę INNYM pojazdem niż zamówiony. Panel wyniku bywa przewinięty poza ekran,
+        więc taka uwaga dostaje dodatkowo toast — to nie jest informacja do przeoczenia.
+      */
+      const notices = Array.isArray(r.notices) ? r.notices : [];
+      for (const n of notices) {
+        if ((n.severity ?? "").toLowerCase() !== "critical") continue;
+        toast(`⛔ ${t("mapPage.providerNotice")}: ${n.title ?? n.code}`, "error");
+      }
       routeGeoRef.current = r.geometry;
       // #309: znane utrudnienia liczymy od nowej trasy (bez ponownego reroute po własnym przeliczeniu)
       knownDisruptionIdsRef.current = new Set(
@@ -2000,13 +2218,52 @@ export default function MapPage() {
           </label>
           {kindHeavy && (
             <>
+              {/*
+                [#385] Wybór pojazdu z kartoteki. Bez niego jedynym źródłem gabarytów były
+                stałe w kodzie, a panel poniżej — domyślnie zwinięty; typowy użytkownik
+                wysyłał więc zestaw domyślny, nie swój.
+              */}
+              <label className={styles.field}>
+                <span className={styles.label}>🚛 {t("mapPage.vehicleFromFleet")}</span>
+                <select
+                  className={styles.input}
+                  value={vehicleId}
+                  onChange={(e) => pickVehicle(e.target.value)}
+                >
+                  <option value="">{t("mapPage.vehicleManual")}</option>
+                  {fleet.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.registration}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {fleet.length === 0 ? (
+                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+                  {t("mapPage.vehicleFleetEmpty")}
+                </div>
+              ) : !selectedVehicle ? (
+                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+                  ⚠️ {t("mapPage.vehicleManualHint")}
+                </div>
+              ) : profileOverridden ? (
+                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+                  ✎ {t("mapPage.vehicleOverridden")}
+                </div>
+              ) : null}
               <button
                 type="button"
                 className={styles.ghost}
                 style={{ textAlign: "left", padding: "8px 10px" }}
                 onClick={() => setDimsOpen((o) => !o)}
               >
-                {dimsOpen ? "▾" : "▸"} {t("mapPage.dimsAndTonnage")} ({weightT} t · {axles}{" "}
+                {/*
+                  [#385] Podsumowanie na zwiniętym panelu pokazuje to, co POLECI do dostawcy
+                  — z „?" w miejscu braków. Dotąd było tu „{weightT} t · {axles} osie", więc
+                  puste pola dawały napis „( t ·  osie)", a brak wymiarów nie był widoczny wcale.
+                */}
+                {dimsOpen ? "▾" : "▸"} {t("mapPage.dimsAndTonnage")} (
+                {formatProfileDims(truckProfile)} · {truckProfile.axleCount ?? "?"}{" "}
                 {t("mapPage.axlesSuffix")})
               </button>
               {dimsOpen && (
@@ -2056,6 +2313,73 @@ export default function MapPage() {
                       onChange={(e) => setLengthCm(e.target.value)}
                     />
                   </label>
+                  {/*
+                    [#385] ADR i klasa emisji też są nadpisywalne — spedytor bywa proszony
+                    o trasę dla zestawu, którego nie ma jeszcze w kartotece. PUSTE ADR znaczy
+                    „ładunek zwykły", nie „nie wiemy", dlatego opcja pusta ma własny podpis
+                    (ten sam co w kartotece pojazdów) i nie ostrzegamy o niej.
+                  */}
+                  <label className={styles.field}>
+                    <span className={styles.label}>{t("vehicles.fieldAdrTunnel")}</span>
+                    <select
+                      className={styles.input}
+                      value={adrTunnelCode}
+                      onChange={(e) => setAdrTunnelCode(e.target.value)}
+                    >
+                      <option value="">{t("vehicles.adrTunnelNone")}</option>
+                      {ADR_TUNNEL_CODES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={styles.field}>
+                    <span className={styles.label}>{t("vehicles.fieldEmissionClass")}</span>
+                    <select
+                      className={styles.input}
+                      value={emissionClass}
+                      onChange={(e) => setEmissionClass(e.target.value)}
+                    >
+                      <option value="">{t("vehicles.selectPlaceholder")}</option>
+                      {EMISSION_CLASSES.map((c) => (
+                        <option key={c} value={c}>
+                          Euro {c.slice(4)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
+              {/*
+                [#385] Braki gabarytów WPROST, jeszcze przed liczeniem trasy — tam, gdzie da
+                się je naprawić. Trasa policzona bez wysokości wygląda identycznie jak trasa
+                z wysokością, a różnica jest taka, że jedna z nich prowadzi pod wiadukt.
+              */}
+              {missingDims.length > 0 && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    lineHeight: 1.4,
+                    color: cssPalette.offWhite,
+                    background: cssPalette.black,
+                    border: `1px solid ${cssPalette.red}`,
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                  }}
+                >
+                  ⚠️ {selectedVehicle ? `${selectedVehicle.registration} · ` : ""}
+                  {t("mapPage.vehicleMissing")}{" "}
+                  {missingDims.map((d) => t(MISSING_DIM_LABEL[d])).join(", ")} —{" "}
+                  {t("mapPage.vehicleMissingTail")}
+                  <div style={{ marginTop: 2, color: cssPalette.smoke }}>
+                    {t("mapPage.vehicleMissingHint")}
+                  </div>
+                </div>
+              )}
+              {selectedVehicle && missingDims.length === 0 && (
+                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+                  ✔ {selectedVehicle.registration} · {formatProfileDims(truckProfile)}
                 </div>
               )}
             </>
@@ -2404,6 +2728,7 @@ export default function MapPage() {
               fuelTotal={fuelTotal}
               grandTotal={grandTotal}
               disruptions={disruptions}
+              plan={plannedProfile}
             />
           )}
         </div>

@@ -5,7 +5,8 @@ import {
   SAVED_PLACE_CATEGORIES,
   type SavedPlaceCategory,
 } from "@e-logistic/core";
-import type { FuelStationPrice, GeoHit } from "@e-logistic/maps";
+import type { MessageKey } from "@e-logistic/i18n";
+import type { FuelStationPrice, GeoHit, RouteNotice, VehicleProfile } from "@e-logistic/maps";
 import { cssPalette } from "@e-logistic/ui";
 import { useT } from "@/components/LocaleProvider";
 import { DISRUPTION_RADIUS_KM, REPORT_COLOR, REPORT_LABEL, SAVED_CAT_ICON } from "./mapTheme";
@@ -18,21 +19,182 @@ import { Row, styles } from "./mapUi";
  * Style panelu przez CSS Module (`styles.*` = nazwy klas), dynamiczne/one-off inline.
  */
 
+/* ── [#385] Profil pojazdu: braki i opis ─────────────────────────────────────
+ *
+ * Te funkcje są czyste i potrzebuje ich zarówno panel wyniku (niżej), jak i sam
+ * formularz na stronie. Mieszkają TUTAJ, a nie w `page.tsx`, bo import ze strony
+ * do jej własnego dziecka zamknąłby cykl modułów.
+ *
+ * Wzorzec komunikatu (kolejność pól, „?" zamiast wartości typowej) jest jeden do
+ * jednego z `apps/mobile/lib/vehicleProfile.ts`: kierowca w kabinie i spedytor przy
+ * biurku mają czytać dokładnie to samo zdanie o tej samej trasie.
+ */
+
+/** Gabaryt, którego brakuje w profilu — klucz komunikatu (tekst siedzi w i18n). */
+export type MissingDimension = "height" | "width" | "length" | "weight";
+
+/** Klucze i18n nazw brakujących gabarytów — tłumaczone w miejscu renderu. */
+export const MISSING_DIM_LABEL: Record<MissingDimension, MessageKey> = {
+  height: "mapPage.dimHeight",
+  width: "mapPage.dimWidth",
+  length: "mapPage.dimLength",
+  weight: "mapPage.dimWeight",
+};
+
+/**
+ * [#385] Czego NIE MA w profilu, który poleci do `/api/route`.
+ *
+ * Liczymy z profilu EFEKTYWNEGO (kartoteka + ręczne nadpisania), bo to on decyduje
+ * o trasie: wysokość wpisana ręcznie jest wysokością, choćby kolumna w kartotece
+ * była pusta — i odwrotnie, pusta kolumna bez nadpisania to realny brak parametru.
+ */
+export function missingDimensions(profile: VehicleProfile): MissingDimension[] {
+  const out: MissingDimension[] = [];
+  if (profile.heightCm == null) out.push("height");
+  if (profile.widthCm == null) out.push("width");
+  if (profile.lengthCm == null) out.push("length");
+  if (profile.weightKg == null) out.push("weight");
+  return out;
+}
+
+function meters(cm: number | undefined): string {
+  return cm == null ? "?" : (cm / 100).toFixed(2).replace(".", ",");
+}
+
+/**
+ * [#385] „4,00 × 2,55 × 16,50 m · 40,0 t" — brak pokazujemy jako `?`, NIGDY jako
+ * wartość typową. Spedytor ma jednym rzutem oka widzieć, czego routing nie
+ * uwzględnił: trasa bez wysokości nie może wyglądać tak samo jak trasa z wysokością.
+ */
+export function formatProfileDims(profile: VehicleProfile): string {
+  const size = `${meters(profile.heightCm)} × ${meters(profile.widthCm)} × ${meters(profile.lengthCm)} m`;
+  const mass =
+    profile.weightKg == null
+      ? "? t"
+      : `${(profile.weightKg / 1000).toFixed(1).replace(".", ",")} t`;
+  return `${size} · ${mass}`;
+}
+
+/** [#385] Czym policzono pokazaną trasę — komplet danych przekazany do `RouteSummary`. */
+export interface PlannedProfile {
+  /** Rejestracja wybranego pojazdu; `null` = wymiary wpisane ręcznie, bez kartoteki. */
+  registration: string | null;
+  profile: VehicleProfile;
+  /** Braki w profilu wysłanym do dostawcy (pusto przy trasie osobowej — patrz `heavy`). */
+  missing: MissingDimension[];
+  /** Czy w ogóle proszono o routing ciężarowy (odznaczony checkbox = trasa osobowa). */
+  heavy: boolean;
+}
+
+/** Ramka komunikatu w panelu — czerwona dla rzeczy krytycznych, żółta dla ostrzeżeń. */
+function noticeBox(color: string): React.CSSProperties {
+  return {
+    fontSize: 12,
+    lineHeight: 1.4,
+    color: cssPalette.offWhite,
+    background: cssPalette.black,
+    border: `1px solid ${color}`,
+    borderRadius: 8,
+    padding: "8px 10px",
+  };
+}
+
+/**
+ * [#385] Uwagi dostawcy do policzonej trasy (`RouteResult.notices`).
+ *
+ * To jedyny kanał, którym dostawca mówi „zignorowałem twój parametr pojazdu" albo
+ * „policzyłem trasę profilem osobowym". Dotąd pole jechało w odpowiedzi i nikt go
+ * nie renderował, więc trasa z pominiętym gabarytem wyglądała identycznie jak trasa
+ * z uwzględnionym — a różnica jest taka, że jedna z nich prowadzi pod wiadukt.
+ *
+ * `severity: "critical"` (np. `profileDowngradedToCar` z GraphHoppera) dostaje
+ * czerwień marki i inny znak, żeby nie zlało się z resztą ostrzeżeń panelu.
+ */
+export function RouteNotices({ notices }: { notices: RouteNotice[] }) {
+  const t = useT();
+  if (notices.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+      {notices.map((n) => {
+        const critical = (n.severity ?? "").toLowerCase() === "critical";
+        const color = critical ? cssPalette.red : "#eab308";
+        return (
+          <div key={n.code} style={noticeBox(color)}>
+            <strong style={{ color }}>
+              {critical ? "⛔" : "⚠️"} {t("mapPage.providerNotice")}
+              {critical ? ` · ${t("mapPage.providerNoticeCritical")}` : ""}
+            </strong>
+            {/* Treść od dostawcy bywa pusta — wtedy zostaje sam kod, bo to i tak
+                więcej niż milczenie (da się go wyszukać w dokumentacji API). */}
+            <div style={{ marginTop: 2 }}>{n.title ?? n.code}</div>
+            {n.title ? (
+              <div style={{ color: cssPalette.smoke, fontSize: 11, marginTop: 2 }}>{n.code}</div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * [#385] Pasek „czym policzono tę trasę". Trasa bez gabarytów NIE MOŻE wyglądać
+ * tak samo jak trasa z gabarytami, więc wynik zawsze niesie profil, którym poszedł
+ * do dostawcy — z brakami wypisanymi wprost.
+ */
+export function PlanProfileBar({ plan }: { plan: PlannedProfile }) {
+  const t = useT();
+  if (!plan.heavy) {
+    return (
+      <div style={{ fontSize: 12, color: cssPalette.smoke }}>🚐 {t("mapPage.vehicleVanRoute")}</div>
+    );
+  }
+  const head = `${plan.registration ? `${plan.registration} · ` : ""}${formatProfileDims(plan.profile)}`;
+  if (plan.missing.length > 0) {
+    return (
+      <div style={noticeBox(cssPalette.red)}>
+        <strong style={{ color: cssPalette.red }}>⚠️ {head}</strong>
+        <div style={{ marginTop: 2 }}>
+          {t("mapPage.vehicleMissing")}{" "}
+          {plan.missing.map((d) => t(MISSING_DIM_LABEL[d])).join(", ")} —{" "}
+          {t("mapPage.vehicleMissingTail")}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+      🚛 {head} ·{" "}
+      {plan.registration ? t("mapPage.vehicleDimsFromRecord") : t("mapPage.vehicleDimsManual")}
+    </div>
+  );
+}
+
 /** Podsumowanie wytyczonej trasy (dystans/czas/myto/paliwo) + utrudnienia na trasie. */
 export function RouteSummary({
   result,
   fuelTotal,
   grandTotal,
   disruptions,
+  plan,
 }: {
   result: RouteResponse;
   fuelTotal: number;
   grandTotal: number;
   disruptions: (Report & { distanceKm: number })[];
+  /** [#385] Profil, którym policzono TĘ trasę (`null` — trasa sprzed wyboru pojazdu). */
+  plan: PlannedProfile | null;
 }) {
   const t = useT();
   return (
     <>
+      {/*
+        [#385] Uwagi dostawcy i profil pojazdu NAD liczbami: dystans i myto policzone
+        z pominiętym gabarytem są tak samo okrągłe jak policzone poprawnie, więc
+        zastrzeżenie musi paść zanim wzrok trafi na wynik.
+      */}
+      <RouteNotices notices={Array.isArray(result.notices) ? result.notices : []} />
+      {plan && <PlanProfileBar plan={plan} />}
       <div className={styles.result}>
         <Row k={t("mapPage.distance")} v={`${result.distanceKm} km`} />
         <Row

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { itemsNearRoute, pointToRouteKm } from "./disruptions";
 import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
-import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
+import { buildGraphHopperBody, downgradeNotices, graphHopperProfile } from "./graphhopper";
 import { buildHereUrl, decodeFlexiblePolyline, readHereNoticesForTest } from "./here";
 import { buildHereTrafficUrl, jamSeverity, parseHereTraffic } from "./heretraffic";
 import { MockRoutingProvider } from "./mock";
@@ -425,5 +425,43 @@ describe("[#384] kontrakt pojazdu: ADR i uwagi dostawcy", () => {
     });
     expect(notices.map((n) => n.code)).toEqual(["violatedVehicleRestriction", "noRouteFound"]);
     expect(notices[0]?.title).toBe("Height ignored");
+  });
+});
+
+describe("[#385] GraphHopper: degradacja do trasy osobowej jest widoczna", () => {
+  const req = {
+    waypoints: [
+      { lat: 52, lng: 21 },
+      { lat: 53, lng: 22 },
+    ],
+  };
+
+  it("ciężarówka bez profilu TIR → uwaga krytyczna", () => {
+    // Trasa osobowa wygląda identycznie jak TIR-owa; różnica jest taka,
+    // że jedna z nich nie wie o wiaduktach.
+    const n = downgradeNotices({ ...req, profile: { kind: "truck" } }, { truckProfile: false });
+    expect(n).toHaveLength(1);
+    expect(n[0]?.code).toBe("profileDowngradedToCar");
+    expect(n[0]?.severity).toBe("critical");
+  });
+
+  it("z włączonym profilem TIR — cisza", () => {
+    expect(
+      downgradeNotices({ ...req, profile: { kind: "truck" } }, { truckProfile: true }),
+    ).toEqual([]);
+  });
+
+  it("dostawczak nie potrzebuje ostrzeżenia", () => {
+    expect(downgradeNotices({ ...req, profile: { kind: "van" } }, { truckProfile: false })).toEqual(
+      [],
+    );
+  });
+
+  it("ciągnik i naczepa też są ciężarówkami", () => {
+    for (const kind of ["tractor", "trailer"] as const) {
+      expect(downgradeNotices({ ...req, profile: { kind } }, { truckProfile: false })).toHaveLength(
+        1,
+      );
+    }
   });
 });

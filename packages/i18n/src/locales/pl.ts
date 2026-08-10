@@ -610,6 +610,15 @@ export const pl = {
   "vehicles.fieldAdblueTank": "Zbiornik AdBlue (L)",
   "vehicles.fieldInspectionExpiry": "Przegląd ważny do",
   "vehicles.fieldHeight": "Wysokość (cm)",
+  "vehicles.fieldWidth": "Szerokość (cm)",
+  "vehicles.fieldLength": "Długość (cm)",
+  "vehicles.fieldFirstRegistration": "Pierwsza rejestracja",
+  "vehicles.fieldLeasingEnd": "Koniec leasingu",
+  "vehicles.fieldForwarder": "Spedytor",
+  "vehicles.fieldComment": "Uwagi",
+  "vehicles.fieldAxleCount": "Liczba osi (2–12)",
+  "vehicles.fieldAdrTunnel": "Kategoria tunelowa ADR",
+  "vehicles.fieldEmissionClass": "Klasa emisji",
   "vehicles.fieldInsuranceExpiry": "OC ważne do",
   "vehicles.fieldLicenseExpiry": "Licencja transportowa ważna do",
   "vehicles.fieldInsurer": "Ubezpieczyciel",
@@ -626,6 +635,12 @@ export const pl = {
   "vehicles.licenseNumberPlaceholder": "np. GITD / licencja wspólnotowa",
   "vehicles.trailerRegistrationPlaceholder": "np. WPR1234 (jeśli posiada)",
   "vehicles.trailerTypePlaceholder": "Plandeka / Chłodnia…",
+  "vehicles.axleCountPlaceholder": "np. 2 (solówka) / 5 (zestaw)",
+  "vehicles.adrTunnelNone": "Ładunek zwykły (bez ADR)",
+  "vehicles.adrTunnelHint":
+    "Litera z pomarańczowej tablicy. Decyduje, przez które tunele zestaw może przejechać — to warunek legalności przejazdu, nie preferencja. Puste = ładunek zwykły.",
+  "vehicles.emissionClassHint":
+    "Pod strefy niskiej emisji (LEZ) w miastach. Routing jeszcze jej nie używa, ale bez wpisanej klasy nie da się takich stref uwzględnić.",
   "vehicles.saveChanges": "Zapisz zmiany",
   "vehicles.importNote":
     'Kolumna „Typ": truck / tractor / van / trailer / other (lub po polsku: ciężarówka / ciągnik / dostawczy / naczepa / inny). Wymagane: Rejestracja, Model, Typ, Rok.',
@@ -639,6 +654,9 @@ export const pl = {
   "vehicles.detailFuelTank": "Zbiornik paliwa",
   "vehicles.detailAdblueTank": "Zbiornik AdBlue",
   "vehicles.detailHeight": "Wysokość",
+  "vehicles.detailAxleCount": "Osie",
+  "vehicles.detailAdrTunnel": "ADR (tunel)",
+  "vehicles.detailEmissionClass": "Klasa emisji",
   "vehicles.detailLicense": "Licencja",
   "vehicles.detailLeasingTo": "Leasing do",
   "vehicles.detailTrailer": "Naczepa",
@@ -1585,6 +1603,29 @@ export const pl = {
   "mapPage.terrain3d": "Teren 3D",
   "mapPage.globe3d": "Globus 3D",
   "mapPage.truckRouting": "Ciężarówka (TIR) — routing wg wymiarów + ruch",
+  // [#385] Wybór pojazdu z kartoteki na mapie + widoczność braków w gabarytach.
+  // Wzorzec komunikatu wspólny z aplikacją kierowcy (apps/mobile/lib/vehicleProfile.ts).
+  "mapPage.vehicleFromFleet": "Pojazd z floty",
+  "mapPage.vehicleManual": "— bez pojazdu (wymiary ręczne) —",
+  "mapPage.vehicleFleetEmpty":
+    "Brak pojazdów w kartotece — dodaj je w „Pojazdy” albo wpisz wymiary ręcznie poniżej.",
+  "mapPage.vehicleManualHint":
+    "Wymiary poniżej nie pochodzą z kartoteki żadnego pojazdu — sprawdź je przed wyznaczeniem trasy.",
+  "mapPage.vehicleOverridden": "Wartości nadpisane ręcznie — różnią się od kartoteki pojazdu.",
+  "mapPage.vehicleMissing": "Trasa liczona BEZ:",
+  "mapPage.vehicleMissingTail": "wiadukty i ograniczenia sprawdź sam.",
+  "mapPage.vehicleMissingHint":
+    "Uzupełnij kartotekę pojazdu („Pojazdy”) albo wpisz brakujące wartości ręcznie powyżej.",
+  "mapPage.vehicleDimsFromRecord": "gabaryty z kartoteki pojazdu",
+  "mapPage.vehicleDimsManual": "wymiary spoza kartoteki pojazdu",
+  "mapPage.vehicleVanRoute":
+    "Trasa liczona profilem osobowym — bez gabarytów i zakazów dla ciężarówek.",
+  "mapPage.dimHeight": "wysokości",
+  "mapPage.dimWidth": "szerokości",
+  "mapPage.dimLength": "długości",
+  "mapPage.dimWeight": "masy",
+  "mapPage.providerNotice": "Uwaga dostawcy trasy",
+  "mapPage.providerNoticeCritical": "KRYTYCZNA",
   "mapPage.dimsAndTonnage": "Wymiary i tonaż",
   "mapPage.axlesSuffix": "osie",
   "mapPage.axles": "Osie",

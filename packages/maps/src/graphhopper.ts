@@ -1,12 +1,35 @@
 import { round2 } from "@e-logistic/core";
 import {
   type LatLng,
+  type RouteNotice,
   type RouteRequest,
   type RouteResult,
   type RoutingProvider,
   unknownTollSections,
   type VehicleKind,
 } from "./types";
+
+/**
+ * [#385] Uwaga o degradacji do trasy osobowej.
+ *
+ * Zwraca coś tylko wtedy, gdy proszono o pojazd wymagający profilu ciężarowego,
+ * a profil jest wyłączony — czyli dokładnie w sytuacji, w której wynik jest inny,
+ * niż wywołujący sądzi.
+ */
+export function downgradeNotices(req: RouteRequest, opts: GraphHopperOptions): RouteNotice[] {
+  const kind = req.profile?.kind;
+  const needsTruck = kind === "truck" || kind === "tractor" || kind === "trailer";
+  if (!needsTruck || opts.truckProfile) return [];
+  return [
+    {
+      code: "profileDowngradedToCar",
+      title:
+        "GraphHopper policzył trasę profilem osobowym — profil ciężarowy jest wyłączony, " +
+        "więc wiadukty, tonaż i zakazy dla ciężarówek NIE zostały uwzględnione.",
+      severity: "critical",
+    },
+  ];
+}
 
 /** Mapuje typ pojazdu E-Logistic na profil GraphHopper. */
 export function graphHopperProfile(kind?: VehicleKind): string {
@@ -90,9 +113,16 @@ export class GraphHopperRoutingProvider implements RoutingProvider {
       // #383: `instructions: false` i brak `details=toll` — GraphHopper w tej konfiguracji
       // nie mówi nic o drogach płatnych. Pusta lista z `known: false`, żeby mapa nie
       // twierdziła, że trasa jest bezpłatna.
-      // [#384] Ten dostawca nie zwraca uwag do trasy — pusta lista znaczy
-      // „nic nie zgłosił", a nie „nie sprawdziliśmy".
-      notices: [],
+      // [#385] GraphHopper sam uwag nie zwraca, ale JEDNĄ musimy zgłosić my.
+      //
+      // Profil TIR jest tu domyślnie wyłączony (`truckProfile: false`), bo wymaga
+      // płatnego planu GraphHoppera. Przy wyłączonym profilu trasa liczy się jak
+      // dla samochodu osobowego — bez wiaduktów, tonażu i zakazów dla ciężarówek —
+      // i dotąd nic o tym nie mówiło. Trasa osobowa wyglądała identycznie jak trasa TIR.
+      //
+      // Nie włączamy profilu domyślnie, bo bez odpowiedniego planu żądanie po prostu
+      // padnie. Zamiast tego degradacja przestaje być niewidoczna.
+      notices: downgradeNotices(req, this.opts),
       tollSections: unknownTollSections(),
       provider: this.name,
     };

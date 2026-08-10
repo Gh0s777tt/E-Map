@@ -50,6 +50,18 @@ type CardRow = {
 
 const OTHER = "__other__";
 const ALL_MAKES = VEHICLE_MAKE_GROUPS.flatMap((g) => g.makes);
+
+/**
+ * [#385] Kategorie tunelowe ADR — litera z pomarańczowej tablicy. Wartości muszą
+ * zgadzać się z `vehicleSchema.adrTunnelCode` i CHECK-iem z migracji 0102.
+ * PUSTA wartość znaczy „ładunek zwykły", a nie „nie wiemy" — dlatego opcja pusta
+ * ma własny podpis, a nie „— wybierz —" jak przy polach, których po prostu brakuje.
+ */
+const ADR_TUNNEL_CODES = ["B", "C", "D", "E"] as const;
+/** [#385] Klasy emisji (pod przyszłe strefy niskiej emisji) — jak w schemacie i w bazie. */
+const EMISSION_CLASSES = ["euro3", "euro4", "euro5", "euro6"] as const;
+/** `euro5` → „Euro 5". Etykieta wprost z wartości — nie ma po co trzymać ośmiu kluczy i18n na to samo. */
+const emissionLabel = (c: string) => `Euro ${c.slice(4)}`;
 const providerLabel = (p: string) =>
   FUEL_CARD_PROVIDER_LABELS[p as FuelCardProvider] ?? p.toUpperCase();
 
@@ -169,6 +181,35 @@ export default function VehiclesPage() {
   const [fuelTankL, setFuelTankL] = useState("");
   const [adblueTankL, setAdblueTankL] = useState("");
   const [heightCm, setHeightCm] = useState("");
+  /**
+   * [#386] Sześć pól, których formularz NIE MIAŁ, choć maper je zapisuje.
+   *
+   * `updateVehicle` robi `update(vehicleToRow(input))`, czyli nadpisuje CAŁY wiersz.
+   * Kolumna nieobecna w formularzu szła więc do bazy jako `null` — każda edycja
+   * pojazdu kasowała szerokość, długość, datę pierwszej rejestracji, koniec leasingu,
+   * spedytora i komentarz. Po cichu, bo lista ich nie pokazuje.
+   *
+   * Najboleśniej przy szerokości i długości: import CSV/XLSX je wczytuje, a pierwsza
+   * ręczna poprawka literówki w rejestracji je czyściła. Od [#385] mapa czyta te
+   * kolumny do profilu routingu, więc ich zniknięcie oznacza trasę liczoną bez
+   * gabarytów — czyli dokładnie ten problem, który tam naprawiliśmy.
+   */
+  const [widthCm, setWidthCm] = useState("");
+  const [lengthCm, setLengthCm] = useState("");
+  const [firstRegistrationDate, setFirstRegistrationDate] = useState("");
+  const [leasingEnd, setLeasingEnd] = useState("");
+  const [forwarder, setForwarder] = useState("");
+  const [comment, setComment] = useState("");
+  /**
+   * [#385] Trzy parametry, które idą wprost do routingu. Start PUSTY i taki zostaje,
+   * dopóki ktoś nie wpisze wartości z dowodu: ekran mapy podstawia dziś własne
+   * domyślne (5 osi), przez co solówka płaci myto jak pięcioosiowy zestaw. Wpisanie
+   * tu „na oko" tej samej piątki nie naprawiłoby niczego — wyglądałaby identycznie
+   * jak dana prawdziwa, a byłaby tym samym zmyśleniem, tyle że zapisanym w bazie.
+   */
+  const [axleCount, setAxleCount] = useState("");
+  const [adrTunnelCode, setAdrTunnelCode] = useState("");
+  const [emissionClass, setEmissionClass] = useState("");
   const [inspectionExpiry, setInspectionExpiry] = useState("");
   const [insuranceExpiry, setInsuranceExpiry] = useState("");
   const [licenseExpiry, setLicenseExpiry] = useState("");
@@ -218,6 +259,15 @@ export default function VehiclesPage() {
     setFuelTankL("");
     setAdblueTankL("");
     setHeightCm("");
+    setWidthCm("");
+    setLengthCm("");
+    setFirstRegistrationDate("");
+    setLeasingEnd("");
+    setForwarder("");
+    setComment("");
+    setAxleCount("");
+    setAdrTunnelCode("");
+    setEmissionClass("");
     setInspectionExpiry("");
     setInsuranceExpiry("");
     setLicenseExpiry("");
@@ -264,6 +314,20 @@ export default function VehiclesPage() {
     setFuelTankL(v.fuel_tank_l ? String(v.fuel_tank_l) : "");
     setAdblueTankL(v.adblue_tank_l ? String(v.adblue_tank_l) : "");
     setHeightCm(v.height_cm ? String(v.height_cm) : "");
+    // [#386] Bez tego edycja kasuje kolumnę — patrz komentarz przy deklaracji stanu.
+    setWidthCm(v.width_cm ? String(v.width_cm) : "");
+    setLengthCm(v.length_cm ? String(v.length_cm) : "");
+    setFirstRegistrationDate(v.first_registration_date ?? "");
+    setLeasingEnd(v.leasing_end ?? "");
+    setForwarder(v.forwarder ?? "");
+    setComment(v.comment ?? "");
+    // [#385] Wczytanie tych trzech pól przy edycji nie jest kosmetyką: `updateVehicle`
+    // zapisuje CAŁY wiersz, więc pole nieobecne w formularzu poszłoby do bazy jako NULL.
+    // Bez tego poprawka literówki w rejestracji kasowałaby kategorię tunelową ADR — i to
+    // po cichu, bo pusty ADR wygląda dokładnie jak legalny „ładunek zwykły".
+    setAxleCount(v.axle_count != null ? String(v.axle_count) : "");
+    setAdrTunnelCode(v.adr_tunnel_code ?? "");
+    setEmissionClass(v.emission_class ?? "");
     setInspectionExpiry(v.inspection_expiry ?? "");
     setInsuranceExpiry(v.insurance_expiry ?? "");
     setLicenseExpiry(v.license_expiry ?? "");
@@ -308,6 +372,17 @@ export default function VehiclesPage() {
       fuelTankL: fuelTankL ? Number(fuelTankL) : undefined,
       adblueTankL: adblueTankL ? Number(adblueTankL) : undefined,
       heightCm: heightCm ? Number(heightCm) : undefined,
+      widthCm: widthCm ? Number(widthCm) : undefined,
+      lengthCm: lengthCm ? Number(lengthCm) : undefined,
+      firstRegistrationDate: firstRegistrationDate || undefined,
+      leasingEnd: leasingEnd || undefined,
+      forwarder: forwarder || undefined,
+      comment: comment || undefined,
+      // [#385] Puste pole → `undefined` → w bazie NULL. To wartość znacząca: routing
+      // ma pokazać brak wprost, zamiast dosypywać cudzą wartość domyślną.
+      axleCount: axleCount ? Number(axleCount) : undefined,
+      adrTunnelCode: adrTunnelCode || undefined,
+      emissionClass: emissionClass || undefined,
       inspectionExpiry: inspectionExpiry || undefined,
       insuranceExpiry: insuranceExpiry || undefined,
       licenseExpiry: licenseExpiry || undefined,
@@ -635,6 +710,123 @@ export default function VehiclesPage() {
                 placeholder="400"
               />
             </label>
+            {/* [#386] Szerokość i długość stoją przy wysokości, bo to jedna
+                wielkość widziana z trzech stron — i wszystkie trzy idą do routingu. */}
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldWidth")}</span>
+              <input
+                style={f.input}
+                type="number"
+                value={widthCm}
+                onChange={(e) => setWidthCm(e.target.value)}
+                placeholder="255"
+              />
+            </label>
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldLength")}</span>
+              <input
+                style={f.input}
+                type="number"
+                value={lengthCm}
+                onChange={(e) => setLengthCm(e.target.value)}
+                placeholder="1650"
+              />
+            </label>
+          </div>
+
+          {/* [#386] Cztery pola, które maper zapisywał, a formularz pomijał —
+              więc każda edycja pojazdu ustawiała je na `null`. */}
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldFirstRegistration")}</span>
+              <input
+                style={f.input}
+                type="date"
+                value={firstRegistrationDate}
+                onChange={(e) => setFirstRegistrationDate(e.target.value)}
+              />
+            </label>
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldLeasingEnd")}</span>
+              <input
+                style={f.input}
+                type="date"
+                value={leasingEnd}
+                onChange={(e) => setLeasingEnd(e.target.value)}
+              />
+            </label>
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldForwarder")}</span>
+              <input
+                style={f.input}
+                value={forwarder}
+                onChange={(e) => setForwarder(e.target.value)}
+              />
+            </label>
+          </div>
+          <label style={f.field}>
+            <span style={f.label}>{t("vehicles.fieldComment")}</span>
+            <textarea
+              style={{ ...f.input, minHeight: 64, resize: "vertical" }}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+            />
+          </label>
+
+          {/* [#385] Parametry routingu przy gabarytach, a nie w osobnej sekcji na końcu —
+              to ta sama kategoria danych z dowodu rejestracyjnego, wypełniana za jednym
+              podejściem. Wszystkie opcjonalne: kartoteka woli pustkę od zgadywanki. */}
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldAxleCount")}</span>
+              <input
+                style={f.input}
+                type="number"
+                min={2}
+                max={12}
+                value={axleCount}
+                onChange={(e) => setAxleCount(e.target.value)}
+                placeholder={t("vehicles.axleCountPlaceholder")}
+              />
+              {errors.axleCount && <span style={styles.err}>{errors.axleCount}</span>}
+            </label>
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldAdrTunnel")}</span>
+              <select
+                style={f.input}
+                value={adrTunnelCode}
+                onChange={(e) => setAdrTunnelCode(e.target.value)}
+              >
+                {/* Pusto = ładunek zwykły, czyli normalny stan zestawu — dlatego ta opcja
+                    nazywa się po imieniu, zamiast udawać niewypełnione pole. */}
+                <option value="">{t("vehicles.adrTunnelNone")}</option>
+                {ADR_TUNNEL_CODES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <span style={styles.hint}>{t("vehicles.adrTunnelHint")}</span>
+            </label>
+          </div>
+
+          <div style={f.grid}>
+            <label style={f.field}>
+              <span style={f.label}>{t("vehicles.fieldEmissionClass")}</span>
+              <select
+                style={f.input}
+                value={emissionClass}
+                onChange={(e) => setEmissionClass(e.target.value)}
+              >
+                <option value="">{t("vehicles.selectPlaceholder")}</option>
+                {EMISSION_CLASSES.map((c) => (
+                  <option key={c} value={c}>
+                    {emissionLabel(c)}
+                  </option>
+                ))}
+              </select>
+              <span style={styles.hint}>{t("vehicles.emissionClassHint")}</span>
+            </label>
           </div>
 
           <div style={f.grid}>
@@ -839,6 +1031,21 @@ export default function VehiclesPage() {
                         k={t("vehicles.detailHeight")}
                         v={v.height_cm ? `${v.height_cm} cm` : null}
                       />
+                      {/* [#385] Braki pokazujemy jako „—", bo tak samo widać je potem przy
+                          planowaniu trasy. ADR jest wyjątkiem: puste znaczy „ładunek zwykły",
+                          więc kreska sugerowałaby brak danych tam, gdzie danych nie brakuje. */}
+                      <Detail
+                        k={t("vehicles.detailAxleCount")}
+                        v={v.axle_count != null ? String(v.axle_count) : null}
+                      />
+                      <Detail
+                        k={t("vehicles.detailAdrTunnel")}
+                        v={v.adr_tunnel_code ?? t("vehicles.adrTunnelNone")}
+                      />
+                      <Detail
+                        k={t("vehicles.detailEmissionClass")}
+                        v={v.emission_class ? emissionLabel(v.emission_class) : null}
+                      />
                       <Detail k={t("vehicles.fieldInsurer")} v={v.insurer} />
                       <Detail k={t("vehicles.detailLicense")} v={v.license_number} />
                       <Detail k={t("vehicles.detailLeasingTo")} v={v.leasing_end} />
@@ -893,6 +1100,8 @@ function Detail({ k, v }: { k: string; v: string | null }) {
 
 const styles: Record<string, React.CSSProperties> = {
   err: { color: palette.red, fontSize: 12 },
+  /** [#385] Wyjaśnienie pod polem — po co ta dana jest, a nie tylko jak się nazywa. */
+  hint: { color: palette.smoke, fontSize: 12, lineHeight: 1.4 },
   expandBtn: {
     background: "transparent",
     color: palette.smoke,

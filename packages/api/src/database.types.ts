@@ -2388,6 +2388,9 @@ export interface Database {
           height_cm: number | null;
           width_cm: number | null;
           length_cm: number | null;
+          axle_count: number | null;
+          adr_tunnel_code: string | null;
+          emission_class: string | null;
           vehicle_type: Database["public"]["Enums"]["vehicle_type"];
           forwarder: string | null;
           comment: string | null;
@@ -2418,6 +2421,9 @@ export interface Database {
           height_cm?: number | null;
           width_cm?: number | null;
           length_cm?: number | null;
+          axle_count?: number | null;
+          adr_tunnel_code?: string | null;
+          emission_class?: string | null;
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"];
           forwarder?: string | null;
           comment?: string | null;
@@ -2448,6 +2454,9 @@ export interface Database {
           height_cm?: number | null;
           width_cm?: number | null;
           length_cm?: number | null;
+          axle_count?: number | null;
+          adr_tunnel_code?: string | null;
+          emission_class?: string | null;
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"];
           forwarder?: string | null;
           comment?: string | null;

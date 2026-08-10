@@ -48,6 +48,11 @@ export function vehicleToRow(input: VehicleInput, companyId: string) {
     height_cm: input.heightCm ?? null,
     width_cm: input.widthCm ?? null,
     length_cm: input.lengthCm ?? null,
+    // [#385] Trzy pola routingu. `null` jest znaczące i ma zostać `null`:
+    // ekran planowania trasy pokazuje brak wprost, zamiast podstawiać domyślne.
+    axle_count: input.axleCount ?? null,
+    adr_tunnel_code: input.adrTunnelCode ?? null,
+    emission_class: input.emissionClass ?? null,
     vehicle_type: input.vehicleType,
     forwarder: input.forwarder ?? null,
     comment: input.comment ?? null,

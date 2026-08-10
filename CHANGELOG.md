@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-384-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.231.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-386-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.232.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,52 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.232.0] — 🧾 Gabaryty z kartoteki, a nie ze stałych w kodzie — i koniec kasowania danych przy edycji pojazdu
+
+Domknięcie Fali 1 mapy plus błąd, który wyszedł przy okazji i był groźniejszy niż zadanie.
+
+- `[#385]` **Trzy pola routingu w kartotece** (migracja [0102](supabase/migrations/0102_vehicles_routing_fields.sql)):
+  liczba osi, kategoria tunelowa ADR i klasa emisji. Wszystkie NULLABLE świadomie —
+  istniejące pojazdy tych danych nie mają i **nie wolno ich zgadywać**. Puste ADR znaczy
+  „ładunek zwykły", a nie „nie wiemy", więc nie wywołuje ostrzeżenia; puste osie i klasa
+  emisji pokazują „—", bo tam danych faktycznie brakuje.
+
+- `[#385]` **Mapa czyta profil z wybranego pojazdu.** Ekran trzymał własne wartości w stanie
+  komponentu (24 t / 400 / 255 / 1650 cm / 5 osi) i wysyłał je do routingu **niezależnie
+  od kartoteki**, przy panelu domyślnie zwiniętym — więc solówka i pięcioosiowy zestaw
+  dostawały tę samą trasę i to samo myto. Ręczne pola zostają jako nadpisanie (spedytor
+  bywa proszony o trasę dla zestawu spoza kartoteki), ale gdy pojazd jest wybrany, punktem
+  wyjścia jest jego kartoteka.
+
+- `[#385]` **Ciche podstawianie usunięte.** `Number(weightT) || 24` zamieniało wyczyszczone
+  pole w 24 tony. Teraz brak parametru jest brakiem: klucz nie wchodzi do profilu,
+  a **braki są widoczne w trzech miejscach naraz** — w etykiecie zwiniętego panelu („?"
+  zamiast wartości), w ramce „Trasa liczona BEZ: …" renderowanej **poza** zwijanym panelem,
+  i w pasku pod wynikiem opisującym profil, którym trasa faktycznie poszła do dostawcy.
+  Panel rozwija się sam, gdy wybranemu pojazdowi czegoś brakuje.
+
+- `[#385]` **Uwagi dostawcy widoczne.** `RouteResult.notices` renderowane nad liczbami,
+  `severity: "critical"` w czerwieni ze znakiem ⛔ i dodatkowym powiadomieniem — bo panel
+  wyniku bywa przewinięty poza ekran, a to jedyny kanał, którym dostawca mówi
+  „zignorowałem twój parametr" albo „policzyłem trasę profilem osobowym".
+
+- `[#386]` **Edycja pojazdu kasowała sześć kolumn.** `updateVehicle` nadpisuje CAŁY wiersz
+  (`update(vehicleToRow(input))`), a formularz nie miał pól: **szerokość, długość**,
+  pierwsza rejestracja, koniec leasingu, spedytor i uwagi. Każda edycja ustawiała je
+  na `null` — po cichu, bo lista ich nie pokazuje.
+  Najboleśniej przy szerokości i długości: **import CSV/XLSX je wczytuje**, a pierwsza
+  ręczna poprawka literówki w rejestracji je czyściła. Od tego wydania mapa czyta te
+  kolumny do profilu routingu, więc ich zniknięcie oznaczałoby trasę liczoną bez gabarytów —
+  czyli powrót dokładnie tego problemu, który przed chwilą naprawiliśmy.
+  Sprawdzone na produkcji: **nikt jeszcze danych nie stracił** (2 pojazdy, żaden nie miał
+  tych pól wypełnionych) — ale błąd był żywy i czekał na pierwszy import.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core 611 · maps 133 · api 81 · web 131 · mobile 36 · i18n 5 (razem **997**) ✓ · `next build` ✓.
+
+**Do rozważenia osobno:** `apps/web/lib/useFleet.ts` mapuje pojazd do `{id, registration,
+maxPayloadKg}` i gubi gabaryty — mapa omija ten hook własnym `listVehicles`, ale każdy
+kolejny ekran potrzebujący wymiarów powtórzy to obejście. Wersja mobilna ma już właściwy kształt.
 
 ## [1.231.0] — 🚚 Kontrakt pojazdu: ADR, twarda walidacja i kanał, którym dostawca przyznaje się do pominięcia
 

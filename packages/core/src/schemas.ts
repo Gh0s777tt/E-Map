@@ -92,6 +92,17 @@ export const vehicleSchema = z.object({
   heightCm: z.number().int().positive().optional(),
   widthCm: z.number().int().positive().optional(),
   lengthCm: z.number().int().positive().optional(),
+  /**
+   * [#385] Pola wchodzące wprost do routingu. Do tej pory ekran mapy podstawiał
+   * wartości domyślne ze stanu komponentu, więc solówka i pięcioosiowy zestaw
+   * dostawały tę samą trasę i to samo myto.
+   *
+   * `adrTunnelCode` pusty znaczy „ładunek zwykły", a nie „nie wiemy" — zestaw
+   * bez ADR to normalny stan, nie brak danych.
+   */
+  axleCount: z.number().int().min(2).max(12).optional(),
+  adrTunnelCode: z.enum(["B", "C", "D", "E"]).optional(),
+  emissionClass: z.enum(["euro3", "euro4", "euro5", "euro6"]).optional(),
   vehicleType: z.enum(VEHICLE_TYPES),
   forwarder: z.string().optional(),
   comment: z.string().max(2000).optional(),
