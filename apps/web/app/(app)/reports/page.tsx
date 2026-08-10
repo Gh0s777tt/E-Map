@@ -5,10 +5,12 @@ import {
   DEFECT_PARTS,
   DEFECT_SEVERITIES,
   DEFECT_SIDES,
+  type DefectSeverity,
   type DefectStatus,
   defectSchema,
   guessDefectPart,
   setupMessage,
+  summarizeDefects,
   toCsv,
   zodFieldErrors,
 } from "@e-logistic/core";
@@ -167,6 +169,34 @@ export default function ReportsPage() {
   }
 
   const regOf = (id: string) => vehicles.find((v) => v.id === id)?.registration ?? id.slice(0, 8);
+
+  /**
+   * [#403] Statystyki usterek — z danych, które i tak są już na tym ekranie.
+   *
+   * Lista zgłoszeń odpowiada na pytanie „co jest zepsute". Nie odpowiada na
+   * pytania, które przewoźnik zadaje przy planowaniu wymian i zakupie części:
+   * który ciągnik psuje się częściej od reszty, co psuje się najczęściej i ile
+   * auto realnie czeka na naprawę.
+   *
+   * `teraz` liczone RAZ dla całego renderu: wiek zgłoszeń pokazywany w dwóch
+   * miejscach musi być tą samą liczbą, a `Date.now()` wołane osobno w każdym
+   * miejscu potrafi dać różnicę jednego dnia na granicy doby.
+   */
+  const statystyki = useMemo(() => {
+    const teraz = new Date().toISOString();
+    return summarizeDefects(
+      defects.map((d) => ({
+        vehicleId: d.vehicle_id,
+        part: d.part,
+        severity: d.severity as DefectSeverity | null,
+        status: d.status as DefectStatus | null,
+        dashboardLight: d.dashboard_light,
+        createdAt: d.created_at,
+        resolvedAt: d.resolved_at,
+      })),
+      teraz,
+    );
+  }, [defects]);
 
   const vehicleOpts = useMemo(
     () => Array.from(new Set(defects.map((d) => d.vehicle_id))),
@@ -384,6 +414,63 @@ export default function ReportsPage() {
       {!loading && !loadErr && defects.length > 0 && (
         <>
           <div style={styles.filters}>
+            {/* [#403] Obraz całości nad listą: pojedyncze zgłoszenie mówi o jednej
+              usterce, a te liczby mówią o flocie. Sekcja znika przy pustym zbiorze
+              zamiast pokazywać rząd zer — zero usterek i brak danych wyglądają
+              identycznie, a znaczą co innego. */}
+            {statystyki.wszystkie > 0 && (
+              <div style={styles.statsBox}>
+                <div style={styles.statsRow}>
+                  <Kafelek label={t("reports.stats.open")} value={statystyki.otwarte} accent />
+                  <Kafelek label={t("reports.stats.inProgress")} value={statystyki.wTrakcie} />
+                  <Kafelek label={t("reports.stats.severe")} value={statystyki.powazne} />
+                  <Kafelek
+                    label={t("reports.stats.avgRepair")}
+                    value={
+                      statystyki.sredniCzasNaprawyDni != null
+                        ? `${statystyki.sredniCzasNaprawyDni} d`
+                        : "—"
+                    }
+                  />
+                  <Kafelek
+                    label={t("reports.stats.oldestOpen")}
+                    value={
+                      statystyki.najstarszeOtwarteDni != null
+                        ? `${statystyki.najstarszeOtwarteDni} d`
+                        : "—"
+                    }
+                    accent={(statystyki.najstarszeOtwarteDni ?? 0) > 30}
+                  />
+                </div>
+
+                {statystyki.wgCzesci.length > 0 && (
+                  <p style={styles.statsNote}>
+                    <strong>{t("reports.stats.topParts")}:</strong>{" "}
+                    {statystyki.wgCzesci
+                      .slice(0, 5)
+                      .map((c) => `${c.etykieta} (${c.wszystkie})`)
+                      .join(" · ")}
+                  </p>
+                )}
+                {statystyki.wgPojazdu.length > 1 && (
+                  <p style={styles.statsNote}>
+                    <strong>{t("reports.stats.topVehicles")}:</strong>{" "}
+                    {statystyki.wgPojazdu
+                      .slice(0, 5)
+                      .map((v) => `${regOf(v.vehicleId)} (${v.wszystkie})`)
+                      .join(" · ")}
+                  </p>
+                )}
+                {statystyki.bezPojazdu > 0 && (
+                  /* Bez tej linijki suma po pojazdach nie zgadzałaby się z sumą
+                   całkowitą, a czytający miałby prawo uznać, że ekran się myli. */
+                  <p style={styles.statsNote}>
+                    {t("reports.stats.noVehicle").replace("{n}", String(statystyki.bezPojazdu))}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {STATUS_FILTERS.map((s) => (
                 <button
@@ -467,6 +554,28 @@ export default function ReportsPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  // [#403] Pasek statystyk usterek.
+  statsBox: {
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 12,
+    padding: 14,
+    background: palette.nearBlack,
+    marginBottom: 14,
+  },
+  statsRow: { display: "flex", gap: 10, flexWrap: "wrap" },
+  tile: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    minWidth: 120,
+    flex: "1 1 120px",
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 10,
+    padding: "10px 12px",
+  },
+  tileLabel: { color: palette.smoke, fontSize: 12 },
+  tileValue: { fontSize: 20, fontWeight: 800 },
+  statsNote: { color: palette.smoke, fontSize: 12.5, lineHeight: 1.6, marginTop: 10 },
   filters: {
     display: "flex",
     gap: 10,
@@ -522,3 +631,23 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.graphite}`,
   },
 };
+
+/** [#403] Jedna liczba z podpisem — używana pięć razy w pasku statystyk. */
+function Kafelek({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number | string;
+  accent?: boolean;
+}) {
+  return (
+    <div style={styles.tile}>
+      <span style={styles.tileLabel}>{label}</span>
+      <strong style={{ ...styles.tileValue, color: accent ? palette.red : palette.offWhite }}>
+        {value}
+      </strong>
+    </div>
+  );
+}

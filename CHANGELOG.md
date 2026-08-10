@@ -2,13 +2,67 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-402-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.240.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-403-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.241.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.241.0] — 📉 Statystyki usterek — z danych, które leżały nieczytane
+
+Wszystkie znane usterki są naprawione, a otwarte pozycje czekają na Twoje decyzje —
+więc wracam do rozwoju. Pierwszy z nietkniętych punktów backlogu, wybrany dlatego,
+że **dane już są**: zgłoszenia usterek zbierają się od czasu wprowadzenia kontroli
+pojazdu i nikt ich dotąd nie podsumował.
+
+- `[#403]` **`summarizeDefects`** ([defectStats.ts](packages/core/src/defectStats.ts)) —
+  silnik z 13 testami. Ekran zgłoszeń odpowiadał na pytanie „co jest zepsute". Nie
+  odpowiadał na te, które przewoźnik zadaje przy planowaniu wymian i zakupie części:
+  **który ciągnik psuje się częściej od reszty floty**, **co psuje się najczęściej**
+  (czyli co warto trzymać w magazynie), **ile auto realnie czeka na naprawę** i **czy
+  najstarsze otwarte zgłoszenie nie leży od pół roku**.
+
+- `[#403]` **Pasek statystyk nad listą zgłoszeń**
+  ([reports/page.tsx](apps/web/app/(app)/reports/page.tsx)) — pięć liczb, ranking części
+  i ranking pojazdów. Znika przy pustym zbiorze zamiast pokazywać rząd zer: zero usterek
+  i brak danych wyglądają identycznie, a znaczą co innego.
+
+**Trzy decyzje, które są w tym module decyzjami, a nie oczywistościami** — spisane
+w kodzie, bo każda daje inny wynik:
+
+1. **Nie liczymy awaryjności „na 100 tys. km"**, choć to najbardziej naturalna miara.
+   Przebieg pochodzi z tankowań, a wielu wpisów brakuje — wskaźnik z niepełnego
+   mianownika wygląda dokładnie tak samo jak z pełnego. Liczby surowe są porównywalne
+   między autami tej samej floty, bo dotyczą tego samego okresu.
+
+2. **Czas naprawy tylko z zamkniętych zgłoszeń.** Zgłoszenie otwarte nie ma czasu
+   naprawy — ma wiek, a to inna wielkość. Wliczenie otwartych jako „0 dni" zaniżałoby
+   średnią dokładnie tam, gdzie problem jest największy: flota z połową zgłoszeń
+   leżących bez ruchu wyglądałaby na szybciej serwisowaną niż ta, która wszystko domyka.
+
+3. **Wiek najstarszego otwartego, nie średnia wieku.** Średnia ukryłaby jedno zgłoszenie
+   leżące pół roku wśród dziesięciu świeżych — a to właśnie ono jest informacją.
+   Powyżej 30 dni liczba zapala się na czerwono.
+
+Drobiazgi, które też są decyzjami: nazwa części jest normalizowana przy grupowaniu
+(kierowca wpisuje ręcznie, więc „Hamulce", „hamulce " i „HAMULCE" to jedna pozycja,
+ale na ekranie pokazujemy zapis człowieka, nie klucz techniczny) · zgłoszenie zamknięte
+**przed** datą zgłoszenia odpada ze średniej zamiast ją zaniżać liczbą ujemną ·
+zgłoszenia bez pojazdu są liczone osobno, żeby suma po autach zgadzała się z sumą
+całkowitą · „w trakcie naprawy" liczy się jako otwarte, bo auto dalej stoi.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1036** ✓ (13 nowych) · `next build` ✓ ·
+`docs:check` ✓
+
+> Sekcja nie została obejrzana w przeglądarce — ekran wymaga zalogowania, a ja nie loguję
+> się na Twoje konto. Zweryfikowane jest to, co dało się zweryfikować bez sesji: silnik
+> testami, a ekran kompilacją produkcyjną.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

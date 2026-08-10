@@ -18,6 +18,7 @@ export * from "./csv";
 export * from "./csvParse";
 export * from "./damageClaims";
 export * from "./ddd";
+export * from "./defectStats";
 export * from "./driverSettlement";
 export * from "./duration";
 export * from "./ecoRoute";
