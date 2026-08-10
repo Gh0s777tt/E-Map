@@ -14,7 +14,13 @@ import {
   saveOrder,
   setOrderStatus,
 } from "@e-logistic/api";
-import { firstZodError, ORDER_STATUSES, type OrderStatus, orderSchema } from "@e-logistic/core";
+import {
+  CURRENCIES,
+  firstZodError,
+  ORDER_STATUSES,
+  type OrderStatus,
+  orderSchema,
+} from "@e-logistic/core";
 import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
@@ -282,9 +288,26 @@ export default function ManageOrdersScreen() {
           {field("cargo", "m.mord.cargo", { ph: "Palety, 24t" })}
           <View style={s.row2}>
             {field("weightKg", "m.mord.weight", { num: true, ph: "24000" })}
-            <View style={s.row2}>
-              {field("price", "m.mord.price", { num: true, ph: "1800" })}
-              {field("currency", "m.mord.currency", { ph: "EUR", upper: true })}
+            {field("price", "m.mord.price", { num: true, ph: "1800" })}
+            {/* [#389] Waluta z listy, nie wolnym tekstem — ten sam powód co przy
+                kosztach pojazdu w [#388]: `EU` albo `zł` zapisywało się jako
+                poprawny wiersz, którego potem nie dało się przeliczyć na euro,
+                więc cena zlecenia wypadała z przychodu bez żadnego sygnału.
+                Od [#389] odrzuciłby to również schemat, ale lepiej nie dawać
+                wpisać błędu, niż tłumaczyć go po fakcie. */}
+            <Text style={s.lbl}>{t("m.mord.currency")}</Text>
+            <View style={s.chips}>
+              {CURRENCIES.map((c) => (
+                <Pressable
+                  key={c}
+                  style={[s.chip, form.currency === c && s.chipOn]}
+                  onPress={() => set({ currency: c })}
+                >
+                  <Text style={[s.chipText, form.currency === c && { color: palette.white }]}>
+                    {c}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
 

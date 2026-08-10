@@ -132,14 +132,23 @@ export async function linkDriverUser(
   if (error) throw error;
 }
 
-/** #314: własne imię i nazwisko kierowcy (RPC — deszyfrowany wiersz user_id = auth.uid()). */
+/**
+ * #314: własne imię i nazwisko kierowcy (RPC — deszyfrowany wiersz user_id = auth.uid()).
+ *
+ * [#389] Doszło `id` — klucz KARTOTEKI (`drivers.id`), którym zaadresowane są
+ * wpisy ewidencji czasu pracy. Telefon zna wyłącznie `auth.uid()`, więc bez tego
+ * pola nie miał jak odfiltrować własnych wpisów i liczył ewidencję całej firmy
+ * jako swoją. Migracja 0104; zwracane pole jest nowe, więc `id` bywa `null`
+ * w starszych buildach — i wtedy znaczy „brak powiązanej kartoteki".
+ */
 export async function getMyDriverIdentity(
   client: SupabaseClient,
-): Promise<{ firstName: string; lastName: string } | null> {
+): Promise<{ id: string | null; firstName: string; lastName: string } | null> {
   const { data, error } = await client.rpc("my_driver_identity");
   if (error) throw error;
-  const row = rpcJson<{ first_name?: string; last_name?: string }>(data ?? {});
+  const row = rpcJson<{ id?: string | null; first_name?: string; last_name?: string }>(data ?? {});
   const firstName = (row.first_name ?? "").trim();
   const lastName = (row.last_name ?? "").trim();
-  return firstName || lastName ? { firstName, lastName } : null;
+  const id = row.id ?? null;
+  return id || firstName || lastName ? { id, firstName, lastName } : null;
 }

@@ -152,6 +152,10 @@ const pl = {
   "m.vehicle.inspectionInDays": "przegląd za {n} dni",
   "m.settle.loadError": "Nie udało się pobrać rozliczenia.",
   "m.settle.estimate": "Szacunek — bieżący miesiąc",
+  "m.settle.noRoster":
+    "Twoje konto nie jest jeszcze powiązane z kartoteką kierowcy, więc nie ma z czego policzyć dni służby. Poproś biuro o powiązanie konta.",
+  "m.worktime.noRoster":
+    "Twoje konto nie jest powiązane z kartoteką kierowcy — nie ma jak wskazać Twoich wpisów ewidencji. Poproś biuro o powiązanie konta.",
   "m.settle.dutyDays": "{n} dni służby (z ewidencji)",
   "m.settle.base": "podstawa",
   "m.settle.bonuses": "premie",
@@ -1291,6 +1295,10 @@ const en: Record<MobileMessageKey, string> = {
   "m.vehicle.inspectionInDays": "inspection in {n} days",
   "m.settle.loadError": "Couldn't load the settlement.",
   "m.settle.estimate": "Estimate — current month",
+  "m.settle.noRoster":
+    "Your account is not linked to a driver record yet, so duty days cannot be counted. Ask the office to link it.",
+  "m.worktime.noRoster":
+    "Your account is not linked to a driver record — your work-time entries cannot be identified. Ask the office to link it.",
   "m.settle.dutyDays": "{n} duty days (from records)",
   "m.settle.base": "base",
   "m.settle.bonuses": "bonuses",
@@ -2427,6 +2435,10 @@ const de: Record<MobileMessageKey, string> = {
   "m.vehicle.inspectionInDays": "Prüfung in {n} Tagen",
   "m.settle.loadError": "Abrechnung konnte nicht geladen werden.",
   "m.settle.estimate": "Schätzung — aktueller Monat",
+  "m.settle.noRoster":
+    "Ihr Konto ist noch nicht mit einer Fahrerakte verknüpft, daher können Diensttage nicht berechnet werden. Bitten Sie das Büro um die Verknüpfung.",
+  "m.worktime.noRoster":
+    "Ihr Konto ist nicht mit einer Fahrerakte verknüpft — Ihre Arbeitszeiteinträge lassen sich nicht zuordnen. Bitten Sie das Büro um die Verknüpfung.",
   "m.settle.dutyDays": "{n} Diensttage (aus Aufzeichnungen)",
   "m.settle.base": "Grundlohn",
   "m.settle.bonuses": "Prämien",
@@ -3565,6 +3577,10 @@ const uk: Record<MobileMessageKey, string> = {
   "m.vehicle.inspectionInDays": "огляд через {n} дн.",
   "m.settle.loadError": "Не вдалося завантажити розрахунок.",
   "m.settle.estimate": "Оцінка — поточний місяць",
+  "m.settle.noRoster":
+    "Ваш обліковий запис ще не пов'язаний з карткою водія, тому дні служби порахувати неможливо. Попросіть офіс пов'язати його.",
+  "m.worktime.noRoster":
+    "Ваш обліковий запис не пов'язаний з карткою водія — визначити ваші записи обліку неможливо. Попросіть офіс пов'язати його.",
   "m.settle.dutyDays": "{n} дн. служби (з обліку)",
   "m.settle.base": "база",
   "m.settle.bonuses": "премії",

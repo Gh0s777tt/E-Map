@@ -1171,6 +1171,8 @@ export const en: Record<MessageKey, string> = {
   "settlements.rateSavedPrefix": "Saved default rate",
   "settlements.rateSavedFor": "for",
   "settlements.rateSaveError": "Failed to save the rate.",
+  "settlements.missingRate":
+    "entries have an amount but no exchange rate for the day they occurred — they are not in the total. Cost is understated and margin overstated until the rates arrive.",
   "settlements.loadError": "Failed to load settlement data.",
   "settlements.vehicleCard": "Vehicle card →",
   "settlements.distance": "Distance",
@@ -1208,6 +1210,8 @@ export const en: Record<MessageKey, string> = {
   "settlementsDriver.from": "From",
   "settlementsDriver.to": "To",
   "settlementsDriver.fetching": "Fetching…",
+  "settlementsDriver.noLinkedAccount":
+    "This driver has no app account yet, so there are no Trip events — kilometres cannot be fetched. Send an invite and link the account to the roster entry.",
   "settlementsDriver.fetchDaysKm": "⬇️ Fetch days and km",
   "settlementsDriver.companyRates": "⚙️ Company norms and rates",
   "settlementsDriver.editingAsOwner": "(editing as owner)",

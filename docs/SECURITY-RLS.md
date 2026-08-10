@@ -45,6 +45,25 @@ gh secret set SUPABASE_DB_URL --repo <owner>/<repo>   # wartość ze stdin (bez 
 | 4 | Zapisy ograniczone do autora/roli | INSERT→`WITH CHECK`, UPDATE/DELETE→`USING`; `true` = każdy może pisać. |
 | 5 | `SECURITY DEFINER` ma `search_path` | Brak przypięcia = ryzyko hijacku przez podmianę ścieżki schematu. |
 | 6 | Helpery `is_member_of` / `has_role` istnieją i są `SECURITY DEFINER` | Filary RLS — bez nich polityki nie izolują. |
+| 7 | **Każda polityka UPDATE ma `WITH CHECK`** z powtórzonym warunkiem przynależności | Bez `WITH CHECK` Postgres stosuje `USING` do wiersza po zmianie — a to broni WYŁĄCZNIE kolumn, które w `USING` wystąpiły. Typowe `USING (driver_id = auth.uid() OR has_role(company_id, …))` przepuszcza podmianę `company_id`, bo pierwszy człon pozostaje prawdziwy: kierowca przepina własny wiersz do obcej firmy. |
+
+
+> ### Reguła 7 — skąd się wzięła
+>
+> Ten sam błąd wystąpił **trzy razy**: migracja 0094 (`chat_threads`), 0101
+> (`driver_positions`) i 0103 (osiem pozostałych polityk). Dwie pierwsze naprawiły
+> po jednym wystąpieniu, obie kończąc się identycznym wnioskiem — i wniosek za
+> każdym razem zostawał w komentarzu do migracji, zamiast trafić do bramki.
+>
+> Za trzecim razem dziurę **potwierdzono doświadczalnie na produkcji**: w transakcji
+> zakończonej ROLLBACK, z rolą `authenticated` i JWT prawdziwego kierowcy,
+> `update fuel_logs set company_id = <obca firma>` przeszło. Wpis tankowania zmienił
+> firmę. Dotyczyło to `fuel_logs`, `adblue_logs`, `pause_events` i `trip_events` —
+> czyli tankowań, AdBlue, postojów i zdarzeń trasy, z których liczą się kilometry,
+> spalanie, koszty i marża po obu stronach.
+>
+> Reguła jest teraz sprawdzana automatycznie w [`audit:rls`](../scripts/audit-rls.mjs),
+> bo naprawianie po jednym działa dopóki ktoś pamięta, a bramka działa dalej.
 
 Obiekty należące do **rozszerzeń** (PostGIS: `spatial_ref_sys`, `st_*`) są pomijane
 automatycznie (`pg_depend deptype='e'`) — zarządza nimi Supabase, nie nasze migracje.

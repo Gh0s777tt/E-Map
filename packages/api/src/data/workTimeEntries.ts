@@ -28,12 +28,25 @@ export interface WorkTimeInput {
 const COLS = "id, driver_name, driver_id, work_date, driving, other_work, rest, note, created_at";
 
 /** Wpisy czasu pracy firmy (wg daty malejąco). Filtr: kierowca. RLS: członek czyta. */
+/**
+ * Ewidencja czasu pracy firmy.
+ *
+ * [#389] `driverId` (klucz kartoteki, `drivers.id`) to filtr, którego brakowało
+ * aplikacji mobilnej. Polityka SELECT na tej tabeli to `is_member_of(company_id)`,
+ * więc kierowca WIDZI wpisy wszystkich kolegów — bez filtra po stronie zapytania
+ * ekran „Czas pracy" sumował godziny całej firmy i wyliczał z nich status WTD
+ * jednego człowieka.
+ *
+ * Filtr po `driverId` jest pewniejszy niż po `driverName`: nazwisko bywa wpisane
+ * z literówką albo w innej kolejności, a klucz kartoteki jest jeden.
+ */
 export async function listWorkTimeEntries(
   client: SupabaseClient,
   companyId: string,
-  opts: { driverName?: string; limit?: number } = {},
+  opts: { driverName?: string; driverId?: string; limit?: number } = {},
 ): Promise<WorkTimeRecord[]> {
   let q = client.from("work_time_entries").select(COLS).eq("company_id", companyId);
+  if (opts.driverId) q = q.eq("driver_id", opts.driverId);
   if (opts.driverName) q = q.eq("driver_name", opts.driverName);
   q = q.order("work_date", { ascending: false }).limit(opts.limit ?? 1000);
   const { data, error } = await q;

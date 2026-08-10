@@ -207,7 +207,24 @@ export const orderSchema = z.object({
   cargo: z.string().max(300).optional(),
   weightKg: z.number().nonnegative().max(100000).optional(),
   price: z.number().nonnegative().max(10000000).optional(),
-  currency: z.string().max(8).default("EUR"),
+  /**
+   * [#389] Kod ISO, nie dowolny tekst do ośmiu znaków.
+   *
+   * `z.string().max(8)` przepuszczało `pln`, ` EUR `, `euro`, a nawet `zł` —
+   * podczas gdy migracja 0100 nałożyła na `orders.currency` CHECK `^[A-Z]{3}$`.
+   * Rozjazd kończył się więc na dwa sposoby, oba złe: zapis odrzucony przez bazę
+   * z komunikatem o naruszeniu więzów zamiast czytelnego błędu przy polu, albo —
+   * dla wierszy sprzed migracji — waluta, której `pickFxRate` nie dopasuje,
+   * czyli cena zlecenia wypadająca po cichu z przychodu.
+   *
+   * `currencyCode` istniał w tym samym pliku od [#373] i był już używany przy
+   * paliwie, AdBlue i kosztach trasy. `.trim().toUpperCase()` sprawia, że
+   * `pln` wpisane z telefonu przechodzi jako `PLN`, zamiast być odrzucone.
+   *
+   * `.default("EUR")` zostaje: pole jest wymagane w bazie, a zlecenia bez
+   * podanej waluty (import, starsze formularze) mają się nadal zapisywać.
+   */
+  currency: currencyCode.default("EUR"),
   vehicleId: z.string().uuid().optional(),
   assignedTo: z.string().uuid().optional(),
   loadDate: isoDate.optional(),

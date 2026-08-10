@@ -1179,6 +1179,8 @@ export const pl = {
   "settlements.rateSavedPrefix": "Zapisano domyślną stawkę",
   "settlements.rateSavedFor": "dla",
   "settlements.rateSaveError": "Nie udało się zapisać stawki.",
+  "settlements.missingRate":
+    "pozycji ma kwotę, ale nie ma notowania waluty na dzień zdarzenia — nie weszły do rachunku. Koszt jest zaniżony, a marża zawyżona, dopóki kursy się nie uzupełnią.",
   "settlements.loadError": "Nie udało się pobrać danych do rozliczenia.",
   "settlements.vehicleCard": "Karta pojazdu →",
   "settlements.distance": "Dystans",
@@ -1216,6 +1218,8 @@ export const pl = {
   "settlementsDriver.from": "Od",
   "settlementsDriver.to": "Do",
   "settlementsDriver.fetching": "Pobieram…",
+  "settlementsDriver.noLinkedAccount":
+    "Ten kierowca nie ma jeszcze konta w aplikacji, więc nie ma zdarzeń Trip — kilometrów nie da się pobrać. Wyślij zaproszenie i powiąż konto z kartoteką.",
   "settlementsDriver.fetchDaysKm": "⬇️ Pobierz dni i km",
   "settlementsDriver.companyRates": "⚙️ Normy i stawki firmy",
   "settlementsDriver.editingAsOwner": "(edytujesz jako właściciel)",

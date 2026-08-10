@@ -89,6 +89,18 @@ export default function DriverSettlementPage() {
   /** Wciąga dni pracy i km per tydzień ISO z danych okresu. */
   const loadData = useCallback(async () => {
     if (!companyId || !driver) return;
+    /*
+     * [#389] Kierowca z kartoteki nie musi mieć konta w aplikacji — `drivers.user_id`
+     * jest nullowalne, bo kartotekę zakłada biuro, a konto powstaje dopiero po
+     * przyjęciu zaproszenia. Bez konta nie ma ani jednego zdarzenia Trip, więc
+     * kilometrów nie da się policzyć — i to trzeba POWIEDZIEĆ. Zero kilometrów
+     * pokazane bez słowa wygląda dokładnie tak samo jak kierowca, który nie
+     * jeździł, a prowadzi do wypłaty zaniżonej o całą premię kilometrową.
+     */
+    if (!driver.user_id) {
+      toast(t("settlementsDriver.noLinkedAccount"), "error");
+      return;
+    }
     setBusy(true);
     try {
       const sb = getBrowserSupabase();
@@ -97,18 +109,42 @@ export default function DriverSettlementPage() {
       );
       const workDates = new Set(work.map((w) => w.work_date));
 
+      /*
+       * [#389] Dwie pomyłki w jednym zapytaniu, obie dające po cichu zero kilometrów.
+       *
+       * 1) KLUCZ. Filtr szedł po `driver.id`, czyli po kluczu głównym KARTOTEKI
+       *    kierowcy (`drivers.id`, generowany przez `gen_random_uuid()`), podczas
+       *    gdy `trip_events.driver_id` ma więz obcy do `auth.users(id)` — czyli
+       *    trzyma identyfikator KONTA. To dwie różne wartości i nigdy nie są
+       *    równe, więc zapytanie zwracało pustą listę ZAWSZE, dla każdego
+       *    kierowcy i każdego okresu.
+       *
+       *    Skutek nie był widoczny: dni pracy przychodzą osobno z ewidencji
+       *    czasu pracy, więc arkusz wypełniał się poprawnie — tylko rubryka
+       *    „km razem" pokazywała 0, a premia za nadwyżkę kilometrów wychodziła
+       *    zerowa. Komunikat „brak danych" też nie padał, bo jego warunek wymaga
+       *    JEDNOCZEŚNIE braku dni i braku przejazdów. Właściciel zapisywał więc
+       *    kierowcy zaniżoną należność, nie mając jak zauważyć, czego brakuje.
+       *
+       * 2) DATA. Okno liczone po `created_at`, czyli po momencie SYNCHRONIZACJI
+       *    wpisu. Kierowca kończy trasę w niedzielę bez zasięgu, telefon wysyła
+       *    dane w środę — kilometry wpadały do złego tygodnia ISO, a przy
+       *    przełomie miesiąca w ogóle poza okres rozliczenia. `occurred_at`
+       *    (migracja 0093, NOT NULL) to dzień zdarzenia i to po nim filtruje
+       *    reszta repozytorium (`listTripEvents`).
+       */
       const { data: trips, error } = await sb
         .from("trip_events")
-        .select("created_at, odometer_km")
-        .eq("driver_id", driver.id)
-        .gte("created_at", `${from}T00:00:00Z`)
-        .lte("created_at", `${to}T23:59:59Z`)
-        .order("created_at");
+        .select("occurred_at, odometer_km")
+        .eq("driver_id", driver.user_id)
+        .gte("occurred_at", `${from}T00:00:00Z`)
+        .lte("occurred_at", `${to}T23:59:59Z`)
+        .order("occurred_at");
       if (error) throw error;
 
       const byWeek = new Map<string, { min: number; max: number; dates: Set<string> }>();
       for (const tr of trips ?? []) {
-        const day = tr.created_at.slice(0, 10);
+        const day = tr.occurred_at.slice(0, 10);
         const wk = isoWeekStart(day);
         const cur = byWeek.get(wk) ?? {
           min: tr.odometer_km,

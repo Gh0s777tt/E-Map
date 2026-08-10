@@ -154,6 +154,26 @@ try {
         `public.${p.table} · "${p.name}" (${p.cmd}): USING = ${p.using_expr ?? "∅"} — każdy może zmienić.`,
       );
     }
+
+    /*
+     * (4b) [#389] UPDATE bez WITH CHECK — ten sam błąd trzy razy z rzędu.
+     *
+     * Postgres przy braku WITH CHECK stosuje USING także do wiersza PO zmianie.
+     * Brzmi jak zabezpieczenie, ale broni wyłącznie kolumn, które w USING
+     * wystąpiły. Typowe `USING (driver_id = auth.uid() OR has_role(company_id, ...))`
+     * przepuszcza podmianę `company_id`, bo pierwszy człon pozostaje prawdziwy —
+     * kierowca przepina własny wiersz do obcej firmy i baza to przyjmuje.
+     *
+     * Naprawiane pojedynczo w migracjach 0094 (chat_threads) i 0101
+     * (driver_positions); 0103 domknęła pozostałe osiem polityk. Ta reguła
+     * istnieje po to, żeby dziewiąta nie powstała po cichu.
+     */
+    if (p.cmd === "UPDATE" && (p.check_expr === null || p.check_expr === undefined)) {
+      errors.push(
+        `public.${p.table} · "${p.name}" (UPDATE): brak WITH CHECK — USING nie broni kolumn, ` +
+          `których w nim nie ma (np. company_id). Powtórz w WITH CHECK warunek przynależności.`,
+      );
+    }
     if (p.cmd === "ALL" && global && (isBroad(p.using_expr) || isBroad(p.check_expr))) {
       errors.push(
         `public.${p.table} · "${p.name}" (ALL): zapis na tabeli wspólnotowej bez ograniczenia.`,

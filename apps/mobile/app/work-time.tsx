@@ -1,5 +1,10 @@
 /** #285: Czas pracy — podsumowanie miesiąca + ostatnie wpisy ewidencji. */
-import { getActiveMembership, listWorkTimeEntries, type WorkTimeRecord } from "@e-logistic/api";
+import {
+  getActiveMembership,
+  getMyDriverIdentity,
+  listWorkTimeEntries,
+  type WorkTimeRecord,
+} from "@e-logistic/api";
 import { WTD_LIMITS, weeklyWorkingFromEntries, wtdStatus } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,6 +25,8 @@ export default function WorkTimeScreen() {
   const [entries, setEntries] = useState<WorkTimeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  /** [#389] Czy konto ma powiązaną kartotekę — bez niej nie ma czyich godzin liczyć. */
+  const [linked, setLinked] = useState(true);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -30,7 +37,26 @@ export default function WorkTimeScreen() {
     try {
       const sb = getSupabase();
       const m = await getActiveMembership(sb);
-      if (m) setEntries(await listWorkTimeEntries(sb, m.companyId, { limit: 90 }));
+      /*
+       * [#389] Ewidencja MOJA, nie całej firmy.
+       *
+       * Zapytanie bez filtra zwracało wpisy wszystkich kierowców (polityka SELECT
+       * to `is_member_of(company_id)`), a ekran sumował z nich godziny jazdy
+       * i pracy oraz liczył status WTD 2002/15/WE. Kierowca w firmie z pięcioma
+       * kolegami dostawał czerwony alarm przekroczenia 48 h tygodniowo praktycznie
+       * zawsze — i nie miał jak go wyjaśnić, bo w jego własnych dniach żadnego
+       * przekroczenia nie było. Alarm, który zapala się bez powodu, uczy tego,
+       * żeby go ignorować; wtedy nie zadziała, gdy przekroczenie będzie prawdziwe.
+       *
+       * Wersja web liczy WTD dla WYBRANEGO kierowcy — tu wyrównujemy zachowanie.
+       */
+      if (m) {
+        const me = await getMyDriverIdentity(sb).catch(() => null);
+        setLinked(Boolean(me?.id));
+        setEntries(
+          me?.id ? await listWorkTimeEntries(sb, m.companyId, { driverId: me.id, limit: 90 }) : [],
+        );
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("m.worktime.loadError"));
     } finally {
@@ -148,6 +174,12 @@ export default function WorkTimeScreen() {
       )}
 
       {err && <Text style={s.err}>{err}</Text>}
+      {!linked && !loading && (
+        /* [#389] Bez powiązanej kartoteki nie ma jak wskazać własnych wpisów.
+           Pusty ekran z powodem jest uczciwy; pusty bez powodu wygląda jak
+           miesiąc bez pracy, a wcześniej pokazywał tu godziny całej firmy. */
+        <Text style={s.err}>{t("m.worktime.noRoster")}</Text>
+      )}
       {!loading && !err && entries.length === 0 && (
         <Text style={s.note}>{t("m.worktime.empty")}</Text>
       )}

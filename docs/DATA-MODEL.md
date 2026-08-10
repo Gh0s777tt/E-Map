@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.234.0** (#388 — 104 migracje; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
+> Status: **wdrożone** · stan kodu **v1.235.0** (#389 — 106 migracji; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -100,6 +100,10 @@ opisywał stan rzeczywisty, a nie zamierzony. Gwiazdka `*` oznacza `NOT NULL`.
   własny wiersz na obcą firmę i pokazać się na jej mapie floty. Reguła wynikająca z tego (oraz z 0094 na
   `chat_threads`): **każda polityka UPDATE na tabeli multi-tenant musi mieć `WITH CHECK` powtarzający
   warunek przynależności** — `USING` pilnuje tylko tego, co wolno wziąć, nie tego, czym wolno to zastąpić.
+  Reguła zastosowana wszędzie w **0103** (osiem polityk: `fuel_logs`, `adblue_logs`,
+  `pause_events`, `trip_events`, `driver_expenses`, `companies`, `profiles`, `poi_reviews`)
+  i od tej pory pilnowana bramką [`audit:rls`](../scripts/audit-rls.mjs) — patrz
+  [SECURITY-RLS.md](SECURITY-RLS.md), reguła 7.
 - **`driver_routes`** — trasa zaplanowana kierowcy: `stops*`, `geometry*`, `summary*` (jsonb).
 - **`driver_tacho_events`** — zdarzenia tachografu: `kind*`, `rest_type`, `at*`.
 - **`tacho_downloads`** — terminy sczytań karty/tachografu: `kind*`, `last_download*` → przypomnienia.

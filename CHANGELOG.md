@@ -2,13 +2,129 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-388-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.234.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-389-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.235.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.235.0] — 🛡️ Kierowca mógł przepiąć swoje tankowanie do obcej firmy. Sprawdzone na produkcji, zamknięte.
+
+Adwersaryjny audyt pięcioma niezależnymi obiektywami: 10 znalezisk, każde weryfikowane
+przez agenta, którego zadaniem było je **obalić**. Dwa z nich znalazłem równolegle sam,
+patrząc wprost w żywą bazę — i to one okazały się najpoważniejsze.
+
+### Izolacja firm — ta sama reguła, trzeci raz
+
+- `[#389]` **Osiem polityk UPDATE bez `WITH CHECK`** (migracja
+  [0103](supabase/migrations/0103_update_policies_with_check.sql)). Migracje 0094
+  (`chat_threads`) i 0101 (`driver_positions`) naprawiły po jednym wystąpieniu i obie
+  kończyły się tym samym wnioskiem. Zapytanie do `pg_policies` na żywej bazie pokazało,
+  że wniosku nigdzie nie zastosowano szerzej.
+
+  **Dziura potwierdzona doświadczalnie, nie wywnioskowana:** w transakcji zakończonej
+  ROLLBACK, z rolą `authenticated` i JWT prawdziwego kierowcy,
+  `update fuel_logs set company_id = <obca firma>` **przeszło**. Wpis tankowania zmienił firmę.
+
+  Działało to tak: `USING ((driver_id = auth.uid()) OR has_role(company_id, …))` Postgres
+  stosuje także do wiersza PO zmianie. Pierwszy człon pozostaje prawdziwy, bo kierowca nie
+  rusza `driver_id` — a `company_id` nie występuje w warunku w żaden sposób, który by go
+  bronił. W praktyce: kierowca firmy A wstrzykuje własne tankowania, wyjazdy, przerwy
+  i AdBlue do ksiąg firmy B, jednocześnie usuwając je z własnych. Nie trzeba do tego luki
+  w aplikacji ani wykradzionego tokenu — wystarczy klucz publiczny i jedno zapytanie.
+
+  Po migracji: atak kończy się błędem RLS, **legalna edycja własnego wpisu nadal działa**
+  (sprawdzone osobno — poprawka bezpieczeństwa blokująca kierowcy własne dane byłaby
+  gorsza od dziury). Polityk UPDATE bez `WITH CHECK`: **0 z 16**.
+
+- `[#389]` **Reguła w bramce CI** ([audit-rls.mjs](scripts/audit-rls.mjs)) — żeby dziewiąta
+  nie powstała po cichu. Naprawianie po jednym działa dopóki ktoś pamięta; reguła działa dalej.
+
+- `[#389]` **Ocena POI przestaje być przenośna** — `poi_id` niezmienny przez wyzwalacz.
+  Autor mógł PRZESUNĄĆ własną jedynkę na sąsiedni parking, bez śladu i bez pisania nowej
+  opinii. Wyzwalacz, nie `WITH CHECK`: odczyt tej samej tabeli w jej własnej polityce
+  wchodzi ponownie w polityki SELECT, a to prosta droga do rekursji.
+
+### Liczby, które nie miały prawa być prawdziwe
+
+- `[#389]` **Rozliczenie kierowcy pobierało kilometry filtrem, który nie mógł trafić**
+  ([settlements/driver](apps/web/app/(app)/settlements/driver/page.tsx)). Zapytanie szło po
+  `drivers.id` (klucz KARTOTEKI), a `trip_events.driver_id` ma więz obcy do `auth.users(id)`
+  — **potwierdzone w żywej bazie**, `trip_events_driver_id_fkey → auth.users(id)`. To dwie
+  różne wartości, więc wynik był pusty ZAWSZE, dla każdego kierowcy i każdego okresu.
+
+  Nie było tego widać: dni pracy przychodzą osobno z ewidencji, więc arkusz wypełniał się
+  normalnie — tylko premia za nadwyżkę kilometrów wychodziła zerowa. Komunikat „brak danych"
+  też nie padał, bo jego warunek wymaga JEDNOCZEŚNIE braku dni i braku przejazdów.
+  Właściciel zapisywał kierowcy zaniżoną należność, nie mając jak zauważyć czego brakuje.
+
+  Przy okazji: okno liczone po `created_at` (moment synchronizacji) zamiast `occurred_at`
+  (dzień zdarzenia) wrzucało kilometry do złego tygodnia ISO, a na przełomie miesiąca poza
+  okres rozliczenia. Kierowca bez powiązanego konta dostaje teraz komunikat, a nie zero.
+
+- `[#389]` **Rachunek wyjazdu sumował waluty jak liczby**
+  ([settlements](apps/web/app/(app)/settlements/page.tsx)). Kolumna `currency` przychodziła
+  z bazy i **ani razu nie była odczytana**, a wynik podpisywano znakiem €. Tankowanie za
+  430 PLN dokładało „430 €". Teraz kurs EBC z dnia zdarzenia, licznik pozycji bez notowania
+  na ekranie, a w CSV rozdzielone „Kwota"/„Waluta"/„Kwota (€)" — bo arkusz z jedną kolumną
+  „Kwota" dawał się zsumować `=SUMA()` i dawał liczbę bez znaczenia.
+
+### Aplikacja kierowcy liczyła cudze dane jako własne
+
+- `[#389]` **„Moje rozliczenie" brało ewidencję CAŁEJ firmy**
+  ([settlement.tsx](apps/mobile/app/settlement.tsx)) — polityka SELECT to
+  `is_member_of(company_id)`, więc kierowca realnie widzi dni kolegów i wszystkie szły do
+  jego szacunku. W firmie z pięcioma kierowcami kwota była około pięciokrotnie za wysoka.
+  Do tego liczone były WPISY, nie unikalne dni: korekta godzin dopisana osobno robiła
+  z jednego dnia dwa.
+
+- `[#389]` **Czas pracy liczył WTD z godzin całej firmy**
+  ([work-time.tsx](apps/mobile/app/work-time.tsx)). Kierowca dostawał czerwony alarm
+  przekroczenia 48 h/60 h praktycznie zawsze i nie miał jak go wyjaśnić, bo w jego własnych
+  dniach przekroczenia nie było. **Alarm zapalający się bez powodu uczy tego, żeby go
+  ignorować — i wtedy nie zadziała, gdy przekroczenie będzie prawdziwe.**
+
+  Oba ekrany filtrują teraz po kartotece. Telefon nie miał czym: zna `auth.uid()`, a wpisy
+  są zaadresowane `drivers.id`. Migracja [0104](supabase/migrations/0104_my_driver_identity_id.sql)
+  dokłada `id` do `my_driver_identity()` — wstecznie zgodnie, więc buildy w sklepach działają dalej.
+
+### Mechanizm zamiast łatki
+
+- `[#389]` **Edycja pojazdu z telefonu kasowała 17 kolumn**
+  ([vehicles.ts](packages/api/src/data/vehicles.ts)) — dokładnie błąd naprawiony w `[#386]`,
+  ale tam naprawiono JEDNEGO WYWOŁUJĄCEGO: dołożono pola do formularza web. Aplikacja
+  mobilna ma 9 pól z 26 i kasowała dalej — w tym gabaryty, liczbę osi i kod tunelowy ADR,
+  czyli dane, z których mapa liczy trasę ciężarówki.
+
+  Naprawione u źródła: `updateVehicle` wysyła teraz **patch**, nie cały wiersz. Rozróżnienie
+  opiera się na OBECNOŚCI KLUCZA, bo `undefined` znaczy tu dwie różne rzeczy —
+  `{ insurer: undefined }` to „wyczyściłem pole" (zapisz `null`), a klucz nieobecny to
+  „mój formularz tego pola nie ma" (nie ruszaj kolumny). Zod tę różnicę zachowuje;
+  sprawdziłem to sondą, zanim na tym oparłem naprawę. Web wysyła `pole.trim() || undefined`,
+  czyli klucz OBECNY — czyszczenie działa jak dotąd.
+
+  Osiem testów, w tym jeden pilnujący WARUNKU POPRAWNOŚCI: `vehicleSchema` nie może dostać
+  `.default()`, bo `.default()` wstawia klucz również wtedy, gdy wywołujący go nie podał —
+  i „nie ruszaj" zamieniłoby się w „nadpisz domyślną".
+
+- `[#389]` **Waluta zlecenia jako kod ISO** ([schemas.ts](packages/core/src/schemas.ts)) —
+  `z.string().max(8)` przepuszczało `zł`, `euro`, `EU`, podczas gdy migracja 0100 nałożyła
+  na `orders.currency` CHECK `^[A-Z]{3}$`. Walidator `currencyCode` istniał w tym samym
+  pliku od `[#373]`. `pln` z telefonu przechodzi jako `PLN`; zlecenia mobilne dostały
+  chipy walut zamiast pola tekstowego — jak koszty pojazdu w `[#388]`.
+
+**Audyt:** 5 obiektywów · 15 agentów · 10 znalezisk · 0 obalonych przez weryfikatorów ·
+2 znalezione niezależnie przeze mnie w żywej bazie (i to one były najgroźniejsze) ·
+0 zgłoszeń dotyczących czegoś, co było świadomą decyzją.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1015** ✓ · `next build` ✓ · `docs:check` ✓ ·
+migracje 0103/0104 zastosowane i zweryfikowane na produkcji (atak zablokowany, praca normalna działa)
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
