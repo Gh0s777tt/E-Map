@@ -121,25 +121,34 @@ export interface ChecklistSubmissionInput {
 }
 
 /** Zgłoszenie kierowcy — driver_id/driver_user_id dopina trigger po auth.uid(). */
+/** [#391] Jak przy wydatkach: `id` z kolejki offline zamienia powtórkę w brak zmian. */
 export async function insertChecklistSubmission(
   client: SupabaseClient,
   companyId: string,
   input: ChecklistSubmissionInput,
+  /** Identyfikator z kolejki offline — czyni ponowną wysyłkę bezpieczną. */
+  id?: string,
 ): Promise<string> {
   const { data, error } = await client
     .from("checklist_submissions")
-    .insert({
-      company_id: companyId,
-      template_id: input.templateId,
-      template_name: input.templateName,
-      vehicle_id: input.vehicleId ?? null,
-      driver_label: input.driverLabel,
-      answers: input.answers as unknown as Json,
-    })
+    .upsert(
+      {
+        ...(id ? { id } : {}),
+        company_id: companyId,
+        template_id: input.templateId,
+        template_name: input.templateName,
+        vehicle_id: input.vehicleId ?? null,
+        driver_label: input.driverLabel,
+        answers: input.answers as unknown as Json,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    )
+    // [#391] `maybeSingle` — patrz `insertDriverExpense`: przy powtórce z kolejki
+    // `ignoreDuplicates` nie zwraca wiersza, a to poprawne zakończenie, nie błąd.
     .select("id")
-    .single();
+    .maybeSingle();
   if (error) throw error;
-  return data.id;
+  return data?.id ?? id ?? "";
 }
 
 /** Zgłoszenia firmy (zarząd) lub własne (kierowca — RLS zawęża). Filtry + sort. */

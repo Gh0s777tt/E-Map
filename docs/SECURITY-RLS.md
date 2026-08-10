@@ -85,6 +85,26 @@ gh secret set SUPABASE_DB_URL --repo <owner>/<repo>   # wartość ze stdin (bez 
 > `SECURITY DEFINER` należące do `postgres`, więc aplikacja działa bez zmian),
 > a 19 uprzywilejowanych RPC odebrane `PUBLIC` przy zachowaniu `authenticated`.
 
+> ### Znane ograniczenie: matryca uprawnień nie jest granicą bezpieczeństwa
+>
+> `memberships.permissions` (matryca właściciela, #278) trzyma poziom `view`/`edit`
+> per moduł. **Żadna polityka RLS jej nie czyta.** Kolumna jest używana wyłącznie
+> przez `company_members()` i `create_invite`; reguły INSERT/UPDATE odwołują się
+> do roli i przynależności, nie do poziomu.
+>
+> Ekrany mobilne respektują poziom `view` (chowają formularz), web nie, baza nie zna
+> go w ogóle. Członek z poziomem `view` może dodać własne tankowanie przez panel albo
+> wprost przez API. **Granicą pozostaje RLS: własne wiersze, własna firma** — i ta
+> granica działa. Poziom z matrycy jest wygodą interfejsu.
+>
+> Komentarz w `apps/mobile/lib/usePermission.ts` twierdził wcześniej, że „serwerowe
+> RLS i tak pilnuje zapisu" — sprostowane w `[#393]`. Fałszywa deklaracja
+> zabezpieczenia jest groźniejsza niż jego brak, bo zniechęca do dołożenia kontroli.
+>
+> **Do decyzji przed wdrożeniem:** czy poziom rozstrzyga o INSERT, o UPDATE cudzych
+> wierszy, czy o obu — i co zrobić z wpisami zakolejkowanymi offline, zanim
+> uprawnienie odebrano. To decyzja produktowa, nie poprawka.
+
 Obiekty należące do **rozszerzeń** (PostGIS: `spatial_ref_sys`, `st_*`) są pomijane
 automatycznie (`pg_depend deptype='e'`) — zarządza nimi Supabase, nie nasze migracje.
 

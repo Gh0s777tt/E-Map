@@ -271,16 +271,21 @@ async function syncItem(itemId: string): Promise<void> {
       if (sent) notifyChat(chat.threadId, chat.body, chat.companyId);
     } else if (item.kind === "expense") {
       // #291: wydatek dodany offline — companyId dopinamy przy synchronizacji.
-      await insertDriverExpense(sb, {
-        ...(item.input as DriverExpenseInput),
-        companyId: membership.companyId,
-      });
+      // [#391] `item.id` przekazany jawnie: bez niego utrata ODPOWIEDZI (żądanie
+      // doszło, potwierdzenie nie) kończyła się drugim wydatkiem przy retry.
+      await insertDriverExpense(
+        sb,
+        { ...(item.input as DriverExpenseInput), companyId: membership.companyId },
+        item.id,
+      );
     } else if (item.kind === "checklist") {
       // #273: checklisty — trigger w bazie dopina driver_id po auth.uid().
+      // [#391] `item.id` jak wyżej — inaczej powtórka to druga kontrola pojazdu.
       await insertChecklistSubmission(
         sb,
         membership.companyId,
         item.input as ChecklistSubmissionInput,
+        item.id,
       );
     } else if (item.kind === "trip") {
       await insertTripEvent(sb, withOccurredAt(item.input as TripEventInput, item.createdAt), ctx);

@@ -41,7 +41,24 @@ function toTachoEntries(subs: ChecklistSubmission[]): TachoEntry[] {
   return subs.flatMap((s) => {
     const mode = s.answers.mode;
     if (!mode || !Array.isArray(mode.value) || !mode.time) return [];
-    return [{ date: s.created_at.slice(0, 10), time: mode.time, modes: mode.value }];
+    /*
+     * [#395] Data LOKALNA, nie UTC.
+     *
+     * `created_at.slice(0, 10)` bierze dzień w UTC, a `mode.time` to godzina
+     * wpisana przez kierowcę w jego strefie. Sklejenie tych dwóch rzeczy daje
+     * moment, którego nie było: checklista wypełniona o 23:30 czasu polskiego
+     * ma `created_at` = 21:30 UTC tego samego dnia — to akurat wychodzi — ale
+     * wypełniona o 00:30 ma `created_at` 22:30 UTC **dnia poprzedniego**.
+     * Nocna zmiana lądowała więc w złej dobie: godziny jazdy wypadały z ewidencji
+     * właściwego dnia, a `tachoTime` liczy z nich odpoczynek dobowy i tygodniowy.
+     *
+     * `sv-SE` jako format daje `YYYY-MM-DD` — czyli dokładnie ten kształt, którego
+     * oczekuje `TachoEntry`, tylko policzony w strefie przeglądarki. Ta sama
+     * strefa, w której kierowca podał godzinę, więc data i godzina wreszcie
+     * opisują ten sam moment.
+     */
+    const dataLokalna = new Date(s.created_at).toLocaleDateString("sv-SE");
+    return [{ date: dataLokalna, time: mode.time, modes: mode.value }];
   });
 }
 

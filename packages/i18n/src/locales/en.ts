@@ -466,6 +466,8 @@ export const en: Record<MessageKey, string> = {
   "stats.currency.show": "Show amounts in:",
   "stats.currency.aria": "Display currency",
   "stats.currency.asOf": "converted at the {date} rate — the books stay in EUR",
+  "stats.truncated":
+    "The data range hit the query limit (5000 rows per table), so the oldest entries in the 24-month window did NOT reach the calculations. Consumption, costs and revenue are understated — treat these figures as indicative and narrow the period to see the full picture.",
   "stats.currency.noRate": "no {code} rate available — showing EUR",
 
   "stats.fleet.fuelTotal": "Fuel total",

@@ -135,14 +135,32 @@ export async function generateOperationalAlerts(admin: Admin): Promise<number> {
   }
 
   // 3) Terminy pojazdów w ≤30 dni (dedup per pojazd+rodzaj+data → nowy alert po zmianie daty).
-  const { data: vehicles } = await admin
-    .from("vehicles")
-    .select("id, company_id, registration, inspection_expiry, insurance_expiry, leasing_end");
+  const { data: vehicles } = await admin.from("vehicles").select(
+    // [#394] `license_expiry` doszła — patrz komentarz przy `fields`.
+    "id, company_id, registration, inspection_expiry, insurance_expiry, leasing_end, license_expiry",
+  );
   const regOf = new Map((vehicles ?? []).map((v) => [v.id as string, v.registration as string]));
+  /*
+   * [#394] Licencja transportowa dołożona do listy.
+   *
+   * Ta funkcja i SQL-owa `generate_expiry_notifications` miały być bliźniacze —
+   * wspólny format `dedup_key` jest tu po to, żeby oba źródła były dla siebie
+   * idempotentne. Rozjechały się jednak zakresem: SQL zna licencję pojazdu,
+   * cron jej nie znał. A to cron chodzi codziennie o 7:00 z harmonogramu Vercela
+   * i to on jest jedynym źródłem POWIADOMIENIA WYPCHANEGO — funkcja SQL odpala
+   * się z `NotificationBell`, czyli wyłącznie wtedy, gdy właściciel sam wejdzie
+   * do panelu web.
+   *
+   * Skutek był więc taki, że o kończącej się licencji transportowej dowiadywał
+   * się tylko ten, kto i tak zaglądał do panelu — a nie ten, komu wygasa. Auto
+   * bez ważnej licencji na trasie to zatrzymanie przez inspekcję, nie usterka
+   * kosmetyczna.
+   */
   const fields = [
     ["inspection_expiry", "inspection", "przegląd techniczny"],
     ["insurance_expiry", "insurance", "ubezpieczenie OC"],
     ["leasing_end", "leasing", "koniec leasingu"],
+    ["license_expiry", "license", "licencja transportowa"],
   ] as const;
   for (const v of vehicles ?? []) {
     for (const [field, kind, label] of fields) {
@@ -162,17 +180,21 @@ export async function generateOperationalAlerts(admin: Admin): Promise<number> {
   // 4) #368 Terminy dokumentów kierowców w ≤30 dni. Świadomie BEZ imienia
   //    i nazwiska — PII jest szyfrowane w bazie (0022), a service-role przez
   //    PostgREST i tak go nie odszyfruje; identycznie robi SQL-owa reguła w 0031.
-  const { data: drivers } = await admin
-    .from("drivers")
-    .select(
-      "id, company_id, license_expiry, code95_expiry, medical_expiry, psychotech_expiry, adr_expiry",
-    );
+  const { data: drivers } = await admin.from("drivers").select(
+    // [#394] Paszport, dowód i uprawnienia doszły — cron ich nie znał,
+    // choć właściciel wpisuje je z telefonu (`manage-drivers`).
+    "id, company_id, license_expiry, code95_expiry, medical_expiry, psychotech_expiry, adr_expiry, passport_expiry, id_card_expiry, qualification_details",
+  );
   const driverFields = [
     ["license_expiry", "license", "prawo jazdy"],
     ["code95_expiry", "code95", "kod 95"],
     ["medical_expiry", "medical", "badania lekarskie"],
     ["psychotech_expiry", "psychotech", "badania psychotechniczne"],
     ["adr_expiry", "adr", "uprawnienia ADR"],
+    // Dokumenty tożsamości: bez ważnego paszportu kierowca nie przekroczy
+    // granicy poza strefą Schengen, a to jest połowa tras tej floty.
+    ["passport_expiry", "passport", "paszport"],
+    ["id_card_expiry", "id_card", "dowód osobisty"],
   ] as const;
   for (const d of drivers ?? []) {
     for (const [field, kind, label] of driverFields) {
@@ -186,6 +208,36 @@ export async function generateOperationalAlerts(admin: Admin): Promise<number> {
         severity: overdue ? "danger" : "warning",
         dedup_key: `drv:${d.id}:${kind}:${compactDate(date)}`,
       });
+    }
+
+    /*
+     * [#394] Uprawnienia dodatkowe (UDT, HDS, przewóz osób…) — tu luka była
+     * najgłębsza. Te terminy nie mają ŻADNEJ powierzchni alertowej po stronie
+     * klienta: nie ma ich ani w panelu uwag na webie, ani w mobilnym
+     * terminarzu. Jedynym źródłem przypomnienia była funkcja SQL odpalana
+     * z panelu — więc dla właściciela, który pracuje głównie z telefonu,
+     * uprawnienie wygasało bez jednego sygnału.
+     *
+     * Format `drvq:<id>:<nazwa>:<data>` odwzorowuje migrację 0074, żeby oba
+     * źródła nadal wykluczały u siebie duplikaty.
+     */
+    const quals = d.qualification_details;
+    if (Array.isArray(quals)) {
+      for (const q of quals) {
+        if (!q || typeof q !== "object") continue;
+        const nazwa = (q as { name?: unknown }).name;
+        const doKiedy = (q as { expiry?: unknown }).expiry;
+        if (typeof nazwa !== "string" || typeof doKiedy !== "string" || !doKiedy) continue;
+        if (doKiedy > horizonFor(d.company_id as string)) continue;
+        const overdue = doKiedy < today;
+        fanout(d.company_id as string, {
+          type: "driver_document_expiry",
+          title: `${overdue ? "🔴" : "🟡"} Kierowca: ${nazwa} ${overdue ? "po terminie" : "wkrótce"}`,
+          body: `Termin: ${doKiedy}. Sprawdź kartotekę: panel → Kierowcy.`,
+          severity: overdue ? "danger" : "warning",
+          dedup_key: `drvq:${d.id}:${nazwa}:${compactDate(doKiedy)}`,
+        });
+      }
     }
   }
 

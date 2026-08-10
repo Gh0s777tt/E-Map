@@ -469,6 +469,8 @@ export const pl = {
   "stats.currency.show": "Pokazuj kwoty w:",
   "stats.currency.aria": "Waluta prezentacji",
   "stats.currency.asOf": "przeliczone po kursie z {date} — rachunek prowadzony w EUR",
+  "stats.truncated":
+    "Zakres danych sięgnął limitu zapytania (5000 wierszy na tabelę), więc najstarsze wpisy z okna 24 miesięcy NIE weszły do wyliczeń. Spalanie, koszty i przychód są zaniżone — potraktuj te liczby jako orientacyjne i zawęź okres, żeby zobaczyć komplet.",
   "stats.currency.noRate": "brak notowania {code} — pokazuję w EUR",
 
   "stats.fleet.fuelTotal": "Paliwo łącznie",

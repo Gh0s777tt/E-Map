@@ -2,13 +2,90 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-390-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.236.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-395-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.237.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.237.0] — 🧹 Pięć znalezisk, które odłożyłem — domknięte
+
+Poprzednie wydanie zostawiło pięć potwierdzonych rzeczy z opisem i ścieżką naprawy,
+zamiast robić je w pośpiechu na końcu długiej sesji. Tu są zrobione.
+
+- `[#391]` **Ponowna wysyłka z kolejki tworzyła DRUGI wydatek**
+  ([driverExpenses.ts](packages/api/src/data/driverExpenses.ts),
+  [checklists.ts](packages/api/src/data/checklists.ts), [outbox.ts](apps/mobile/lib/outbox.ts)).
+  Ścieżka jest w tej branży zwyczajna: kierowca dodaje wydatek na słabym zasięgu,
+  żądanie **dochodzi** do bazy i wiersz powstaje, ale odpowiedź ginie. Klient widzi błąd,
+  wpis zostaje w kolejce, a przy następnym połączeniu leci drugi zwykły `INSERT` —
+  i w rozliczeniu są dwie myjnie po 180 zł zamiast jednej.
+
+  Paliwo, AdBlue, Trip i czat miały to rozwiązane od dawna (`id` z kolejki +
+  `upsert(onConflict:"id", ignoreDuplicates)`). Wydatki i checklisty zostały przy czystym
+  `insert` z kluczem z bazy — czyli każda próba tworzyła nowy wiersz.
+
+  Przy okazji rzecz, która sama byłaby błędem: `ignoreDuplicates` sprawia, że przy
+  powtórce baza **nie zwraca wiersza**. `single()` uznałby to za błąd i wpis wróciłby do
+  kolejki ze statusem `error` — poprawka przed duplikatem stworzyłaby pętlę nieudanych
+  wysyłek. Stąd `maybeSingle()` i `id` z kolejki jako wynik.
+
+- `[#392]` **`/stats` z limitem 5000 wierszy, który działał po cichu**
+  ([stats/page.tsx](apps/web/app/(app)/stats/page.tsx)). Przewoźnik z 45 ciągnikami
+  generuje w dwa lata więcej niż 5000 zdarzeń trasy; nadwyżka nie dojeżdżała, a ekran
+  pokazywał zaniżone spalanie, koszty i przychód **jako liczby pewne**.
+
+  Najgorsze, że wygląda to jak spadek: właściciel widzi „mniej tankowań niż rok temu"
+  i szuka przyczyny w firmie, a nie w limicie zapytania. Limit zostaje (po jego
+  przekroczeniu i tak trzeba liczyć po stronie bazy), ale obcięcie jest teraz wykrywane
+  i nazwane wprost. Świadomie zgłaszamy też przypadek graniczny „dokładnie 5000":
+  fałszywe ostrzeżenie raz na jakiś czas jest tanie, cicha strata danych — nie.
+
+- `[#394]` **Cron nie przypominał o licencji transportowej, paszporcie, dowodzie
+  i uprawnieniach kierowcy** ([alerts.ts](apps/web/lib/alerts.ts)). Ta funkcja i SQL-owa
+  `generate_expiry_notifications` miały być bliźniacze — wspólny `dedup_key` jest po to,
+  żeby oba źródła były dla siebie idempotentne — ale rozjechały się zakresem.
+
+  To ma znaczenie, bo **tylko cron wypycha powiadomienie**: chodzi codziennie o 7:00
+  z harmonogramu, podczas gdy funkcja SQL odpala się z dzwonka w panelu web, czyli
+  wyłącznie gdy właściciel sam tam wejdzie. O kończącej się licencji dowiadywał się więc
+  ten, kto i tak zaglądał do panelu — a nie ten, komu wygasa.
+
+  Najgłębsza była luka przy uprawnieniach dodatkowych (UDT, HDS): nie mają ŻADNEJ
+  powierzchni alertowej po stronie klienta — ani w panelu uwag na webie, ani w mobilnym
+  terminarzu. Dla właściciela pracującego z telefonu wygasały bez jednego sygnału.
+
+- `[#395]` **Data UTC sklejona z lokalną godziną w imporcie tachografu**
+  ([TachoAutoSection.tsx](apps/web/app/(app)/work-time/TachoAutoSection.tsx)).
+  `created_at.slice(0, 10)` bierze dzień w UTC, a godzina pochodzi z checklisty wypełnionej
+  w strefie kierowcy. Checklista o 00:30 czasu polskiego ma `created_at` 22:30 UTC **dnia
+  poprzedniego** — nocna zmiana lądowała w złej dobie, a z tych godzin liczony jest
+  odpoczynek dobowy i tygodniowy.
+
+- `[#393]` **Sprostowanie w komentarzu — i to jest tu najważniejsze**
+  ([usePermission.ts](apps/mobile/lib/usePermission.ts)). Komentarz twierdził, że przy
+  poziomie uprawnień „view" „serwerowe RLS i tak pilnuje zapisu". **To nieprawda.** Żadna
+  polityka nie czyta `memberships.permissions`: kolumna istnieje i jest używana przez
+  `company_members()` oraz `create_invite`, ale ani jedna reguła INSERT/UPDATE się do niej
+  nie odwołuje.
+
+  Fałszywa deklaracja zabezpieczenia jest groźniejsza niż jego brak — następna osoba czyta
+  ją, uznaje ścieżkę za osłoniętą i nie dokłada kontroli tam, gdzie jej naprawdę nie ma.
+
+  **To znalezisko NIE jest domknięte i tak jest opisane.** Poprawiony został fałszywy opis,
+  nie sam brak. Ekrany mobilne respektują „view", web nie, baza nie zna go w ogóle —
+  granicą pozostaje RLS (własne wiersze, własna firma) i ta granica działa. Egzekwowanie
+  poziomu w bazie wymaga **decyzji produktowej**: czy rozstrzyga o INSERT, o UPDATE cudzych
+  wierszy, czy o obu, i co zrobić z wpisami zakolejkowanymi offline, zanim uprawnienie
+  odebrano. Stan i pytanie zapisane w [SECURITY-RLS.md](docs/SECURITY-RLS.md).
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1023** ✓ · `next build` ✓ · `docs:check` ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

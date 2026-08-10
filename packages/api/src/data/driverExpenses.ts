@@ -60,26 +60,63 @@ export async function listDriverExpenses(
 }
 
 /** Dodaje wydatek we własnym imieniu (RLS wymusza user_id = auth.uid()). */
+/**
+ * [#391] `id` z kolejki offline — bez niego ponowna wysyłka tworzy DUPLIKAT.
+ *
+ * Ścieżka, która to wywołuje, jest w tej branży zwyczajna: kierowca dodaje
+ * wydatek na słabym zasięgu, żądanie DOCHODZI do bazy i wiersz powstaje, ale
+ * odpowiedź ginie po drodze. Klient widzi błąd sieci, wpis zostaje w kolejce ze
+ * statusem `error`, a przy następnym połączeniu leci **drugi zwykły INSERT** —
+ * i w rozliczeniu są dwie myjnie po 180 zł zamiast jednej.
+ *
+ * Paliwo, AdBlue, Trip i czat miały to rozwiązane od dawna: `id` pochodzi
+ * z kolejki, a zapis idzie przez `upsert(onConflict:"id", ignoreDuplicates)`,
+ * więc powtórzenie nie robi nic. Wydatki i checklisty zostały przy czystym
+ * `insert` z kluczem generowanym przez bazę — czyli przy każdej próbie powstawał
+ * nowy wiersz.
+ *
+ * `id` jest opcjonalne: zapis wprost z formularza (online) nadal może zdać się
+ * na `gen_random_uuid()`.
+ */
 export async function insertDriverExpense(
   client: SupabaseClient,
   input: DriverExpenseInput,
+  /** Identyfikator z kolejki offline — czyni ponowną wysyłkę bezpieczną. */
+  id?: string,
 ): Promise<string> {
   const { data, error } = await client
     .from("driver_expenses")
-    .insert({
-      company_id: input.companyId,
-      vehicle_id: input.vehicleId ?? null,
-      category: input.category,
-      amount: input.amount,
-      currency: input.currency ?? "PLN",
-      expense_date: input.expenseDate ?? new Date().toISOString().slice(0, 10),
-      note: input.note ?? null,
-      photo_path: input.photoPath ?? null,
-    })
+    .upsert(
+      {
+        ...(id ? { id } : {}),
+        company_id: input.companyId,
+        vehicle_id: input.vehicleId ?? null,
+        category: input.category,
+        amount: input.amount,
+        currency: input.currency ?? "PLN",
+        expense_date: input.expenseDate ?? new Date().toISOString().slice(0, 10),
+        note: input.note ?? null,
+        photo_path: input.photoPath ?? null,
+      },
+      // Powtórka tego samego `id` ma być brakiem zmian, nie nadpisaniem:
+      // wpis mógł już zostać poprawiony w panelu i cofnięcie tego byłoby gorsze
+      // niż duplikat, przed którym się bronimy.
+      { onConflict: "id", ignoreDuplicates: true },
+    )
+    /*
+     * [#391] `maybeSingle`, nie `single` — przy powtórnej wysyłce z kolejki
+     * `ignoreDuplicates` sprawia, że baza NIE zwraca wiersza (bo nic nie wstawiła).
+     * `single()` uznałby to za błąd i wpis wróciłby do kolejki ze statusem `error`,
+     * czyli poprawka przed duplikatem stworzyłaby pętlę nieudanych wysyłek.
+     *
+     * Brak zwróconego `id` znaczy „ten wpis już tam jest" i jest poprawnym
+     * zakończeniem synchronizacji. Oddajemy wtedy `id` z kolejki, bo to ten sam
+     * wiersz — wołający dostaje identyfikator, którym może się posłużyć.
+     */
     .select("id")
-    .single();
+    .maybeSingle();
   if (error) throw error;
-  return data.id as string;
+  return (data?.id as string | undefined) ?? id ?? "";
 }
 
 /** Zatwierdzenie/odrzucenie (RLS: owner/dispatcher). */

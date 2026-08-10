@@ -70,6 +70,13 @@ import { VatRefundSection } from "./VatRefundSection";
 import { VehicleDetail } from "./VehicleDetail";
 
 /** Waluty do wyboru w prezentacji — te, w których ta flota realnie rozlicza trasy. */
+/**
+ * [#392] Górna granica wierszy na zapytanie. Zabezpiecza przeglądarkę przed
+ * wciągnięciem całej historii firmy, ale sama w sobie jest półśrodkiem:
+ * po jej przekroczeniu liczby są niepełne, więc ekran MUSI o tym powiedzieć.
+ */
+const ROW_LIMIT = 5000;
+
 const DISPLAY_CURRENCIES = ["EUR", "PLN", "CZK", "GBP", "SEK", "NOK", "DKK", "HUF", "RON", "CHF"];
 
 /**
@@ -111,6 +118,8 @@ export default function StatsPage() {
   const [costs, setCosts] = useState<VehicleCost[]>([]);
   /** [#378] Kursy EBC — bez nich kwota w innej walucie niż euro nie ma jak wejść do sumy. */
   const [rates, setRates] = useState<FxRate[]>([]);
+  /** [#392] Czy któryś zbiór dobił do limitu — czyli czy liczby są NIEPEŁNE. */
+  const [truncated, setTruncated] = useState(false);
   /** [#379] Stawki VAT per kraj — tabela wspólna dla wszystkich firm. */
   const [vatRates, setVatRates] = useState<VatRate[]>([]);
   /**
@@ -135,8 +144,21 @@ export default function StatsPage() {
         const m = await getCachedMembership(sb);
         if (!m) return;
         setCanManage(m.role === "owner" || m.role === "dispatcher");
-        // Okno analizy: ostatnie 24 miesiące (pokrywa trend 6 mies., alerty m/m i
-        // wykresy) zamiast pobierania całej historii — z limitem bezpieczeństwa.
+        /*
+         * Okno analizy: ostatnie 24 miesiące (pokrywa trend 6 mies., alerty m/m
+         * i wykresy) zamiast pobierania całej historii — z limitem bezpieczeństwa.
+         *
+         * [#392] Limit jest potrzebny, ale jego CICHE zadziałanie już nie.
+         * Przewoźnik z 45 ciągnikami generuje w dwa lata więcej niż 5000 zdarzeń
+         * trasy; nadwyżka po prostu nie dojeżdżała, a ekran pokazywał zaniżone
+         * spalanie, koszty i przychód jako liczby pewne. Najgorsze, że wygląda
+         * to jak spadek: właściciel widzi „mniej tankowań niż rok temu" i szuka
+         * przyczyny w firmie, a nie w limicie zapytania.
+         *
+         * Nie podnosimy limitu — po jego przekroczeniu i tak trzeba by liczyć
+         * po stronie bazy. Wykrywamy OBCIĘCIE i mówimy o nim wprost, tak samo
+         * jak robi to ekran /wyjazdy.
+         */
         const now = new Date();
         const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
           .toISOString()
@@ -146,12 +168,12 @@ export default function StatsPage() {
           .catch(() => {});
         const [f, a, tr, vs, ord, vc, fxRows, vatRows, pauses, routeCosts, penalties] =
           await Promise.all([
-            listFuelLogs(sb, { from, limit: 5000 }),
-            listFuelLogs(sb, { table: "adblue_logs", from, limit: 5000 }),
-            listTripEvents(sb, { from, limit: 5000 }),
+            listFuelLogs(sb, { from, limit: ROW_LIMIT }),
+            listFuelLogs(sb, { table: "adblue_logs", from, limit: ROW_LIMIT }),
+            listTripEvents(sb, { from, limit: ROW_LIMIT }),
             listVehicles(sb, m.companyId),
-            listOrders(sb, m.companyId, { from, limit: 5000 }),
-            listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
+            listOrders(sb, m.companyId, { from, limit: ROW_LIMIT }),
+            listVehicleCosts(sb, m.companyId, { from, limit: ROW_LIMIT }),
             // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
             // publikuje w weekendy i święta — ten sam wzorzec co w /monthly.
             listFxRates(sb, {
@@ -161,10 +183,22 @@ export default function StatsPage() {
             listVatRates(sb),
             // [#380] Koszty operacyjne. Limity jawne — ekran obejmuje 24 miesiące,
             // a domyślne 500 z warstwy danych ucięłoby dane bez słowa.
-            listPauseEvents(sb, { from, limit: 5000 }),
-            listRouteExtraCosts(sb, { from, limit: 5000 }),
-            listPenalties(sb, { from, limit: 5000 }),
+            listPauseEvents(sb, { from, limit: ROW_LIMIT }),
+            listRouteExtraCosts(sb, { from, limit: ROW_LIMIT }),
+            listPenalties(sb, { from, limit: ROW_LIMIT }),
           ]);
+        /*
+         * [#392] Zbiór dobity do limitu = najpewniej ucięty. Rozróżnienie
+         * „dokładnie 5000 wierszy" od „ucięte na 5000" jest niemożliwe bez
+         * dodatkowego zapytania, więc świadomie zgłaszamy oba przypadki:
+         * fałszywe ostrzeżenie raz na jakiś czas jest tanie, a cicha strata
+         * danych w liczbach, na których stoją decyzje o flocie — nie.
+         */
+        setTruncated(
+          [f, a, tr, ord, vc, pauses, routeCosts, penalties].some(
+            (rows) => (rows as unknown[]).length >= ROW_LIMIT,
+          ),
+        );
         setRates(toFxRates(fxRows));
         setVatRates(toVatRates(vatRows));
         // Trzy tabele + kwoty przy zdarzeniach Trip sprowadzone do jednego kształtu,
@@ -677,6 +711,26 @@ export default function StatsPage() {
           </span>
         )}
       </div>
+
+      {/* [#392] Zbiór dobity do limitu — liczby niżej są NIEPEŁNE i trzeba to
+          powiedzieć na górze, zanim ktokolwiek je odczyta. Milczenie tutaj było
+          groźniejsze niż samo obcięcie: brakujące tankowania wyglądają jak spadek
+          zużycia, a brakujące zlecenia jak spadek przychodu. */}
+      {truncated && (
+        <p
+          style={{
+            color: palette.warning,
+            fontSize: 13,
+            lineHeight: 1.6,
+            border: `1px solid ${palette.warning}`,
+            borderRadius: 10,
+            padding: "10px 12px",
+            marginTop: 12,
+          }}
+        >
+          ⚠️ {t("stats.truncated")}
+        </p>
+      )}
 
       {ready && vehicles.length === 0 && (
         <p style={{ color: palette.smoke, marginTop: 24 }}>{t("stats.empty")}</p>
