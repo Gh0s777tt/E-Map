@@ -113,6 +113,29 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * [#400] Kasuje PLIKI firmy przed czyszczeniem bazy.
+   *
+   * Musi iść pierwsze: po usunięciu `memberships` nie da się już potwierdzić,
+   * że proszący jest właścicielem tej firmy, a wtedy pliki zostają nieusuwalne
+   * dla kogokolwiek poza kluczem serwisowym.
+   *
+   * Rzuca przy niepowodzeniu — świadomie. Przejście dalej oznaczałoby
+   * potwierdzenie usunięcia danych, które nadal leżą na dysku, więc lepiej
+   * przerwać i pozwolić powtórzyć niż skłamać w komunikacie.
+   */
+  async function purgeCompanyStorage(id: string): Promise<void> {
+    const res = await fetch("/api/company/purge-storage", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ companyId: id }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error ?? t("settings.danger.storageFail"));
+    }
+  }
+
   async function wipeCompany() {
     if (!companyId || wipeBusy) return;
     if (wipeConfirm.trim() !== cName.trim()) {
@@ -126,6 +149,8 @@ export default function SettingsPage() {
     if (!ok) return;
     setWipeBusy(true);
     try {
+      // [#400] Najpierw pliki, potem wiersze — patrz `purgeCompanyStorage`.
+      await purgeCompanyStorage(companyId);
       const counts = await wipeCompanyData(getBrowserSupabase(), companyId, wipeConfirm.trim());
       const total = Object.values(counts).reduce((a, b) => a + b, 0);
       toast(t("settings.danger.success").replace("{count}", String(total)), "success");
@@ -185,6 +210,16 @@ export default function SettingsPage() {
         deleteCompany = true;
       }
 
+      /*
+       * [#400] Przy usuwaniu konta RAZEM Z FIRMĄ pliki firmy też muszą zniknąć.
+       * Bez tego skany dokumentów i zdjęcia ładunku zostają na dysku, a po
+       * skasowaniu `memberships` nikt nie ma już do nich prawa — czyli stają się
+       * nieusuwalne, co jest gorszym stanem niż przed żądaniem usunięcia.
+       *
+       * Gdy użytkownik NIE kasuje firmy (odchodzi z niej, firma żyje dalej),
+       * plików nie ruszamy: należą do firmy, nie do niego.
+       */
+      if (deleteCompany && companyId) await purgeCompanyStorage(companyId);
       await deleteMyAccount(sb, { deleteCompany });
       // Konto w auth.users już nie istnieje — sesja jest martwa, więc wychodzimy
       // na stronę publiczną zamiast czekać, aż kolejne zapytanie zwróci 401.

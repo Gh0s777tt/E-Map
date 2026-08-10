@@ -45,6 +45,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -193,8 +194,46 @@ export default function ChatThreadScreen() {
         if (alive) setErr(t("m.chat.loadFail"));
       }
     })();
+    /*
+     * [#401] Dociągnięcie po powrocie z tła.
+     *
+     * Realtime dostarcza wyłącznie zdarzenia BIEŻĄCE. Gdy system uśpi telefon
+     * (ekran zgaszony, aplikacja w tle), WebSocket zostaje zamknięty, a po
+     * ponownym połączeniu Postgres Changes NIE odtwarza tego, co przyszło
+     * w międzyczasie. Kierowca z otwartą rozmową w uchwycie widział więc wątek
+     * urwany na ostatniej wiadomości sprzed uśpienia — i nic mu tego nie
+     * sygnalizowało. Brakująca wiadomość w czacie firmowym to nie kosmetyka:
+     * tą drogą idą zmiany adresu załadunku i numeru rampy.
+     *
+     * Przy każdym przejściu na pierwszy plan pobieramy listę od nowa. Reakcje
+     * też, bo mogły dojść do wiadomości już widocznych.
+     */
+    const naPierwszyPlan = AppState.addEventListener("change", (stan) => {
+      if (stan !== "active" || !alive || !supabaseConfigured) return;
+      (async () => {
+        try {
+          const sb = getSupabase();
+          const m = await getActiveMembership(sb);
+          if (!m || !alive) return;
+          const swieze = await listMessages(sb, m.companyId, { threadId });
+          if (!alive) return;
+          setMessages(swieze);
+          setReactions(
+            await listReactions(
+              sb,
+              swieze.map((x) => x.id),
+            ),
+          );
+        } catch {
+          // Brak sieci zaraz po odblokowaniu telefonu jest normalny — zostajemy
+          // przy tym, co mamy, zamiast psuć ekran komunikatem o błędzie.
+        }
+      })();
+    });
+
     return () => {
       alive = false;
+      naPierwszyPlan.remove();
       cleanup?.();
     };
   }, [threadId, me, t]);

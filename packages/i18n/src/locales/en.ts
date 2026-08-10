@@ -10,7 +10,7 @@ export const en: Record<MessageKey, string> = {
   "settings.account.delete.desc":
     "Deletion is permanent. Your personal data (profile, HR record, messages, GPS positions, passkeys) will be erased. The company's operational records — fuel logs, orders, documents — stay with the company but are detached from you.",
   "settings.account.delete.summary":
-    "To be deleted: {fuel} fuel entries, {adblue} AdBlue entries, {trip} trip events, {messages} messages.",
+    "Will be detached from you: {fuel} refuellings, {adblue} AdBlue entries, {trip} trip events — they stay in the company records without your data. Will be permanently deleted: {messages} messages.",
   "settings.account.delete.solo":
     'Your company "{company}" will be deleted along with the account.',
   "settings.account.delete.owner":
@@ -23,6 +23,8 @@ export const en: Record<MessageKey, string> = {
   "settings.danger.desc":
     "Permanently deletes ALL company data: orders, invoices, fuel logs, trips, fleet, drivers, contractors, documents and settlements. Kept: company, team and audit log. This cannot be undone.",
   "settings.danger.confirmLabel": "Type the company name to confirm:",
+  "settings.danger.storageFail":
+    "Could not delete company files (documents, photos). Database data was NOT touched — please retry. Files must be removed before the database purge, otherwise they stay on disk with no way to delete them.",
   "settings.danger.button": "Wipe company data",
   "settings.danger.working": "Wiping…",
   "settings.danger.success": "Company data wiped ({count} rows removed).",

@@ -224,7 +224,7 @@ const pl = {
     "Usunięcie jest nieodwracalne. Twoje dane osobowe (profil, dane kadrowe, wiadomości, pozycje GPS) zostaną skasowane, a wpisy operacyjne firmy — tankowania i zlecenia — zostaną w firmie, ale bez powiązania z Tobą.",
   "m.settings.deleteAccountConfirmTitle": "Usunąć konto na stałe?",
   "m.settings.deleteAccountSummary":
-    "Do skasowania: {fuel} tankowań, {adblue} wpisów AdBlue, {trip} zdarzeń trasy, {messages} wiadomości.",
+    "Zostanie odłączone od Ciebie: {fuel} tankowań, {adblue} wpisów AdBlue, {trip} zdarzeń trasy — pozostaną w dokumentach firmy bez Twoich danych. Zostanie trwale usunięte: {messages} wiadomości.",
   "m.settings.deleteAccountOwnerTitle": "Jesteś właścicielem firmy",
   "m.settings.deleteAccountOwnerBody":
     "Firma „{company}” ma {members} aktywnych członków. Usunięcie Twojego konta skasuje CAŁĄ firmę wraz z danymi wszystkich pracowników. Jeśli firma ma działać dalej, najpierw przekaż własność innej osobie.",
@@ -1369,7 +1369,7 @@ const en: Record<MobileMessageKey, string> = {
     "Deletion is permanent. Your personal data (profile, HR record, messages, GPS positions) is erased; the company's operational records — fuel logs and orders — stay with the company but are detached from you.",
   "m.settings.deleteAccountConfirmTitle": "Delete account permanently?",
   "m.settings.deleteAccountSummary":
-    "To be deleted: {fuel} fuel entries, {adblue} AdBlue entries, {trip} trip events, {messages} messages.",
+    "Will be detached from you: {fuel} refuellings, {adblue} AdBlue entries, {trip} trip events — they stay in the company records without your data. Will be permanently deleted: {messages} messages.",
   "m.settings.deleteAccountOwnerTitle": "You own a company",
   "m.settings.deleteAccountOwnerBody":
     'Company "{company}" has {members} active members. Deleting your account will delete the ENTIRE company along with all employees\' data. If the company should continue, transfer ownership to someone else first.',
@@ -2509,7 +2509,7 @@ const de: Record<MobileMessageKey, string> = {
     "Die Löschung ist endgültig. Ihre personenbezogenen Daten (Profil, Personalakte, Nachrichten, GPS-Positionen) werden gelöscht; betriebliche Einträge der Firma — Tankvorgänge und Aufträge — bleiben bei der Firma, jedoch ohne Bezug zu Ihnen.",
   "m.settings.deleteAccountConfirmTitle": "Konto endgültig löschen?",
   "m.settings.deleteAccountSummary":
-    "Zu löschen: {fuel} Tankvorgänge, {adblue} AdBlue-Einträge, {trip} Fahrtereignisse, {messages} Nachrichten.",
+    "Wird von Ihnen getrennt: {fuel} Tankvorgänge, {adblue} AdBlue-Einträge, {trip} Fahrtereignisse — sie bleiben in den Firmenunterlagen ohne Ihre Daten. Wird endgültig gelöscht: {messages} Nachrichten.",
   "m.settings.deleteAccountOwnerTitle": "Sie sind Firmeninhaber",
   "m.settings.deleteAccountOwnerBody":
     'Die Firma "{company}" hat {members} aktive Mitglieder. Das Löschen Ihres Kontos löscht die GESAMTE Firma samt aller Mitarbeiterdaten. Soll die Firma bestehen bleiben, übertragen Sie zuerst die Inhaberschaft.',
@@ -3651,7 +3651,7 @@ const uk: Record<MobileMessageKey, string> = {
     "Видалення незворотне. Ваші персональні дані (профіль, кадрові дані, повідомлення, GPS-позиції) буде стерто, а операційні записи компанії — заправки та замовлення — залишаться в компанії, але без звʼязку з вами.",
   "m.settings.deleteAccountConfirmTitle": "Видалити акаунт назавжди?",
   "m.settings.deleteAccountSummary":
-    "Буде видалено: {fuel} заправок, {adblue} записів AdBlue, {trip} подій рейсу, {messages} повідомлень.",
+    "Буде від'єднано від вас: {fuel} заправок, {adblue} записів AdBlue, {trip} подій маршруту — вони залишаться в документах компанії без ваших даних. Буде остаточно видалено: {messages} повідомлень.",
   "m.settings.deleteAccountOwnerTitle": "Ви власник компанії",
   "m.settings.deleteAccountOwnerBody":
     'Компанія "{company}" має {members} активних учасників. Видалення вашого акаунта видалить УСЮ компанію разом із даними всіх працівників. Якщо компанія має працювати далі, спершу передайте право власності іншій особі.',

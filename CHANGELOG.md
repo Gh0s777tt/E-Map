@@ -2,13 +2,63 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-399-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.239.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-402-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.240.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.240.0] — 🧹 Domknięcie tego, co sam zostawiłem opisane
+
+Zamiast czwartej rundy audytu — trzecia dała już 3 słabe znaleziska na 12, więc sygnał
+się wyczerpuje — trzy rzeczy, które w poprzednim wydaniu opisałem jako otwarte.
+
+- `[#400]` **Pliki firmy nie znikały przy usuwaniu danych ani konta**
+  ([purge-storage/route.ts](apps/web/app/api/company/purge-storage/route.ts)).
+  `_company_purge` kasował wiersze, ale **ani jednego obiektu w Storage** — skany
+  dokumentów kierowców, zdjęcia ładunku, zdjęcia z czatu i paragony zostawały na dysku
+  po „wyczyść dane firmy" i po usunięciu konta właściciela. Czyli dokładnie te dane
+  osobowe, których usunięcia zażądano.
+
+  **Dlaczego to nie mogło być poprawką w SQL-u:** `delete from storage.objects` kasuje
+  wyłącznie wiersz metadanych; plik zostaje w backendzie obiektowym jako blob bez
+  żadnego wpisu — stan gorszy niż wyjściowy, bo znika nawet ewidencja tego, co należałoby
+  posprzątać. Skasować plik można tylko przez API Storage, czyli po stronie serwera.
+
+  **Kolejność jest wymuszona przez uprawnienia:** trasa idzie PRZED czyszczeniem bazy.
+  Po usunięciu `memberships` nie da się już potwierdzić, że proszący jest właścicielem
+  tej firmy — a wtedy pliki zostają nieusuwalne dla kogokolwiek poza kluczem serwisowym.
+  Błąd sprzątania **przerywa całą operację**: przejście dalej oznaczałoby potwierdzenie
+  usunięcia danych, które nadal leżą na dysku.
+
+  Przy usuwaniu konta bez kasowania firmy plików nie ruszamy — należą do firmy, nie do
+  odchodzącego pracownika.
+
+- `[#401]` **Rozmowa nie dociągała wiadomości po powrocie telefonu z tła**
+  ([chat-thread.tsx](apps/mobile/app/chat-thread.tsx)). Realtime dostarcza wyłącznie
+  zdarzenia bieżące: gdy system uśpi telefon, WebSocket się zamyka, a po ponownym
+  połączeniu Postgres Changes **nie odtwarza tego, co przyszło w międzyczasie**.
+  Kierowca z otwartą rozmową w uchwycie widział wątek urwany na ostatniej wiadomości
+  sprzed uśpienia — i nic mu tego nie sygnalizowało. Tą drogą idą zmiany adresu załadunku
+  i numeru rampy, więc brakująca wiadomość nie jest kosmetyką.
+
+- `[#402]` **Okno zgody na usunięcie konta przeczyło samo sobie.** Jedna linijka mówiła,
+  że wpisy operacyjne ZOSTAJĄ w firmie bez powiązania, a następna — „Do skasowania:
+  240 tankowań, 512 zdarzeń trasy". Kod odpina (`driver_id = null`) i kasuje wyłącznie
+  wiadomości. Dla właściciela kasującego firmę tekst był prawdziwy, dla zwykłego kierowcy
+  — czyli dominującego użytkownika aplikacji — nie.
+
+  To ekran wymagany przez App Store i realizujący żądanie z RODO, więc rzetelność
+  komunikatu jest tu funkcją, nie stylistyką. Przeredagowane w sześciu miejscach
+  (mobile ×4 języki, web ×2): co zostanie **odłączone**, a co **trwale usunięte**.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1023** ✓ · `next build` ✓ · `docs:check` ✓
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -8,7 +8,7 @@ export const pl = {
   "settings.account.delete.desc":
     "Usunięcie jest nieodwracalne. Twoje dane osobowe (profil, dane kadrowe, wiadomości, pozycje GPS, klucze dostępu) zostaną skasowane. Wpisy operacyjne firmy — tankowania, zlecenia, dokumenty — zostaną w danych firmy, ale bez powiązania z Twoją osobą.",
   "settings.account.delete.summary":
-    "Do usunięcia: {fuel} tankowań, {adblue} wpisów AdBlue, {trip} zdarzeń trasy, {messages} wiadomości.",
+    "Zostanie odłączone od Ciebie: {fuel} tankowań, {adblue} wpisów AdBlue, {trip} zdarzeń trasy — pozostaną w dokumentach firmy bez Twoich danych. Zostanie trwale usunięte: {messages} wiadomości.",
   "settings.account.delete.solo": "Twoja firma „{company}” zostanie usunięta razem z kontem.",
   "settings.account.delete.owner":
     "Jesteś właścicielem firmy „{company}” z {members} aktywnymi członkami. Usunięcie konta skasuje CAŁĄ firmę wraz z danymi wszystkich pracowników. Jeśli firma ma działać dalej, najpierw przekaż własność innej osobie.",
@@ -20,6 +20,8 @@ export const pl = {
   "settings.danger.desc":
     "Trwale usuwa WSZYSTKIE dane firmy: zlecenia, faktury, tankowania, trasy, flotę, kierowców, kontrahentów, dokumenty i rozliczenia. Zostają: firma, zespół i dziennik audytu. Tej operacji nie można cofnąć.",
   "settings.danger.confirmLabel": "Przepisz nazwę firmy, aby potwierdzić:",
+  "settings.danger.storageFail":
+    "Nie udało się usunąć plików firmy (dokumenty, zdjęcia). Dane w bazie NIE zostały ruszone — spróbuj ponownie. Pliki muszą zniknąć przed czyszczeniem bazy, inaczej zostają na dysku bez możliwości usunięcia.",
   "settings.danger.button": "Wyczyść dane firmy",
   "settings.danger.working": "Czyszczenie…",
   "settings.danger.success": "Dane firmy wyczyszczone (usunięte wiersze: {count}).",
