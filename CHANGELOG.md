@@ -2,13 +2,75 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-386-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.232.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-387-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.233.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.233.0] — 🧰 Hook floty przestaje gubić gabaryty, a paleta marki dostaje test
+
+Sprzątanie po Fali 1 mapy: dwie rzeczy, które sam wskazałem jako dług, zanim urosną.
+
+- `[#387]` **`useFleet` na webie oddaje pełny wiersz pojazdu**
+  ([useFleet.ts](apps/web/lib/useFleet.ts)). Hook mapował pojazd do
+  `{id, registration, maxPayloadKg}`, a `listVehicles` robi `select("*")` — czyli
+  wysokość, szerokość, długość, masę własną, liczbę osi, ADR i klasę emisji **baza
+  już przysyłała**, tylko hook wyrzucał je jedną linijką przed użyciem. Ekran mapy
+  musiał z tego powodu ominąć hook własnym zapytaniem; każdy następny ekran
+  potrzebujący gabarytów powtórzyłby to obejście. Kształt celowo zrównany z
+  `apps/mobile/lib/useFleet.ts`, żeby profil pojazdu czytało się tak samo na obu
+  platformach.
+
+  `null` zostaje `null-em`: brak w kartotece **nie** jest podmieniany na „typową"
+  wartość. Podstawienie 4 m wysokości wygląda na ekranie identycznie jak wysokość
+  prawdziwa, a kończy się zestawem pod za niskim wiaduktem.
+
+- `[#387]` **Pojazdy trybu demo mają ten sam kształt** ([demo.ts](apps/web/lib/demo.ts))
+  — z gabarytami `null`. Tryb demo ma pokazywać zachowanie aplikacji przy pustej
+  kartotece, a nie wymyślone wymiary udające dane.
+
+- `[#387]` **Komentarz na mapie doprowadzony do prawdy**
+  ([map/page.tsx](apps/web/app/(app)/map/page.tsx)). Tłumaczył własne zapytanie tym,
+  że „hook wystawia tylko rejestrację" — po tej zmianie to już nieprawda. Osobne
+  pobranie zostaje, ale z prawdziwego powodu: ma własny `catch`, więc brak uprawnień
+  do `vehicles` zabiera wyłącznie listę wyboru pojazdu, a mapa i zapisane miejsca
+  działają dalej. Nieaktualne uzasadnienie w kodzie jest gorsze niż jego brak —
+  następna osoba „posprząta" według niego i zabierze odporność ekranu.
+
+- `[#387]` **`packages/ui` dostaje pierwsze testy** ([theme.test.ts](packages/ui/src/theme.test.ts)).
+  Był jedynym pakietem bez ani jednego. Test przybija kanon z CLAUDE.md — czerwień
+  `#E50914` na czerni `#0a0a0a` — bo to reguła, którą łamie się jedną literą w jednym
+  pliku i nie zauważa tego ani kompilator, ani przeglądarka. Sprawdzany jest też
+  wariant CSS (zmienna musi mieć kanon jako wartość zapasową) i parytet kluczy obu
+  palet, żeby kolor nie istniał w jednej wersji, a w drugiej nie.
+
+- `[#387]` **Dokumentacja dogoniła kod — `docs:check` bez ani jednego ostrzeżenia.**
+  [ARCHITECTURE.md](docs/ARCHITECTURE.md) i [ROADMAP.md](docs/ROADMAP.md) stały na v1.202.0,
+  czyli 31 wersji wstecz: nadal zapowiadały jako „planowane" profil truck, mapę mobilną
+  i adapter, który od dawna działa. [DATA-MODEL.md](docs/DATA-MODEL.md) nie miał ani migracji
+  0101 (dziura RLS w `driver_positions`), ani 0102 (osie/ADR/klasa emisji), a to jedyne
+  miejsce, gdzie ktoś szuka semantyki NULL-a w `adr_tunnel_code`.
+
+  Nagłówki podbite razem z **treścią**, nie zamiast niej — sam numer wersji nad nieaktualnym
+  tekstem robi z dokumentu coś gorszego niż dokument przestarzały: wygląda na sprawdzony.
+
+  Do „decyzji otwartych" wpisane **LEZ, weekendowe zakazy ruchu i język etykiet na mapie** —
+  z powodem. Żaden zintegrowany dostawca nie oddaje tych danych, a domyślny podkład jest
+  rastrowy (nazwy wypalone w kafelkach). To decyzje zakupowe, nie zadania programistyczne,
+  i trzymanie ich na liście „do zrobienia" sugerowałoby, że wystarczy usiąść i napisać kod.
+
+- `[#387]` **Wersja aplikacji mobilnej zsynchronizowana** — `apps/mobile/package.json` stał na
+  1.89.0, a EAS buduje z `app.config.js`, gdzie jest 1.95.0. Rozjazd nic nie psuł dopóki nikt
+  nie sięgnął po tę pierwszą liczbę; teraz obie mówią to samo.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1001** ✓ (`packages/ui` 4 nowe) · `next build` ✓ · `docs:check` ✓ (0 ostrzeżeń)
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

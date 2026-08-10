@@ -1,9 +1,25 @@
 /** Dane zastępcze do czasu wpięcia listVehicles/fuel_cards z Supabase (#005). */
 
+/**
+ * [#387] Pojazdy trybu demo. Gabaryty celowo `null`: tryb demo ma pokazywać, jak
+ * aplikacja zachowuje się przy pustej kartotece — z widocznym brakiem, a nie
+ * z wymyślonymi wymiarami, które wyglądałyby jak prawdziwe dane.
+ */
 export const DEMO_VEHICLES = [
   { id: "11111111-1111-4111-8111-111111111111", registration: "WL5145U" },
   { id: "22222222-2222-4222-8222-222222222222", registration: "WP5652R" },
-];
+].map((v) => ({
+  ...v,
+  vehicleType: null,
+  heightCm: null,
+  widthCm: null,
+  lengthCm: null,
+  curbWeightKg: null,
+  maxPayloadKg: null,
+  axleCount: null,
+  adrTunnelCode: null,
+  emissionClass: null,
+}));
 
 export const DEMO_CARDS = [
   {

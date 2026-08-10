@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.223.0** (#378 — 102 migracje; ostatnia: 0100 fundament walutowy statystyk) · 2026-08-10
+> Status: **wdrożone** · stan kodu **v1.233.0** (#387 — 104 migracje; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -12,7 +12,11 @@
 
 **Tabele:**
 - `companies`, `memberships` (`role`, `status`, **`modules` text[]** — 0016), `profiles`, `driver_profiles`.
-- `vehicles` — rejestracja, `make`/`model`/`year`/**`vin`** (0009), waga, `max_payload_kg`, **`fuel_tank_l`/`adblue_tank_l`** (0018), terminy `inspection_expiry`/`insurance_expiry`/`insurer` (0009)/`leasing_end`, **`license_number`** (0011), PostGIS `geo`.
+- `vehicles` — rejestracja, `make`/`model`/`year`/**`vin`** (0009), waga, `max_payload_kg`, **`fuel_tank_l`/`adblue_tank_l`** (0018), terminy `inspection_expiry`/`insurance_expiry`/`insurer` (0009)/`leasing_end`, **`license_number`** (0011), PostGIS `geo`, **`axle_count`/`adr_tunnel_code`/`emission_class`** (0102).
+  Te trzy ostatnie idą wprost do profilu routingu i **wszystkie są NULLABLE świadomie**: istniejące pojazdy
+  tych danych nie mają, a wartość zgadnięta wygląda w trasie identycznie jak podana. `adr_tunnel_code`
+  ma osobną semantykę — NULL znaczy *ładunek zwykły*, a nie *nie wiemy*, więc nie wywołuje ostrzeżenia.
+  CHECK-i pilnują zakresów (osie 2–12; ADR `B`–`E`; emisja `euro3`–`euro6`) i odsiewają literówki, nie realne auta.
 - `driver_assignments` — przypisanie kierowca↔pojazd (RLS bez rekurencji: `is_assigned_to_vehicle` SECURITY DEFINER, 0014).
 - `drivers` (kartoteka, 0012) — **tożsamość szyfrowana** `first_name_enc`/`last_name_enc`/`birth_date_enc` (0022) + dokumenty `id_card_enc`/`passport_enc`/`license_enc` (0015); `license_categories`/`qualifications` text[], `notes`.
 - `fuel_cards` — `provider`, `card_number_masked`, **`pin_encrypted`** (pgcrypto+Vault, 0003), `discount`, `valid_until`, **`vehicle_id`/`registration`** (0011).
@@ -90,7 +94,12 @@ opisywał stan rzeczywisty, a nie zamierzony. Gwiazdka `*` oznacza `NOT NULL`.
 - **`vat_rates`** — `(country_code*, valid_from*)`, `rate*`, **`fuel_refundable*`** (`false` dla GB/CH/NO). `pickVatRate` zwraca `null` dla zdarzeń sprzed najstarszego wpisu — to znaczy „nie znamy stawki" i **musi wyglądać inaczej na ekranie** niż `0` („kraj nie zwraca").
 
 **Kierowca w terenie**
-- **`driver_positions`** — ostatnia znana pozycja (`lat*`, `lng*`, `speed_kmh`, `heading`); jeden wiersz na użytkownika, nadpisywany.
+- **`driver_positions`** — ostatnia znana pozycja (`lat*`, `lng*`, `speed_kmh`, `heading`); jeden wiersz na
+  użytkownika, nadpisywany. **RLS UPDATE ma `WITH CHECK` (0101)** — wcześniej polityka miała samo `USING
+  (user_id = auth.uid())`, a `company_id` nie występował w warunku w ogóle, więc kierowca mógł przepiąć
+  własny wiersz na obcą firmę i pokazać się na jej mapie floty. Reguła wynikająca z tego (oraz z 0094 na
+  `chat_threads`): **każda polityka UPDATE na tabeli multi-tenant musi mieć `WITH CHECK` powtarzający
+  warunek przynależności** — `USING` pilnuje tylko tego, co wolno wziąć, nie tego, czym wolno to zastąpić.
 - **`driver_routes`** — trasa zaplanowana kierowcy: `stops*`, `geometry*`, `summary*` (jsonb).
 - **`driver_tacho_events`** — zdarzenia tachografu: `kind*`, `rest_type`, `at*`.
 - **`tacho_downloads`** — terminy sczytań karty/tachografu: `kind*`, `last_download*` → przypomnienia.

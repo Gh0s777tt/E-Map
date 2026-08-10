@@ -1,12 +1,13 @@
 # 🧠 Architektura — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.202.0 (#358) · 2026-07-16
+> Status: **w realizacji** · stan na v1.233.0 (#387) · 2026-08-10
 > Decyzje wstępne: dokumentacja przed kodem · mapa = hybryda MapLibre+HERE/GraphHopper · web+mobile równolegle.
 >
 > **Stan implementacji** (ten dokument opisuje architekturę **docelową**):
 > - ✅ **Platforma:** Next.js 16 + React 19 + Tailwind 4 (web) · Supabase (Postgres 17 + PostGIS + Auth + RLS + Vault) · MapLibre + `RoutingProvider` (HERE/GraphHopper) · offline przez **outbox** (localStorage) · web‑push · 2FA TOTP + passkeys · szyfrowanie PII/PIN · generowane typy DB · rate‑limiting · **bramka RLS w CI** ([`audit:rls`](../scripts/audit-rls.mjs)).
 > - ✅ **Moduły biznesowe (v1.0–1.50):** flota (pojazdy/kierowcy/karty) · formularze offline (paliwo/AdBlue/trip) + historia · mapa TIR + POI + ceny paliw + 3D · statystyki (spalanie/anomalie/koszty/CO₂) · **zlecenia** (przypisania, statusy, CMR, **e‑CMR/POD**, zdjęcia ładunku) · **faktury** (numeracja bez luk, status, płatność, bank/IBAN, pozycje, duplikat, eksport Fakturownia + księgowy VAT/koszty) · **sejf dokumentów** · rozliczenia + zestawienie miesięczne · **rentowność klientów i pojazdów** (P&L, snapshot + trend + CSV) · **alerty progowe** · **diety** · **czas pracy** · **wypłaty kierowcy** · **szkody/OC** · przypomnienia badań (psychotech) · **kontrahenci** · koszty pojazdu · zapisane miejsca · powiadomienia (in‑app + push web/Expo) · **aplikacja mobilna kierowcy** (auth/formularze/zlecenia/zdjęcia/POD/push) · **dwujęzyczność PL/EN** całego UI widokowego.
-> - 🔜 **Planowane / rozważane (jeszcze nie w kodzie):** **PowerSync** (offline SQLite ↔ Supabase — dziś rolę pełni outbox), **Supabase Edge Functions** (dziś rolę pełnią trasy `/api` Next.js/Vercel), **shadcn/ui**, **TanStack Query**, **Zustand**, **Sentry**, **mapa w aplikacji mobilnej** (faza M3 — auth/formularze/zlecenia/push już są), profil **truck** w routingu (płatny tier GraphHopper), kolejne języki i18n (dziś PL/EN; docelowo ×14).
+> - ✅ **Doszło po v1.202.0:** adapter **TomTom** (routing, ruch, wyszukiwanie POI) obok HERE i GraphHoppera · **mapa w aplikacji mobilnej** (`apps/mobile/app/map.tsx`) · profil **truck** w routingu z gabarytami i osiami z kartoteki, kategorią tunelową ADR i klasą emisji · **uwagi dostawcy** (`RouteNotice`) niesione razem z trasą · statystyki pieniężne przeliczane po kursach ECB zamiast filtrowane do EUR · **zwrot VAT za paliwo** per kraj · **koszty operacyjne** w rachunku wyjazdu · i18n mobile w **czterech** językach (PL/EN/DE/UK; web nadal PL/EN).
+> - 🔜 **Planowane / rozważane (jeszcze nie w kodzie):** **PowerSync** (offline SQLite ↔ Supabase — dziś rolę pełni outbox), **Supabase Edge Functions** (dziś rolę pełnią trasy `/api` Next.js/Vercel), **shadcn/ui**, **TanStack Query**, **Zustand**, **Sentry**, **strefy niskiej emisji (LEZ)** i **weekendowe zakazy ruchu** (blokada nie techniczna, tylko źródło danych — żaden zintegrowany dostawca ich nie oddaje), **HUD/asystent pasa**, kolejne języki i18n (docelowo ×14).
 
 ---
 
@@ -118,7 +119,9 @@ flowchart LR
   APP["Apka (web/mobile)"] --> RENDER["🗺️ MapLibre GL<br/>styl wektorowy red/black"]
   APP --> RP["🧭 RoutingProvider (interfejs)"]
   RP --> HERE["adapter: HERE"]
+  RP --> TT["adapter: TomTom"]
   RP --> GH["adapter: GraphHopper"]
+  RP --> MOCK["adapter: mock (bez kluczy)"]
   RP -.->|później| VALHALLA["adapter: self-host Valhalla"]
   RENDER --> TILES["Tile provider<br/>MapTiler / self-host"]
   POI["📍 POI pipeline"] --> PG[("PostGIS")]
@@ -129,10 +132,17 @@ flowchart LR
 - **Render:** MapLibre GL JS (web) + MapLibre Native (mobile), własny styl wektorowy red/black,
   tryb dzień/noc = dwa warianty stylu.
 - **Routing TIR + myto:** interfejs `RoutingProvider` z metodami `route()`, `tollCost()`,
-  `geocode()`, `reverseGeocode()`. Adaptery: **HERE** (start, dobry truck+toll+free tier) i
-  **GraphHopper** (alternatywa/tańsza). Zmiana dostawcy = zmiana adaptera, nie apki.
-- **Parametry pojazdu** (wysokość/szerokość/długość/waga/typ, omijanie krajów/myta/promów/dróg
-  gruntowych) mapowane na profil providera.
+  `geocode()`, `reverseGeocode()`. Adaptery w kolejności wyboru: **HERE** → **TomTom** →
+  **GraphHopper** → **mock**. Zmiana dostawcy = zmiana adaptera, nie apki; mock trzyma
+  ten sam kontrakt, więc apka uruchamia się bez żadnego klucza.
+- **Parametry pojazdu** (wysokość/szerokość/długość/waga/typ, liczba osi, **kategoria
+  tunelowa ADR**, klasa emisji, omijanie krajów/myta/promów/dróg gruntowych) mapowane na
+  profil providera — **czytane z kartoteki pojazdu**, nie ze stałych w ekranie.
+  Brak wartości zostaje brakiem: pusty gabaryt jest widoczny na ekranie planowania, bo
+  parametr podstawiony „na oko" wygląda tak samo jak prawdziwy i tak samo trafia do trasy.
+- **Uwagi dostawcy** (`RouteNotice`) wracają razem z trasą i są **wymaganym** polem wyniku.
+  Dostawca informuje w nich m.in. o zignorowanym ograniczeniu; przy zejściu z profilu
+  truck na samochodowy adapter dokłada uwagę o wadze `critical`, żeby zejście nie było ciche.
 - **POI** (parkingi, stacje, promy, lotniska, firmy): pipeline ingest **OSM + Truck Parking
   Europe** → PostGIS, wzbogacany danymi crowd. Udogodnienia, oceny, akceptacja kart/SNAP/Travis.
 - **Wyliczanie kosztu trasy z podziałem na odcinki**: z odpowiedzi toll API + własne stawki.
@@ -216,8 +226,10 @@ Tego nie kupujemy — to przewaga produktu (dane są nasze):
 
 ## 12. Decyzje otwarte (do potwierdzenia)
 
-1. Nazwa repo: zostawić `E-Map` czy zmienić na `E-Logistic`? *(otwarte — repo nadal `E-Map`)*
+1. Nazwa repo: zostawić `E-Map` czy zmienić na `E-Logistic`? *(otwarte — `origin` na GitHubie nadal `E-Map`, lustro na GitLabie już `e-logistic`)*
 2. Tile provider do renderu: **MapTiler** (szybki start) vs self-host tiles (taniej przy skali)? *(otwarte)*
 3. Dostawca SMS/WhatsApp: Twilio vs MessageBird vs inny? *(otwarte)*
 4. ~~Czy PIN kart ma być dostępny w apce kierowcy~~ → **rozstrzygnięte:** ustawia owner, **odczyt dla aktywnych członków firmy** (kierowca płaci w automacie), każdy odczyt audytowany.
-5. ~~Zakres i18n od startu~~ → **rozstrzygnięte:** start **PL+EN**, kolejne języki dokładane z zachowaniem parytetu.
+5. ~~Zakres i18n od startu~~ → **rozstrzygnięte:** start **PL+EN**, kolejne języki dokładane z zachowaniem parytetu. *(stan: web PL/EN, mobile PL/EN/DE/UK — parytet kluczy pilnowany testem)*
+6. **Źródło danych o strefach niskiej emisji i weekendowych zakazach ruchu** — żaden ze zintegrowanych dostawców ich nie udostępnia. To decyzja zakupowa, nie techniczna, i do jej podjęcia obie funkcje stoją. *(otwarte)*
+7. **Język etykiet na mapie** — domyślna warstwa podkładowa jest rastrowa, nazwy są wypalone w kafelkach. Zmiana języka etykiet wymaga podkładu wektorowego, czyli innego planu u dostawcy kafelków. *(otwarte)*

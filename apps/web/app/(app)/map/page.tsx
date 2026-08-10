@@ -321,9 +321,13 @@ export default function MapPage() {
    * wymiarów był domyślnie ZWINIĘTY — solówka i pięcioosiowy zestaw dostawały tę samą
    * trasę i to samo myto, bo nikt tych pól nie otwierał.
    *
-   * Pojazdy ładujemy tutaj, a nie przez `useFleet()`: ten hook wystawia tylko
-   * `{id, registration, maxPayloadKg}`, a do profilu potrzeba gabarytów, osi, ADR
-   * i klasy emisji. `listVehicles` robi `select("*")`, więc te kolumny i tak przychodzą.
+   * Pojazdy ładujemy tutaj, a nie przez `useFleet()`, i po [#387] powód jest już
+   * inny niż na starcie: hook wystawia komplet gabarytów, więc nie chodzi o zakres
+   * danych, tylko o **odporność ekranu**. Tutejsze pobranie ma własny `catch` —
+   * brak uprawnień do `vehicles` zabiera wyłącznie listę wyboru pojazdu, a mapa,
+   * zapisane miejsca i planowanie trasy działają dalej. Hook przy błędzie gasi
+   * cały swój stan, więc na ekranie, który ma działać także po awarii jednego
+   * zapytania, zostaje osobne pobranie.
    */
   const [fleet, setFleet] = useState<RouteVehicle[]>([]);
   const [vehicleId, setVehicleId] = useState("");
