@@ -1,5 +1,6 @@
 import { type DriverRoute, listMyDriverRoutes } from "@e-logistic/api";
-import { estimateRouteFuel } from "@e-logistic/core";
+import { estimateRouteFuel, type Weekday } from "@e-logistic/core";
+import type { MobileMessageKey } from "@e-logistic/i18n";
 import {
   fetchPois,
   type GeoHit,
@@ -10,6 +11,7 @@ import {
   type TrafficIncident,
   tomtomSearchAlongRoute,
   tomtomTrafficIncidents,
+  type VehicleProfile,
 } from "@e-logistic/maps";
 import { palette } from "@e-logistic/ui";
 import {
@@ -23,9 +25,10 @@ import {
   UserLocation,
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   type NativeSyntheticEvent,
   Pressable,
   ScrollView,
@@ -35,15 +38,50 @@ import {
   View,
 } from "react-native";
 import { ParkingReviewCard } from "../components/ParkingReviewCard";
+import { VehiclePicker } from "../components/VehiclePicker";
 import { WEB_BASE_URL } from "../lib/config";
 import { useT } from "../lib/i18n";
 import { EUROPE_CENTER, EUROPE_ZOOM, mapStyle } from "../lib/mapStyle";
+import { getCache, setCache } from "../lib/offlineCache";
+import { poiDetails } from "../lib/poiDetails";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
+import { useFleet } from "../lib/useFleet";
+import {
+  ASSUMED_WEIGHT_KG,
+  formatProfileDims,
+  type MissingDimension,
+  missingDimensions,
+  vehicleRouteProfile,
+} from "../lib/vehicleProfile";
 
 // #356: klucz TomTom (klient-side, EXPO_PUBLIC). Pusty → mapa działa jak dotąd
 // (geokoder MapTiler/Nominatim, routing przez web /api/route). Ustawiony → lepsze
 // wyszukiwanie, routing TIR z ruchem na żywo po stronie klienta oraz „POI po drodze".
 const TOMTOM_KEY = process.env.EXPO_PUBLIC_TOMTOM_KEY ?? "";
+
+// [#383] Wybrany pojazd pamiętamy między wejściami na mapę — kierowca jeździ tym samym
+// zestawem tygodniami, a wymuszanie wyboru przy każdej trasie kończy się klikaniem
+// „Wyznacz" bez wyboru, czyli dokładnie tym stanem bez gabarytów, który naprawiamy.
+const VEHICLE_CACHE_KEY = "map-vehicle";
+
+/** [#383] Nazwy brakujących gabarytów do komunikatu (klucze i18n, nie teksty). */
+const DIM_KEY: Record<MissingDimension, MobileMessageKey> = {
+  height: "m.map.dimHeight",
+  width: "m.map.dimWidth",
+  length: "m.map.dimLength",
+  weight: "m.map.dimWeight",
+};
+
+/** [#383] Dni tygodnia OSM (0 = poniedziałek) → klucze i18n; rozkład tłumaczy UI. */
+const WEEKDAY_KEY: Record<Weekday, MobileMessageKey> = {
+  0: "m.map.wdMo",
+  1: "m.map.wdTu",
+  2: "m.map.wdWe",
+  3: "m.map.wdTh",
+  4: "m.map.wdFr",
+  5: "m.map.wdSa",
+  6: "m.map.wdSu",
+};
 
 // #358: bbox "minLng,minLat,maxLng,maxLat" z geometrii [lng,lat][] — do zapytań o ruch
 // dla obszaru wytyczonej trasy (nie zależy od stanu animacji kamery).
@@ -89,6 +127,12 @@ export default function MapScreen() {
     durationMin: number;
     tollCost: number;
     currency: string;
+    // [#383] Profil, który NAPRAWDĘ poleciał do routingu, trzymamy razem z wynikiem.
+    // Gdyby pasek czytał bieżący stan, zmiana pojazdu po wyznaczeniu trasy podmieniłaby
+    // opis pod narysowaną linią i ekran twierdziłby coś, czego kod nie policzył.
+    profile: VehicleProfile;
+    missing: MissingDimension[];
+    vehicleReg: string | null;
   } | null>(null);
   const [planning, setPlanning] = useState(false);
   // #356: POI TomTom wzdłuż wytyczonej trasy (paliwo/parking po drodze).
@@ -100,6 +144,12 @@ export default function MapScreen() {
   const [trafficOn, setTrafficOn] = useState(false);
   const [incidents, setIncidents] = useState<TrafficIncident[]>([]);
   const [trafficBusy, setTrafficBusy] = useState(false);
+  // [#383] Pojazd do routingu — bez niego trasa leci bez wysokości, czyli bez wiaduktów.
+  const { vehicles, loading: fleetLoading } = useFleet();
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [vehPickerOpen, setVehPickerOpen] = useState(false);
+  // [#383] Parking: najpierw szczegóły z OSM (adres/godziny/telefon), oceny na żądanie.
+  const [reviewsOpen, setReviewsOpen] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -107,6 +157,44 @@ export default function MapScreen() {
       .then(setRoutes)
       .catch(() => {});
   }, []);
+
+  // [#383] Ostatnio używany pojazd. `cur ?? id` — jeśli kierowca zdążył wybrać ręcznie,
+  // odczyt z dysku nie może mu tego nadpisać.
+  useEffect(() => {
+    getCache<string>(VEHICLE_CACHE_KEY)
+      .then((id) => {
+        if (id) setVehicleId((cur) => cur ?? id);
+      })
+      .catch(() => {});
+  }, []);
+
+  // [#383] Jednopojazdowa firma: wybór jest oczywisty, więc go nie wymuszamy. Przy
+  // większej flocie NIE zgadujemy — zły pojazd to złe gabaryty, a złe gabaryty są
+  // groźniejsze od braku gabarytów, bo wyglądają na sprawdzone.
+  useEffect(() => {
+    const only = vehicles.length === 1 ? vehicles[0] : undefined;
+    if (!only) return;
+    setVehicleId((cur) => (cur && vehicles.some((v) => v.id === cur) ? cur : only.id));
+  }, [vehicles]);
+
+  const vehicle = useMemo(
+    () => vehicles.find((v) => v.id === vehicleId) ?? null,
+    [vehicles, vehicleId],
+  );
+  const profile = useMemo(() => vehicleRouteProfile(vehicle), [vehicle]);
+  const missingDims = useMemo(() => missingDimensions(vehicle), [vehicle]);
+
+  const pickVehicle = useCallback((id: string) => {
+    setVehicleId(id);
+    setVehPickerOpen(false);
+    void setCache(VEHICLE_CACHE_KEY, id);
+  }, []);
+
+  /** [#383] „wysokości, masy" — lista brakujących gabarytów w języku kierowcy. */
+  const missingLabel = useCallback(
+    (dims: MissingDimension[]) => dims.map((d) => t(DIM_KEY[d])).join(", "),
+    [t],
+  );
 
   const showRoute = useCallback((r: DriverRoute) => {
     setActiveRoute(r);
@@ -204,13 +292,22 @@ export default function MapScreen() {
         { lat: dest.lat, lng: dest.lng },
       ];
 
+      // [#383] Gabaryty z kartoteki pojazdu ZAMIAST stałej `{ kind: "truck", weightKg: 24000 }`.
+      // Bez `heightCm` warunek `if (pr.heightCm)` w `buildTomTomRouteUrl` nie wchodził, więc
+      // `vehicleHeight` nigdy nie trafiało do zapytania — trasa omijała tylko to, co omija
+      // każdy TIR „bez wymiarów", a wiadukt niższy od zestawu przechodził bez słowa.
+      // Snapshot profilu robimy TERAZ: to on poleci do API i to on ma opisać wynik.
+      const usedProfile = profile;
+      const usedMissing = missingDims;
+      const usedReg = vehicle?.registration ?? null;
+
       // #356: z kluczem TomTom liczymy trasę TIR z ruchem na żywo bezpośrednio na
       // urządzeniu (bez zależności od web /api/route). Fallback do web przy błędzie.
       if (TOMTOM_KEY) {
         try {
           const rr = await new TomTomRoutingProvider(TOMTOM_KEY).route({
             waypoints,
-            profile: { kind: "truck", weightKg: 24000 },
+            profile: usedProfile,
             currency: "EUR",
           });
           if (rr.geometry.length >= 2) {
@@ -221,6 +318,9 @@ export default function MapScreen() {
               durationMin: rr.durationMin,
               tollCost: rr.tollCost,
               currency: rr.currency,
+              profile: usedProfile,
+              missing: usedMissing,
+              vehicleReg: usedReg,
             });
             setAlongPois([]);
             setAlongKind(null);
@@ -246,8 +346,10 @@ export default function MapScreen() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
+          // [#383] Ten sam profil co w gałęzi TomTom — fallback nie może liczyć trasy
+          // dla innego pojazdu niż ścieżka główna, bo kierowca nie widzi, która zadziałała.
           waypoints,
-          profile: { kind: "truck", weightKg: 24000 },
+          profile: usedProfile,
           options: {},
         }),
       });
@@ -266,7 +368,7 @@ export default function MapScreen() {
         setNotice(t("m.map.routeError"));
         return;
       }
-      setPlanned(r);
+      setPlanned({ ...r, profile: usedProfile, missing: usedMissing, vehicleReg: usedReg });
       setAlongPois([]);
       setAlongKind(null);
       setActiveRoute(null);
@@ -278,7 +380,7 @@ export default function MapScreen() {
     } finally {
       setPlanning(false);
     }
-  }, [dest, planning, trafficOn, refreshTraffic, t]);
+  }, [dest, planning, trafficOn, refreshTraffic, t, profile, missingDims, vehicle]);
 
   const clearRoute = useCallback(() => {
     setPlanned(null);
@@ -365,6 +467,9 @@ export default function MapScreen() {
     const id = e.nativeEvent.features[0]?.properties?.id;
     setSelected(pois.find((p) => p.id === id) ?? null);
     setSelectedAlong(null);
+    // [#383] Nowy POI = znów najpierw szczegóły; inaczej dotknięcie sąsiedniego parkingu
+    // otwierałoby od razu formularz ocen dla obiektu, którego kierowca jeszcze nie widział.
+    setReviewsOpen(false);
   };
 
   const onAlongPress = (e: NativeSyntheticEvent<PressEventWithFeatures>) => {
@@ -572,58 +677,115 @@ export default function MapScreen() {
           </View>
         )}
         {dest && results.length === 0 && (
-          <Pressable
-            style={[styles.planBtn, planning && styles.buttonBusy]}
-            onPress={planRoute}
-            disabled={planning}
-          >
-            <Text style={styles.planBtnText}>
-              {planning ? `${t("m.map.planning")}…` : `🧭 ${t("m.map.planRoute")}`}
-            </Text>
-          </Pressable>
+          <>
+            {/* [#383] Pojazd PRZED liczeniem trasy — braki w kartotece mają być widoczne
+                wtedy, kiedy da się je jeszcze naprawić, a nie dopiero na trasie. */}
+            <Pressable
+              style={styles.vehRow}
+              onPress={() => setVehPickerOpen((o) => !o)}
+              accessibilityLabel={t("m.map.vehicleLabel")}
+            >
+              <Text style={styles.vehRowText} numberOfLines={1}>
+                🚛 {vehicle ? vehicle.registration : t("m.map.vehiclePick")}
+                {vehicle && formatProfileDims(profile) ? ` · ${formatProfileDims(profile)}` : ""}
+              </Text>
+              <Text style={styles.vehRowChevron}>{vehPickerOpen ? "▲" : "▼"}</Text>
+            </Pressable>
+            {vehPickerOpen && (
+              <View style={styles.vehPicker}>
+                <VehiclePicker
+                  vehicles={vehicles}
+                  loading={fleetLoading}
+                  selectedId={vehicleId}
+                  onSelect={pickVehicle}
+                />
+              </View>
+            )}
+            {!vehicle ? (
+              <Text style={styles.vehWarn}>
+                ⚠ {t("m.map.vehicleNone", { t: ASSUMED_WEIGHT_KG / 1000 })}
+              </Text>
+            ) : missingDims.length > 0 ? (
+              <Text style={styles.vehWarn}>
+                ⚠ {t("m.map.vehicleMissing", { list: missingLabel(missingDims) })}{" "}
+                {t("m.map.vehicleMissingHint")}
+              </Text>
+            ) : null}
+            <Pressable
+              style={[styles.planBtn, planning && styles.buttonBusy]}
+              onPress={planRoute}
+              disabled={planning}
+            >
+              <Text style={styles.planBtnText}>
+                {planning ? `${t("m.map.planning")}…` : `🧭 ${t("m.map.planRoute")}`}
+              </Text>
+            </Pressable>
+          </>
         )}
       </View>
 
       {planned && (
         <View style={styles.planInfo}>
-          <Text style={styles.planInfoText} numberOfLines={2}>
-            {planned.distanceKm} km · ~{Math.round(planned.durationMin / 60)} h{" "}
-            {Math.round(planned.durationMin % 60)} min
-            {planned.tollCost > 0
-              ? ` · ${t("m.map.toll")} ${planned.tollCost} ${planned.currency}`
-              : ""}
-            {(() => {
-              const eco = estimateRouteFuel({ distanceKm: planned.distanceKm, fuelPricePerL: 0 });
-              return ` · ${eco.fuelLiters} l · 🌿 ${eco.co2Kg} kg CO₂`;
-            })()}
-          </Text>
-          {TOMTOM_KEY ? (
-            <>
-              <Pressable
-                onPress={() => findAlongRoute("fuel")}
-                disabled={alongBusy}
-                hitSlop={6}
-                accessibilityLabel={t("m.map.alongFuel")}
-              >
-                <Text style={styles.alongBtn}>
-                  {alongBusy && alongKind === "fuel" ? "…" : "⛽"}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => findAlongRoute("parking")}
-                disabled={alongBusy}
-                hitSlop={6}
-                accessibilityLabel={t("m.map.alongParking")}
-              >
-                <Text style={styles.alongBtn}>
-                  {alongBusy && alongKind === "parking" ? "…" : "🅿️"}
-                </Text>
-              </Pressable>
-            </>
-          ) : null}
-          <Pressable onPress={clearRoute} hitSlop={8}>
-            <Text style={styles.planClose}>✕</Text>
-          </Pressable>
+          <View style={styles.planInfoRow}>
+            <Text style={styles.planInfoText} numberOfLines={2}>
+              {planned.distanceKm} km · ~{Math.round(planned.durationMin / 60)} h{" "}
+              {Math.round(planned.durationMin % 60)} min
+              {planned.tollCost > 0
+                ? ` · ${t("m.map.toll")} ${planned.tollCost} ${planned.currency}`
+                : ""}
+              {(() => {
+                const eco = estimateRouteFuel({ distanceKm: planned.distanceKm, fuelPricePerL: 0 });
+                return ` · ${eco.fuelLiters} l · 🌿 ${eco.co2Kg} kg CO₂`;
+              })()}
+            </Text>
+            {TOMTOM_KEY ? (
+              <>
+                <Pressable
+                  onPress={() => findAlongRoute("fuel")}
+                  disabled={alongBusy}
+                  hitSlop={6}
+                  accessibilityLabel={t("m.map.alongFuel")}
+                >
+                  <Text style={styles.alongBtn}>
+                    {alongBusy && alongKind === "fuel" ? "…" : "⛽"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => findAlongRoute("parking")}
+                  disabled={alongBusy}
+                  hitSlop={6}
+                  accessibilityLabel={t("m.map.alongParking")}
+                >
+                  <Text style={styles.alongBtn}>
+                    {alongBusy && alongKind === "parking" ? "…" : "🅿️"}
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+            <Pressable onPress={clearRoute} hitSlop={8}>
+              <Text style={styles.planClose}>✕</Text>
+            </Pressable>
+          </View>
+          {/* [#383] Trasa policzona BEZ gabarytów nie może wyglądać jak trasa policzona
+              z gabarytami — pasek mówi wprost, co poszło do routingu. */}
+          {planned.vehicleReg === null ? (
+            <Text style={styles.planWarn} numberOfLines={2}>
+              ⚠ {t("m.map.vehicleNone", { t: ASSUMED_WEIGHT_KG / 1000 })}
+            </Text>
+          ) : planned.missing.length > 0 ? (
+            <Text style={styles.planWarn} numberOfLines={3}>
+              ⚠ {planned.vehicleReg} · {formatProfileDims(planned.profile)}
+              {"\n"}
+              {t("m.map.vehicleMissing", { list: missingLabel(planned.missing) })}
+            </Text>
+          ) : (
+            <Text style={styles.planDims} numberOfLines={2}>
+              🚛 {planned.vehicleReg}
+              {formatProfileDims(planned.profile) ? ` · ${formatProfileDims(planned.profile)}` : ""}
+              {" · "}
+              {t("m.map.vehicleFull")}
+            </Text>
+          )}
         </View>
       )}
 
@@ -659,19 +821,25 @@ export default function MapScreen() {
       )}
 
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-      {/* #323: parking → karta z ocenami społeczności; stacja → prosty pasek. */}
-      {selected && selected.type !== "fuel_station" ? (
-        <ParkingReviewCard poi={selected} onClose={() => setSelected(null)} />
+      {/* #323: parking → karta z ocenami społeczności.
+          [#383]: najpierw jednak SZCZEGÓŁY z OSM (adres, marka, telefon, godziny) — te dane
+          już przychodziły w `Poi.tags` i były wyrzucane tuż przed renderem. Oceny zostają
+          bez zmian, tylko o jedno dotknięcie dalej; ✕ zamyka POI dokładnie jak wcześniej. */}
+      {selected && selected.type !== "fuel_station" && reviewsOpen ? (
+        <ParkingReviewCard
+          poi={selected}
+          onClose={() => {
+            setSelected(null);
+            setReviewsOpen(false);
+          }}
+        />
       ) : selected ? (
-        <View style={styles.infoBar}>
-          <Text style={styles.infoIcon}>⛽</Text>
-          <Text style={styles.infoText} numberOfLines={2}>
-            {selected.name || t("m.map.poiFuel")}
-          </Text>
-          <Pressable onPress={() => setSelected(null)} hitSlop={8}>
-            <Text style={styles.infoClose}>✕</Text>
-          </Pressable>
-        </View>
+        <PoiDetailsCard
+          poi={selected}
+          onClose={() => setSelected(null)}
+          onReviews={selected.type === "fuel_station" ? null : () => setReviewsOpen(true)}
+          onNotice={setNotice}
+        />
       ) : null}
       {/* #356: wybrany POI wzdłuż trasy (paliwo po drodze) */}
       {selectedAlong ? (
@@ -720,9 +888,147 @@ export default function MapScreen() {
   );
 }
 
+/**
+ * [#383] Karta szczegółów POI (OSM). Renderuje to, co Overpass i tak przysłał w
+ * `Poi.tags`: adres z `addr:*`, markę (`brand`/`operator`), telefon i godziny otwarcia.
+ * Wcześniej cała ta paczka kończyła w jednej linijce z samą nazwą.
+ *
+ * Czego karta NIE robi: nie dopowiada. Brak tagu = brak wiersza, a brak
+ * `opening_hours` to „brak danych o godzinach" — nigdy „zamknięte". Godziny liczymy
+ * wg zegara telefonu (OSM nie podaje strefy POI) i piszemy to przy statusie, żeby
+ * napis na ekranie nie twierdził więcej, niż kod sprawdził.
+ */
+function PoiDetailsCard({
+  poi,
+  onClose,
+  onReviews,
+  onNotice,
+}: {
+  poi: Poi;
+  onClose: () => void;
+  /** `null` dla stacji paliw — oceny społeczności dotyczą parkingów (#323). */
+  onReviews: (() => void) | null;
+  onNotice: (msg: string) => void;
+}) {
+  const t = useT();
+  // Status to zdjęcie chwili otwarcia karty. Karta żyje kilkanaście sekund, więc nie
+  // trzymamy zegara — przeliczy się przy następnym dotknięciu POI.
+  const { contact, hours } = useMemo(() => poiDetails(poi, new Date()), [poi]);
+  const isFuel = poi.type === "fuel_station";
+
+  const open = (url: string) => {
+    Linking.openURL(url).catch(() => onNotice(t("m.map.openFail")));
+  };
+
+  const at = (m: { weekday: Weekday; time: string }) => `${t(WEEKDAY_KEY[m.weekday])} ${m.time}`;
+  const clock = t("m.map.hoursByPhoneClock");
+  const status = hours.status;
+  let hoursLine: string;
+  if (status.state === "open") {
+    hoursLine =
+      status.closesAt === null
+        ? t("m.map.hoursAlways")
+        : `${t("m.map.hoursOpenUntil", { when: at(status.closesAt) })} · ${clock}`;
+  } else if (status.state === "closed") {
+    hoursLine = status.opensAt
+      ? `${t("m.map.hoursClosedUntil", { when: at(status.opensAt) })} · ${clock}`
+      : t("m.map.hoursClosed");
+  } else {
+    hoursLine = t("m.map.hoursUnknown");
+  }
+  if (status.holidaysUnknown) hoursLine += ` · ${t("m.map.hoursHolidays")}`;
+
+  return (
+    <View style={styles.poiCard}>
+      <View style={styles.poiHead}>
+        <Text style={styles.infoIcon}>{isFuel ? "⛽" : "🅿️"}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.poiName} numberOfLines={2}>
+            {poi.name || (isFuel ? t("m.map.poiFuel") : t("m.parking.unnamed"))}
+          </Text>
+          {contact.brand && contact.brand !== poi.name ? (
+            <Text style={styles.poiDim} numberOfLines={1}>
+              {contact.brand}
+            </Text>
+          ) : null}
+        </View>
+        <Pressable onPress={onClose} hitSlop={8}>
+          <Text style={styles.infoClose}>✕</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView style={styles.poiBody} keyboardShouldPersistTaps="handled">
+        {contact.address ? (
+          <Text style={styles.poiLine} numberOfLines={2}>
+            📍 {contact.address}
+          </Text>
+        ) : null}
+
+        <Text style={status.state === "unknown" ? styles.poiDim : styles.poiLine}>
+          🕒 {hoursLine}
+        </Text>
+        {/* Zapis, którego parser nie objął, pokazujemy dosłownie — kierowca sam odczyta
+            „Mo-Fr 06:00-22:00; PH 08:00-14:00" lepiej niż my zgadniemy jego znaczenie. */}
+        {status.state === "unknown" && hours.raw ? (
+          <Text style={styles.poiDim} numberOfLines={3}>
+            {t("m.map.hoursUnparsed", { v: hours.raw })}
+          </Text>
+        ) : null}
+        {hours.week.known && !hours.week.alwaysOpen
+          ? hours.week.groups.map((g) => (
+              <Text key={`${g.from}-${g.to}`} style={styles.poiHoursRow}>
+                {g.from === g.to
+                  ? t(WEEKDAY_KEY[g.from])
+                  : `${t(WEEKDAY_KEY[g.from])}–${t(WEEKDAY_KEY[g.to])}`}
+                {"   "}
+                {g.ranges.length > 0 ? g.ranges.join(", ") : t("m.map.hoursDayClosed")}
+              </Text>
+            ))
+          : null}
+
+        <View style={styles.poiActions}>
+          {contact.phoneUri ? (
+            <Pressable
+              style={styles.poiAction}
+              onPress={() => {
+                if (contact.phoneUri) open(contact.phoneUri);
+              }}
+              accessibilityLabel={`${t("m.map.poiCall")} ${contact.phone ?? ""}`}
+            >
+              <Text style={styles.poiActionText}>📞 {contact.phone}</Text>
+            </Pressable>
+          ) : null}
+          {contact.websiteUri ? (
+            <Pressable
+              style={styles.poiAction}
+              onPress={() => {
+                if (contact.websiteUri) open(contact.websiteUri);
+              }}
+              accessibilityLabel={t("m.map.poiWebsite")}
+            >
+              <Text style={styles.poiActionText} numberOfLines={1}>
+                🌐 {contact.website}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {onReviews ? (
+          <Pressable style={styles.poiReviewsBtn} onPress={onReviews}>
+            <Text style={styles.poiReviewsText}>★ {t("m.map.poiReviews")}</Text>
+          </Pressable>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.black },
-  searchBar: { position: "absolute", top: 12, left: 12, right: 12, gap: 6 },
+  // [#383] zIndex: pasek wyszukiwania urósł o wiersz pojazdu i ostrzeżenie o brakujących
+  // gabarytach, a `routesBar` (top: 66) rysuje się nad nim, bo jest dalej w drzewie.
+  // Ostrzeżenie o trasie bez wysokości nie może chować się pod chipami tras.
+  searchBar: { position: "absolute", top: 12, left: 12, right: 12, gap: 6, zIndex: 2 },
   searchRow: { flexDirection: "row", gap: 8 },
   searchInput: {
     flex: 1,
@@ -764,14 +1070,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   planBtnText: { color: palette.white, fontWeight: "800", fontSize: 14 },
+  // [#383] Wiersz z pojazdem i ostrzeżenie o brakach — nad przyciskiem „Wyznacz trasę".
+  vehRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(10,10,10,0.92)",
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  vehRowText: { color: palette.offWhite, flex: 1, fontSize: 13 },
+  vehRowChevron: { color: palette.smoke, fontSize: 11 },
+  vehPicker: {
+    backgroundColor: "rgba(10,10,10,0.96)",
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  vehWarn: {
+    color: palette.red,
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: "700",
+    backgroundColor: "rgba(10,10,10,0.9)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    overflow: "hidden",
+  },
   planInfo: {
     position: "absolute",
     bottom: 84,
     left: 16,
     right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    gap: 6,
     backgroundColor: "rgba(59,130,246,0.16)",
     borderColor: "#3b82f6",
     borderWidth: 1,
@@ -779,7 +1116,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
+  planInfoRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   planInfoText: { color: palette.offWhite, flex: 1, fontSize: 13, fontWeight: "600" },
+  planDims: { color: palette.smoke, fontSize: 12, lineHeight: 16 },
+  planWarn: { color: palette.red, fontSize: 12.5, lineHeight: 17, fontWeight: "700" },
   alongBtn: { fontSize: 18 },
   planClose: { color: "#3b82f6", fontSize: 16, fontWeight: "800" },
   routesBar: { position: "absolute", top: 66, left: 0, right: 0, maxHeight: 44 },
@@ -832,6 +1172,8 @@ const styles = StyleSheet.create({
   notice: {
     position: "absolute",
     top: 12,
+    // Nad paskiem wyszukiwania (zIndex 2) — komunikat błędu ma być czytany, nie zasłaniany.
+    zIndex: 3,
     alignSelf: "center",
     color: palette.offWhite,
     backgroundColor: "rgba(10,10,10,0.85)",
@@ -858,4 +1200,41 @@ const styles = StyleSheet.create({
   infoIcon: { fontSize: 18 },
   infoText: { color: palette.offWhite, flex: 1, fontSize: 14 },
   infoClose: { color: palette.red, fontSize: 16, fontWeight: "700" },
+  // [#383] Karta szczegółów POI — te same ramy co karta ocen parkingu (#323).
+  poiCard: {
+    position: "absolute",
+    bottom: 84,
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(10,10,10,0.94)",
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  poiHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+  poiName: { color: palette.offWhite, fontSize: 14.5, fontWeight: "800" },
+  poiDim: { color: palette.smoke, fontSize: 12.5, lineHeight: 17 },
+  poiBody: { maxHeight: 220 },
+  poiLine: { color: palette.offWhite, fontSize: 13, lineHeight: 19 },
+  poiHoursRow: { color: palette.smoke, fontSize: 12.5, lineHeight: 18, paddingLeft: 18 },
+  poiActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  poiAction: {
+    borderWidth: 1,
+    borderColor: palette.graphite,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  poiActionText: { color: palette.offWhite, fontSize: 13, fontWeight: "700" },
+  poiReviewsBtn: {
+    borderWidth: 1,
+    borderColor: palette.red,
+    borderRadius: 10,
+    paddingVertical: 9,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  poiReviewsText: { color: palette.red, fontWeight: "800", fontSize: 13.5 },
 });

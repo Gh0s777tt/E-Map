@@ -1,5 +1,12 @@
 import { round2 } from "@e-logistic/core";
-import type { LatLng, RouteRequest, RouteResult, RoutingProvider, VehicleKind } from "./types";
+import {
+  type LatLng,
+  type RouteRequest,
+  type RouteResult,
+  type RoutingProvider,
+  unknownTollSections,
+  type VehicleKind,
+} from "./types";
 
 /** Mapuje typ pojazdu E-Logistic na profil GraphHopper. */
 export function graphHopperProfile(kind?: VehicleKind): string {
@@ -80,6 +87,10 @@ export class GraphHopperRoutingProvider implements RoutingProvider {
       currency: req.currency ?? "EUR",
       segments: [],
       geometry,
+      // #383: `instructions: false` i brak `details=toll` — GraphHopper w tej konfiguracji
+      // nie mówi nic o drogach płatnych. Pusta lista z `known: false`, żeby mapa nie
+      // twierdziła, że trasa jest bezpłatna.
+      tollSections: unknownTollSections(),
       provider: this.name,
     };
   }

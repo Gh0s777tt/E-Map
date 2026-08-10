@@ -1472,6 +1472,44 @@ export const en: Record<MessageKey, string> = {
   "mapPage.subtitleAddKey": "(add a MapTiler key to enable 3D)",
   "mapPage.now": "now",
   "mapPage.minAgo": "min ago",
+  // [#383] Live vehicles: position age beyond an hour + freshness filter.
+  "mapPage.hoursAgo": "h ago",
+  "mapPage.daysAgo": "days ago",
+  "mapPage.freshPositionsOnly": "Fresh positions only",
+  "mapPage.stalePositionsHidden": "Hidden positions older than",
+  // [#383] Rich POI popup: weekdays (OSM codes Mo..Su) and opening hours.
+  "mapPage.dayMo": "Mon",
+  "mapPage.dayTu": "Tue",
+  "mapPage.dayWe": "Wed",
+  "mapPage.dayTh": "Thu",
+  "mapPage.dayFr": "Fri",
+  "mapPage.daySa": "Sat",
+  "mapPage.daySu": "Sun",
+  "mapPage.openingHours": "Opening hours",
+  "mapPage.hoursOpenNow": "open now",
+  "mapPage.hoursOpen247": "open 24/7",
+  "mapPage.hoursUntil": "until",
+  "mapPage.hoursClosedNow": "closed",
+  "mapPage.hoursOpensAt": "opens",
+  "mapPage.hoursDayClosed": "closed",
+  "mapPage.hoursNoData": "no opening-hours data",
+  "mapPage.hoursUnreadable": "hours written in a format we do not read",
+  "mapPage.hoursExceptHolidays": "(holidays excluded)",
+  "mapPage.hoursLocalClock": "Status computed from your browser clock.",
+  "mapPage.poiDistance": "Distance",
+  // [#383] Toll sections layer.
+  "mapPage.tollLayer": "Toll sections on route",
+  "mapPage.tollLegend": "toll section",
+  "mapPage.tollSectionsUnknown":
+    "The provider does not report WHERE the toll roads are — an empty layer does not mean there are no charges. Only TomTom returns section positions today.",
+  "mapPage.tollNoSections": "The provider reported no toll section on this route.",
+  // [#383] Traffic layer when the server has no HERE key (TomTom only).
+  "mapPage.trafficIncidentsOnly":
+    "The server has no HERE key — instead of flow we show point incidents from TomTom.",
+  "mapPage.trafficIncidentsNone":
+    "The server has no HERE key — TomTom returns incidents only, and there are none in this view.",
+  "mapPage.trafficIncidentsDuplicate":
+    "The “Incidents (TomTom)” layer already shows these incidents — we do not duplicate the pins.",
   "mapPage.newDisruptionOnRoute": "New disruption on route",
   "mapPage.recomputingDetour": "recomputing detour…",
   "mapPage.trafficNeedsKey": "Live traffic requires a HERE key (plan with Traffic).",

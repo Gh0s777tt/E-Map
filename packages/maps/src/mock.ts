@@ -1,7 +1,13 @@
 import { round2 } from "@e-logistic/core";
 import { haversineKm } from "./geo";
 import { estimateTollEur } from "./toll";
-import type { RouteRequest, RouteResult, RouteSegment, RoutingProvider } from "./types";
+import {
+  type RouteRequest,
+  type RouteResult,
+  type RouteSegment,
+  type RoutingProvider,
+  unknownTollSections,
+} from "./types";
 
 const AVG_SPEED_KMH = 70;
 
@@ -55,6 +61,10 @@ export class MockRoutingProvider implements RoutingProvider {
       currency: req.currency ?? "EUR",
       segments,
       geometry,
+      // #383: mock szacuje myto z samego dystansu (`estimateTollEur`) — nie zna żadnej
+      // realnej drogi, więc nie wie też, gdzie ta droga jest płatna. `known: false`
+      // pilnuje, żeby estymata kosztu nie została wzięta za znajomość przebiegu.
+      tollSections: unknownTollSections(),
       provider: this.name,
     };
   }

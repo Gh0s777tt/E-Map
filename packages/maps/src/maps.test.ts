@@ -9,7 +9,7 @@ import { MockRoutingProvider } from "./mock";
 import { routeMultiLeg } from "./multileg";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
 import { estimateTollEur, estimateTruckDurationMin } from "./toll";
-import type { LatLng } from "./types";
+import type { LatLng, RoutingProvider } from "./types";
 
 const BERLIN: LatLng = { lat: 52.52, lng: 13.405 };
 const WARSAW: LatLng = { lat: 52.2297, lng: 21.0122 };
@@ -111,6 +111,78 @@ describe("routeMultiLeg", () => {
 
   it("rzuca przy mniej niż 2 punktach", async () => {
     await expect(routeMultiLeg(provider, { waypoints: [BERLIN] })).rejects.toThrow(RangeError);
+  });
+
+  it("mock nie zna przebiegu dróg płatnych mimo doszacowanego myta (#383)", async () => {
+    const r = await routeMultiLeg(provider, { waypoints: [BERLIN, WIEN, WARSAW] });
+    expect(r.tollCost).toBeGreaterThan(0);
+    expect(r.tollSections).toEqual({ known: false, sections: [] });
+  });
+
+  /**
+   * #383: każdy leg to osobne zapytanie, a sklejanie geometrii pomija zdublowany punkt
+   * styku — indeksy odcinków płatnych z drugiego legu muszą się przesunąć, inaczej
+   * warstwa myta podświetla nie ten kawałek trasy.
+   */
+  it("przelicza indeksy odcinków płatnych na sklejoną geometrię", async () => {
+    const legGeometry: LatLng[] = [
+      { lat: 1, lng: 1 },
+      { lat: 2, lng: 2 },
+      { lat: 3, lng: 3 },
+      { lat: 4, lng: 4 },
+    ];
+    const tollProvider: RoutingProvider = {
+      name: "fake",
+      route: async () => ({
+        distanceKm: 10,
+        durationMin: 10,
+        tollCost: 0,
+        currency: "EUR",
+        segments: [],
+        geometry: legGeometry,
+        // odcinek płatny na indeksach 1..2 W OBRĘBIE legu
+        tollSections: { known: true, sections: [{ startIndex: 1, endIndex: 2 }] },
+        provider: "fake",
+      }),
+    };
+
+    const r = await routeMultiLeg(tollProvider, { waypoints: [BERLIN, WIEN, WARSAW] });
+    // 4 punkty pierwszego legu + 3 drugiego (punkt styku wstawiony raz).
+    expect(r.geometry).toHaveLength(7);
+    expect(r.tollSections.known).toBe(true);
+    expect(r.tollSections.sections).toEqual([
+      { startIndex: 1, endIndex: 2 },
+      { startIndex: 4, endIndex: 5 },
+    ]);
+  });
+
+  it("jeden leg bez danych o odcinkach → cała trasa known:false", async () => {
+    let call = 0;
+    const mixed: RoutingProvider = {
+      name: "fake",
+      route: async () => {
+        call += 1;
+        return {
+          distanceKm: 10,
+          durationMin: 10,
+          tollCost: 0,
+          currency: "EUR",
+          segments: [],
+          geometry: [
+            { lat: 1, lng: 1 },
+            { lat: 2, lng: 2 },
+          ],
+          tollSections:
+            call === 1
+              ? { known: true, sections: [{ startIndex: 0, endIndex: 1 }] }
+              : { known: false, sections: [] },
+          provider: "fake",
+        };
+      },
+    };
+    const r = await routeMultiLeg(mixed, { waypoints: [BERLIN, WIEN, WARSAW] });
+    expect(r.tollSections.known).toBe(false);
+    expect(r.tollSections.sections).toEqual([{ startIndex: 0, endIndex: 1 }]);
   });
 });
 

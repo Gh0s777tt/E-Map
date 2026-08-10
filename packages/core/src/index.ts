@@ -38,6 +38,7 @@ export * from "./journeyCosts";
 export * from "./journeys";
 export * from "./ksef";
 export * from "./money";
+export * from "./openingHours";
 export * from "./operatingCosts";
 export * from "./orderCost";
 export * from "./orderFilter";

@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-382-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.229.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-383-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.230.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,64 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.230.0] — 🗺️ Mapa: dziura w izolacji firm, gabaryty w telefonie, dane odzyskane z tego, co już płacimy
+
+Mapowanie podsystemu map wykazało wzorzec gorszy niż martwy kod: **dane są pobierane —
+czasem opłacone — i wyrzucane na ostatnim metrze, tuż przed renderem.**
+
+- `[#383]` **Dziura w izolacji firm** (migracja [0101](supabase/migrations/0101_driver_positions_update_check.sql)).
+  Polityka UPDATE na `driver_positions` miała `USING (user_id = auth.uid())` i **żadnego
+  `WITH CHECK`**. `user_id` był chroniony, ale `company_id` nie występował w warunku w ogóle —
+  kierowca firmy A mógł podmienić go we własnym wierszu i **wstrzyknąć swoją pozycję na mapę
+  floty firmy B**, bo SELECT przepuszcza po przynależności. INSERT był zabezpieczony, UPDATE
+  go omijał. Zweryfikowane na żywej bazie przed i po. To ta sama klasa błędu co w wątkach
+  czatu (0094): warunek na tym, co wolno wziąć, bez warunku na tym, czym wolno to zastąpić.
+
+- `[#383]` **Telefon liczył trasy bez wymiarów pojazdu — i to nie był brak funkcji, tylko
+  ryzyko fizyczne.** `apps/mobile/app/map.tsx` wysyłał twardo `{ kind: "truck", weightKg: 24000 }`.
+  Bez `heightCm` warunek budujący URL nie wchodził, więc **wysokość nigdy nie trafiała
+  do zapytania**: trasa wyglądała jak trasa TIR, a była trasą pojazdu bez wymiarów — żaden
+  wiadukt, tunel ani ograniczenie szerokości nie były brane pod uwagę. Web ma formularz
+  gabarytów od dawna; telefon, czyli to, co jedzie w kabinie, nie miał nic.
+  Teraz gabaryty idą z kartoteki pojazdu, a **brakująca kolumna jest widoczna na ekranie** —
+  parametr wysłany „na oko" jest gorszy niż jego brak, bo wygląda tak samo jak prawdziwy.
+  Pojazd typu „inne" jest routowany jako ciężarówka: pomyłka w tę stronę co najwyżej wydłuża
+  trasę, w drugą — wysyła zestaw pod niski wiadukt.
+
+- `[#383]` **Godziny otwarcia POI** ([openingHours.ts](packages/core/src/openingHours.ts), 62 testy).
+  Tagi OSM (`opening_hours`, `addr:*`, `brand`, `phone`, `website`) przychodziły w `Poi.tags`
+  i były odcinane do `{id, name, type}` tuż przed renderem. Parser obsługuje realistyczny
+  podzbiór formatu OSM, a **wszystko, czego nie rozumie, zwraca jako „nie wiemy" — nigdy jako
+  „zamknięte"**. Zamknięte to twierdzenie, a błędne twierdzenie wysyła kierowcę 40 km
+  na zamkniętą stację. Święta (`PH`) wracają osobną flagą, bo kalendarza świąt nie mamy.
+  Sprawdzone niezależnie: `24/7` i zwykły zakres → otwarte, zakres przez północ o 2:00 →
+  otwarte, przerwa obiadowa → zamknięte, `sunrise-sunset` i reguły sezonowe → „nie wiemy".
+
+- `[#383]` **Odcinki płatne odzyskane.** `sectionType=tollRoad` leciał do TomTom w **każdym**
+  zapytaniu o trasę — czyli już za to płaciliśmy — a typ odpowiedzi nie deklarował `sections`,
+  więc dane były kasowane i `tollCost` wychodził zerem. Teraz są warstwą na trasie.
+  Dostawcy, którzy takich danych nie oddają, zwracają pustą listę **odróżnialną** od
+  „nie ma dróg płatnych".
+
+- `[#383]` **`heading` pojazdu** siedział w bazie i w zapytaniu, a mapa nie czytała go ani razu —
+  flota była rysowana bezkierunkowymi kołami. Teraz ikona jest obrócona, z niuansem, który
+  łatwo przeoczyć: filtr `["has","heading"]` łapie także `null`, więc sprawdzenie jest jawne.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core **611** · maps **126** · api 81 · web 131 · mobile 36 · i18n 5 (razem **990**) ✓ · `next build` ✓.
+
+**Dwa zarzuty z mapowania, które sprawdziłem i ODRZUCIŁEM** — warto to zapisać, żeby nikt
+ich nie „naprawiał" drugi raz: (1) obietnica „premium nawigacja… już działają" na stronie
+głównej stoi w sekcji **roadmapy**, a to, co opisuje jako działające (auto-objazd przy
+utrudnieniu, widok 3D), w kodzie jest; (2) warstwa incydentów **nie** woła TomTom prosto
+z przeglądarki — idzie przez `/api/traffic`, czyli przez serwer z limitem i cache.
+
+**Niewykonalne bez decyzji, nie bez pracy:** warstwy LEZ i sieci dróg płatnych. Ani TomTom,
+ani HERE nie oddają takiej geometrii przez zwykły klucz API. Zostaje OSM z wyrywkowym
+pokryciem — mapa pokaże „brak strefy" tam, gdzie strefa jest, co jest **gorsze niż brak
+warstwy** — albo dane licencjonowane. Zakazów weekendowych żaden dostawca nie oddaje jako
+danych; własna tabela kalendarza dałaby większość wartości, przy koszcie ukrytym: ktoś musi
+ją co roku aktualizować i odpowiadać za poprawność.
 
 ## [1.229.0] — 🧭 Koszty operacyjne w rachunku wyjazdu + skrót tras na statystykach
 

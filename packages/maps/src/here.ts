@@ -1,5 +1,12 @@
 import { round2 } from "@e-logistic/core";
-import type { LatLng, RouteRequest, RouteResult, RoutingProvider, VehicleKind } from "./types";
+import {
+  type LatLng,
+  type RouteRequest,
+  type RouteResult,
+  type RoutingProvider,
+  unknownTollSections,
+  type VehicleKind,
+} from "./types";
 
 /** HERE: tryb transportu wg typu pojazdu (truck → routing TIR z wymiarami/tonażem). */
 function hereTransportMode(kind?: VehicleKind): "truck" | "car" {
@@ -188,6 +195,11 @@ export class HereRoutingProvider implements RoutingProvider {
       currency: "EUR",
       segments: [],
       geometry,
+      // #383: HERE zna KOSZT myta (`tolls`), ale nie mówi, KTÓRĘDY ono biegnie —
+      // przebieg wymagałby `return=...,spans` i `spans=tollSystems`, czego tu nie
+      // zamawiamy. Więc „brak danych o odcinkach", a nie „brak dróg płatnych":
+      // przy `tollCost > 0` to drugie byłoby jawną nieprawdą.
+      tollSections: unknownTollSections(),
       provider: this.name,
     };
   }

@@ -1481,6 +1481,44 @@ export const pl = {
   "mapPage.subtitleAddKey": "(dodaj klucz MapTiler, by włączyć 3D)",
   "mapPage.now": "teraz",
   "mapPage.minAgo": "min temu",
+  // [#383] Auta live: wiek pozycji ponad godzinę + filtr świeżości.
+  "mapPage.hoursAgo": "godz. temu",
+  "mapPage.daysAgo": "dni temu",
+  "mapPage.freshPositionsOnly": "Tylko świeże pozycje",
+  "mapPage.stalePositionsHidden": "Ukryto pozycji starszych niż",
+  // [#383] Bogaty dymek POI: dni tygodnia (kody OSM Mo..Su) i godziny otwarcia.
+  "mapPage.dayMo": "pon.",
+  "mapPage.dayTu": "wt.",
+  "mapPage.dayWe": "śr.",
+  "mapPage.dayTh": "czw.",
+  "mapPage.dayFr": "pt.",
+  "mapPage.daySa": "sob.",
+  "mapPage.daySu": "niedz.",
+  "mapPage.openingHours": "Godziny otwarcia",
+  "mapPage.hoursOpenNow": "otwarte teraz",
+  "mapPage.hoursOpen247": "otwarte całą dobę (24/7)",
+  "mapPage.hoursUntil": "do",
+  "mapPage.hoursClosedNow": "zamknięte",
+  "mapPage.hoursOpensAt": "otwiera",
+  "mapPage.hoursDayClosed": "zamknięte",
+  "mapPage.hoursNoData": "brak danych o godzinach",
+  "mapPage.hoursUnreadable": "godziny w zapisie, którego nie odczytujemy",
+  "mapPage.hoursExceptHolidays": "(poza świętami)",
+  "mapPage.hoursLocalClock": "Status liczony wg zegara Twojej przeglądarki.",
+  "mapPage.poiDistance": "Odległość",
+  // [#383] Warstwa odcinków płatnych na trasie.
+  "mapPage.tollLayer": "Odcinki płatne na trasie",
+  "mapPage.tollLegend": "odcinek płatny",
+  "mapPage.tollSectionsUnknown":
+    "Dostawca nie podaje, KTÓRĘDY biegną drogi płatne — pusta warstwa nie oznacza braku opłat. Położenie odcinków zwraca dziś tylko TomTom.",
+  "mapPage.tollNoSections": "Dostawca nie wskazał na tej trasie żadnego odcinka płatnego.",
+  // [#383] Warstwa ruchu w konfiguracji bez klucza HERE (serwer ma tylko TomTom).
+  "mapPage.trafficIncidentsOnly":
+    "Serwer nie ma klucza HERE — zamiast natężenia ruchu pokazujemy punktowe utrudnienia z TomTom.",
+  "mapPage.trafficIncidentsNone":
+    "Serwer nie ma klucza HERE — z TomTom przychodzą tylko utrudnienia, a w tym widoku nie ma żadnego.",
+  "mapPage.trafficIncidentsDuplicate":
+    "Te same utrudnienia pokazuje już warstwa „Utrudnienia (TomTom)” — nie dublujemy pinezek.",
   "mapPage.newDisruptionOnRoute": "Nowe utrudnienie na trasie",
   "mapPage.recomputingDetour": "przeliczam objazd…",
   "mapPage.trafficNeedsKey": "Ruch na żywo wymaga klucza HERE (plan z Traffic).",
