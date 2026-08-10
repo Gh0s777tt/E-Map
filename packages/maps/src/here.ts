@@ -1,6 +1,7 @@
 import { round2 } from "@e-logistic/core";
 import {
   type LatLng,
+  type RouteNotice,
   type RouteRequest,
   type RouteResult,
   type RoutingProvider,
@@ -70,6 +71,14 @@ export function buildHereUrl(req: RouteRequest, apiKey: string, departureTime?: 
     if (pr.widthCm) p.push(`truck[width]=${pr.widthCm}`);
     if (pr.lengthCm) p.push(`truck[length]=${pr.lengthCm}`);
     p.push(`truck[axleCount]=${pr.axleCount ?? 5}`);
+    // [#384] ADR: kategoria tunelowa decyduje, przez które tunele zestaw
+    // z materiałem niebezpiecznym MOŻE przejechać. Bez tego parametru dostawca
+    // liczy trasę tak, jakby ładunek był zwykły — a kontrola przy wjeździe
+    // do tunelu kończy się zawróceniem, nie ostrzeżeniem.
+    if (pr.adrTunnelCode) {
+      p.push("truck[shippedHazardousGoods]=explosive");
+      p.push(`truck[tunnelCategory]=${pr.adrTunnelCode}`);
+    }
   }
 
   const avoidFeatures: string[] = [];
@@ -147,11 +156,45 @@ interface HereSection {
   summary?: { length?: number; duration?: number };
   polyline?: string;
   tolls?: HereToll[];
+  notices?: HereNotice[];
+}
+interface HereNotice {
+  code?: string;
+  title?: string;
+  severity?: string;
 }
 interface HereResponse {
-  routes?: { sections?: HereSection[] }[];
-  notices?: unknown[];
+  // Uwagi bywają na poziomie trasy i sekcji — czytamy oba, bo ostrzeżenie
+  // o zignorowanym gabarycie potrafi przyjść przy konkretnym odcinku.
+  routes?: { sections?: HereSection[]; notices?: HereNotice[] }[];
+  notices?: HereNotice[];
 }
+
+/**
+ * [#384] Uwagi HERE → wspólny kształt. Pole było zadeklarowane i nigdy nieczytane,
+ * a to jedyny kanał, którym dostawca mówi „nie dało się uwzględnić twojego parametru
+ * i policzyłem trasę bez niego".
+ */
+function readHereNotices(data: HereResponse): RouteNotice[] {
+  const raw = [
+    ...(data.notices ?? []),
+    ...(data.routes?.[0]?.notices ?? []),
+    ...(data.routes?.[0]?.sections ?? []).flatMap((s) => s.notices ?? []),
+  ];
+  const out: RouteNotice[] = [];
+  const seen = new Set<string>();
+  for (const n of raw) {
+    const code = (n?.code ?? "").trim();
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    out.push({ code, title: n?.title, severity: n?.severity });
+  }
+  return out;
+}
+
+/** Ten sam parser co w adapterze — wystawiony do testu, bo odpowiedź HERE
+ *  przychodzi z sieci i nie da się jej podać inaczej bez atrapy fetch. */
+export const readHereNoticesForTest = readHereNotices;
 
 /** Adapter HERE Routing v8 — TIR (wymiary/tonaż), realne myto, ruch (departureTime=now). */
 export class HereRoutingProvider implements RoutingProvider {
@@ -189,6 +232,7 @@ export class HereRoutingProvider implements RoutingProvider {
     }
 
     return {
+      notices: readHereNotices(data),
       distanceKm: round2(lengthM / 1000),
       durationMin: round2(durationS / 60),
       tollCost: round2(tollEur),

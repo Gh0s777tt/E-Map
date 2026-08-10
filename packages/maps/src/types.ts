@@ -16,7 +16,36 @@ export interface VehicleProfile {
   weightKg?: number;
   /** Liczba osi (HERE: truck[axleCount]; domyślnie 5 dla zestawu). */
   axleCount?: number;
+  /**
+   * [#384] Kategoria tunelowa ADR — litera z pomarańczowej tablicy zestawu.
+   *
+   * Bez niej routing prowadzi zestaw z materiałem niebezpiecznym przez tunele,
+   * do których nie ma wstępu. To nie jest optymalizacja trasy, tylko warunek
+   * legalności przejazdu: kontrola przy wjeździe do tunelu kończy się zawróceniem
+   * i mandatem, a w gorszym wariancie zdarzeniem, przed którym te kategorie mają chronić.
+   *
+   * `null`/brak = ładunek zwykły. Litery od B (najostrzejsze ograniczenia)
+   * do E (najłagodniejsze) — tak jak w umowie ADR i w API obu dostawców.
+   */
+  adrTunnelCode?: AdrTunnelCode;
+  /**
+   * [#384] Klasa emisji (Euro). Dziś nieużywana w routingu — wchodzi do kontraktu,
+   * bo bez niej nie ruszy omijanie stref niskiej emisji, a dodanie pola później
+   * oznaczałoby drugą migrację kartoteki i drugą zmianę wszystkich wywołujących.
+   */
+  emissionClass?: EmissionClass;
 }
+
+/**
+ * [#384] Kategorie tunelowe ADR. Kolejność od najostrzejszej do najłagodniejszej —
+ * zestaw z kategorią B nie wjedzie do tunelu oznaczonego B, C, D ani E.
+ */
+export const ADR_TUNNEL_CODES = ["B", "C", "D", "E"] as const;
+export type AdrTunnelCode = (typeof ADR_TUNNEL_CODES)[number];
+
+/** Klasy emisji spalin używane przez strefy niskiej emisji. */
+export const EMISSION_CLASSES = ["euro3", "euro4", "euro5", "euro6"] as const;
+export type EmissionClass = (typeof EMISSION_CLASSES)[number];
 
 /** Opcje omijania (kraje, płatne drogi, promy, autokoszetki, drogi gruntowe). */
 export interface RouteOptions {
@@ -107,7 +136,29 @@ export interface RouteResult {
    * celowo — każdy adapter musi się zadeklarować, zamiast po cichu pominąć temat.
    */
   tollSections: TollSections;
+  /**
+   * [#384] Uwagi dostawcy do policzonej trasy — przede wszystkim kanał, którym
+   * mówi „zignorowałem twój parametr pojazdu".
+   *
+   * HERE deklarował pole `notices` w odpowiedzi i nikt go nie czytał. To jedyne
+   * miejsce, w którym dostawca informuje, że np. nie dało się uwzględnić wysokości
+   * i policzył trasę bez niej. Bez tego trasa bez gabarytów wygląda dokładnie tak
+   * samo jak trasa z gabarytami — a różnica jest taka, że jedna z nich prowadzi
+   * pod wiadukt.
+   *
+   * Pusta tablica znaczy „dostawca nic nie zgłosił", nie „nie sprawdziliśmy".
+   */
+  notices: RouteNotice[];
   provider: string;
+}
+
+/** Uwaga dostawcy do trasy. `severity` wg jego własnej skali, gdy ją poda. */
+export interface RouteNotice {
+  /** Kod dostawcy, np. `violatedVehicleRestriction`. */
+  code: string;
+  /** Treść dla człowieka, jeśli dostawca ją zwrócił. */
+  title?: string;
+  severity?: string;
 }
 
 /** Abstrakcja dostawcy routingu — adaptery: mock, GraphHopper, HERE. */

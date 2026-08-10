@@ -46,6 +46,7 @@ const leg = (): RouteResult => ({
     { lat: 2, lng: 2 },
   ],
   // #383: podstawiony dostawca nie raportuje odcinków płatnych — `known: false`.
+  notices: [],
   tollSections: { known: false, sections: [] },
   provider: "test",
 });

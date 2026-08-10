@@ -1,6 +1,7 @@
 import { round2 } from "@e-logistic/core";
 import type {
   LatLng,
+  RouteNotice,
   RouteRequest,
   RouteResult,
   RouteSegment,
@@ -26,6 +27,8 @@ export async function routeMultiLeg(
   let distanceKm = 0;
   let durationMin = 0;
   let tollCost = 0;
+  const notices: RouteNotice[] = [];
+  const noticeCodes = new Set<string>();
   // #383: „znamy przebieg dróg płatnych" tylko wtedy, gdy KAŻDY leg go zwrócił —
   // jeden leg bez danych oznacza, że sklejona trasa ma białą plamę, a nie że jest
   // tam darmowo. Startujemy od `true`, bo trasa bez legów to i tak RangeError wyżej.
@@ -69,9 +72,19 @@ export async function routeMultiLeg(
     distanceKm += leg.distanceKm;
     durationMin += leg.durationMin;
     tollCost += leg.tollCost;
+    // [#384] Uwagi z każdego odcinka trafiają do wyniku całości — ostrzeżenie
+    // o zignorowanym gabarycie dotyczy trasy, nawet jeśli padło przy trzecim
+    // odcinku z pięciu. Duplikaty odsiewamy po kodzie.
+    for (const n of leg.notices) {
+      if (!noticeCodes.has(n.code)) {
+        noticeCodes.add(n.code);
+        notices.push(n);
+      }
+    }
   }
 
   return {
+    notices,
     distanceKm: round2(distanceKm),
     durationMin: round2(durationMin),
     tollCost: round2(tollCost),

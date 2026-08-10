@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-383-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.230.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-384-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.231.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,51 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.231.0] — 🚚 Kontrakt pojazdu: ADR, twarda walidacja i kanał, którym dostawca przyznaje się do pominięcia
+
+Fala 1 mapy. Routing wyglądał na ciężarówkowy, ale trzy rzeczy pozwalały mu po cichu
+przestać nim być.
+
+- `[#384]` **`kind` był `z.string()`.** „TRUCK" wielkimi literami przechodziło walidację,
+  a `isTruck()` zwracało `false` — trasa **po cichu stawała się osobowa**, komplet gabarytów
+  szedł do kosza, a odpowiedź API nie zawierała niczego, co by o tym mówiło. Teraz to enum:
+  literówka jest błędem 400, a nie podmianą trasy.
+
+- `[#384]` **Liczby nie miały zakresów.** `heightCm: -5` albo `weightKg: 1e9` szły prosto
+  do płatnego API dostawcy. Granice są hojne (60 t, 6 m wysokości, 30 m długości, 12 osi) —
+  mają odsiewać bzdury i nadużycia, nie realne zestawy.
+
+- `[#384]` **ADR — kategoria tunelowa.** Do tej pory nie istniała nigdzie: ani w profilu
+  pojazdu, ani w schemacie, ani w adapterach. Routing prowadził zestaw z materiałem
+  niebezpiecznym przez tunele, do których nie ma wstępu. To nie jest optymalizacja trasy,
+  tylko warunek legalności przejazdu — kontrola przy wjeździe kończy się zawróceniem
+  i mandatem. Wysyłane do HERE (`truck[tunnelCategory]`) i TomTom
+  (`vehicleAdrTunnelRestrictionCode`), a **kategoria leci tylko wtedy, gdy ładunek
+  faktycznie jest niebezpieczny** — test pilnuje obu stron tego warunku.
+  Uwaga na fałszywy trop: ciągi „ADR" w repo (`catalog.ts`, kartoteka kierowcy, migracja 0074)
+  to **terminy ważności uprawnień kierowcy**, bez związku z routingiem.
+
+- `[#384]` **Klasa emisji** dodana do kontraktu, choć routing jej dziś nie używa. Bez niej
+  nie ruszy omijanie stref niskiej emisji, a dodanie pola później oznaczałoby drugą migrację
+  kartoteki i drugą zmianę wszystkich wywołujących.
+
+- `[#384]` **`notices` — kanał, którym HERE przyznaje się do pominięcia parametru.**
+  Pole było zadeklarowane w typie odpowiedzi i **nigdy nieczytane**. To jedyne miejsce,
+  w którym dostawca mówi „nie dało się uwzględnić wysokości i policzyłem trasę bez niej".
+  Bez tego trasa bez gabarytów wygląda identycznie jak trasa z gabarytami — a różnica jest
+  taka, że jedna z nich prowadzi pod wiadukt. Uwagi są czytane z trzech poziomów odpowiedzi
+  (trasa, sekcje), odsiewane z duplikatów i **wymagane w `RouteResult`**: każdy adapter musi
+  się zadeklarować, zamiast po cichu pominąć temat. Pusta lista znaczy „dostawca nic nie
+  zgłosił", a nie „nie sprawdziliśmy". Przy trasie wieloodcinkowej uwagi z każdego odcinka
+  trafiają do wyniku całości.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core 611 · **maps 129** · api 81 · web 131 · mobile 36 · i18n 5 (razem **993**) ✓ · `next build` ✓.
+
+**Zostaje z Fali 1:** gabaryty z kartoteki pojazdu po stronie **web** (dziś ręczne wartości
+domyślne w zwiniętym panelu — typowy użytkownik wysyła zestaw domyślny, nie swój; mobile
+zostało naprawione w [1.230.0]), kolumna `axle_count` w kartotece oraz rozstrzygnięcie
+GraphHoppera, który liczy profilem osobowym i udaje TIR-a.
 
 ## [1.230.0] — 🗺️ Mapa: dziura w izolacji firm, gabaryty w telefonie, dane odzyskane z tego, co już płacimy
 

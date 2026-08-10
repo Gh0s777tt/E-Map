@@ -3,12 +3,13 @@ import { itemsNearRoute, pointToRouteKm } from "./disruptions";
 import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
 import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
-import { buildHereUrl, decodeFlexiblePolyline } from "./here";
+import { buildHereUrl, decodeFlexiblePolyline, readHereNoticesForTest } from "./here";
 import { buildHereTrafficUrl, jamSeverity, parseHereTraffic } from "./heretraffic";
 import { MockRoutingProvider } from "./mock";
 import { routeMultiLeg } from "./multileg";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
 import { estimateTollEur, estimateTruckDurationMin } from "./toll";
+import { buildTomTomRouteUrl } from "./tomtom";
 import type { LatLng, RoutingProvider } from "./types";
 
 const BERLIN: LatLng = { lat: 52.52, lng: 13.405 };
@@ -141,6 +142,7 @@ describe("routeMultiLeg", () => {
         segments: [],
         geometry: legGeometry,
         // odcinek płatny na indeksach 1..2 W OBRĘBIE legu
+        notices: [],
         tollSections: { known: true, sections: [{ startIndex: 1, endIndex: 2 }] },
         provider: "fake",
       }),
@@ -172,6 +174,7 @@ describe("routeMultiLeg", () => {
             { lat: 1, lng: 1 },
             { lat: 2, lng: 2 },
           ],
+          notices: [],
           tollSections:
             call === 1
               ? { known: true, sections: [{ startIndex: 0, endIndex: 1 }] }
@@ -359,5 +362,68 @@ describe("HERE Traffic", () => {
   it("odporne na śmieci", () => {
     expect(parseHereTraffic(null)).toEqual([]);
     expect(parseHereTraffic({})).toEqual([]);
+  });
+});
+
+describe("[#384] kontrakt pojazdu: ADR i uwagi dostawcy", () => {
+  it("HERE wysyła kategorię tunelową dopiero, gdy ładunek jest niebezpieczny", () => {
+    const zwykly = buildHereUrl(
+      {
+        waypoints: [
+          { lat: 52, lng: 21 },
+          { lat: 53, lng: 22 },
+        ],
+        profile: { kind: "truck" },
+      },
+      "K",
+      "2026-08-10T00:00:00Z",
+    );
+    expect(zwykly).not.toContain("tunnelCategory");
+
+    const adr = buildHereUrl(
+      {
+        waypoints: [
+          { lat: 52, lng: 21 },
+          { lat: 53, lng: 22 },
+        ],
+        profile: { kind: "truck", adrTunnelCode: "C" },
+      },
+      "K",
+      "2026-08-10T00:00:00Z",
+    );
+    // Bez tego parametru dostawca liczy trasę jak dla ładunku zwykłego,
+    // a kontrola przy wjeździe do tunelu kończy się zawróceniem.
+    // Nawiasy idą niekodowane — tak samo jak istniejące `truck[grossWeight]`.
+    expect(adr).toContain("truck[tunnelCategory]=C");
+    expect(adr).toContain("truck[shippedHazardousGoods]");
+  });
+
+  it("TomTom dostaje kategorię ADR w swojej nomenklaturze", () => {
+    const url = buildTomTomRouteUrl(
+      {
+        waypoints: [
+          { lat: 52, lng: 21 },
+          { lat: 53, lng: 22 },
+        ],
+        profile: { kind: "truck", adrTunnelCode: "B" },
+      },
+      "K",
+    );
+    expect(url).toContain("vehicleAdrTunnelRestrictionCode=B");
+  });
+
+  it("uwagi HERE są odsiewane z duplikatów i zachowują kod", () => {
+    // To jedyny kanał, którym dostawca mówi „zignorowałem twój parametr pojazdu".
+    const notices = readHereNoticesForTest({
+      notices: [{ code: "violatedVehicleRestriction", title: "Height ignored" }],
+      routes: [
+        {
+          notices: [{ code: "violatedVehicleRestriction" }],
+          sections: [{ notices: [{ code: "noRouteFound", severity: "critical" }] }],
+        },
+      ],
+    });
+    expect(notices.map((n) => n.code)).toEqual(["violatedVehicleRestriction", "noRouteFound"]);
+    expect(notices[0]?.title).toBe("Height ignored");
   });
 });

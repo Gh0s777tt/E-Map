@@ -99,6 +99,13 @@ export function buildTomTomRouteUrl(req: RouteRequest, apiKey: string): string {
     if (pr.widthCm) p.push(`vehicleWidth=${(pr.widthCm / 100).toFixed(2)}`);
     if (pr.lengthCm) p.push(`vehicleLength=${(pr.lengthCm / 100).toFixed(2)}`);
     if (pr.axleCount) p.push(`vehicleNumberOfAxles=${pr.axleCount}`);
+    // [#384] ADR — patrz komentarz w adapterze HERE. TomTom nazywa to inaczej,
+    // ale znaczy to samo: `vehicleLoadType` mówi CO wieziemy, a kategoria tunelowa
+    // KTÓRE tunele wolno pokonać.
+    if (pr.adrTunnelCode) {
+      p.push("vehicleLoadType=USHazmatClass1");
+      p.push(`vehicleAdrTunnelRestrictionCode=${pr.adrTunnelCode}`);
+    }
   } else {
     p.push("travelMode=car");
   }
@@ -242,6 +249,9 @@ export function parseTomTomRoute(
     : unknownTollSections();
 
   return {
+    // [#384] TomTom nie zwraca uwag do trasy w tym endpointcie — pusta lista
+    // znaczy „nic nie zgłosił", a nie „nie sprawdziliśmy".
+    notices: [],
     distanceKm: round2((r.summary.lengthInMeters ?? 0) / 1000),
     durationMin: round2((r.summary.travelTimeInSeconds ?? 0) / 60),
     // TomTom Routing podaje PRZEBIEG dróg płatnych, ale nie ich cenę — koszt dolicza

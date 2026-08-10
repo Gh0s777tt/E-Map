@@ -22,14 +22,28 @@ export const dynamic = "force-dynamic";
 const waypointSchema = z.object({ lat: z.number().finite(), lng: z.number().finite() });
 const routeBodySchema = z.object({
   waypoints: z.array(waypointSchema).min(2).max(25),
+  /**
+   * [#384] Profil pojazdu walidowany ostro, bo dwa błędy przechodziły tu bez śladu.
+   *
+   * `kind` był `z.string()`, więc „TRUCK" wielkimi literami przechodziło walidację,
+   * a `isTruck()` zwracało `false` — trasa po cichu stawała się osobowa i cały
+   * komplet gabarytów był wyrzucany. Odpowiedź nie zawierała niczego, co by o tym
+   * mówiło. Teraz to enum: literówka jest błędem 400, a nie cichą podmianą trasy.
+   *
+   * Liczby nie miały zakresów, więc `heightCm: -5` albo `weightKg: 1e9` szły prosto
+   * do płatnego API dostawcy. Górne granice są hojne (60 t, 6 m wysokości, 30 m
+   * długości, 12 osi) — mają odsiewać bzdury i nadużycia, nie realne zestawy.
+   */
   profile: z
     .object({
-      kind: z.string().optional(),
-      weightKg: z.number().optional(),
-      heightCm: z.number().optional(),
-      widthCm: z.number().optional(),
-      lengthCm: z.number().optional(),
-      axleCount: z.number().optional(),
+      kind: z.enum(["truck", "tractor", "van", "trailer", "other"]).optional(),
+      weightKg: z.number().int().positive().max(60_000).optional(),
+      heightCm: z.number().int().positive().max(600).optional(),
+      widthCm: z.number().int().positive().max(400).optional(),
+      lengthCm: z.number().int().positive().max(3000).optional(),
+      axleCount: z.number().int().positive().max(12).optional(),
+      adrTunnelCode: z.enum(["B", "C", "D", "E"]).optional(),
+      emissionClass: z.enum(["euro3", "euro4", "euro5", "euro6"]).optional(),
     })
     .optional(),
   options: z

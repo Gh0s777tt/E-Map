@@ -90,6 +90,9 @@ export class GraphHopperRoutingProvider implements RoutingProvider {
       // #383: `instructions: false` i brak `details=toll` — GraphHopper w tej konfiguracji
       // nie mówi nic o drogach płatnych. Pusta lista z `known: false`, żeby mapa nie
       // twierdziła, że trasa jest bezpłatna.
+      // [#384] Ten dostawca nie zwraca uwag do trasy — pusta lista znaczy
+      // „nic nie zgłosił", a nie „nie sprawdziliśmy".
+      notices: [],
       tollSections: unknownTollSections(),
       provider: this.name,
     };

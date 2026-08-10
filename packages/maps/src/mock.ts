@@ -64,6 +64,9 @@ export class MockRoutingProvider implements RoutingProvider {
       // #383: mock szacuje myto z samego dystansu (`estimateTollEur`) — nie zna żadnej
       // realnej drogi, więc nie wie też, gdzie ta droga jest płatna. `known: false`
       // pilnuje, żeby estymata kosztu nie została wzięta za znajomość przebiegu.
+      // [#384] Ten dostawca nie zwraca uwag do trasy — pusta lista znaczy
+      // „nic nie zgłosił", a nie „nie sprawdziliśmy".
+      notices: [],
       tollSections: unknownTollSections(),
       provider: this.name,
     };
