@@ -281,8 +281,17 @@ export function latestUnitPrice(
 
 export interface MonthlyOrderEntry {
   vehicleId: string | null;
-  price: number | null;
-  currency: string;
+  /**
+   * [#381] Kwota JUŻ przeliczona na euro — nazwa niesie jednostkę celowo.
+   *
+   * Pole `currency` zniknęło z tego typu razem z filtrem `currency === "EUR"`,
+   * który tu stał. Filtr wyglądał na ostrożność, a działał jak cichy kasownik:
+   * zlecenie w złotówkach po prostu wypadało z wyniku, bez komunikatu i bez
+   * licznika. Przeliczanie należy do warstwy, która zna kursy i datę zdarzenia
+   * (`rowAmountEur`), a nie do silnika liczącego — ten ma dostać liczby
+   * porównywalne i tyle.
+   */
+  priceEur: number | null;
   status: string;
   /** Data atrybucji (YYYY-MM-DD) — np. data załadunku lub utworzenia zlecenia. */
   date: string;
@@ -339,9 +348,9 @@ export function monthlyFleetSummary(input: {
   const inMonth = (d: string) => d.slice(0, 7) === input.month;
 
   for (const o of input.orders) {
-    if (!inMonth(o.date) || o.currency !== "EUR") continue;
+    if (!inMonth(o.date)) continue;
     if (o.status !== "delivered" && o.status !== "invoiced") continue;
-    add(rev, o.vehicleId, o.price ?? 0);
+    add(rev, o.vehicleId, o.priceEur ?? 0);
   }
   let missingFuel = 0;
   let missingAdblue = 0;

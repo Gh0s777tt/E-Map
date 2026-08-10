@@ -45,8 +45,8 @@ describe("co2ByClient", () => {
     // Pojazd v1: 100 L; dwa zlecenia EUR (A=750, B=250) → A:75 L, B:25 L.
     const rows = co2ByClient(
       [
-        { shipper: "A", vehicleId: "v1", price: 750, currency: "EUR", status: "delivered" },
-        { shipper: "B", vehicleId: "v1", price: 250, currency: "EUR", status: "invoiced" },
+        { shipper: "A", vehicleId: "v1", priceEur: 750, status: "delivered" },
+        { shipper: "B", vehicleId: "v1", priceEur: 250, status: "invoiced" },
       ],
       [{ vehicleId: "v1", liters: 100 }],
     );
@@ -54,11 +54,12 @@ describe("co2ByClient", () => {
     expect(rows[1]).toMatchObject({ client: "B", liters: 25, co2Kg: 66 });
   });
 
-  it("pomija zlecenia niezrealizowane / nie-EUR", () => {
+  // [#381] Waluta zniknęła z warunku: silnik dostaje kwoty już przeliczone.
+  it("pomija zlecenia niezrealizowane", () => {
     const rows = co2ByClient(
       [
-        { shipper: "A", vehicleId: "v1", price: 1000, currency: "EUR", status: "new" },
-        { shipper: "A", vehicleId: "v1", price: 1000, currency: "PLN", status: "delivered" },
+        { shipper: "A", vehicleId: "v1", priceEur: 1000, status: "new" },
+        { shipper: "A", vehicleId: "v1", priceEur: 1000, status: "cancelled" },
       ],
       [{ vehicleId: "v1", liters: 100 }],
     );

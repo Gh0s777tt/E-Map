@@ -366,7 +366,24 @@ export default function StatsPage() {
   }, [tiles, ordersEur]);
 
   // Analiza zleceń: top nadawcy, najczęstsze trasy, średnia stawka (raz na zmianę zleceń).
-  const analytics = useMemo(() => orderAnalytics(orders, 5), [orders]);
+  // [#381] `ordersEur`, nie `orders`: analiza dostawała surowe kwoty z walutą,
+  // więc do „średniej stawki" i „top nadawców" wchodziły tylko zlecenia w euro.
+  // Zmiana kontraktu w rdzeniu wyciągnęła to na wierzch — kompilator wskazał
+  // miejsce, którego wcześniejszy przegląd nie zauważył.
+  const analytics = useMemo(
+    () =>
+      orderAnalytics(
+        ordersEur.map((o) => ({
+          shipper: o.shipper,
+          origin: o.origin,
+          destination: o.destination,
+          priceEur: o.priceEur,
+          status: o.status,
+        })),
+        5,
+      ),
+    [ordersEur],
+  );
 
   // Rentowność klientów: koszt paliwa per pojazd → przypisany do zleceń proporcjonalnie
   // do przychodu, zsumowany per nadawca. Tylko zlecenia zrealizowane w EUR.
@@ -390,9 +407,7 @@ export default function StatsPage() {
       ordersEur.map((o) => ({
         shipper: o.shipper,
         vehicleId: o.vehicle_id,
-        price: o.priceEur,
-        // Już po przeliczeniu — patrz `ordersEur`.
-        currency: "EUR",
+        priceEur: o.priceEur,
         status: o.status,
       })),
       vehicleCosts,
@@ -446,8 +461,7 @@ export default function StatsPage() {
     return fleetPnlByVehicle(
       ordersEur.map((o) => ({
         vehicleId: o.vehicle_id,
-        price: o.priceEur,
-        currency: "EUR",
+        priceEur: o.priceEur,
         status: o.status,
       })),
       fuelByVehicle,
@@ -473,16 +487,17 @@ export default function StatsPage() {
   const co2ClientRows = useMemo(
     () =>
       co2ByClient(
-        orders.map((o) => ({
+        // [#381] To samo co przy `orderAnalytics`: było `orders` z surową kwotą,
+        // więc udział klienta w emisjach liczył się tylko ze zleceń w euro.
+        ordersEur.map((o) => ({
           shipper: o.shipper,
           vehicleId: o.vehicle_id,
-          price: o.price,
-          currency: o.currency,
+          priceEur: o.priceEur,
           status: o.status,
         })),
         tiles.map((t) => ({ vehicleId: t.id, liters: t.totalLiters })),
       ),
-    [orders, tiles],
+    [ordersEur, tiles],
   );
 
   // Wejście do trendu rentowności: zlecenia i koszty paliwa otagowane miesiącem
@@ -495,8 +510,7 @@ export default function StatsPage() {
     const trendOrders = ordersEur.map((o) => ({
       shipper: o.shipper,
       vehicleId: o.vehicle_id,
-      price: o.priceEur,
-      currency: "EUR",
+      priceEur: o.priceEur,
       status: o.status,
       month: (o.load_date ?? o.created_at).slice(0, 7),
     }));

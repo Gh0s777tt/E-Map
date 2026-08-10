@@ -5,8 +5,17 @@ export interface OrderAnalyticsEntry {
   shipper: string | null;
   origin: string | null;
   destination: string | null;
-  price: number | null;
-  currency: string;
+  /**
+   * [#381] Kwota JUŻ przeliczona na euro — nazwa niesie jednostkę celowo.
+   *
+   * Pole `currency` zniknęło z tego typu razem z filtrem `currency === "EUR"`,
+   * który tu stał. Filtr wyglądał na ostrożność, a działał jak cichy kasownik:
+   * zlecenie w złotówkach po prostu wypadało z wyniku, bez komunikatu i bez
+   * licznika. Przeliczanie należy do warstwy, która zna kursy i datę zdarzenia
+   * (`rowAmountEur`), a nie do silnika liczącego — ten ma dostać liczby
+   * porównywalne i tyle.
+   */
+  priceEur: number | null;
   status: string;
 }
 
@@ -45,7 +54,7 @@ export function orderAnalytics(orders: OrderAnalyticsEntry[], topN = 5): OrderAn
     if (name) {
       const s = shippers.get(name) ?? { count: 0, revenueEur: 0 };
       s.count += 1;
-      if (o.currency === "EUR") s.revenueEur += o.price ?? 0;
+      s.revenueEur += o.priceEur ?? 0;
       shippers.set(name, s);
     }
     const from = (o.origin ?? "").trim();
@@ -54,8 +63,8 @@ export function orderAnalytics(orders: OrderAnalyticsEntry[], topN = 5): OrderAn
       const route = `${from || "?"} → ${to || "?"}`;
       routes.set(route, (routes.get(route) ?? 0) + 1);
     }
-    if (o.currency === "EUR" && o.price != null && o.price > 0) {
-      rateSum += o.price;
+    if (o.priceEur != null && o.priceEur > 0) {
+      rateSum += o.priceEur;
       rateCount += 1;
     }
   }

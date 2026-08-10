@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-380-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.227.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-381-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.228.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,37 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.228.0] — 🔒 Waluta wymuszona typem — filtry `currency === "EUR"` usunięte z rdzenia
+
+Ostatni dług po serii walutowej. Po [1.222.0] i [1.223.0] wszyscy wywołujący podawali
+już kwoty przeliczone, więc **sześć filtrów `currency === "EUR"` w `packages/core`
+przestało cokolwiek robić** — ale zostawały pułapką: następna osoba dodająca wywołanie
+znów po cichu zgubiłaby waluty, a nic by o tym nie powiedziało.
+
+- `[#381]` **Pole `currency` usunięte z pięciu typów wejściowych** (`FleetPnlOrder`,
+  `ProfitOrderEntry`, `Co2OrderEntry`, `OrderAnalyticsEntry`, `MonthlyOrderEntry`),
+  a `price` przemianowane na **`priceEur`**. Zmiana jest z pozoru kosmetyczna, a robi
+  rzecz zasadniczą: przeliczanie należy do warstwy, która zna kursy i datę zdarzenia,
+  a silnik liczący ma dostać liczby porównywalne i tyle. **Nazwa niesie jednostkę**,
+  więc pomyłka jest widoczna przy czytaniu, a nie dopiero w wyniku.
+
+- `[#381]` **Kompilator znalazł dwa realne przeoczenia**, których nie wyłapał wcześniejszy
+  przegląd: `orderAnalytics` i `co2ByClient` na `/stats` nadal dostawały **surowe** kwoty
+  z walutą. Skutek: do „średniej stawki", „top nadawców" i udziału klienta w emisjach
+  wchodziły wyłącznie zlecenia wystawione w euro. To jest dokładnie ten rodzaj błędu,
+  przed którym miał chronić typ — i pierwszy, który złapał.
+
+- `[#381]` **Sześć testów utrwalało usunięte zachowanie** i zostało przepisanych
+  z wyjaśnieniem, dlaczego stare oczekiwanie było złe — żeby nikt nie cofnął tego
+  jako „regresji". Najciekawszy z nich: w `monthlyFleetSummary` pojazd `v2` miał
+  wcześniej wynik **−250**, bo jego przychód znikał przez filtr, a koszt paliwa
+  zostawał. Po poprawce ma **+2750** i **wyskakuje na pierwsze miejsce rankingu** —
+  wcześniej filtr spychał go na dół jako rzekomo stratny. Sama podmiana liczb
+  by tego nie wychwyciła; trzeba było poprawić też asercję kolejności.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core 536 · api 81 · maps 116 · web 101 · mobile 36 · i18n 5 ✓ · `next build` ✓.
+**Kontrola:** `grep` na `currency === "EUR"` w `packages/core` i `apps` — zero trafień poza ekranem cen paliw, gdzie waluta jest **wyświetlana**, a nie używana do filtrowania.
 
 ## [1.227.0] — ⛽ Spalanie na telefonie kierowcy
 

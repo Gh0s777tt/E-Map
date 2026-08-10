@@ -116,8 +116,7 @@ export function KpiStrip() {
           if (counted && o.price != null && price == null && inMonth(date)) noRate++;
           return {
             vehicleId: o.vehicle_id,
-            price,
-            currency: "EUR",
+            priceEur: price,
             status: o.status,
             date,
           };

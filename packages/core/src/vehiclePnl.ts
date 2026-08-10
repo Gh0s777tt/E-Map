@@ -41,8 +41,17 @@ export function vehiclePnl(input: VehiclePnlInput): VehiclePnl {
 
 export interface FleetPnlOrder {
   vehicleId: string | null;
-  price: number | null;
-  currency: string;
+  /**
+   * [#381] Kwota JUŻ przeliczona na euro — nazwa niesie jednostkę celowo.
+   *
+   * Pole `currency` zniknęło z tego typu razem z filtrem `currency === "EUR"`,
+   * który tu stał. Filtr wyglądał na ostrożność, a działał jak cichy kasownik:
+   * zlecenie w złotówkach po prostu wypadało z wyniku, bez komunikatu i bez
+   * licznika. Przeliczanie należy do warstwy, która zna kursy i datę zdarzenia
+   * (`rowAmountEur`), a nie do silnika liczącego — ten ma dostać liczby
+   * porównywalne i tyle.
+   */
+  priceEur: number | null;
   status: string;
 }
 
@@ -69,16 +78,10 @@ export function fleetPnlByVehicle(
 ): VehiclePnlRow[] {
   const revenue = new Map<string, number>();
   for (const o of orders) {
-    if (
-      !o.vehicleId ||
-      !PNL_REALIZED.has(o.status) ||
-      o.currency !== "EUR" ||
-      o.price == null ||
-      o.price <= 0
-    ) {
+    if (!o.vehicleId || !PNL_REALIZED.has(o.status) || o.priceEur == null || o.priceEur <= 0) {
       continue;
     }
-    revenue.set(o.vehicleId, (revenue.get(o.vehicleId) ?? 0) + o.price);
+    revenue.set(o.vehicleId, (revenue.get(o.vehicleId) ?? 0) + o.priceEur);
   }
   const fuel = new Map<string, number>();
   for (const f of fuelByVehicle) fuel.set(f.vehicleId, (fuel.get(f.vehicleId) ?? 0) + f.eur);

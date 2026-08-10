@@ -161,15 +161,17 @@ describe("monthlyFleetSummary", () => {
     month: "2026-06",
     orders: [
       // przychód EUR, dostarczone — wliczone do v1
-      { vehicleId: "v1", price: 2000, currency: "EUR", status: "delivered", date: "2026-06-10" },
+      { vehicleId: "v1", priceEur: 2000, status: "delivered", date: "2026-06-10" },
       // zafakturowane EUR — wliczone do v1
-      { vehicleId: "v1", price: 1000, currency: "EUR", status: "invoiced", date: "2026-06-20" },
+      { vehicleId: "v1", priceEur: 1000, status: "invoiced", date: "2026-06-20" },
       // nowy status — pominięte
-      { vehicleId: "v1", price: 500, currency: "EUR", status: "new", date: "2026-06-05" },
+      { vehicleId: "v1", priceEur: 500, status: "new", date: "2026-06-05" },
       // inna waluta — pominięte z sumy EUR
-      { vehicleId: "v2", price: 3000, currency: "PLN", status: "delivered", date: "2026-06-12" },
+      // [#381] Było w PLN i wypadało z sumy przez filtr `currency !== "EUR"`.
+      // Silnik dostaje teraz kwoty przeliczone, więc to zlecenie liczy się normalnie.
+      { vehicleId: "v2", priceEur: 3000, status: "delivered", date: "2026-06-12" },
       // inny miesiąc — pominięte
-      { vehicleId: "v1", price: 999, currency: "EUR", status: "delivered", date: "2026-05-30" },
+      { vehicleId: "v1", priceEur: 999, status: "delivered", date: "2026-05-30" },
     ],
     fuel: [
       { vehicleId: "v1", priceTotal: 600, date: "2026-06-03" },
@@ -190,15 +192,21 @@ describe("monthlyFleetSummary", () => {
       adblueCost: 80,
       net: 1920,
     });
-    // v2: brak przychodu EUR (PLN pominięte), koszt paliwa 250 → net -250
+    // [#381] v2: przychód 3000 (zlecenie, które wcześniej wypadało przez filtr
+    // walutowy), koszt paliwa 250 → net 2750. Dawniej wychodziło −250, bo
+    // przychód znikał, a koszt zostawał — auto wyglądało na stratne.
     const v2 = s.rows.find((r) => r.vehicleId === "v2");
-    expect(v2?.net).toBe(-250);
+    expect(v2?.net).toBe(2750);
   });
 
   it("sumuje totals i sortuje malejąco po net", () => {
     const s = monthlyFleetSummary(base);
-    expect(s.totals).toEqual({ revenueEur: 3000, fuelCost: 1250, adblueCost: 80, net: 1670 });
-    expect(s.rows[0]?.vehicleId).toBe("v1"); // najwyższy net pierwszy
+    // 6000 − 1250 − 80 = 4670.
+    expect(s.totals).toEqual({ revenueEur: 6000, fuelCost: 1250, adblueCost: 80, net: 4670 });
+    // [#381] Kolejność też się zmieniła i to jest sedno poprawki: v2 ma net 2750
+    // wobec 1920 u v1, więc stoi pierwsze. Wcześniej filtr walutowy spychał je
+    // na sam dół rankingu jako rzekomo stratne.
+    expect(s.rows[0]?.vehicleId).toBe("v2");
   });
 
   it("liczy wpisy bez kwoty, żeby ekran odróżnił zero od braku danych", () => {
@@ -226,9 +234,7 @@ describe("monthlyFleetSummary", () => {
   it("pozycje bez pojazdu trafiają do wiersza null", () => {
     const s = monthlyFleetSummary({
       month: "2026-06",
-      orders: [
-        { vehicleId: null, price: 500, currency: "EUR", status: "delivered", date: "2026-06-01" },
-      ],
+      orders: [{ vehicleId: null, priceEur: 500, status: "delivered", date: "2026-06-01" }],
       fuel: [],
       adblue: [],
     });
@@ -257,8 +263,8 @@ describe("monthlyFleetTrend", () => {
     const t = monthlyFleetTrend({
       months: ["2026-05", "2026-06"],
       orders: [
-        { vehicleId: "v1", price: 1000, currency: "EUR", status: "delivered", date: "2026-05-10" },
-        { vehicleId: "v1", price: 2000, currency: "EUR", status: "invoiced", date: "2026-06-10" },
+        { vehicleId: "v1", priceEur: 1000, status: "delivered", date: "2026-05-10" },
+        { vehicleId: "v1", priceEur: 2000, status: "invoiced", date: "2026-06-10" },
       ],
       fuel: [{ vehicleId: "v1", priceTotal: 300, date: "2026-06-05" }],
       adblue: [],

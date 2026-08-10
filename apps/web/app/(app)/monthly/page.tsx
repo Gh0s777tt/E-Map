@@ -139,8 +139,7 @@ export default function MonthlyPage() {
           const priceEur = rowAmountEur(o.price, o.currency, date, rates);
           return {
             vehicleId: o.vehicle_id,
-            price: priceEur,
-            currency: "EUR",
+            priceEur: priceEur,
             status: o.status,
             date,
             missingRate: o.price != null && priceEur == null,
