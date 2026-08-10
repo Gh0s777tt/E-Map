@@ -46,6 +46,7 @@ gh secret set SUPABASE_DB_URL --repo <owner>/<repo>   # wartość ze stdin (bez 
 | 5 | `SECURITY DEFINER` ma `search_path` | Brak przypięcia = ryzyko hijacku przez podmianę ścieżki schematu. |
 | 6 | Helpery `is_member_of` / `has_role` istnieją i są `SECURITY DEFINER` | Filary RLS — bez nich polityki nie izolują. |
 | 7 | **Każda polityka UPDATE ma `WITH CHECK`** z powtórzonym warunkiem przynależności | Bez `WITH CHECK` Postgres stosuje `USING` do wiersza po zmianie — a to broni WYŁĄCZNIE kolumn, które w `USING` wystąpiły. Typowe `USING (driver_id = auth.uid() OR has_role(company_id, …))` przepuszcza podmianę `company_id`, bo pierwszy człon pozostaje prawdziwy: kierowca przepina własny wiersz do obcej firmy. |
+| 8 | **Żadna funkcja `SECURITY DEFINER` nie jest wywoływalna przez `anon`** (poza jawną listą wyjątków) | PostgREST wystawia funkcje z `public` jako `/rest/v1/rpc/<nazwa>`, a `anon` to klucz publiczny leżący w paczce aplikacji. Funkcja dostępna dla `anon` jest dostępna dla całego internetu. **Uwaga:** Postgres domyślnie nadaje `EXECUTE` roli `PUBLIC`, a `anon` po niej dziedziczy — samo `revoke … from anon` nic nie zmienia, odbierać trzeba `PUBLIC`. |
 
 
 > ### Reguła 7 — skąd się wzięła
@@ -64,6 +65,25 @@ gh secret set SUPABASE_DB_URL --repo <owner>/<repo>   # wartość ze stdin (bez 
 >
 > Reguła jest teraz sprawdzana automatycznie w [`audit:rls`](../scripts/audit-rls.mjs),
 > bo naprawianie po jednym działa dopóki ktoś pamięta, a bramka działa dalej.
+
+> ### Reguła 8 — skąd się wzięła
+>
+> Znalezione przy przeglądzie ostrzeżeń dostawcy: `public._card_key()` i
+> `public._pii_key()` — funkcje zwracające klucz pgcrypto, którym szyfrowane są
+> **PIN-y kart paliwowych i dane osobowe kierowców** — miały `EXECUTE` dla `PUBLIC`.
+>
+> Potwierdzone doświadczalnie (w transakcji zakończonej ROLLBACK,
+> `set local role anon`): wywołanie przechodziło i zwracało klucz. Wartość nie
+> została nigdzie wypisana ani zapisana.
+>
+> Szyfrowanie jest w tym produkcie **drugą warstwą** — RLS chroni dostęp do wierszy,
+> a szyfrowanie chroni ich treść, gdyby RLS zawiodło. Klucz dostępny publicznie
+> sprowadzał tę drugą warstwę do zera.
+>
+> Naprawione w [migracji 0105](../supabase/migrations/0105_revoke_key_accessors_from_clients.sql):
+> klucze odebrane `PUBLIC`/`anon`/`authenticated` (wołają je wyłącznie funkcje
+> `SECURITY DEFINER` należące do `postgres`, więc aplikacja działa bez zmian),
+> a 19 uprzywilejowanych RPC odebrane `PUBLIC` przy zachowaniu `authenticated`.
 
 Obiekty należące do **rozszerzeń** (PostGIS: `spatial_ref_sys`, `st_*`) są pomijane
 automatycznie (`pg_depend deptype='e'`) — zarządza nimi Supabase, nie nasze migracje.

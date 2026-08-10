@@ -72,9 +72,23 @@ const TRIP_LABEL: Record<string, MessageKey> = {
   other: "settlements.trip.other",
 };
 
+/**
+ * [#390] Pierwszy dzień bieżącego miesiąca — liczony w UTC, nie lokalnie.
+ *
+ * Poprzednia wersja budowała LOKALNĄ północ (`new Date(rok, miesiac, 1)`),
+ * a `toISOString()` przeliczało ją na UTC. Dla użytkownika na wschód od
+ * Greenwich — czyli dla całej Polski — lokalna północ 1 sierpnia to 31 lipca
+ * 22:00 UTC, więc domyślne „od" ustawiało się na **ostatni dzień poprzedniego
+ * miesiąca**. Rachunek wyjazdu domyślnie zaczynał się dzień za wcześnie
+ * i wciągał tankowania z rozliczonego już okresu; latem (UTC+2) zawsze,
+ * zimą (UTC+1) też.
+ *
+ * `Date.UTC` buduje ten dzień bezpośrednio w tej skali, w której i tak
+ * zapisujemy datę — bez przeliczenia, więc bez przesunięcia.
+ */
 function firstOfMonth(): string {
   const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().slice(0, 10);
 }
 function today(): string {
   return new Date().toISOString().slice(0, 10);

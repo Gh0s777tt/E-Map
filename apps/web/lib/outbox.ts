@@ -45,6 +45,39 @@ function write(items: OutboxItem[]): void {
   window.localStorage.setItem(KEY, JSON.stringify(items));
 }
 
+/**
+ * [#390] Podmiana JEDNEGO wpisu — zamiast zapisu całej tablicy ze snapshotu.
+ *
+ * Błąd, który to naprawia, kasował dane po cichu. `trySync` czytał CAŁĄ tablicę
+ * na wejściu (`const items = read()`), potem czekał na kilka żądań sieciowych,
+ * a na końcu zapisywał ten sam, już nieaktualny snapshot. Wszystko, co w tym
+ * czasie doszło do kolejki, znikało — wraz z komunikatem „Zapisano lokalnie
+ * (w kolejce)", który użytkownik właśnie zobaczył.
+ *
+ * Nie trzeba do tego zerwanego łącza: zwykły round-trip to setki milisekund,
+ * a `localStorage` jest wspólny dla WSZYSTKICH KART tej samej domeny. Właściciel
+ * z dwiema otwartymi zakładkami tracił wpisy bez żadnego wyścigu czasowego.
+ *
+ * Ta funkcja czyta stan świeżo, w momencie zapisu, i rusza wyłącznie ten jeden
+ * wpis. Jeśli wpisu już nie ma (użytkownik go usunął w międzyczasie), NIE
+ * wskrzeszamy go — usunięcie było świadomą decyzją użytkownika i ma wygrać
+ * z synchronizacją, która zaczęła się wcześniej.
+ *
+ * Wersja mobilna rozwiązała to wcześniej (`withOutboxLock` + `patchItem`).
+ * Na webie odpowiednikiem jest sam odczyt tuż przed zapisem: `localStorage` jest
+ * synchroniczny, więc między `read()` a `write()` w tej funkcji nie ma miejsca
+ * na przeplot — całość wykonuje się w jednym zadaniu pętli zdarzeń.
+ */
+function patchItem(itemId: string, zmiana: Partial<OutboxItem>): void {
+  const swieze = read();
+  const idx = swieze.findIndex((i) => i.id === itemId);
+  if (idx === -1) return;
+  const biezacy = swieze[idx];
+  if (!biezacy) return;
+  swieze[idx] = { ...biezacy, ...zmiana };
+  write(swieze);
+}
+
 export function listOutbox(kind?: OutboxKind): OutboxItem[] {
   const all = read();
   return kind ? all.filter((i) => i.kind === kind) : all;
@@ -100,12 +133,13 @@ export async function trySync(itemId: string): Promise<void> {
         item.kind === "adblue" ? "adblue_logs" : "fuel_logs",
       );
     }
-    item.status = "synced";
+    // [#390] Podmieniamy TYLKO ten wpis, na świeżo odczytanym stanie.
+    // `write(items)` ze snapshotem sprzed awaitów kasowało wszystko,
+    // co w międzyczasie trafiło do kolejki.
+    patchItem(item.id, { status: "synced", error: undefined });
   } catch (e) {
-    item.status = "error";
-    item.error = errorMessage(e);
+    patchItem(item.id, { status: "error", error: errorMessage(e) });
   }
-  write(items);
 }
 
 /** Wyciąga czytelny komunikat z błędu (Supabase/PostgREST zwraca obiekt, nie Error). */

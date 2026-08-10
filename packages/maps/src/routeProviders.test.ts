@@ -70,7 +70,18 @@ describe("HereRoutingProvider.route", () => {
     expect((await provider.route({ waypoints: [BERLIN, WARSAW] })).tollCost).toBe(0);
   });
 
-  it("nieznana waluta myta → kurs 1:1 (fallback)", async () => {
+  it("[#390] nieznana waluta myta → pozycja pominięta i zgłoszona, NIE liczona 1:1", async () => {
+    /*
+     * Wcześniej kwota w nieznanej walucie szła do sumy przemnożona przez 1,
+     * czyli traktowana jak euro. Dla waluty słabszej od euro (a takie są
+     * wszystkie lokalne waluty na trasach tej floty) zawyżało to myto
+     * wielokrotnie — i wyglądało dokładnie tak samo jak kwota prawdziwa.
+     *
+     * Poprzednia wersja tego testu przybijała tamto zachowanie bez słowa
+     * uzasadnienia, czyli utrwalała przypadek zamiast decyzji. Reguła jest
+     * teraz odwrotna i daje się obronić: myto NIEPEŁNE, o którym wiadomo,
+     * jest uczciwsze niż myto ZAWYŻONE, o którym nie wiadomo.
+     */
     stubFetch({
       json: {
         routes: [
@@ -78,14 +89,41 @@ describe("HereRoutingProvider.route", () => {
             sections: [
               {
                 summary: { length: 1000, duration: 60 },
-                tolls: [{ fares: [{ price: { value: 50, currency: "XYZ" } }] }],
+                tolls: [
+                  { fares: [{ price: { value: 50, currency: "XYZ" } }] },
+                  { fares: [{ price: { value: 10, currency: "EUR" } }] },
+                ],
               },
             ],
           },
         ],
       },
     });
-    expect((await provider.route({ waypoints: [BERLIN, WARSAW] })).tollCost).toBe(50);
+    const res = await provider.route({ waypoints: [BERLIN, WARSAW] });
+    // Do sumy wchodzi wyłącznie bramka, którą umiemy przeliczyć.
+    expect(res.tollCost).toBe(10);
+    // …i użytkownik dowiaduje się, że suma jest niepełna.
+    expect(res.notices.some((n) => n.code === "toll.currencyUnknown")).toBe(true);
+  });
+
+  it("[#390] wszystkie waluty znane → brak uwagi o niepełnym mycie", async () => {
+    stubFetch({
+      json: {
+        routes: [
+          {
+            sections: [
+              {
+                summary: { length: 1000, duration: 60 },
+                tolls: [{ fares: [{ price: { value: 100, currency: "PLN" } }] }],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const res = await provider.route({ waypoints: [BERLIN, WARSAW] });
+    expect(res.tollCost).toBe(23); // 100 PLN × 0,23
+    expect(res.notices.some((n) => n.code === "toll.currencyUnknown")).toBe(false);
   });
 
   it("rzuca przy odpowiedzi !ok", async () => {

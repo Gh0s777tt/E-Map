@@ -2,13 +2,153 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-389-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.235.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-390-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.236.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.236.0] — 🔑 Klucz szyfrujący dane osobowe był do pobrania bez logowania. Plus druga runda audytu.
+
+Ostrzeżenia dostawcy bazy okazały się cenniejsze niż cały audyt agentowy — a audyt
+i tak znalazł dwanaście rzeczy, w tym utratę tankowania odtworzoną testem.
+
+### Rzecz najpoważniejsza w całej tej serii
+
+- `[#390]` **`_card_key()` i `_pii_key()` — funkcje zwracające klucz pgcrypto, którym
+  szyfrowane są PIN-y kart paliwowych i dane osobowe kierowców — miały `EXECUTE` dla
+  roli `PUBLIC`**, a więc i dla `anon` (migracja
+  [0105](supabase/migrations/0105_revoke_key_accessors_from_clients.sql)).
+
+  PostgREST wystawia funkcje ze schematu `public` jako `/rest/v1/rpc/<nazwa>`, a `anon`
+  to klucz publiczny, który **z definicji leży w paczce aplikacji webowej**. Klucz
+  szyfrujący dało się więc pobrać jednym żądaniem HTTP, bez logowania, danymi które
+  i tak są jawne.
+
+  **Potwierdzone doświadczalnie** (transakcja zakończona ROLLBACK, `set local role anon`):
+  wywołanie przechodziło. Wartość klucza nie została nigdzie wypisana ani zapisana.
+
+  Dlaczego to boli bardziej niż zwykły błąd uprawnień: szyfrowanie jest tu **drugą
+  warstwą** — RLS chroni dostęp do wierszy, szyfrowanie chroni ich treść na wypadek,
+  gdyby RLS zawiodło. Klucz dostępny publicznie sprowadzał tę drugą warstwę do zera,
+  zostawiając dane osobowe całej floty na jednej warstwie zamiast dwóch.
+
+  Odebrane `PUBLIC`/`anon`/`authenticated`. Wołają je wyłącznie funkcje `SECURITY DEFINER`
+  należące do `postgres`, więc aplikacja działa bez zmian — **sprawdzone**: odszyfrowanie
+  przez `my_driver_identity` działa dalej dla zalogowanego.
+
+  Przy okazji **19 uprzywilejowanych RPC** (PIN karty, kartoteka kierowców, faktury,
+  zaproszenia) odebrane `PUBLIC` przy zachowaniu `authenticated`. Publiczny link
+  śledzenia przesyłki i predykaty RLS zostają dostępne — jawnie i z uzasadnieniem.
+
+  **Pułapka, na którą sam wpadłem:** Postgres domyślnie nadaje `EXECUTE` roli `PUBLIC`,
+  a `anon` po niej dziedziczy. Pierwsze `revoke … from anon` nie zmieniło **nic** —
+  `has_function_privilege('anon', …)` nadal zwracało `true`. Odbierać trzeba `PUBLIC`.
+  Opisane w migracji, żeby następny nie stracił na to godziny.
+
+- `[#390]` **Reguła 8 w bramce** ([audit-rls.mjs](scripts/audit-rls.mjs),
+  [SECURITY-RLS.md](docs/SECURITY-RLS.md)) — żadna funkcja `SECURITY DEFINER` nie może być
+  wywoływalna przez `anon` poza jawną, krótką listą wyjątków. Reguła sprawdza uprawnienie
+  **skuteczne**, nie treść `proacl`, właśnie z powodu dziedziczenia po `PUBLIC`.
+
+### Sejf dokumentów i telefon zmieniający właściciela
+
+- `[#390]` **Widoczność dokumentu nie obowiązywała na PLIKU**
+  (migracja [0107](supabase/migrations/0107_storage_visibility_and_push_takeover.sql)).
+  Migracja 0061 wprowadziła poziomy `management`/`company`/`selected` i poprawnie założyła
+  je na tabelę metadanych — ale polityka na `storage.objects` została z 0031 i sprawdzała
+  wyłącznie przynależność do firmy. Kierowca **nie widział** dokumentu na liście, ale
+  **mógł pobrać plik**; ścieżek nie trzeba było zgadywać, bo bucket dawał się wylistować.
+
+  Wzorzec do zapamiętania: **przy plikach reguła musi stać w dwóch miejscach** — na
+  wierszu metadanych i na obiekcie w buckecie. Zabezpieczenie jednego wygląda na
+  kompletne, bo lista rzeczywiście się filtruje.
+
+- `[#390]` **Firmowy telefon oddany innemu kierowcy odbierał cudze powiadomienia.**
+  `expo_push_tokens.token` jest UNIQUE, a tabela nie ma polityki UPDATE — więc
+  `upsert(onConflict:"token")` po prostu się nie udawał i wiersz zostawał przy poprzednim
+  właścicielu. Przydziały zleceń i treści z czatu adresowane do kierowcy A trafiały na
+  ekran telefonu, którego używał już B — i nie mijało to samo, bo A mógł nigdy więcej się
+  nie zalogować.
+
+  Token należy do **urządzenia**, więc przejmuje go ten, kto urządzenie trzyma
+  (`save_expo_push_token`), a wylogowanie token zdejmuje (`delete_expo_push_token`,
+  wołane przed zamknięciem sesji — potem nie ma już czym się uwierzytelnić).
+
+### Trasa, myto i kolejka offline
+
+- `[#390]` **Klucz cache tras pomijał kategorię tunelową ADR**
+  ([cache.ts](packages/maps/src/cache.ts)). Kierowca bez ADR liczył trasę, wpis lądował
+  w cache — i chwilę później zestaw z cysterną kategorii C dostawał **dokładnie tę samą
+  trasę, policzoną bez ograniczeń tunelowych**, bo klucz obu zapytań był identyczny.
+  To nie jest preferencja, tylko warunek legalności przejazdu. Cztery testy, w tym ten,
+  że identyczny profil nadal trafia w cache — poprawka nie może kosztować trafień.
+
+- `[#390]` **Myto w nieznanej walucie wchodziło do kosztu razy jeden**
+  ([here.ts](packages/maps/src/here.ts)), czyli jako euro. Teraz pozycja jest pomijana
+  i zgłaszana uwagą `toll.currencyUnknown`: **myto niepełne, o którym wiadomo, jest
+  uczciwsze niż zawyżone, o którym nie wiadomo.** Poprzedni test przybijał stare
+  zachowanie bez słowa uzasadnienia — czyli utrwalał przypadek, nie decyzję; przepisany.
+
+- `[#390]` **Kolejka offline na webie kasowała zapisane tankowanie**
+  ([outbox.ts](apps/web/lib/outbox.ts)). `trySync` czytał całą tablicę, czekał na kilka
+  żądań sieciowych i zapisywał ten sam, już nieaktualny snapshot — wszystko, co w tym
+  czasie doszło do kolejki, znikało. Razem z komunikatem „Zapisano lokalnie (w kolejce)",
+  który użytkownik właśnie zobaczył.
+
+  Nie trzeba do tego zerwanego łącza: zwykły round-trip to setki milisekund, a
+  `localStorage` jest wspólny dla **wszystkich kart** tej samej domeny. Wersja mobilna
+  miała ten błąd opisany i naprawiony dawno temu — poprawka nigdy nie została przeniesiona
+  na web, bo web nie miał **ani jednego** testu kolejki.
+
+  Teraz ma cztery. Sprawdziłem, że wyłapują błąd: po chwilowym przywróceniu starego kodu
+  test pada z `expected [ 500 ] to deeply equal [ 300, 500 ]` — czyli dokładnie na
+  zniknięciu drugiego tankowania.
+
+### Skala i strefy czasowe
+
+- `[#390]` **52 klucze obce bez indeksu** (migracja
+  [0106](supabase/migrations/0106_missing_fk_indexes.sql)) — w tym `fuel_logs.vehicle_id`
+  i `trip_events.vehicle_id`, najgorętsze kolumny w produkcie. Produkcyjna baza jest dziś
+  prawie pusta, więc żaden z tych braków nie ujawni się przy klikaniu; przy 30–50 autach
+  jest już za późno, bo `create index` na milionie wierszy blokuje zapisy, a na pustej
+  tabeli trwa milisekundy. Drugi powód jest mniej oczywisty: **usuwanie konta jest tu
+  funkcją produktu** (wymóg Apple), a bez indeksów na `created_by`/`uploaded_by`/… każde
+  usunięcie skanuje kilkanaście tabel naraz.
+
+- `[#390]` **Domyślne „od" w rozliczeniu wskazywało ostatni dzień POPRZEDNIEGO miesiąca.**
+  `new Date(rok, miesiac, 1)` buduje lokalną północ, a `toISOString()` przelicza ją na
+  UTC — dla całej Polski to 22:00 dnia poprzedniego. Rachunek domyślnie zaczynał się dzień
+  za wcześnie i wciągał tankowania z rozliczonego już okresu.
+
+- `[#390]` **Diety w raporcie miesięcznym pobierane bez zakresu dat** — cała historia firmy
+  szła do przeglądarki, filtr działał dopiero tam, a limit 5000 ucinał najstarsze miesiące.
+  Sekcja pokazywała kwotę zaniżoną albo znikała, wyglądając jak miesiąc bez podróży.
+  Filtr po `trip_date`, a wiersze bez daty przepuszczane — zawężenie zakresu nie może
+  ukryć danych, których nie umiemy umiejscowić w czasie.
+
+### Co ZOSTAJE z tej rundy (świadomie, nie po cichu)
+
+Pięć potwierdzonych znalezisk czeka — każde ma opis i ścieżkę naprawy:
+`[#391]` duplikat wydatku i checklisty przy ponownej wysyłce z kolejki mobilnej (brak
+idempotencji — paliwo i Trip ją mają) · `[#392]` `/stats` z twardym limitem 5000 wierszy
+bez wykrycia obcięcia · `[#393]` poziom uprawnień „view" nieegzekwowany przy zapisie ·
+`[#394]` cron nie przypomina o licencji transportowej, paszporcie, dowodzie i uprawnieniach
+kierowcy (te terminy zna tylko funkcja SQL odpalana z panelu web) · `[#395]` data UTC
+sklejona z lokalną godziną w imporcie tachografu.
+
+**Audyt, runda 2:** 6 obiektywów · 18 agentów · 12 znalezisk · 0 obalonych — ale tym razem
+weryfikatorzy **reprodukowali** błędy tymczasowymi testami zamiast czytać kod, i dwa razy
+skorygowali zawyżony opis skutku, zamiast go przyklepać.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1023** ✓ · `next build` ✓ · `docs:check` ✓ ·
+migracje 0105/0106/0107 zastosowane i zweryfikowane na produkcji
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

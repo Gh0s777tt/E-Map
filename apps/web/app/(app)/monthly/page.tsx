@@ -105,7 +105,10 @@ export default function MonthlyPage() {
         listFuelLogs(sb, { from, to, limit: 5000 }),
         listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
         listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
-        listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
+        // [#390] Zakres dat przekazany do bazy — wcześniej szła tu cała historia
+        // firmy, a filtr po miesiącu działał dopiero w przeglądarce, więc przy
+        // limicie 5000 najstarsze miesiące po prostu nie dojeżdżały.
+        listPerDiemTrips(sb, m.companyId, { from, to, limit: 5000 }),
         getCompany(sb, m.companyId),
         // Zapas wstecz: kurs z dnia zdarzenia, a EBC nie publikuje w weekendy.
         listFxRates(sb, {

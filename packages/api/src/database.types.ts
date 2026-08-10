@@ -2574,6 +2574,14 @@ export interface Database {
         Args: { p_confirm: string | null; p_delete_company?: boolean | null };
         Returns: Json;
       };
+      // [#390] Migracja 0107 — przejęcie i zdjęcie tokenu push urządzenia.
+      // Dopisane ręcznie: `pnpm gen:types` wymaga poświadczeń do bazy,
+      // których nie ma w tym środowisku. Sygnatury odpowiadają migracji 1:1.
+      save_expo_push_token: {
+        Args: { p_token: string; p_platform?: string | null; p_company?: string | null };
+        Returns: undefined;
+      };
+      delete_expo_push_token: { Args: { p_token: string }; Returns: undefined };
       dev_stats: { Args: Record<PropertyKey, never>; Returns: Json };
       driver_documents: { Args: { p_driver: string | null }; Returns: Json };
       driver_link_user: {

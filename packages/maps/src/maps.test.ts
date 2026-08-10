@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { routeCacheKey } from "./cache";
 import { itemsNearRoute, pointToRouteKm } from "./disruptions";
 import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
@@ -463,5 +464,70 @@ describe("[#385] GraphHopper: degradacja do trasy osobowej jest widoczna", () =>
         1,
       );
     }
+  });
+});
+
+describe("[#390] klucz cache obejmuje pełny profil pojazdu", () => {
+  const A = { lat: 52.2297, lng: 21.0122 };
+  const B = { lat: 45.4642, lng: 9.19 };
+  const bazowy = {
+    kind: "truck" as const,
+    weightKg: 40000,
+    heightCm: 400,
+    widthCm: 255,
+    lengthCm: 1650,
+    axleCount: 5,
+  };
+
+  it("zestaw ADR nie dostaje trasy policzonej dla zestawu bez ADR", () => {
+    /*
+     * To jest sedno błędu: kategoria tunelowa ADR nie wchodziła do klucza,
+     * więc oba zapytania trafiały w ten sam wpis. Kierowca z cysterną
+     * kategorii C dostawał trasę policzoną bez ograniczeń tunelowych —
+     * a to warunek legalności przejazdu, nie preferencja.
+     */
+    const bezAdr = routeCacheKey({ waypoints: [A, B], profile: bazowy }, "here");
+    const zAdr = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    expect(zAdr).not.toBe(bezAdr);
+  });
+
+  it("różne kategorie tunelowe to różne wpisy", () => {
+    const c = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    const e = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "E" } },
+      "here",
+    );
+    expect(c).not.toBe(e);
+  });
+
+  it("klasa emisji też rozróżnia wpisy (pod przyszłe strefy niskiej emisji)", () => {
+    const euro5 = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, emissionClass: "euro5" } },
+      "here",
+    );
+    const euro6 = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, emissionClass: "euro6" } },
+      "here",
+    );
+    expect(euro5).not.toBe(euro6);
+  });
+
+  it("ten sam profil nadal daje ten sam klucz", () => {
+    // Poprawka nie może zepsuć trafień cache — za każde nietrafienie płacimy.
+    const x = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    const y = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    expect(x).toBe(y);
   });
 });

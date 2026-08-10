@@ -150,6 +150,24 @@ export function routeCacheKey(req: RouteRequest, providerName: string): string {
     .map((p) => `${fixed(p.lat, ROUTE_COORD_DIGITS)},${fixed(p.lng, ROUTE_COORD_DIGITS)}`)
     .join("|");
   const pr = req.profile;
+  /*
+   * [#390] Klucz MUSI obejmować KAŻDE pole profilu, które zmienia trasę.
+   *
+   * Brakowało `adrTunnelCode` — a to nie jest preferencja, tylko warunek
+   * legalności przejazdu: litera z pomarańczowej tablicy decyduje, przez które
+   * tunele zestaw MOŻE przejechać. Skutek pominięcia: kierowca bez ADR liczy
+   * trasę, wpis ląduje w cache, a chwilę później kierowca z cysterną kategorii C
+   * dostaje z cache DOKŁADNIE TĘ SAMĄ trasę — policzoną bez ograniczeń
+   * tunelowych, bo klucz obu zapytań był identyczny. Kontrola przy wjeździe do
+   * tunelu kończy się zawróceniem i mandatem, a w gorszym wariancie zestaw
+   * z materiałem niebezpiecznym wjeżdża tam, gdzie nie wolno.
+   *
+   * `emissionClass` dołożona z tego samego powodu z wyprzedzeniem: gdy wejdzie
+   * omijanie stref niskiej emisji, klucz będzie już poprawny, zamiast czekać
+   * na powtórzenie tego samego błędu.
+   *
+   * Zasada dla następnego pola profilu: jeśli wpływa na trasę, wchodzi tutaj.
+   */
   const profile = pr
     ? [
         pr.kind ?? "",
@@ -158,6 +176,8 @@ export function routeCacheKey(req: RouteRequest, providerName: string): string {
         pr.widthCm ?? "",
         pr.lengthCm ?? "",
         pr.axleCount ?? "",
+        pr.adrTunnelCode ?? "",
+        pr.emissionClass ?? "",
       ].join(",")
     : "";
   const o = req.options;

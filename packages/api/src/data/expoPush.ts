@@ -13,24 +13,42 @@ export interface ExpoPushTokenInput {
  */
 export async function saveExpoPushToken(
   client: SupabaseClient,
-  userId: string,
+  _userId: string,
   input: ExpoPushTokenInput,
 ): Promise<void> {
-  const { error } = await client.from("expo_push_tokens").upsert(
-    {
-      user_id: userId,
-      token: input.token,
-      platform: input.platform ?? null,
-      company_id: input.companyId ?? null,
-    },
-    { onConflict: "token" },
-  );
+  /*
+   * [#390] Przez RPC, nie przez `upsert`.
+   *
+   * `expo_push_tokens.token` jest UNIQUE, a tabela NIE MA polityki UPDATE —
+   * więc `upsert(onConflict: "token")` na istniejącym wierszu po prostu się nie
+   * udawał. Znaczenie ma to przy firmowym telefonie przekazywanym między
+   * kierowcami: token należy do URZĄDZENIA, więc gdy loguje się kolejna osoba,
+   * wiersz zostawał przypisany do poprzedniej — i powiadomienia adresowane do
+   * niej (przydziały zleceń, czat) lądowały na ekranie telefonu, którego używa
+   * już ktoś inny.
+   *
+   * Funkcja `save_expo_push_token` (migracja 0107) przejmuje token na rzecz
+   * zalogowanego użytkownika. Musi być `SECURITY DEFINER`, bo nowy użytkownik
+   * z definicji nie ma prawa ruszyć cudzego wiersza.
+   */
+  const { error } = await client.rpc("save_expo_push_token", {
+    p_token: input.token,
+    p_platform: input.platform ?? null,
+    p_company: input.companyId ?? null,
+  });
   if (error) throw error;
 }
 
-/** Usuwa token (np. przy wylogowaniu / cofnięciu zgody). RLS: właściciel. */
+/**
+ * Usuwa token (np. przy wylogowaniu / cofnięciu zgody).
+ *
+ * [#390] Przez RPC z tego samego powodu co zapis: po zmianie użytkownika na
+ * firmowym telefonie wiersz może już należeć do kogoś innego, a wtedy polityka
+ * DELETE (`user_id = auth.uid()`) go nie obejmie. Funkcja kasuje token TEGO
+ * użytkownika — a przejęcie przez kolejnego robi `save_expo_push_token`.
+ */
 export async function deleteExpoPushToken(client: SupabaseClient, token: string): Promise<void> {
-  const { error } = await client.from("expo_push_tokens").delete().eq("token", token);
+  const { error } = await client.rpc("delete_expo_push_token", { p_token: token });
   if (error) throw error;
 }
 
