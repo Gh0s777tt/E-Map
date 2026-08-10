@@ -45,10 +45,19 @@ revoke execute on function public._pii_key() from authenticated;
 --
 -- `authenticated` zachowuje uprawnienia: to są normalne operacje aplikacji.
 
--- UWAGA — pułapka, na którą sam wpadłem przy pierwszym podejściu:
--- Postgres domyślnie nadaje `EXECUTE` roli **`PUBLIC`**, a `anon` dziedziczy po niej.
--- Samo `revoke ... from anon` NIC nie zmienia — `has_function_privilege('anon', …)`
--- nadal zwraca `true`. Odbierać trzeba `PUBLIC`.
+-- UWAGA — pułapka DWUWARSTWOWA (opis uzupełniony w [#396], bo pierwsza wersja
+-- tego komentarza była półprawdą i sam się na niej przejechałem):
+--
+-- Warstwa 1: Postgres domyślnie nadaje `EXECUTE` roli `PUBLIC`, a `anon` po niej
+--   dziedziczy. Samo `revoke ... from anon` nie zmienia wtedy nic.
+--
+-- Warstwa 2: Supabase ma ustawione `alter default privileges` nadające `EXECUTE`
+--   rolom `anon`/`authenticated`/`service_role` **jawnie**, przy tworzeniu funkcji.
+--   Wpis `anon=X/postgres` w `proacl` NIE znika po odebraniu `PUBLIC`.
+--
+-- Reguła bez wyjątków: **odbierać od `public` ORAZ od `anon`**, a skutek sprawdzać
+-- przez `has_function_privilege('anon', …)`, nie przez obecność `revoke` w migracji.
+-- Migracja 0108 domyka to dla funkcji, których dotyczyła warstwa 2.
 --
 -- Odebranie `PUBLIC` jest tu bezpieczne, bo wszystkie te funkcje mają JAWNE
 -- nadanie dla `authenticated` i `service_role` (sprawdzone w `proacl`) — zalogowany

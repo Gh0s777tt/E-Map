@@ -249,7 +249,9 @@ try {
     errors.push(
       `SECURITY DEFINER public.${f.name}() wywoływalna przez anon — ` +
         `PostgREST wystawia ją jako /rest/v1/rpc/${f.name} dla klucza publicznego. ` +
-        `Odbierz PUBLIC (samo "revoke from anon" nie wystarczy), albo dopisz do ANON_OK z uzasadnieniem.`,
+        `Odbierz OD OBU: "revoke execute on function … from public, anon" — samo PUBLIC ` +
+        `nie wystarczy, bo Supabase nadaje anon EXECUTE jawnie przez default privileges ` +
+        `(a samo anon nie wystarczy, bo anon dziedziczy po PUBLIC). Albo dopisz do ANON_OK z uzasadnieniem.`,
     );
   }
 

@@ -2,13 +2,60 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-395-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.237.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-396-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.238.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.238.0] — 🪤 Ta sama pułapka, druga warstwa — tym razem trafiła w moją własną poprawkę
+
+Ponowne zapytanie o ostrzeżenia dostawcy po wydaniu 1.236.0: **96 → 72**, ostrzeżenia
+o `search_path` zniknęły, lista funkcji wywoływalnych przez `anon` spadła z 39 do 19.
+W tej dziewiętnastce siedziały jednak dwie funkcje, **które sam dodałem w migracji 0107
+właśnie po to, żeby poprawić bezpieczeństwo** — i jedna przeoczona.
+
+- `[#396]` **`revoke ... from public` NIE wystarcza** (migracja
+  [0108](supabase/migrations/0108_revoke_anon_explicit_grants.sql)). Pułapka ma dwie warstwy,
+  a `[#390]` widziało tylko pierwszą:
+
+  1. `anon` dziedziczy `EXECUTE` po `PUBLIC` → samo `revoke … from anon` nie daje nic.
+  2. Supabase ma `alter default privileges` nadające `EXECUTE` roli `anon` **jawnie**
+     przy tworzeniu funkcji → `revoke … from public` **też** nie wystarcza, bo wpis
+     `anon=X/postgres` zostaje w `proacl`.
+
+  Skutek: `save_expo_push_token` i `delete_expo_push_token` — dodane w 0107 z myślą
+  o zamknięciu dziury z tokenem push — same pozostały wywoływalne **bez logowania**.
+  Razem z nimi wyszło **`driver_save`**, którego przeoczyłem przy układaniu listy w 0105,
+  a które zapisuje dane osobowe kierowcy: imię, nazwisko, datę urodzenia, numery uprawnień,
+  paszport i dowód.
+
+  Reguła, tym razem bez wyjątków: **`revoke execute … from public, anon`**, a skutek
+  sprawdzać przez `has_function_privilege('anon', …)` — nigdy przez samą obecność
+  instrukcji `revoke` w migracji. Po zmianie funkcji `SECURITY DEFINER` dostępnych dla
+  `anon` zostało **dokładnie tyle, ile jest na jawnej liście wyjątków**: predykaty RLS
+  (muszą, bo polityki wykonują się z uprawnieniami pytającego), publiczny link śledzenia
+  przesyłki i funkcja PostGIS.
+
+- `[#396]` **Sprostowanie własnego komentarza.** Migracja 0105 tłumaczyła pułapkę
+  wyłącznie pierwszą warstwą — czyli mówiła półprawdę, na której sam się przejechałem
+  dwa wydania później. Opis uzupełniony w migracji, w [SECURITY-RLS.md](docs/SECURITY-RLS.md)
+  i w komunikacie bramki [audit-rls.mjs](scripts/audit-rls.mjs), żeby podpowiadała pełną
+  postać polecenia zamiast połowicznej.
+
+**Weryfikacja:** `_card_key`/`_pii_key` — niedostępne dla `anon` i `authenticated`,
+dostępne dla ścieżki serwerowej. `driver_save`, `save_expo_push_token`,
+`delete_expo_push_token` — `anon` ✗, zalogowany ✓. Sprawdzone zapytaniem o uprawnienie
+skuteczne, nie o treść migracji.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1023** ✓ · `docs:check` ✓ · migracja 0108
+zastosowana i zweryfikowana na produkcji
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

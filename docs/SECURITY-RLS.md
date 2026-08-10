@@ -80,6 +80,18 @@ gh secret set SUPABASE_DB_URL --repo <owner>/<repo>   # wartość ze stdin (bez 
 > a szyfrowanie chroni ich treść, gdyby RLS zawiodło. Klucz dostępny publicznie
 > sprowadzał tę drugą warstwę do zera.
 >
+> **Pułapka jest dwuwarstwowa i pierwsze podejście ją przegapiło.** Warstwa 1: `anon`
+> dziedziczy `EXECUTE` po `PUBLIC`, więc `revoke … from anon` sam z siebie nie działa.
+> Warstwa 2: Supabase ma `alter default privileges` nadające `EXECUTE` roli `anon`
+> **jawnie** przy tworzeniu funkcji — więc odebranie `PUBLIC` też nie wystarcza.
+> Funkcje dodane w migracji 0107 (`save_expo_push_token`, `delete_expo_push_token`),
+> pisane właśnie w celu naprawy bezpieczeństwa, zostały przez to wywoływalne bez
+> logowania aż do migracji 0108. Razem z nimi wyszło `driver_save` — zapisujące dane
+> osobowe kierowcy — przeoczone przy układaniu listy w 0105.
+>
+> **Reguła: `revoke execute … from public, anon`, a skutek sprawdzać przez
+> `has_function_privilege('anon', …)`** — nie przez obecność `revoke` w migracji.
+>
 > Naprawione w [migracji 0105](../supabase/migrations/0105_revoke_key_accessors_from_clients.sql):
 > klucze odebrane `PUBLIC`/`anon`/`authenticated` (wołają je wyłącznie funkcje
 > `SECURITY DEFINER` należące do `postgres`, więc aplikacja działa bez zmian),
