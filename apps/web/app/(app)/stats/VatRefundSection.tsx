@@ -62,7 +62,19 @@ export function VatRefundSection({
       <p style={styles.sub}>{t("vat.subtitle")}</p>
 
       {!withAmount ? (
-        <p style={{ color: palette.smoke, fontSize: 14 }}>{t("vat.empty")}</p>
+        /* [#382] Pusty ekran ma dwie różne przyczyny i nie wolno ich mylić.
+           „Brak tankowań z kwotą" było wypisywane także wtedy, gdy tankowania
+           z kwotą BYŁY, tylko żadnej nie dało się przeliczyć na euro (brak
+           notowania waluty na dany dzień). Przewoźnik czytał wtedy komunikat
+           wprost nieprawdziwy i nie miał jak dojść, że wystarczy uzupełnić
+           kursy — silnik liczy te pozycje w `missingRate`, widok je gubił. */
+        summary.missingRate > 0 ? (
+          <p style={{ color: palette.warning, fontSize: 14 }}>
+            ⚠️ {summary.missingRate} {t("vat.missingRateOnly")}
+          </p>
+        ) : (
+          <p style={{ color: palette.smoke, fontSize: 14 }}>{t("vat.empty")}</p>
+        )
       ) : (
         <>
           <div style={{ overflowX: "auto" }}>

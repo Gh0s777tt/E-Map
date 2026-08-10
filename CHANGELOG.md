@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-381-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.228.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-382-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.229.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,59 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+## [1.229.0] — 🧭 Koszty operacyjne w rachunku wyjazdu + skrót tras na statystykach
+
+Domknięcie listy Fazy 7. Rachunek pojedynczej trasy był zaniżony dokładnie o to,
+co kierowca płaci po drodze: `buildJourneys` liczy paliwo, AdBlue i kwoty przy
+zdarzeniach trasy, bo tylko te dane zna — parkingi, myto, promy i mandaty siedzą
+w tabelach Fazy 6 i do żadnego wyjazdu nie trafiały.
+
+- `[#382]` **Silnik przypisania** ([journeyCosts.ts](packages/core/src/journeyCosts.ts), 13 testów).
+  Wiąże po pojeździe i po **oknie czasowym** wyjazdu, bo to jedyne wiązanie, jakie
+  w danych istnieje — postój ani bramka nie niosą numeru wyjazdu. Wyjazd otwarty
+  łapie wszystko od swojego startu, bo trwa. **Pozycja spoza okna NIE jest doklejana
+  do najbliższej trasy**: wyglądałoby to na precyzję, a byłoby zgadywaniem — trafia
+  do „poza wyjazdami" i jest pokazana osobno.
+
+- `[#382]` **Karta wyjazdu** ([/wyjazdy](apps/web/app/(app)/wyjazdy/page.tsx)) pokazuje
+  rozbicie „w tym koszty operacyjne: parkingi · opłaty drogowe · kary", a zysk i marża
+  liczą się od pełnej sumy. Kary anulowane i kwestionowane są poza kosztem i wymienione
+  w osobnym banerze — wydatku nie było albo sprawa nie jest rozstrzygnięta.
+  Zdarzenia trasy świadomie **nie są doliczane drugi raz**: ma je już `buildJourneys`.
+
+- `[#382]` **Skrót tras na `/stats`** — zwijana sekcja z liczbą wyjazdów, otwartymi,
+  dystansem, spalaniem ważonym dystansem i kosztem, plus link do pełnego rachunku.
+  Zamiast budować trzeci mechanizm liczący to samo, ekran korzysta z danych, które
+  już ma w stanie.
+
+- `[#382]` **Czego ten skrót NIE liczy i mówi o tym wprost:** przychodu, zysku ani marży.
+  Wymagają stawki za kilometr przeliczonej po kursie z **dnia wyjazdu**, a to prowadzi
+  ekran `/wyjazdy`. Kafelki są napisane i zadziałają, gdy dane się pojawią — dziś się
+  nie renderują, bo kafelek z wiecznym „—" pod etykietą „Przychód" sugerowałby brak
+  danych, podczas gdy chodzi o inny rachunek.
+
+- `[#382]` **Pusty ekran zwrotu VAT kłamał.** „Brak tankowań z kwotą" pojawiało się także
+  wtedy, gdy tankowania z kwotą **były**, ale żadnej nie dało się przeliczyć na euro.
+  Silnik liczył takie pozycje w `missingRate`, widok gubił ten licznik w gałęzi pustego
+  stanu — przewoźnik czytał komunikat wprost nieprawdziwy i nie miał jak dojść,
+  że wystarczy uzupełnić kursy. Znalezione przez nowy test, naprawione w kodzie,
+  nie w asercji.
+
+- `[#382]` **Trzy martwe klucze i18n** (`stats.tile.refuels`, `stats.tile.tripEvents`,
+  `stats.tile.anomalies`) istniały w obu językach, ale nikt ich nie wołał — kafelki
+  pojazdów, czyli pierwsza rzecz widoczna po wejściu w statystyki, zostawały po polsku.
+
+- `[#382]` **`TripRaw` nie deklarował `odometer_km`** (kolumna `not null` od migracji 0001,
+  `select("*")` i tak ją pobierał). Bez niej żaden wyjazd nie miałby licznika startu
+  i końca, więc dystans i spalanie byłyby puste mimo kompletu danych w pamięci.
+
+**Bramki:** biome ✓ · `tsc` 7/7 ✓ · testy core **549** · api 81 · maps 116 · **web 131** · mobile 36 · i18n 5 (razem **918**) ✓ · `next build` ✓.
+
+**Znane ograniczenie do decyzji:** `route_extra_costs` ma węższe RLS niż reszta (migracja 0095 —
+kierowca ich nie widzi). Kierowca z modułem statystyk dostanie z tej tabeli pusty zbiór
+bez błędu, więc zobaczy koszt wyjazdu zaniżony o opłaty drogowe i nie będzie o tym wiedział.
+To sprawa polityki RLS albo świadomego komunikatu per rola — celowo nie zostało zatuszowane.
 
 ## [1.228.0] — 🔒 Waluta wymuszona typem — filtry `currency === "EUR"` usunięte z rdzenia
 

@@ -369,6 +369,8 @@ export const pl = {
     "Zestawienie obejmuje wyłącznie olej napędowy. Tabela stawek niesie flagę zwrotu dla paliwa, więc AdBlue nie jest tu doliczany.",
   "vat.empty": "Brak tankowań z kwotą w wybranym okresie.",
   "vat.missingRate": "pozycji bez notowania waluty — poza sumą",
+  "vat.missingRateOnly":
+    "pozycji bez notowania waluty — żadnej z nich nie da się przeliczyć na euro, dlatego zestawienie jest puste. Kwoty są, brakuje kursu.",
   "history.importCard": "Karta paliwowa z zestawienia",
   "history.importCardNone": "— wybierz kartę —",
   "history.importPickCard":
@@ -448,6 +450,124 @@ export const pl = {
     "Koszt przypisany = paliwo i AdBlue pojazdu rozdzielone na jego zlecenia proporcjonalnie do przychodu. Kwoty w innych walutach są przeliczane po kursie z dnia zdarzenia. Pomija puste przebiegi, myto, pensje i leasing — traktuj jako wskaźnik względny, nie księgowość.",
   "profit.unattributed": "Nieprzypisany koszt płynów (pojazdy bez przychodu):",
   "profit.noVehicle": "Przychód bez przypisanego pojazdu (koszt zaniżony):",
+
+  // [#382] Ekran /stats. Teksty siedziały wpisane po polsku wprost w JSX, więc
+  // przełącznik języka zmieniał nawigację i sąsiednie sekcje, a ten ekran
+  // zostawał po polsku — po angielsku wyglądało to na niedokończone tłumaczenie.
+  // Klucze, których znaczenie już gdzieś było (marża, zysk, pojazd, litry,
+  // anomalie spalania), są tu wołane ze swoich namespace'ów zamiast dublowane.
+  "stats.subtitle":
+    "Dane z ostatnich 24 miesięcy. Wybierz pojazd, by zobaczyć jego tankowania i trasy. Spalanie liczone „od pełna do pełna”; tankowania częściowe są wliczane do litrów i kosztów.",
+  "stats.empty": "Brak pojazdów / danych.",
+  // Liczebnik przy licznikach pozycji — polski wymaga innej formy niż angielski,
+  // więc obie idą z katalogu zamiast być sklejane w kodzie.
+  "stats.itemOne": "pozycja",
+  "stats.itemMany": "pozycji",
+  "stats.rateWarn":
+    "Suma niepełna — {count} {items} w walucie bez notowania na dzień zdarzenia. Kwoty są wpisane; brakuje kursu, więc nie weszły do przeliczenia.",
+
+  "stats.currency.show": "Pokazuj kwoty w:",
+  "stats.currency.aria": "Waluta prezentacji",
+  "stats.currency.asOf": "przeliczone po kursie z {date} — rachunek prowadzony w EUR",
+  "stats.currency.noRate": "brak notowania {code} — pokazuję w EUR",
+
+  "stats.fleet.fuelTotal": "Paliwo łącznie",
+  "stats.fleet.fuelSpend": "Wydatek na paliwo",
+  "stats.fleet.adblueSpend": "Wydatek na AdBlue",
+  "stats.fleet.avgConsumption": "Śr. spalanie floty",
+  "stats.fleet.trips": "Trasy",
+  "stats.fleet.ordersRevenue": "Przychód (zlecenia)",
+  "stats.fleet.co2": "Ślad węglowy (CO₂, paliwo)",
+
+  "stats.pnl.title": "Rachunek zysków i strat (P&L)",
+  "stats.pnl.formula": "przychód − paliwo − AdBlue − pozostałe koszty · kwoty przeliczone na EUR",
+  "stats.pnl.otherCosts": "Pozostałe koszty",
+  "stats.pnl.totalCosts": "Koszty razem",
+  "stats.pnl.netProfit": "Zysk netto",
+  // [#382] Poprzednie brzmienie („Pozycje w innych walutach są pomijane w sumie")
+  // opisywało kod sprzed [#378]. Dziś każda kwota jest przeliczana po kursie
+  // z dnia zdarzenia, a poza sumą zostają wyłącznie pozycje bez notowania —
+  // nota mówiła użytkownikowi, że traci dane, których nie traci.
+  "stats.pnl.note":
+    "Pozostałe koszty dodasz na karcie pojazdu (naprawy, leasing, ubezpieczenie…). Kwoty w innych walutach są przeliczane po kursie z dnia zdarzenia; poza sumą zostają tylko te bez notowania.",
+
+  "stats.rank.title": "Ranking rentowności floty (per pojazd)",
+  "stats.rank.formula": "zysk = przychód − paliwo − koszty · EUR",
+  "stats.rank.costs": "Koszty",
+
+  "stats.analytics.topClients": "Top klienci (przychód EUR)",
+  "stats.analytics.ordersSuffix": "zl.",
+  "stats.analytics.topRoutes": "Najczęstsze trasy",
+  "stats.analytics.avgRate": "Śr. stawka (EUR)",
+
+  "stats.ops.title": "Koszty operacyjne trasy",
+  "stats.ops.intro":
+    "Parkingi, opłaty drogowe, kary i kwoty przy zdarzeniach trasy — wliczone do pozycji „Pozostałe koszty” w rachunku wyżej.",
+  "stats.ops.pause": "Postoje i parkingi",
+  "stats.ops.route": "Opłaty drogowe i przejazdy",
+  "stats.ops.penalty": "Kary i mandaty",
+  "stats.ops.trip": "Zdarzenia trasy (serwis, inne)",
+  "stats.ops.contested": "Kary kwestionowane: {count} na {amount} —",
+  "stats.ops.outsideTotal": "poza sumą",
+  "stats.ops.contestedReason": ", bo sprawa nie jest rozstrzygnięta.",
+  "stats.ops.cancelled": "Kary anulowane: {count} — nie liczone, wydatku nie było.",
+  "stats.ops.missingRate": "{count} poz. w walucie bez notowania na dzień zdarzenia — poza sumą.",
+
+  "stats.journeys.title": "Wyjazdy (skrót)",
+  "stats.journeys.countPlural": "wyjazdów",
+  "stats.journeys.introScope":
+    "Wyjazd to odcinek od zdarzenia „start” do „zakończenie” tego samego pojazdu.",
+  "stats.journeys.introCost": "Koszt obejmuje paliwo, AdBlue i kwoty przy zdarzeniach trasy.",
+  "stats.journeys.introExcluded":
+    "Parkingi, opłaty drogowe i kary tutaj nie wchodzą — liczy je sekcja „Koszty operacyjne trasy”.",
+  "stats.journeys.introWindow":
+    "Okno to 24 miesiące — jak reszta tego ekranu, więc lista na „Wyjazdy” może sięgać krócej.",
+  "stats.journeys.open": "Otwarte (bez zakończenia)",
+  "stats.journeys.avgConsumption": "Śr. spalanie wyjazdów",
+  "stats.journeys.cost": "Koszt wyjazdów",
+  "stats.journeys.revenue": "Przychód wyjazdów",
+  "stats.journeys.profit": "Zysk wyjazdów",
+  "stats.journeys.margin": "Marża wyjazdów",
+  "stats.journeys.worstLabel": "Najniższa marża:",
+  "stats.journeys.worstIndex": "wyjazd nr {index}",
+  "stats.journeys.noRevenueNote":
+    "Przychodu, zysku ani marży wyjazdu ten skrót nie liczy — powstają ze stawki za kilometr, po kursie z dnia wyjazdu, i prowadzi je ekran „Wyjazdy”. Tam też widać, która trasa ma najsłabszą marżę.",
+  "stats.journeys.missingRate":
+    "{count} poz. w walucie bez notowania na dzień zdarzenia — ich kwoty nie weszły do rachunku, więc koszt wyjazdów jest o tyle zaniżony.",
+  "stats.journeys.details": "Szczegóły → rachunek każdego wyjazdu",
+
+  "stats.tile.refuels": "tank.",
+  "stats.tile.tripEvents": "zdarzeń trasy",
+  "stats.tile.anomalies": "anomalii spalania",
+
+  "stats.detail.back": "Wszystkie pojazdy",
+  "stats.detail.formsHistory": "Historia formularzy",
+  "stats.detail.anomalyTitle": "Wykryto anomalie spalania",
+  "stats.detail.anomalyDesc": "(powyżej mediany pojazdu) — możliwy wyciek, kradzież lub usterka:",
+  "stats.detail.anomalyVsMedian": "vs mediana {median}",
+  "stats.detail.monthlyCosts": "Koszty miesięczne",
+  "stats.detail.consumptionSeries": "Spalanie wg tankowań (L/100km)",
+  "stats.detail.noEvents": "Brak zdarzeń.",
+  "stats.detail.entries": "Wpisów",
+  "stats.detail.avgUsage": "Śr. zużycie",
+  "stats.detail.spend": "Wydatek",
+
+  "stats.usage.title": "Karty i stacje (okno analizy)",
+  "stats.usage.topCards": "Najczęściej używane karty",
+  "stats.usage.noCards": "Brak tankowań z przypisaną kartą.",
+  "stats.usage.topStations": "Najczęstsze stacje",
+  "stats.usage.noStations": "Brak danych o stacjach (kraj/miasto w formularzu Paliwo).",
+  "stats.usage.cardDeleted": "karta (usunięta)",
+  "stats.usage.missingRateHint":
+    "{count} tankowań ma kwotę w walucie bez notowania na dzień tankowania — nie weszły do sumy.",
+  "stats.usage.missingRateShort": "bez kursu",
+
+  "stats.co2.title": "Emisje CO₂",
+  "stats.co2.basis": "(z paliwa · 2,64 kg/L · ESG/CSRD)",
+  "stats.co2.fleetTotal": "Ślad węglowy floty",
+  "stats.co2.byClient": "Wg klienta (nadawcy)",
+  "stats.co2.litersAttributed": "Litry (przyp.)",
+  "stats.co2.attribution": "(atrybucja proporcjonalna do przychodu)",
 
   "sync.draft": "Szkic",
   "sync.queued": "W kolejce",

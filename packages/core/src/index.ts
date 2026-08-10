@@ -34,6 +34,7 @@ export * from "./ids";
 export * from "./insights";
 export * from "./inspector";
 export * from "./invoice";
+export * from "./journeyCosts";
 export * from "./journeys";
 export * from "./ksef";
 export * from "./money";

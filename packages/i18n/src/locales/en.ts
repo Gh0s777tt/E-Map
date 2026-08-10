@@ -372,6 +372,8 @@ export const en: Record<MessageKey, string> = {
     "This covers diesel only. The rate table carries the refund flag for fuel, so AdBlue is not included here.",
   "vat.empty": "No refuels with an amount in the selected period.",
   "vat.missingRate": "entries without an exchange rate — outside the total",
+  "vat.missingRateOnly":
+    "entries without an exchange rate — none of them can be converted to euro, which is why the breakdown is empty. The amounts are there, the rate is not.",
   "history.importCard": "Fuel card the statement comes from",
   "history.importCardNone": "— pick a card —",
   "history.importPickCard":
@@ -451,6 +453,115 @@ export const en: Record<MessageKey, string> = {
     "Attributed cost = the vehicle's fuel and AdBlue split across its orders in proportion to revenue. Amounts in other currencies are converted at the rate of the day of the event. Excludes empty runs, tolls, wages and leasing — treat it as a relative indicator, not accounting.",
   "profit.unattributed": "Unattributed liquids cost (vehicles with no revenue):",
   "profit.noVehicle": "Revenue without an assigned vehicle (cost understated):",
+
+  // [#382] Ekran /stats — odpowiedniki kluczy dodanych po stronie PL.
+  "stats.subtitle":
+    "Last 24 months. Pick a vehicle to see its refuels and trips. Consumption is measured full tank to full tank; partial refuels still count towards litres and cost.",
+  "stats.empty": "No vehicles or data yet.",
+  "stats.itemOne": "entry",
+  "stats.itemMany": "entries",
+  "stats.rateWarn":
+    "Total is incomplete — {count} {items} in a currency with no rate for the event date. The amounts are there; without a rate they stay out of the conversion.",
+
+  "stats.currency.show": "Show amounts in:",
+  "stats.currency.aria": "Display currency",
+  "stats.currency.asOf": "converted at the {date} rate — the books stay in EUR",
+  "stats.currency.noRate": "no {code} rate available — showing EUR",
+
+  "stats.fleet.fuelTotal": "Fuel total",
+  "stats.fleet.fuelSpend": "Fuel spend",
+  "stats.fleet.adblueSpend": "AdBlue spend",
+  "stats.fleet.avgConsumption": "Fleet avg. consumption",
+  "stats.fleet.trips": "Trips",
+  "stats.fleet.ordersRevenue": "Revenue (orders)",
+  "stats.fleet.co2": "Carbon footprint (CO₂, fuel)",
+
+  "stats.pnl.title": "Profit and loss (P&L)",
+  "stats.pnl.formula": "revenue − fuel − AdBlue − other costs · amounts converted to EUR",
+  "stats.pnl.otherCosts": "Other costs",
+  "stats.pnl.totalCosts": "Total costs",
+  "stats.pnl.note":
+    "Add other costs on the vehicle card (repairs, leasing, insurance…). Amounts in other currencies are converted at the event-date rate; only those with no rate stay out of the total.",
+  "stats.pnl.netProfit": "Net profit",
+
+  "stats.rank.title": "Fleet profitability ranking (per vehicle)",
+  "stats.rank.formula": "profit = revenue − fuel − costs · EUR",
+  "stats.rank.costs": "Costs",
+
+  "stats.analytics.topClients": "Top clients (revenue EUR)",
+  "stats.analytics.ordersSuffix": "ord.",
+  "stats.analytics.topRoutes": "Most frequent routes",
+  "stats.analytics.avgRate": "Avg. rate (EUR)",
+
+  "stats.ops.title": "Route operating costs",
+  "stats.ops.intro":
+    "Parking, road tolls, penalties and amounts logged on trip events — included in “Other costs” in the P&L above.",
+  "stats.ops.pause": "Stops and parking",
+  "stats.ops.route": "Tolls and crossings",
+  "stats.ops.penalty": "Penalties and fines",
+  "stats.ops.trip": "Trip events (service, other)",
+  "stats.ops.contested": "Contested penalties: {count} worth {amount} —",
+  "stats.ops.outsideTotal": "outside the total",
+  "stats.ops.contestedReason": ", the case is not settled yet.",
+  "stats.ops.cancelled": "Cancelled penalties: {count} — not counted, nothing was paid.",
+  "stats.ops.missingRate":
+    "{count} entries in a currency with no rate for the event date — outside the total.",
+
+  "stats.journeys.title": "Journeys (digest)",
+  "stats.journeys.countPlural": "journeys",
+  "stats.journeys.introScope":
+    "A journey runs from a “start” event to an “end” event on the same vehicle.",
+  "stats.journeys.introCost": "Cost covers fuel, AdBlue and amounts logged on trip events.",
+  "stats.journeys.introExcluded":
+    "Parking, road tolls and penalties are not included here — they are counted under “Route operating costs”.",
+  "stats.journeys.introWindow":
+    "The window is 24 months, same as the rest of this screen, so the Journeys screen may show a shorter list.",
+  "stats.journeys.open": "Open (no end event)",
+  "stats.journeys.avgConsumption": "Avg. journey consumption",
+  "stats.journeys.cost": "Journey cost",
+  "stats.journeys.revenue": "Journey revenue",
+  "stats.journeys.profit": "Journey profit",
+  "stats.journeys.margin": "Journey margin",
+  "stats.journeys.worstLabel": "Lowest margin:",
+  "stats.journeys.worstIndex": "journey no. {index}",
+  "stats.journeys.noRevenueNote":
+    "This digest does not compute journey revenue, profit or margin — they come from a per-kilometre rate at the journey-date exchange rate, and the Journeys screen owns that calculation. It also shows which route has the weakest margin.",
+  "stats.journeys.missingRate":
+    "{count} entries in a currency with no rate for the event date — their amounts are missing from the calculation, so journey cost is understated by that much.",
+  "stats.journeys.details": "Details → per-journey breakdown",
+
+  "stats.tile.refuels": "refuels",
+  "stats.tile.tripEvents": "trip events",
+  "stats.tile.anomalies": "fuel anomalies",
+
+  "stats.detail.back": "All vehicles",
+  "stats.detail.formsHistory": "Form history",
+  "stats.detail.anomalyTitle": "Fuel anomalies detected",
+  "stats.detail.anomalyDesc": "(above this vehicle's median) — possible leak, theft or a fault:",
+  "stats.detail.anomalyVsMedian": "vs median {median}",
+  "stats.detail.monthlyCosts": "Monthly costs",
+  "stats.detail.consumptionSeries": "Consumption per refuel (L/100km)",
+  "stats.detail.noEvents": "No events.",
+  "stats.detail.entries": "Entries",
+  "stats.detail.avgUsage": "Avg. usage",
+  "stats.detail.spend": "Spend",
+
+  "stats.usage.title": "Cards and stations (analysis window)",
+  "stats.usage.topCards": "Most used fuel cards",
+  "stats.usage.noCards": "No refuels with a card assigned.",
+  "stats.usage.topStations": "Most frequent stations",
+  "stats.usage.noStations": "No station data (country/city in the fuel form).",
+  "stats.usage.cardDeleted": "card (deleted)",
+  "stats.usage.missingRateHint":
+    "{count} refuels have an amount in a currency with no rate for that day — they are not in the total.",
+  "stats.usage.missingRateShort": "no rate",
+
+  "stats.co2.title": "CO₂ emissions",
+  "stats.co2.basis": "(from fuel · 2.64 kg/L · ESG/CSRD)",
+  "stats.co2.fleetTotal": "Fleet carbon footprint",
+  "stats.co2.byClient": "By client (shipper)",
+  "stats.co2.litersAttributed": "Litres (attr.)",
+  "stats.co2.attribution": "(attributed pro rata to revenue)",
 
   "sync.draft": "Draft",
   "sync.queued": "Queued",

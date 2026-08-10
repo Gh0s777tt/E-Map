@@ -1,6 +1,8 @@
 # 📱 Mobile (Expo) — stan i plan dojścia do pełnego parytetu z web
 
-> Stan: **v1.94.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.213.2 (#371) · 2026-07-26 · **iOS + Android: build v1.94.0 wysyłany do sklepów** (profil `production` — bez lokalizacji w tle; ASC App ID 6789726653, Play track alpha). Build 63 = v1.93.0 celowo POMINIĘTY: powstał przed #369 i zapisywał załączniki czatu pod ścieżką, którą blokuje migracja 0088 · **Android**: rollout nadal wymaga deklaracji „App content" w Play Console
+> Stan: **v1.95.0** · Expo SDK 56 · React Native 0.85 (New Architecture) · zsynchronizowane z v1.229.0 (#382) · 2026-08-10 · **iOS build 65 i Android versionCode 44 zbudowane na EAS** (profil `production` — bez lokalizacji w tle; ASC App ID 6789726653, Play track alpha). **Artefakty NIE zostały wysłane** ani na TestFlight, ani do sklepów — submit to osobna decyzja · **App Store**: review zawieszony (Guideline 5.6), kolejne zgłoszenia obarczone ryzykiem dla konta deweloperskiego — TestFlight blokadą nie jest objęty · **Android**: rollout nadal wymaga deklaracji „App content” w Play Console
+
+> **Co niesie v1.95.0** (od v1.94.0 z 26 lipca): usuwanie konta w aplikacji (wymóg Apple), pełny interfejs czatu (reakcje, cytat, przekazanie, znikanie, lokalizacja), trzy formularze Fazy 6, ekran pauzy, **pole kwoty przy tankowaniu** — bez niego `price_total` był NULL w 100% wpisów i cała pieniężna część statystyk liczyła z pustego zbioru — kraj jako kod ISO 3166 oraz spalanie L/100 km, AdBlue i rozbicie na pojazdy w statystykach kierowcy.
 
 Aplikacja kierowcy **NIE jest już szkieletem** — to działające MVP na realnych danych z Supabase
 (offline-first). Konsumuje `@e-logistic/core`, `@e-logistic/api`, `@e-logistic/i18n`, `@e-logistic/ui`.

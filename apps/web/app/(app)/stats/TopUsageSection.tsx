@@ -2,6 +2,7 @@
 
 import { type FxRate, maskedCardLabel, rowAmountEur } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import { useT } from "@/components/LocaleProvider";
 import type { FuelRaw } from "./shared";
 
 /**
@@ -68,6 +69,7 @@ function rank(
 }
 
 function RankList({ title, rows, empty }: { title: string; rows: RankRow[]; empty: string }) {
+  const t = useT();
   const max = rows[0]?.count ?? 1;
   return (
     <div style={{ flex: 1, minWidth: 300 }}>
@@ -88,13 +90,15 @@ function RankList({ title, rows, empty }: { title: string; rows: RankRow[]; empt
                 style={{ color: palette.smoke }}
                 title={
                   r.missingRate > 0
-                    ? `${r.missingRate} tankowań ma kwotę w walucie bez notowania na dzień tankowania — nie weszły do sumy.`
+                    ? t("stats.usage.missingRateHint").replace("{count}", String(r.missingRate))
                     : undefined
                 }
               >
                 {r.count}× · {Math.round(r.liters)} l
                 {r.totalEur > 0 ? ` · ${r.totalEur.toFixed(0)} €` : ""}
-                {r.missingRate > 0 ? ` · +${r.missingRate} bez kursu` : ""}
+                {r.missingRate > 0
+                  ? ` · +${r.missingRate} ${t("stats.usage.missingRateShort")}`
+                  : ""}
               </span>
             </div>
             <div
@@ -127,6 +131,7 @@ export function TopUsageSection({
    */
   rates: readonly FxRate[];
 }) {
+  const t = useT();
   const cardLabel = new Map(
     cards.map((c) => [c.id, maskedCardLabel(c.provider, c.card_number_masked)]),
   );
@@ -134,7 +139,7 @@ export function TopUsageSection({
     fuel,
     (r) => {
       const id = (r as { fuel_card_id?: string | null }).fuel_card_id;
-      return id ? (cardLabel.get(id) ?? "karta (usunięta)") : null;
+      return id ? (cardLabel.get(id) ?? t("stats.usage.cardDeleted")) : null;
     },
     rates,
   );
@@ -149,17 +154,17 @@ export function TopUsageSection({
 
   return (
     <section style={styles.card}>
-      <h2 style={styles.h2}>⛽ Karty i stacje (okno analizy)</h2>
+      <h2 style={styles.h2}>⛽ {t("stats.usage.title")}</h2>
       <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
         <RankList
-          title="💳 Najczęściej używane karty"
+          title={`💳 ${t("stats.usage.topCards")}`}
           rows={topCards}
-          empty="Brak tankowań z przypisaną kartą."
+          empty={t("stats.usage.noCards")}
         />
         <RankList
-          title="📍 Najczęstsze stacje"
+          title={`📍 ${t("stats.usage.topStations")}`}
           rows={topStations}
-          empty="Brak danych o stacjach (kraj/miasto w formularzu Paliwo)."
+          empty={t("stats.usage.noStations")}
         />
       </div>
     </section>

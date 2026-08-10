@@ -33,6 +33,14 @@ export type TripRaw = {
   id: string;
   vehicle_id: string;
   action: string;
+  /**
+   * [#382] Stan licznika przy zdarzeniu. Kolumna jest `not null` od migracji
+   * 0001 i `select("*")` i tak ją pobierał — brakowało jej wyłącznie w typie.
+   * Bez niej wyjazd nie ma licznika startu ani zakończenia, więc jego dystans
+   * wychodzi pusty, a średnie spalanie ważone dystansem nie ma czym ważyć:
+   * skrót wyjazdów pokazywałby „—" mimo kompletu danych w pamięci.
+   */
+  odometer_km: number;
   weight_kg: number | null;
   amount: number | null;
   currency: string | null;
