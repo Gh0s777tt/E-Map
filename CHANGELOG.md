@@ -2,13 +2,66 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-405-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.243.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-406-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.244.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.244.0] — 📐 Trasa liczona dla ZESTAWU, nie dla samego ciągnika
+
+Domknięcie tego, co `[#405]` dopiero umożliwił. Naczepa ma już wymiary — więc profil
+wysyłany do routingu przestaje opisywać połowę pojazdu.
+
+- `[#406]` **`combineRigProfile`** ([rigProfile.ts](packages/core/src/rigProfile.ts))
+  — 13 testów. Mapa wysyłała dotąd gabaryty samego ciągnika. Skutek był tym groźniejszy,
+  że niewidoczny: parametry wyglądały na kompletne.
+
+  **Każdy wymiar łączy się inaczej i każdy z tych sposobów jest decyzją:**
+
+  **Wysokość — MAKSIMUM, nie ciągnik.** Niski ciągnik z czterometrową chłodnią to zestaw
+  czterometrowy. Najgroźniejszy parametr w całym profilu, bo błąd kończy się na wiadukcie,
+  a nie na mandacie.
+
+  **Osie — SUMA.** Systemy poboru myta liczą osie całego zestawu; trzyosiowy ciągnik
+  z trzyosiową naczepą to sześć osi, a nie trzy.
+
+  **Masa — DMC zestawu**, liczone tylko gdy znane są obie składowe obu pojazdów. Masa
+  samego ciągnika podana jako masa zestawu to zaniżenie o kilkanaście ton, czyli przejazd
+  przez most z ograniczeniem tonażu.
+
+  **Długość — świadomie NIE liczymy jej wcale.** To wymaga wyjaśnienia, bo wygląda na
+  uchylanie się od roboty. Suma zawyża: naczepa zachodzi na ciągnik przez siodło, więc
+  6 m + 13,6 m to nie 19,6 m, tylko około 16,5 m. Maksimum zaniża: 13,6 m to sama naczepa,
+  bez wystającego przodu. Dokładnie policzyć da się tylko znając położenie sworznia,
+  a tej danej nie mamy i nie zamierzam jej zgadywać.
+
+  Rozstrzyga co innego: **stan dotychczasowy był GORSZY niż brak danych.** Szła długość
+  samego ciągnika — jakieś 6 m dla zestawu o 16,5 m. Dziesięć metrów zaniżenia to trasa
+  poprowadzona przez łuk, w który zestaw nie wejdzie. Router, który długości nie dostanie,
+  użyje własnej wartości domyślnej dla profilu ciężarowego — a ta będzie bliższa prawdzie
+  niż nasze 6 m. Przy podpiętej naczepie długość idzie więc jako brak, a spedytor może
+  podać długość zestawu ręcznie w polu nadpisania.
+
+  **Brak liczby, o którym wiadomo, jest uczciwszy niż liczba kłamiąca o dziesięć metrów.**
+
+- `[#406]` **Mapa pobiera naczepy razem z pojazdami** ([map/page.tsx](apps/web/app/(app)/map/page.tsx)).
+  Osobne zapytanie po wyborze auta oznaczałoby, że pierwsza policzona trasa idzie bez naczepy
+  — czyli dokładnie ten błąd, który tu naprawiamy, tylko rzadziej.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1049** ✓ (13 nowych) · `next build` ✓ ·
+`docs:check` ✓
+
+> Nie oglądałem tego na ekranie — mapa wymaga zalogowania. Zweryfikowane: reguły łączenia
+> testami (w tym ten pilnujący, że długość ciągnika NIE trafia do zestawu), reszta kompilacją.
+> Pozostaje: ten sam profil w aplikacji kierowcy (`apps/mobile/lib/vehicleProfile.ts` nadal
+> liczy z samego pojazdu) oraz podpinanie naczepy z formularza pojazdu.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

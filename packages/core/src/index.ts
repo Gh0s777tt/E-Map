@@ -51,6 +51,7 @@ export * from "./pod";
 export * from "./profitability";
 export * from "./rates";
 export * from "./receipt";
+export * from "./rigProfile";
 export * from "./savedPlaces";
 export * from "./schemas";
 export * from "./search";

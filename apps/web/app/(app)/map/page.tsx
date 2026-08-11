@@ -12,13 +12,16 @@ import {
   listDriverPositions,
   listDrivers,
   listSavedPlaces,
+  listTrailers,
   listVehicles,
   parkingSummaries,
   type SavedPlace,
   sendDriverRoute,
+  type Trailer,
   upsertParkingReview,
 } from "@e-logistic/api";
 import {
+  combineRigProfile,
   FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
   formatDuration,
@@ -140,6 +143,10 @@ const STALE_POSITION_MIN = 30;
  * zestawem pod niskim wiaduktem albo mytem policzonym dla cudzej klasy pojazdu.
  */
 interface RouteVehicle {
+  /** [#406] Rejestracja podpiętej naczepy — do pokazania przy wyborze pojazdu. */
+  trailerRegistration?: string | null;
+  /** [#406] `true`, gdy długość zestawu nie jest policzalna z kartoteki. */
+  rigLengthUnknown?: boolean;
   id: string;
   registration: string;
   heightCm: number | null;
@@ -162,18 +169,53 @@ function asEmissionClass(v: string | null | undefined): EmissionClass | null {
   return (EMISSION_CLASSES as readonly string[]).includes(v ?? "") ? (v as EmissionClass) : null;
 }
 
-function toRouteVehicle(v: VehicleRow): RouteVehicle {
+/**
+ * [#406] Pojazd + PODPIĘTA NACZEPA złożone w profil ZESTAWU.
+ *
+ * Do tej pory do routingu szły gabaryty samego ciągnika — parametry wyglądały
+ * kompletnie, tylko opisywały połowę pojazdu. Niski ciągnik z czterometrową
+ * chłodnią jechał jako pojazd o wysokości 3,8 m, czyli pod wiadukt, którego
+ * zestaw nie przejedzie.
+ *
+ * Reguły łączenia (wysokość MAX, osie SUMA, długość świadomie pominięta) siedzą
+ * w `combineRigProfile` razem z uzasadnieniem i testami — tutaj tylko je stosujemy.
+ */
+function toRouteVehicle(v: VehicleRow, naczepa: Trailer | null): RouteVehicle {
+  const zestaw = combineRigProfile(
+    {
+      heightCm: v.height_cm,
+      widthCm: v.width_cm,
+      lengthCm: v.length_cm,
+      curbWeightKg: v.curb_weight_kg,
+      maxPayloadKg: v.max_payload_kg,
+      axleCount: v.axle_count,
+    },
+    naczepa && {
+      heightCm: naczepa.height_cm,
+      widthCm: naczepa.width_cm,
+      lengthCm: naczepa.length_cm,
+      curbWeightKg: naczepa.curb_weight_kg,
+      maxPayloadKg: naczepa.max_payload_kg,
+      axleCount: naczepa.axle_count,
+    },
+  );
   return {
     id: v.id,
     registration: v.registration,
-    heightCm: v.height_cm ?? null,
-    widthCm: v.width_cm ?? null,
-    lengthCm: v.length_cm ?? null,
-    curbWeightKg: v.curb_weight_kg ?? null,
-    maxPayloadKg: v.max_payload_kg ?? null,
-    axleCount: v.axle_count ?? null,
+    heightCm: zestaw.heightCm,
+    widthCm: zestaw.widthCm,
+    lengthCm: zestaw.lengthCm,
+    // Masa jest tu już policzona dla ZESTAWU, więc rozbijamy ją z powrotem na
+    // parę, której oczekuje reszta ekranu: całość jako masa własna, zero jako
+    // ładowność. `grossWeightKg` niżej zsumuje to do tej samej liczby.
+    curbWeightKg: zestaw.grossWeightKg,
+    maxPayloadKg: zestaw.grossWeightKg == null ? null : 0,
+    axleCount: zestaw.axleCount,
     adrTunnelCode: asAdrTunnelCode(v.adr_tunnel_code),
     emissionClass: asEmissionClass(v.emission_class),
+    trailerRegistration: naczepa?.registration ?? null,
+    /** Naczepa podpięta → długości zestawu nie znamy; spedytor podaje ręcznie. */
+    rigLengthUnknown: zestaw.braki.includes("dlugosc-zestawu"),
   };
 }
 
@@ -452,7 +494,12 @@ export default function MapPage() {
           listVehicles(sb, m.companyId).catch(() => [] as VehicleRow[]),
         ]);
         setSaved(places);
-        setFleet(vehicleRows.map(toRouteVehicle));
+        // [#406] Naczepy pobierane razem z pojazdami: profil zestawu potrzebuje
+        // obu stron, a osobne zapytanie po wyborze auta oznaczałoby, że pierwsza
+        // policzona trasa idzie bez naczepy.
+        const naczepy = await listTrailers(sb, m.companyId).catch(() => [] as Trailer[]);
+        const wgId = new Map(naczepy.map((x) => [x.id, x]));
+        setFleet(vehicleRows.map((v) => toRouteVehicle(v, wgId.get(v.trailer_id ?? "") ?? null)));
       } catch {
         // offline / brak firmy → brak zapisanych miejsc
       }
