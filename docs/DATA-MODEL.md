@@ -1,6 +1,6 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.242.0** (#404 — 111 migracji; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
+> Status: **wdrożone** · stan kodu **v1.243.0** (#405 — 112 migracji; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
@@ -94,6 +94,12 @@ opisywał stan rzeczywisty, a nie zamierzony. Gwiazdka `*` oznacza `NOT NULL`.
 - **`vat_rates`** — `(country_code*, valid_from*)`, `rate*`, **`fuel_refundable*`** (`false` dla GB/CH/NO). `pickVatRate` zwraca `null` dla zdarzeń sprzed najstarszego wpisu — to znaczy „nie znamy stawki" i **musi wyglądać inaczej na ekranie** niż `0` („kraj nie zwraca").
 
 **Kierowca w terenie**
+- **`trailers`** (0110, #405) — naczepy firmy z WŁASNYMI terminami (przegląd, OC, leasing),
+  gabarytami i liczbą osi. `vehicles.trailer_id` wskazuje aktualnie podpiętą; naczepa
+  odstawiona nadal istnieje, a jej przegląd nadal się liczy. Rejestracja unikalna
+  **per firma**, nie globalnie — dwie firmy mogą mieć naczepę o tej samej rejestracji.
+  Kolumny `vehicles.trailer_registration`/`trailer_type` (0055) zostają dla buildów
+  mobilnych obecnych w sklepach, które o tej tabeli nie wiedzą.
 - **`company_links`** (0109, #404) — skróty do stron zewnętrznych definiowane przez
   właściciela (myto, promy, ubezpieczyciel, awizacja). `management_only` daje dwa stopnie
   widoczności: wszyscy członkowie / tylko owner+dispatcher. `url` ma CHECK na `^https?://`

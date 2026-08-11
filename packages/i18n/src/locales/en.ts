@@ -608,6 +608,16 @@ export const en: Record<MessageKey, string> = {
   "drivers.company.address": "Address",
   "drivers.company.activity": "Business activity",
 
+  "trailers.title": "Trailers",
+  "trailers.subtitle":
+    "A trailer has its own inspection and insurance, and tractors swap trailers — so it is separate equipment, not a field on the truck record. Dates entered here feed the daily reminders.",
+  "trailers.empty": "No trailers yet. Add the first one so its dates reach the reminders.",
+  "trailers.add": "Add trailer",
+  "trailers.type": "Trailer type",
+  "trailers.saved": "Trailer saved.",
+  "trailers.saveError": "Could not save the trailer.",
+  "trailers.deleteConfirm": "Delete this trailer? Tractors it was coupled to stay unchanged.",
+  "trailers.noDates": "no dates entered",
   "vehicles.subtitle":
     "Add, edit and delete vehicles. Click a vehicle in the list to see details and assigned cards.",
   "vehicles.editingBanner": "✏️ Editing vehicle.",

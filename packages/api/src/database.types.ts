@@ -329,6 +329,72 @@ export interface Database {
         };
         Relationships: [];
       };
+      // [#405] Migracja 0110 — naczepy jako osobna encja. Dopisane ręcznie
+      // z tego samego powodu co `company_links`: `pnpm gen:types` wymaga
+      // poświadczeń do bazy, których nie ma w tym środowisku.
+      trailers: {
+        Row: {
+          id: string;
+          company_id: string;
+          registration: string;
+          trailer_type: string | null;
+          vin: string | null;
+          year: number | null;
+          inspection_expiry: string | null;
+          insurance_expiry: string | null;
+          leasing_end: string | null;
+          insurer: string | null;
+          height_cm: number | null;
+          width_cm: number | null;
+          length_cm: number | null;
+          curb_weight_kg: number | null;
+          max_payload_kg: number | null;
+          axle_count: number | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          registration: string;
+          trailer_type?: string | null;
+          vin?: string | null;
+          year?: number | null;
+          inspection_expiry?: string | null;
+          insurance_expiry?: string | null;
+          leasing_end?: string | null;
+          insurer?: string | null;
+          height_cm?: number | null;
+          width_cm?: number | null;
+          length_cm?: number | null;
+          curb_weight_kg?: number | null;
+          max_payload_kg?: number | null;
+          axle_count?: number | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          registration?: string;
+          trailer_type?: string | null;
+          vin?: string | null;
+          year?: number | null;
+          inspection_expiry?: string | null;
+          insurance_expiry?: string | null;
+          leasing_end?: string | null;
+          insurer?: string | null;
+          height_cm?: number | null;
+          width_cm?: number | null;
+          length_cm?: number | null;
+          curb_weight_kg?: number | null;
+          max_payload_kg?: number | null;
+          axle_count?: number | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       // [#404] Migracja 0109. Dopisane ręcznie: `pnpm gen:types` wymaga poświadczeń
       // do bazy, których nie ma w tym środowisku. Kształt odpowiada migracji 1:1.
       company_links: {
@@ -2445,6 +2511,7 @@ export interface Database {
           adblue_tank_l: number | null;
           trailer_registration: string | null;
           trailer_type: string | null;
+          trailer_id: string | null;
           license_expiry: string | null;
         };
         Insert: {
@@ -2478,6 +2545,7 @@ export interface Database {
           adblue_tank_l?: number | null;
           trailer_registration?: string | null;
           trailer_type?: string | null;
+          trailer_id?: string | null;
           license_expiry?: string | null;
         };
         Update: {
@@ -2511,6 +2579,7 @@ export interface Database {
           adblue_tank_l?: number | null;
           trailer_registration?: string | null;
           trailer_type?: string | null;
+          trailer_id?: string | null;
           license_expiry?: string | null;
         };
         Relationships: [];

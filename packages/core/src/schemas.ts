@@ -112,6 +112,43 @@ export const vehicleSchema = z.object({
 });
 export type VehicleInput = z.infer<typeof vehicleSchema>;
 
+// ── Naczepa ─────────────────────────────────────────────────────────
+
+/**
+ * [#405] Naczepa jako osobny sprzęt firmy.
+ *
+ * Do tej pory naczepa była dwoma polami tekstowymi w kartotece ciągnika, co
+ * zakładało, że należy do niego na stałe. W transporcie ciągnik wymienia naczepy,
+ * a naczepa ma WŁASNY przegląd i WŁASNE ubezpieczenie — i to one zatrzymują
+ * zestaw równie skutecznie jak dokumenty ciągnika.
+ *
+ * Gabaryty są tu istotniejsze niż w ciągniku: to naczepa wyznacza wysokość
+ * i długość zestawu, czyli wartości, które idą do routingu.
+ */
+export const trailerSchema = z.object({
+  registration: z.string().trim().min(1).max(16),
+  trailerType: z.string().trim().max(40).optional(),
+  vin: z
+    .string()
+    .trim()
+    .regex(/^[A-HJ-NPR-Z0-9]{17}$/i, "VIN to 17 znaków (bez I, O, Q)")
+    .optional(),
+  year: z.number().int().min(1950).max(2100).optional(),
+  inspectionExpiry: isoDate.optional(),
+  insuranceExpiry: isoDate.optional(),
+  leasingEnd: isoDate.optional(),
+  insurer: z.string().trim().max(60).optional(),
+  heightCm: z.number().int().positive().max(500).optional(),
+  widthCm: z.number().int().positive().max(400).optional(),
+  lengthCm: z.number().int().positive().max(2000).optional(),
+  curbWeightKg: z.number().int().positive().max(60000).optional(),
+  maxPayloadKg: z.number().int().positive().max(60000).optional(),
+  /** Naczepy mają zwykle 1–3 osie; górna granica z zapasem na zestawy nietypowe. */
+  axleCount: z.number().int().min(1).max(6).optional(),
+  note: z.string().trim().max(2000).optional(),
+});
+export type TrailerInput = z.infer<typeof trailerSchema>;
+
 // ── Linki firmowe ───────────────────────────────────────────────────
 
 /**

@@ -177,6 +177,41 @@ export async function generateOperationalAlerts(admin: Admin): Promise<number> {
     }
   }
 
+  /*
+   * 3b) [#405] Terminy NACZEP.
+   *
+   * Do migracji 0110 naczepa była polem tekstowym w kartotece ciągnika i nie
+   * miała gdzie trzymać własnych dat — więc jej przegląd nie istniał dla systemu
+   * przypomnień. A naczepa po terminie zatrzymuje zestaw dokładnie tak samo jak
+   * ciągnik: kontrola patrzy na oba dowody.
+   *
+   * Prefiks `trl:` zamiast `veh:`, żeby przypomnienie o naczepie nie wykluczało
+   * przez `dedup_key` przypomnienia o ciągniku i odwrotnie — to dwa różne
+   * pojazdy, nawet gdy jadą razem.
+   */
+  const { data: trailers } = await admin
+    .from("trailers")
+    .select("id, company_id, registration, inspection_expiry, insurance_expiry, leasing_end");
+  const trailerFields = [
+    ["inspection_expiry", "inspection", "przegląd techniczny"],
+    ["insurance_expiry", "insurance", "ubezpieczenie OC"],
+    ["leasing_end", "leasing", "koniec leasingu"],
+  ] as const;
+  for (const tr of trailers ?? []) {
+    for (const [field, kind, label] of trailerFields) {
+      const date = tr[field] as string | null;
+      if (!date || date > horizonFor(tr.company_id as string)) continue;
+      const overdue = date < today;
+      fanout(tr.company_id as string, {
+        type: "vehicle_expiry",
+        title: `${overdue ? "🔴" : "🟡"} Naczepa ${tr.registration}: ${label} ${overdue ? "po terminie" : "wkrótce"}`,
+        body: `Termin: ${date}.`,
+        severity: overdue ? "danger" : "warning",
+        dedup_key: `trl:${tr.id}:${kind}:${compactDate(date)}`,
+      });
+    }
+  }
+
   // 4) #368 Terminy dokumentów kierowców w ≤30 dni. Świadomie BEZ imienia
   //    i nazwiska — PII jest szyfrowane w bazie (0022), a service-role przez
   //    PostgREST i tak go nie odszyfruje; identycznie robi SQL-owa reguła w 0031.

@@ -43,6 +43,7 @@ export * from "./data/service";
 export * from "./data/settlementSettings";
 export * from "./data/tachoDownloads";
 export * from "./data/tachoEvents";
+export * from "./data/trailers";
 export * from "./data/tripEvents";
 export * from "./data/vehicleCosts";
 export * from "./data/vehicles";

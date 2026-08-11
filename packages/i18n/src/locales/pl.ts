@@ -614,6 +614,17 @@ export const pl = {
   "drivers.company.address": "Adres",
   "drivers.company.activity": "Profil działalności",
 
+  "trailers.title": "Naczepy",
+  "trailers.subtitle":
+    "Naczepa ma własny przegląd i ubezpieczenie, a ciągnik ją wymienia — dlatego jest osobnym sprzętem, a nie polem w kartotece auta. Wpisane terminy wchodzą do codziennych przypomnień.",
+  "trailers.empty": "Brak naczep. Dodaj pierwszą, żeby jej terminy trafiły do przypomnień.",
+  "trailers.add": "Dodaj naczepę",
+  "trailers.type": "Typ naczepy",
+  "trailers.saved": "Zapisano naczepę.",
+  "trailers.saveError": "Nie udało się zapisać naczepy.",
+  "trailers.deleteConfirm":
+    "Usunąć tę naczepę? Ciągniki, do których była podpięta, zostaną bez zmian.",
+  "trailers.noDates": "bez wpisanych terminów",
   "vehicles.subtitle":
     "Dodawaj, edytuj i usuwaj pojazdy. Kliknij auto na liście, by zobaczyć szczegóły i przypisane karty.",
   "vehicles.editingBanner": "✏️ Edytujesz pojazd.",

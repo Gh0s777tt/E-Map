@@ -1,10 +1,15 @@
 "use client";
 
 import {
+  deleteTrailer,
   deleteVehicle,
+  insertTrailer,
   insertVehicle,
   listFuelCardsByVehicle,
+  listTrailers,
   listVehicles,
+  type Trailer,
+  updateTrailer,
   updateVehicle,
 } from "@e-logistic/api";
 import {
@@ -14,6 +19,7 @@ import {
   INSURERS,
   maskCardNumber,
   TRAILER_TYPES,
+  trailerSchema,
   VEHICLE_MAKE_GROUPS,
   VEHICLE_TYPES,
   type VehicleInput,
@@ -163,6 +169,77 @@ export default function VehiclesPage() {
   const t = useT();
   const [dbVehicles, setDbVehicles] = useState<DbVehicle[]>([]);
   const [canManage, setCanManage] = useState(false);
+
+  /**
+   * [#405] Naczepy — osobny sprzęt firmy, nie pole w kartotece ciągnika.
+   *
+   * Powód, dla którego to osobna lista, a nie kolejne pole w formularzu pojazdu:
+   * naczepa ma WŁASNY przegląd i ubezpieczenie, a ciągnik ją wymienia. Jako pole
+   * tekstowe nie miała gdzie trzymać terminów, więc nie wchodziły do przypomnień
+   * — a naczepa po przeglądzie zatrzymuje zestaw tak samo jak ciągnik.
+   */
+  const [trailers, setTrailers] = useState<Trailer[]>([]);
+  const [trailerCompanyId, setTrailerCompanyId] = useState<string | null>(null);
+  const [trailerForm, setTrailerForm] = useState<{
+    id: string | null;
+    registration: string;
+    trailerType: string;
+    inspectionExpiry: string;
+    insuranceExpiry: string;
+    heightCm: string;
+    lengthCm: string;
+    axleCount: string;
+  } | null>(null);
+  const [trailerBusy, setTrailerBusy] = useState(false);
+
+  const reloadTrailers = useCallback(async (companyId: string) => {
+    setTrailers(await listTrailers(getBrowserSupabase(), companyId).catch(() => []));
+  }, []);
+
+  async function saveTrailer() {
+    if (!trailerCompanyId || !trailerForm || trailerBusy) return;
+    const liczba = (v: string) => {
+      const n = Number(v.trim());
+      return v.trim() && Number.isFinite(n) ? n : undefined;
+    };
+    const parsed = trailerSchema.safeParse({
+      registration: trailerForm.registration,
+      trailerType: trailerForm.trailerType.trim() || undefined,
+      inspectionExpiry: trailerForm.inspectionExpiry.trim() || undefined,
+      insuranceExpiry: trailerForm.insuranceExpiry.trim() || undefined,
+      heightCm: liczba(trailerForm.heightCm),
+      lengthCm: liczba(trailerForm.lengthCm),
+      axleCount: liczba(trailerForm.axleCount),
+    });
+    if (!parsed.success) {
+      toast(firstZodError(parsed.error), "error");
+      return;
+    }
+    setTrailerBusy(true);
+    try {
+      const sb = getBrowserSupabase();
+      if (trailerForm.id) await updateTrailer(sb, trailerForm.id, parsed.data);
+      else await insertTrailer(sb, parsed.data, trailerCompanyId);
+      await reloadTrailers(trailerCompanyId);
+      setTrailerForm(null);
+      toast(t("trailers.saved"), "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("trailers.saveError"), "error");
+    } finally {
+      setTrailerBusy(false);
+    }
+  }
+
+  async function removeTrailer(id: string) {
+    if (!trailerCompanyId) return;
+    if (!(await confirm(t("trailers.deleteConfirm")))) return;
+    try {
+      await deleteTrailer(getBrowserSupabase(), id);
+      await reloadTrailers(trailerCompanyId);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("trailers.saveError"), "error");
+    }
+  }
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -232,6 +309,9 @@ export default function VehiclesPage() {
         return;
       }
       setCanManage(membership.role === "owner" || membership.role === "dispatcher");
+      // [#405] Naczepy razem z pojazdami — ta sama firma, jedno przejście.
+      setTrailerCompanyId(membership.companyId);
+      void reloadTrailers(membership.companyId);
       const vs = await listVehicles(supabase, membership.companyId);
       setDbVehicles(vs);
     } catch (e) {
@@ -239,7 +319,11 @@ export default function VehiclesPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+    // [#405] `reloadTrailers` w zależnościach — jest stabilne (`useCallback`
+    // z pustą listą), więc nie powoduje dodatkowych wywołań, ale pominięcie go
+    // łamie regułę wyczerpujących zależności, a to ona chroni przed domknięciem
+    // trzymającym nieaktualny stan.
+  }, [t, reloadTrailers]);
 
   useEffect(() => {
     loadVehicles();
@@ -547,6 +631,166 @@ export default function VehiclesPage() {
   return (
     <div style={{ maxWidth: 820 }}>
       <PageHeader title={t("nav.vehicles")} subtitle={t("vehicles.subtitle")} />
+
+      {/* [#405] Naczepy — osobny sprzęt z własnymi terminami. Sekcja stoi nad
+          formularzem pojazdu, bo zestaw składa się z pary, a nie z jednego wpisu. */}
+      {canManage && (
+        <div style={f.formWrap}>
+          <strong style={{ fontSize: 16 }}>🛻 {t("trailers.title")}</strong>
+          <p style={{ color: palette.smoke, fontSize: 13, margin: "6px 0 10px", lineHeight: 1.6 }}>
+            {t("trailers.subtitle")}
+          </p>
+
+          {trailers.length === 0 && (
+            <p style={{ color: palette.smoke, fontSize: 13 }}>{t("trailers.empty")}</p>
+          )}
+
+          {trailers.map((tr) => (
+            <div key={tr.id} style={trailerRow}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ fontSize: 14 }}>{tr.registration}</strong>
+                {tr.trailer_type && (
+                  <span style={{ color: palette.smoke, fontSize: 12.5 }}> · {tr.trailer_type}</span>
+                )}
+                <div style={{ color: palette.smoke, fontSize: 12 }}>
+                  {[
+                    tr.inspection_expiry &&
+                      `${t("vehicles.fieldInspectionExpiry")}: ${tr.inspection_expiry}`,
+                    tr.insurance_expiry &&
+                      `${t("vehicles.fieldInsuranceExpiry")}: ${tr.insurance_expiry}`,
+                    tr.height_cm && `${tr.height_cm} cm`,
+                    tr.axle_count && `${tr.axle_count} os.`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || t("trailers.noDates")}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  setTrailerForm({
+                    id: tr.id,
+                    registration: tr.registration,
+                    trailerType: tr.trailer_type ?? "",
+                    inspectionExpiry: tr.inspection_expiry ?? "",
+                    insuranceExpiry: tr.insurance_expiry ?? "",
+                    heightCm: tr.height_cm ? String(tr.height_cm) : "",
+                    lengthCm: tr.length_cm ? String(tr.length_cm) : "",
+                    axleCount: tr.axle_count ? String(tr.axle_count) : "",
+                  })
+                }
+              >
+                {t("common.edit")}
+              </Button>
+              <Button variant="ghost" onClick={() => removeTrailer(tr.id)}>
+                {t("common.delete")}
+              </Button>
+            </div>
+          ))}
+
+          {trailerForm ? (
+            <div style={f.grid}>
+              <label style={f.field}>
+                <span style={f.label}>{t("vehicles.fieldRegistration")}</span>
+                <input
+                  style={f.input}
+                  value={trailerForm.registration}
+                  onChange={(e) => setTrailerForm({ ...trailerForm, registration: e.target.value })}
+                />
+              </label>
+              <label style={f.field}>
+                <span style={f.label}>{t("trailers.type")}</span>
+                <input
+                  style={f.input}
+                  list="trailer-types"
+                  value={trailerForm.trailerType}
+                  onChange={(e) => setTrailerForm({ ...trailerForm, trailerType: e.target.value })}
+                />
+                <datalist id="trailer-types">
+                  {TRAILER_TYPES.map((x) => (
+                    <option key={x} value={x} />
+                  ))}
+                </datalist>
+              </label>
+              <label style={f.field}>
+                <span style={f.label}>{t("vehicles.fieldInspectionExpiry")}</span>
+                <input
+                  style={f.input}
+                  type="date"
+                  value={trailerForm.inspectionExpiry}
+                  onChange={(e) =>
+                    setTrailerForm({ ...trailerForm, inspectionExpiry: e.target.value })
+                  }
+                />
+              </label>
+              <label style={f.field}>
+                <span style={f.label}>{t("vehicles.fieldInsuranceExpiry")}</span>
+                <input
+                  style={f.input}
+                  type="date"
+                  value={trailerForm.insuranceExpiry}
+                  onChange={(e) =>
+                    setTrailerForm({ ...trailerForm, insuranceExpiry: e.target.value })
+                  }
+                />
+              </label>
+              <label style={f.field}>
+                <span style={f.label}>{t("vehicles.fieldHeight")}</span>
+                <input
+                  style={f.input}
+                  inputMode="numeric"
+                  value={trailerForm.heightCm}
+                  onChange={(e) => setTrailerForm({ ...trailerForm, heightCm: e.target.value })}
+                />
+              </label>
+              <label style={f.field}>
+                <span style={f.label}>{t("vehicles.fieldLength")}</span>
+                <input
+                  style={f.input}
+                  inputMode="numeric"
+                  value={trailerForm.lengthCm}
+                  onChange={(e) => setTrailerForm({ ...trailerForm, lengthCm: e.target.value })}
+                />
+              </label>
+              <label style={f.field}>
+                <span style={f.label}>{t("vehicles.fieldAxleCount")}</span>
+                <input
+                  style={f.input}
+                  inputMode="numeric"
+                  value={trailerForm.axleCount}
+                  onChange={(e) => setTrailerForm({ ...trailerForm, axleCount: e.target.value })}
+                />
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <Button onClick={saveTrailer} disabled={trailerBusy}>
+                  {t("common.save")}
+                </Button>
+                <Button variant="ghost" onClick={() => setTrailerForm(null)}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setTrailerForm({
+                  id: null,
+                  registration: "",
+                  trailerType: "",
+                  inspectionExpiry: "",
+                  insuranceExpiry: "",
+                  heightCm: "",
+                  lengthCm: "",
+                  axleCount: "",
+                })
+              }
+            >
+              ➕ {t("trailers.add")}
+            </Button>
+          )}
+        </div>
+      )}
 
       {canManage && (
         <div style={f.formWrap}>
@@ -1130,4 +1374,13 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     padding: "4px 10px",
   },
+};
+
+/** [#405] Wiersz naczepy na liście — lekki, bo lista bywa dłuższa niż flota ciągników. */
+const trailerRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 0",
+  borderTop: `1px solid ${palette.graphite}`,
 };

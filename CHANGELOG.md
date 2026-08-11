@@ -2,13 +2,74 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-404-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.242.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-405-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.243.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
 Format wg [Keep a Changelog](https://keepachangelog.com) + **numeracja updatów** `[#NNN]`.
 Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## [1.243.0] — 🛻 Naczepa przestaje być polem tekstowym w kartotece ciągnika
+
+Największy z nietkniętych punktów backlogu. Do tej pory naczepa to były dwa pola
+tekstowe przy ciągniku (`[#250]`), co zakładało coś, co w transporcie nie jest prawdą:
+że naczepa należy do ciągnika na stałe.
+
+- `[#405]` **Osobna encja `trailers`** (migracja
+  [0110](supabase/migrations/0110_trailers_entity.sql),
+  [trailers.ts](packages/api/src/data/trailers.ts),
+  sekcja w [kartotece floty](apps/web/app/(app)/vehicles/page.tsx)).
+
+  Co przez stary model nie działało:
+
+  • **Naczepa ma własny przegląd i własne OC.** Jako pole tekstowe nie miała gdzie
+    trzymać dat, więc nie wchodziły do przypomnień — a naczepa po terminie zatrzymuje
+    zestaw równie skutecznie jak ciągnik, bo kontrola patrzy na oba dowody.
+    **To jest powód, dla którego ta tabela w ogóle powstała.**
+  • **Ciągnik wymienia naczepy.** Przepięcie oznaczało nadpisanie tekstu i utratę
+    informacji, że poprzednia w ogóle istniała.
+  • **Naczepa ma własne gabaryty i osie** — i to ona, nie ciągnik, wyznacza wysokość
+    oraz długość zestawu, czyli wartości, które idą do routingu.
+  • **Naczepa odstawiona nie istniała** — bez ciągnika nie było jej w systemie.
+
+  Teraz naczepa należy do FIRMY, a `vehicles.trailer_id` mówi, która jest aktualnie
+  podpięta. Zestaw powstaje z pary, nie z jednego wiersza.
+
+- `[#405]` **Terminy naczep w codziennych przypomnieniach** ([alerts.ts](apps/web/lib/alerts.ts)).
+  Prefiks `trl:` zamiast `veh:` — inaczej przypomnienie o naczepie wykluczałoby przez
+  `dedup_key` przypomnienie o ciągniku, a to dwa różne pojazdy, nawet gdy jadą razem.
+
+**Dane przeniesione automatycznie.** Każda wpisana wcześniej `trailer_registration`
+staje się wierszem w `trailers`, a ciągnik dostaje do niej wskazanie. Bez tego kroku
+właściciel musiałby przepisać ręcznie to, co już raz wpisał — najpewniejszy sposób,
+żeby nowa funkcja została pusta.
+
+Migrację **sprawdziłem doświadczalnie**, bo na produkcji nie było czego przenieść
+(0 pojazdów z wpisaną naczepą): w transakcji zakończonej ROLLBACK, na danych
+syntetycznych. Dwa ciągniki wskazujące tę samą naczepę zapisaną raz ze spacjami dają
+**jeden** wiersz naczepy i dwa wskazania — dokładnie jak zamierzono.
+
+> Przy pierwszym podejściu test wyszedł na „BŁĄD MIGRACJI" i to była **moja pomyłka
+> w teście, nie w migracji**: oba pojazdy w tej bazie należą do RÓŻNYCH firm, a
+> rejestracja jest unikalna per firma, więc dwie naczepy były wynikiem poprawnym.
+> Sprawdziłem to, zanim zacząłem „naprawiać" działający kod.
+
+**Zgodność wsteczna:** kolumny `trailer_registration`/`trailer_type` **zostają** i nadal
+są zapisywane. Powód jest konkretny, nie ostrożnościowy — w sklepach są buildy aplikacji
+mobilnej, które o tabeli `trailers` nie wiedzą i czytają te pola. Usunięcie ich teraz
+zepsułoby kartotekę każdemu, kto nie zaktualizował aplikacji.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1036** ✓ · `next build` ✓ · `docs:check` ✓ ·
+migracja 0110 zastosowana, ścieżka przeniesienia danych zweryfikowana
+
+> Ekranu nie oglądałem — wymaga zalogowania. Pozostaje do zrobienia: podpinanie naczepy
+> do ciągnika z poziomu formularza pojazdu, widok w aplikacji kierowcy i gabaryty
+> naczepy w profilu routingu.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
