@@ -10,6 +10,7 @@ import {
 } from "@e-logistic/api";
 import { serviceStatus } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
@@ -18,6 +19,8 @@ import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -32,11 +35,7 @@ export default function ServicePage() {
   ];
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
-  const [tasks, setTasks] = useState<ServiceTask[]>([]);
-  const [odo, setOdo] = useState<Record<string, number>>({});
-  const [canManage, setCanManage] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [vehicleId, setVehicleId] = useState("");
@@ -47,33 +46,54 @@ export default function ServicePage() {
   const [lastDoneDate, setLastDoneDate] = useState("");
   const toast = useToast();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadErr(null);
-    try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        setTasks([]);
-        return;
-      }
-      setCanManage(m.role === "owner" || m.role === "dispatcher");
-      const [tks, o] = await Promise.all([
-        listServiceTasks(sb, m.companyId),
-        latestOdometers(sb, m.companyId),
-      ]);
-      setTasks(tks);
-      setOdo(o);
-    } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : t("service.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  // #310 (fala 2): plan serwisowy i przebiegi przez TanStack Query. Rozdzielone na dwa
+  // zapytania, bo mają różne cykle życia — zadania zmienia ta strona, przebiegi rosną
+  // od tankowań kierowców — ale oba i tak muszą zniknąć z cache przy zmianie firmy.
+  const membership = useQuery({
+    queryKey: queryKeys.membership(),
+    queryFn: () => getCachedMembership(getBrowserSupabase()),
+  });
+  const companyId = membership.data?.companyId ?? null;
+  const canManage = membership.data?.role === "owner" || membership.data?.role === "dispatcher";
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const tasksQuery = useQuery({
+    queryKey: queryKeys.serviceTasks(companyId),
+    // Bez firmy pusta lista, a nie błąd — tak zachowywał się dawny `load()`.
+    queryFn: (): Promise<ServiceTask[]> =>
+      companyId ? listServiceTasks(getBrowserSupabase(), companyId) : Promise.resolve([]),
+    enabled: !membership.isPending,
+  });
+  const odoQuery = useQuery({
+    queryKey: queryKeys.odometers(companyId),
+    queryFn: (): Promise<Record<string, number>> =>
+      companyId ? latestOdometers(getBrowserSupabase(), companyId) : Promise.resolve({}),
+    enabled: !membership.isPending,
+  });
+  const tasks = tasksQuery.data ?? [];
+  const odo = odoQuery.data ?? {};
+  const loading = membership.isPending || tasksQuery.isPending || odoQuery.isPending;
+  const loadErr = queryErrorMessage(
+    membership.error ?? tasksQuery.error ?? odoQuery.error,
+    t("service.loadError"),
+  );
+
+  /**
+   * Odświeżenie po zapisie/odhaczeniu/usunięciu. Przebiegi też — status zadania liczy się
+   * z licznika, a ten mógł urosnąć od wejścia na stronę (dawny `load()` czytał oba naraz).
+   */
+  const reload = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: queryKeys.serviceTasks(companyId) }),
+      qc.invalidateQueries({ queryKey: queryKeys.odometers(companyId) }),
+    ]);
+  }, [qc, companyId]);
+  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy wszystkie trzy. */
+  const retry = () => {
+    void membership.refetch();
+    void tasksQuery.refetch();
+    void odoQuery.refetch();
+  };
+
   useEffect(() => {
     if (!vehicleId && vehicles[0]) setVehicleId(vehicles[0].id);
   }, [vehicles, vehicleId]);
@@ -105,16 +125,14 @@ export default function ServicePage() {
       toast(t("service.nameRequired"), "error");
       return;
     }
+    if (!companyId) {
+      toast(t("service.noCompany"), "error");
+      return;
+    }
     try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        toast(t("service.noCompany"), "error");
-        return;
-      }
       await saveServiceTask(
-        sb,
-        m.companyId,
+        getBrowserSupabase(),
+        companyId,
         {
           vehicleId,
           name: name.trim(),
@@ -127,7 +145,7 @@ export default function ServicePage() {
       );
       toast(editingId ? t("service.updated") : t("service.taskAdded"), "success");
       resetForm();
-      await load();
+      await reload();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("service.saveError"), "error");
     }
@@ -144,7 +162,7 @@ export default function ServicePage() {
     try {
       await markServiceDone(getBrowserSupabase(), tk.id, km, new Date().toISOString().slice(0, 10));
       toast(t("service.markedDone"), "success");
-      await load();
+      await reload();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("common.error"), "error");
     }
@@ -156,7 +174,7 @@ export default function ServicePage() {
       await deleteServiceTask(getBrowserSupabase(), id);
       if (editingId === id) resetForm();
       toast(t("service.deleted"), "success");
-      await load();
+      await reload();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("service.deleteError"), "error");
     }
@@ -263,7 +281,7 @@ export default function ServicePage() {
         error={loadErr}
         empty={tasks.length === 0}
         emptyText={t("service.empty")}
-        onRetry={load}
+        onRetry={retry}
       />
       {!loading && !loadErr && tasks.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>

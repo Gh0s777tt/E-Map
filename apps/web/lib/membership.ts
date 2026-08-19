@@ -1,6 +1,7 @@
 "use client";
 
 import { getActiveMembership } from "@e-logistic/api";
+import { invalidateMembershipQueries } from "@/lib/queryClient";
 
 type SbClient = Parameters<typeof getActiveMembership>[0];
 type Membership = Awaited<ReturnType<typeof getActiveMembership>>;
@@ -32,8 +33,18 @@ export async function getCachedMembership(client: SbClient): Promise<Membership>
   return inflight;
 }
 
-/** Czyści cache (np. po utworzeniu firmy / zmianie uprawnień / wylogowaniu). */
+/**
+ * Czyści cache (np. po utworzeniu firmy / zmianie uprawnień / wylogowaniu).
+ *
+ * Od migracji części panelu na TanStack Query ten moduł NIE jest już jedynym miejscem,
+ * w którym membership leży w pamięci — kopia siedzi też pod kluczem `["membership"]`.
+ * Czyszczenie tylko jednego z dwóch cache'y dawało stan, w którym świeżo utworzony
+ * właściciel widział na zmigrowanych ekranach „brak firmy" jeszcze przez `staleTime`.
+ * Dlatego obie ścieżki unieważnia jedna funkcja: wywołujący ma powiedzieć „członkostwo
+ * się zmieniło", a nie pamiętać listę cache'y.
+ */
 export function clearMembershipCache() {
   cache = null;
   inflight = null;
+  invalidateMembershipQueries();
 }

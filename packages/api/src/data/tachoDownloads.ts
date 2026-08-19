@@ -20,15 +20,29 @@ export interface TachoDownloadRow {
 
 const COLS = "id, company_id, kind, driver_id, vehicle_id, last_download, note";
 
+/**
+ * Jeden wiersz na kierowcę (karta) i jeden na pojazd (jednostka pojazdowa),
+ * bo `upsertTachoDownload` aktualizuje istniejący zamiast dopisywać historię.
+ * Zbiór jest więc mniej więcej sumą załogi i floty — stąd dwukrotność sufitu
+ * flotowego. Obcięcie oznaczałoby tu przeoczony termin ustawowy (28/90 dni),
+ * dlatego próg ma zapas, a nie ma być ciasny.
+ */
+const TACHO_DOWNLOADS_DEFAULT_LIMIT = 2000;
+
 export async function listTachoDownloads(
   client: SupabaseClient,
   companyId: string,
+  opts?: { limit?: number },
 ): Promise<TachoDownloadRow[]> {
   const { data, error } = await client
     .from("tacho_downloads")
     .select(COLS)
     .eq("company_id", companyId)
-    .order("last_download", { ascending: true });
+    // Rosnąco po dacie sczytania: przy obcięciu w wyniku zostają terminy
+    // NAJSTARSZE, czyli te najbliżej przekroczenia — a to one są powodem,
+    // dla którego ten ekran w ogóle istnieje.
+    .order("last_download", { ascending: true })
+    .limit(opts?.limit ?? TACHO_DOWNLOADS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as TachoDownloadRow[];
 }

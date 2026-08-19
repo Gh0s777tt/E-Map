@@ -35,6 +35,7 @@ import {
   rowAmountEur,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -51,6 +52,7 @@ import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
+import { queryKeyPrefixes } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 import { downloadXlsx } from "@/lib/xlsx";
@@ -151,6 +153,7 @@ export default function OrdersPage() {
   const confirm = useConfirm();
   const toast = useToast();
   const router = useRouter();
+  const qc = useQueryClient();
   const [orders, setOrders] = useState<Order[]>([]);
   // #246: surowe dane do kosztu transportu per zlecenie (trasy z order_id + tankowania).
   const [legRows, setLegRows] = useState<LegRow[]>([]);
@@ -517,11 +520,22 @@ export default function OrdersPage() {
         : "";
       const id = await saveOrder(sb, m.companyId, parsed.data, editingId ?? undefined);
       // Organicznie buduj rejestr kontrahentów z nadawcy/odbiorcy (best-effort).
-      await Promise.all(
-        [shipper.trim(), consignee.trim()]
-          .filter((n) => n && !contractors.some((c) => c.name === n))
-          .map((name) => upsertContractor(sb, m.companyId, { name }).catch(() => {})),
+      const nowiKontrahenci = [shipper.trim(), consignee.trim()].filter(
+        (n) => n && !contractors.some((c) => c.name === n),
       );
+      await Promise.all(
+        nowiKontrahenci.map((name) => upsertContractor(sb, m.companyId, { name }).catch(() => {})),
+      );
+      /*
+       * Rejestr kontrahentów jest już na TanStack Query (`/kontrahenci`), a ten ekran nie —
+       * bez unieważnienia wpis dopisany tutaj nie widniał tam przez `staleTime`, więc
+       * dyspozytor dodawał tego samego kontrahenta ręcznie i przy różnicy w NIP/adresie
+       * `upsertContractor` zakładał DRUGI rekord. Duplikat w rejestrze jest trwały,
+       * a nieświeża lista tylko chwilowa — dlatego pilnujemy tego tutaj, przy źródle.
+       */
+      if (nowiKontrahenci.length > 0) {
+        void qc.invalidateQueries({ queryKey: queryKeyPrefixes.contractors() });
+      }
       if (assignedTo && assignedTo !== prevAssigned) {
         // Natychmiastowy push do kierowcy (best-effort — powiadomienie w aplikacji powstaje przez trigger).
         void fetch("/api/orders/notify-assignment", {

@@ -35,3 +35,25 @@ describe("listMyOrders (kierowca, RLS)", () => {
     expect(argsOf("eq")).toEqual(["assigned_to", "u9"]);
   });
 });
+
+describe("listMyOrders — sufit pobrania", () => {
+  /** Sesja jest tu warunkiem wejścia — bez niej funkcja wraca przed zapytaniem. */
+  const zSesja = () => {
+    const m = mockSupabase({ data: [], error: null });
+    Object.assign(m.client, { auth: { getUser: async () => ({ data: { user: { id: "u9" } } }) } });
+    return m;
+  };
+
+  it("domyślnie NIE ucina historii — liczą się z niej statystyki całego stażu", async () => {
+    // `useGamification` bierze stąd licznik dostaw i odsetek terminowych. Obcięcie
+    // do kilkuset najnowszych zamrażałoby licznik i liczyło terminowość z okrojonego
+    // mianownika, bez żadnego sygnału, że liczba jest niepełna.
+    const domyslne = zSesja();
+    await listMyOrders(domyslne.client);
+    expect(domyslne.argsOf("limit")).toBeUndefined();
+
+    const wlasne = zSesja();
+    await listMyOrders(wlasne.client, { limit: 25 });
+    expect(wlasne.argsOf("limit")?.[0]).toBe(25);
+  });
+});

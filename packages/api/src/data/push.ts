@@ -40,6 +40,24 @@ export async function deletePushSubscription(client: SupabaseClient, endpoint: s
 }
 
 /**
+ * Ile subskrypcji przypada na jednego odbiorcę: przeglądarka służbowa, prywatna,
+ * drugi komputer, plus wpisy, których przeglądarka nie zdążyła unieważnić.
+ *
+ * Z zapasem z tego samego powodu co przy tokenach Expo: wiersze wracają bez
+ * kolejności, więc jeden użytkownik z zaległymi subskrypcjami wypchnąłby
+ * z wyniku CUDZE. Sufit to granica, nie rozmiar pobrania — podniesienie go nic
+ * nie kosztuje, a zbyt niskie ustawienie kosztuje niedostarczone powiadomienie.
+ */
+const PUSH_SUBS_PER_USER = 10;
+
+/**
+ * Sufit przy wysyłce do CAŁEJ firmy. Nie ma tu listy odbiorców, z której dałoby
+ * się go wyliczyć, więc musi pokryć załogę największego przewoźnika razem z jej
+ * urządzeniami — a że to jedyny wariant ze stałą liczbą, ma mieć wyraźny zapas.
+ */
+const PUSH_SUBS_COMPANY_LIMIT = 5000;
+
+/**
  * Subskrypcje do wysyłki (TYLKO serwer / service-role — omija RLS).
  * Filtruje po firmie i/lub konkretnych użytkownikach.
  *
@@ -50,7 +68,7 @@ export async function deletePushSubscription(client: SupabaseClient, endpoint: s
  */
 export async function listPushSubscriptionsForDelivery(
   admin: SupabaseClient,
-  opts?: { companyId?: string; userIds?: string[] },
+  opts?: { companyId?: string; userIds?: string[]; limit?: number },
 ) {
   const hasCompany = Boolean(opts?.companyId);
   const hasUsers = Boolean(opts?.userIds?.length);
@@ -62,7 +80,17 @@ export async function listPushSubscriptionsForDelivery(
   let q = admin.from("push_subscriptions").select("endpoint, p256dh, auth, user_id");
   if (opts?.companyId) q = q.eq("company_id", opts.companyId);
   if (opts?.userIds?.length) q = q.in("user_id", opts.userIds);
-  const { data, error } = await q;
+  /*
+   * Sufit dobierany do WĘŻSZEGO z filtrów. Gdy znamy adresatów, próg wynika
+   * z ich liczby i nie da się go przekroczyć wzrostem firmy — a to on decyduje,
+   * czy powiadomienie w ogóle dojdzie. Ciche obcięcie oznacza tu kierowcę,
+   * któremu przydział zlecenia nie przyszedł na telefon, i nikogo, kto by to
+   * zgłosił: brak powiadomienia jest nieodróżnialny od braku zdarzenia.
+   */
+  const limit =
+    opts?.limit ??
+    (hasUsers ? (opts?.userIds?.length ?? 0) * PUSH_SUBS_PER_USER : PUSH_SUBS_COMPANY_LIMIT);
+  const { data, error } = await q.limit(limit);
   if (error) throw error;
   return (data ?? []) as StoredPushSubscription[];
 }

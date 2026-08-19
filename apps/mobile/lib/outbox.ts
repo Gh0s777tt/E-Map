@@ -8,7 +8,18 @@ import {
   insertTripEvent,
   upsertMessage,
 } from "@e-logistic/api";
-import { type FuelLogInput, newId, type TripEventInput } from "@e-logistic/core";
+import {
+  type AsyncOutboxStorage,
+  type OutboxItem as CoreOutboxItem,
+  createAsyncOutboxQueue,
+  createOutboxSync,
+  type FuelLogInput,
+  isOutboxItemForeign,
+  newOutboxItem,
+  type OutboxSendResult,
+  type TripEventInput,
+  withOccurredAt,
+} from "@e-logistic/core";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyChat } from "./chatNotify";
 import { getSupabase, supabaseConfigured } from "./supabase";
@@ -18,23 +29,13 @@ import { getSupabase, supabaseConfigured } from "./supabase";
  * Zapis trafia najpierw lokalnie (status `queued`), potem best-effort sync do
  * Supabase. Obsługuje formularze: paliwo, AdBlue, Trip, checklisty, wydatki
  * oraz wiadomości czatu (#368). Fundament pod PowerSync.
+ *
+ * Kształt kolejki, kolejność, deduplikacja, mutex read-modify-write (#audyt Ś4),
+ * dedup synchronizacji i przycinanie mieszkają w `@e-logistic/core/outbox` —
+ * wspólnie z webem, bo dwie kopie tej samej logiki już raz się rozjechały.
+ * Tutaj zostaje adapter `AsyncStorage`, stempel właściciela wpisu i wysyłka.
  */
 const KEY = "el-outbox";
-
-/**
- * [#373] Dopina datę zdarzenia z momentu ZAKOLEJKOWANIA, nie synchronizacji.
- *
- * To jest sedno błędu, który naprawiamy: kolejka od zawsze trzymała `createdAt`
- * lokalnie, ale nigdy go nie wysyłała. Tankowanie wpisane w terenie bez zasięgu
- * i zsynchronizowane trzy dni później dostawało w bazie datę synchronizacji,
- * więc wpadało do złego miesiąca i cicho psuło zestawienie.
- *
- * Jawnie podana data z formularza ma pierwszeństwo — użytkownik mógł wpisać
- * tankowanie sprzed tygodnia.
- */
-function withOccurredAt<T extends { occurredAt?: string }>(input: T, queuedAt: string): T {
-  return input.occurredAt ? input : { ...input, occurredAt: queuedAt };
-}
 
 export type OutboxKind = "fuel" | "adblue" | "trip" | "checklist" | "expense" | "chat";
 
@@ -65,29 +66,21 @@ export type OutboxInput =
   | DriverExpenseInput
   | ChatOutboxInput;
 
-export interface OutboxItem {
-  id: string;
-  kind: OutboxKind;
-  input: OutboxInput;
-  status: "queued" | "synced" | "error";
-  createdAt: string;
-  error?: string;
-  /**
-   * #per-user (współdzielony telefon): auth.uid właściciela wpisu, stemplowany
-   * przy `enqueue`. Chroni przed zsynchronizowaniem wpisu kierowcy A pod kontem
-   * kierowcy B (patrz `syncItem`). `null`/undefined = zakolejkowane bez sesji
-   * (głęboki offline) — „niczyje", claimuje pierwszy zalogowany.
-   */
-  userId?: string | null;
-}
+export type OutboxItem = CoreOutboxItem<OutboxKind, OutboxInput>;
 
-async function read(): Promise<OutboxItem[]> {
-  try {
-    return JSON.parse((await AsyncStorage.getItem(KEY)) ?? "[]") as OutboxItem[];
-  } catch {
-    return [];
-  }
-}
+/**
+ * Adapter bez własnego try/catch — strażnik odczytu siedzi w rdzeniu
+ * (`createAsyncOutboxQueue`), bo dotyczy tak samo `localStorage` w webie.
+ * Odrzucone `getItem` (pełny dysk, uszkodzony SQLite, androidowe „Row too big to fit
+ * into CursorWindow") kończy się tam pustą kolejką zamiast wyjątku — inaczej
+ * `listOutbox()`/`pendingCount()` odrzucałyby aż do ekranów, a `flushQueued().then(refresh)`
+ * byłoby nieobsłużonym odrzuceniem obietnicy. ZAPIS celowo zostaje nagi: nieudanego
+ * zapisu nie wolno przemilczeć, bo wtedy wpis kierowcy naprawdę przepada.
+ */
+const storage: AsyncOutboxStorage = {
+  read: () => AsyncStorage.getItem(KEY),
+  write: (value) => AsyncStorage.setItem(KEY, value),
+};
 
 // #294: nasłuch zmian outboxu (globalny pasek "czeka na wysyłkę" nad tab barem).
 const listeners = new Set<() => void>();
@@ -100,62 +93,27 @@ export function subscribeOutbox(fn: () => void): () => void {
   };
 }
 
-/** Liczba wpisów, które nie dotarły jeszcze do Supabase (queued + error). */
-export async function pendingCount(): Promise<number> {
-  return (await read()).filter((i) => i.status !== "synced").length;
-}
-
-async function write(items: OutboxItem[]): Promise<void> {
-  await AsyncStorage.setItem(KEY, JSON.stringify(items));
+/**
+ * Kolejka z mutexem: między odczytem a zapisem `AsyncStorage` jest await, więc
+ * i miejsce na przeplot. Bez zamka dwie synchronizacje naraz nadpisywały świeży
+ * `synced` starą kopią, a przy kolejnym flushu wpis leciał do bazy PONOWNIE
+ * (#audyt Ś4). Szczegóły w rdzeniu.
+ */
+const queue = createAsyncOutboxQueue<OutboxItem>(storage, () => {
   for (const fn of listeners) fn();
+});
+
+/** Liczba wpisów, które nie dotarły jeszcze do Supabase (queued + error). */
+export function pendingCount(): Promise<number> {
+  return queue.pending();
 }
 
-// #audyt Ś4: wyścig read-modify-write. Wcześniej trySync czytał CAŁĄ tablicę,
-// mutował jeden wpis i zapisywał ją w całości — z awaitami pomiędzy. Dwa
-// przeploty (np. tłowy sync z enqueue + flushQueued z ekranu) nadpisywały świeży
-// `synced` nieaktualną kopią: A→synced, potem B zapisuje starą tablicę z A=queued
-// → przy kolejnym flushu A wstawiany PONOWNIE (duplikat) lub ginął status error.
-// Naprawa: (a) każdy zapis tablicy idzie przez `withOutboxLock` (łańcuch obietnic
-// serializuje read-modify-write); (b) status pojedynczego wpisu zmienia atomowo
-// `patchItem` (re-czyta świeżą tablicę i podmienia TYLKO ten wpis); (c) sieciowa
-// synchronizacja danego id jest deduplikowana przez `inFlight` — ten sam wpis nie
-// poleci równolegle (brak podwójnego insertu), a równolegli wołający dzielą jedną
-// obietnicę i czekają na jej wynik.
-let writeChain: Promise<unknown> = Promise.resolve();
-function withOutboxLock<T>(fn: () => Promise<T>): Promise<T> {
-  const run = writeChain.then(fn, fn);
-  // Ogniwo łańcucha nigdy nie odrzuca — inaczej kolejna operacja by przepadła.
-  writeChain = run.then(
-    () => {},
-    () => {},
-  );
-  return run;
+export function listOutbox(kind?: OutboxKind): Promise<OutboxItem[]> {
+  return queue.list(kind);
 }
 
-/** Synchronizacje w toku (id → obietnica) — dedup i wspólne oczekiwanie. */
-const inFlight = new Map<string, Promise<void>>();
-
-/** Atomowa podmiana statusu/błędu jednego wpisu (read-merge-write pod mutexem). */
-async function patchItem(id: string, status: OutboxItem["status"], error?: string): Promise<void> {
-  await withOutboxLock(async () => {
-    const items = await read();
-    const current = items.find((i) => i.id === id);
-    if (!current) return; // usunięty w międzyczasie — nie wskrzeszamy
-    current.status = status;
-    current.error = error;
-    await write(items);
-  });
-}
-
-export async function listOutbox(kind?: OutboxKind): Promise<OutboxItem[]> {
-  const all = await read();
-  return kind ? all.filter((i) => i.kind === kind) : all;
-}
-
-export async function removeOutbox(itemId: string): Promise<void> {
-  await withOutboxLock(async () => {
-    await write((await read()).filter((i) => i.id !== itemId));
-  });
+export function removeOutbox(itemId: string): Promise<void> {
+  return queue.remove(itemId);
 }
 
 /**
@@ -165,7 +123,7 @@ export async function removeOutbox(itemId: string): Promise<void> {
  * (regres #354). Dodatkowo ograniczamy czekanie krótkim wyścigiem, bo przy
  * wygasłym tokenie offline `getSession` mógłby próbować cichego refreshu.
  * `null` → brak sesji: wpis zostaje „niczyj" i zsynchronizuje się pod pierwszym
- * zalogowanym (backfill w `syncItem`), nie tracąc danych.
+ * zalogowanym (backfill w `send`), nie tracąc danych.
  */
 async function currentUserId(): Promise<string | null> {
   if (!supabaseConfigured) return null;
@@ -189,16 +147,11 @@ export async function enqueue(
   createdAt: string,
 ): Promise<OutboxItem> {
   // #per-user: stempel właściciela z lokalnej sesji (offline-safe, patrz helper).
-  const userId = await currentUserId();
-  const item: OutboxItem = { id: newId(), kind, input, status: "queued", createdAt, userId };
-  await withOutboxLock(async () => {
-    const items = await read();
-    items.unshift(item);
-    await write(items);
-  });
+  const item = newOutboxItem(kind, input, createdAt, await currentUserId());
+  await queue.add(item);
   // #354: zapis do outboxu jest LOKALNY i natychmiastowy — synchronizację z serwerem
   // odpalamy w tle (fire-and-forget). Wcześniej `await trySync` blokował powrót z
-  // enqueue, a że `trySync` woła `sb.auth.getUser()`/`getActiveMembership()` BEZ
+  // enqueue, a że wysyłka woła `sb.auth.getUser()`/`getActiveMembership()` BEZ
   // timeoutu, na wolnej/zerwanej sieci wisiał w nieskończoność — przez co przycisk
   // „Zapisz" zostawał w stanie `busy` (disabled) i każde kolejne tapnięcie ginęło na
   // `if (busy) return`, co user widział jako „nic się nie dzieje / nie da się zapisać".
@@ -207,113 +160,92 @@ export async function enqueue(
 }
 
 /**
+ * Wysyłka jednego wpisu. `"skipped"` zostawia wpis w kolejce BEZ oznaczania
+ * błędu — tak wychodzą wpisy, których nie wolno wysłać pod bieżącym kontem.
+ */
+async function send(item: OutboxItem): Promise<OutboxSendResult> {
+  if (!supabaseConfigured) throw new Error("Brak konfiguracji Supabase.");
+  const sb = getSupabase();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) throw new Error("Brak sesji — wpis czeka w kolejce.");
+
+  // #per-user (współdzielony telefon): wpis kierowcy A NIE MOŻE trafić na konto
+  // kierowcy B. Ma właściciela (userId) i to NIE bieżący user → pomiń: zostaw w
+  // kolejce BEZ oznaczania błędu, zsynchronizuje się gdy zaloguje się właściciel.
+  // Wpisy `userId==null` (zakolejkowane bez sesji) NIE mają znanego właściciela —
+  // przechodzą dalej i synchronizują się pod bieżącym userem (insert i tak stempluje
+  // jego auth.uid jako driver_id), więc claimuje je pierwszy zalogowany. Nie tracimy danych.
+  if (isOutboxItemForeign(item, user.id)) return "skipped";
+
+  const membership = await getActiveMembership(sb);
+  if (!membership) throw new Error("Brak firmy — wpis czeka w kolejce.");
+  const ctx = { id: item.id, companyId: membership.companyId, driverId: user.id };
+
+  if (item.kind === "chat") {
+    // #368: wiadomość czatu. `item.id` = `messages.id` → retry nie duplikuje.
+    // Firma musi się zgadzać z bieżącym członkostwem (współdzielony telefon):
+    // inaczej zostawiamy w kolejce, zamiast wysłać treść do obcej firmy.
+    const chat = item.input as ChatOutboxInput;
+    if (chat.companyId !== membership.companyId) return "skipped";
+    // Wpis BEZ właściciela (zakolejkowany bez sesji) jest wyżej „claimowany" przez
+    // pierwszego zalogowanego — dla paliwa/Tripa to świadomy backfill własnych danych.
+    // Dla czatu to niedopuszczalne: wiadomość napisana przez kierowcę A wyszłaby
+    // w firmowym czacie jako wypowiedź kierowcy B (sender_id = jego auth.uid).
+    // Wypowiedź musi mieć jednoznacznego autora, więc czekamy na właściciela.
+    if (item.userId == null) return "skipped";
+    const sent = await upsertMessage(sb, {
+      id: item.id,
+      companyId: chat.companyId,
+      threadId: chat.threadId,
+      body: chat.body,
+      senderLabel: chat.senderLabel,
+      photoPath: chat.photoPath ?? null,
+      replyToId: chat.replyToId ?? null,
+    });
+    // Push do odbiorców tylko przy realnym wstawieniu (null = już było, retry).
+    if (sent) notifyChat(chat.threadId, chat.body, chat.companyId);
+  } else if (item.kind === "expense") {
+    // #291: wydatek dodany offline — companyId dopinamy przy synchronizacji.
+    // [#391] `item.id` przekazany jawnie: bez niego utrata ODPOWIEDZI (żądanie
+    // doszło, potwierdzenie nie) kończyła się drugim wydatkiem przy retry.
+    await insertDriverExpense(
+      sb,
+      { ...(item.input as DriverExpenseInput), companyId: membership.companyId },
+      item.id,
+    );
+  } else if (item.kind === "checklist") {
+    // #273: checklisty — trigger w bazie dopina driver_id po auth.uid().
+    // [#391] `item.id` jak wyżej — inaczej powtórka to druga kontrola pojazdu.
+    await insertChecklistSubmission(
+      sb,
+      membership.companyId,
+      item.input as ChecklistSubmissionInput,
+      item.id,
+    );
+  } else if (item.kind === "trip") {
+    await insertTripEvent(sb, withOccurredAt(item.input as TripEventInput, item.createdAt), ctx);
+  } else {
+    await insertFuelLog(
+      sb,
+      withOccurredAt(item.input as FuelLogInput, item.createdAt),
+      ctx,
+      item.kind === "adblue" ? "adblue_logs" : "fuel_logs",
+    );
+  }
+  return "synced";
+}
+
+const outboxSync = createOutboxSync<OutboxItem>({ queue, send });
+
+/**
  * Best-effort synchronizacja jednego wpisu: wymaga konfiguracji + sesji.
  * Deduplikowana — równoległe wywołania dla tego samego id dzielą jedną obietnicę
- * (bez podwójnego insertu), a status trafia do storage atomowo przez `patchItem`.
+ * (bez podwójnego insertu), a status trafia do storage atomowo.
  */
 export function trySync(itemId: string): Promise<void> {
-  const existing = inFlight.get(itemId);
-  if (existing) return existing;
-  // Rejestracja jest SYNCHRONICZNA (żaden await między get a set) — dwa równoległe
-  // trySync tego samego id nie mogą wystartować dwóch synchronizacji.
-  const run = syncItem(itemId).finally(() => inFlight.delete(itemId));
-  inFlight.set(itemId, run);
-  return run;
-}
-
-async function syncItem(itemId: string): Promise<void> {
-  const item = (await read()).find((i) => i.id === itemId);
-  if (!item || item.status === "synced") return;
-
-  try {
-    if (!supabaseConfigured) throw new Error("Brak konfiguracji Supabase.");
-    const sb = getSupabase();
-    const {
-      data: { user },
-    } = await sb.auth.getUser();
-    if (!user) throw new Error("Brak sesji — wpis czeka w kolejce.");
-
-    // #per-user (współdzielony telefon): wpis kierowcy A NIE MOŻE trafić na konto
-    // kierowcy B. Ma właściciela (userId) i to NIE bieżący user → pomiń: zostaw w
-    // kolejce BEZ oznaczania błędu (return omija patchItem, status bez zmian),
-    // zsynchronizuje się gdy zaloguje się właściciel. Wpisy `userId==null`
-    // (zakolejkowane bez sesji) NIE mają znanego właściciela — przechodzą dalej i
-    // synchronizują się pod bieżącym userem (insert i tak stemplem jest jego
-    // auth.uid jako driver_id), więc claimuje je pierwszy zalogowany. Nie tracimy danych.
-    if (item.userId && item.userId !== user.id) return;
-
-    const membership = await getActiveMembership(sb);
-    if (!membership) throw new Error("Brak firmy — wpis czeka w kolejce.");
-    const ctx = { id: item.id, companyId: membership.companyId, driverId: user.id };
-
-    if (item.kind === "chat") {
-      // #368: wiadomość czatu. `item.id` = `messages.id` → retry nie duplikuje.
-      // Firma musi się zgadzać z bieżącym członkostwem (współdzielony telefon):
-      // inaczej zostawiamy w kolejce, zamiast wysłać treść do obcej firmy.
-      const chat = item.input as ChatOutboxInput;
-      if (chat.companyId !== membership.companyId) return;
-      // Wpis BEZ właściciela (zakolejkowany bez sesji) jest wyżej „claimowany" przez
-      // pierwszego zalogowanego — dla paliwa/Tripa to świadomy backfill własnych danych.
-      // Dla czatu to niedopuszczalne: wiadomość napisana przez kierowcę A wyszłaby
-      // w firmowym czacie jako wypowiedź kierowcy B (sender_id = jego auth.uid).
-      // Wypowiedź musi mieć jednoznacznego autora, więc czekamy na właściciela.
-      if (item.userId == null) return;
-      const sent = await upsertMessage(sb, {
-        id: item.id,
-        companyId: chat.companyId,
-        threadId: chat.threadId,
-        body: chat.body,
-        senderLabel: chat.senderLabel,
-        photoPath: chat.photoPath ?? null,
-        replyToId: chat.replyToId ?? null,
-      });
-      // Push do odbiorców tylko przy realnym wstawieniu (null = już było, retry).
-      if (sent) notifyChat(chat.threadId, chat.body, chat.companyId);
-    } else if (item.kind === "expense") {
-      // #291: wydatek dodany offline — companyId dopinamy przy synchronizacji.
-      // [#391] `item.id` przekazany jawnie: bez niego utrata ODPOWIEDZI (żądanie
-      // doszło, potwierdzenie nie) kończyła się drugim wydatkiem przy retry.
-      await insertDriverExpense(
-        sb,
-        { ...(item.input as DriverExpenseInput), companyId: membership.companyId },
-        item.id,
-      );
-    } else if (item.kind === "checklist") {
-      // #273: checklisty — trigger w bazie dopina driver_id po auth.uid().
-      // [#391] `item.id` jak wyżej — inaczej powtórka to druga kontrola pojazdu.
-      await insertChecklistSubmission(
-        sb,
-        membership.companyId,
-        item.input as ChecklistSubmissionInput,
-        item.id,
-      );
-    } else if (item.kind === "trip") {
-      await insertTripEvent(sb, withOccurredAt(item.input as TripEventInput, item.createdAt), ctx);
-    } else {
-      await insertFuelLog(
-        sb,
-        withOccurredAt(item.input as FuelLogInput, item.createdAt),
-        ctx,
-        item.kind === "adblue" ? "adblue_logs" : "fuel_logs",
-      );
-    }
-    item.status = "synced";
-    item.error = undefined;
-  } catch (e) {
-    item.status = "error";
-    item.error = errorMessage(e);
-  }
-  // Zapis statusu re-czyta świeżą tablicę i podmienia tylko ten wpis (patrz Ś4).
-  await patchItem(item.id, item.status, item.error);
-}
-
-/** Próba zsynchronizowania wszystkich niewysłanych wpisów (np. po odzyskaniu sieci). */
-export async function flushQueued(): Promise<void> {
-  const items = await read();
-  for (const it of items) {
-    if (it.status !== "synced") await trySync(it.id);
-  }
-  await pruneSyncedChat();
+  return outboxSync.sync(itemId);
 }
 
 /**
@@ -325,23 +257,8 @@ export async function flushQueued(): Promise<void> {
  */
 const CHAT_KEEP_MS = 5 * 60 * 1000;
 
-async function pruneSyncedChat(): Promise<void> {
-  const cutoff = Date.now() - CHAT_KEEP_MS;
-  await withOutboxLock(async () => {
-    const items = await read();
-    const kept = items.filter(
-      (i) =>
-        !(i.kind === "chat" && i.status === "synced" && new Date(i.createdAt).getTime() < cutoff),
-    );
-    if (kept.length !== items.length) await write(kept);
-  });
-}
-
-function errorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === "object") {
-    const o = e as { message?: string; details?: string; hint?: string; code?: string };
-    return o.message || o.details || o.hint || o.code || "Błąd synchronizacji";
-  }
-  return "Błąd synchronizacji";
+/** Próba zsynchronizowania wszystkich niewysłanych wpisów (np. po odzyskaniu sieci). */
+export async function flushQueued(): Promise<void> {
+  await outboxSync.flush();
+  await queue.prune({ kinds: ["chat"], keepMs: CHAT_KEEP_MS });
 }

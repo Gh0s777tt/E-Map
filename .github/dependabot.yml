@@ -1,4 +1,10 @@
 version: 2
+# Został wyłącznie ekosystem `npm`, bo tylko jego manifesty faktycznie w tym repo są:
+# `package.json` + `pnpm-lock.yaml` (workspace pnpm). Wpis `github-actions` usunięto —
+# katalog `.github/workflows/` nie istnieje i nie powstanie: CI stoi na GitLabie
+# (patrz nagłówek `.gitlab-ci.yml`: „źródło prawdy; GitHub = mirror, Actions OFF”),
+# więc Dependabot nie miał tam ani jednego pliku workflow do podbicia — deklaracja
+# wisiała martwa i sugerowała, że pilnujemy wersji akcji, których nie używamy.
 updates:
   - package-ecosystem: npm
     directory: "/"
@@ -7,10 +13,3 @@ updates:
     open-pull-requests-limit: 10
     commit-message:
       prefix: "deps"
-
-  - package-ecosystem: github-actions
-    directory: "/"
-    schedule:
-      interval: weekly
-    commit-message:
-      prefix: "ci"

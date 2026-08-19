@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.244.0 · #406 · 2026-08-11 -->
+<!-- SYNC: po v1.245.0 · #413 · 2026-08-19 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -138,11 +138,18 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 ## 🟡 P3 — Bezpieczeństwo (hardening; brak P0/P1)
 - [x] **Mobile**: sesja szyfrowana (#251) — klucz AES-256 w `expo-secure-store`, szyfrogram w AsyncStorage (`apps/mobile/lib/secureSession.ts`), migracja legacy bez wylogowania.
 - [ ] Potwierdzić **rotację sekretów**, które trafiły kiedyś do historii czatu (Upstash, `sbp_` Supabase).
+      **Runbook gotowy: [SECRET-ROTATION.md](SECRET-ROTATION.md)** — rotacji nie da się zrobić z repo
+      (wymaga zalogowania do Supabase i Upstash), więc pozycja zostaje otwarta do czasu wykonania
+      jej przez właściciela i odhaczenia checklisty na końcu runbooka. Token `sbp_` jest zarządczy —
+      daje pełną kontrolę nad projektem Supabase, więc to najpoważniejsze z otwartych ryzyk.
 
 ## 🟢 P4 — Infra / docelowy stack
 - [ ] **`docs:check`** w CI (dodane w #195) — utrzymać zielone przy zmianach.
 - [ ] **`supabase/config.toml`** — dla powtarzalnego dev/CI (wymaga Dockera; opcjonalne).
-- [ ] Rozważyć **Sentry** (obserwowalność), **PowerSync** (jeśli outbox okaże się niewystarczający), **shadcn/ui**.
+- [x] ~~Rozważyć **Sentry** (obserwowalność)~~ — dostarczone (#306): web (`instrumentation.ts`, `instrumentation-client.ts`, `global-error.tsx`, crony, degradacja rate-limitu) + mobile (`_layout.tsx`, `ErrorBoundary`). Bez DSN no-op, więc dev i buildy bez sekretów nie płacą za obserwowalność.
+- [~] **PowerSync** — fala 1 dostarczona (#311): `apps/mobile/lib/powersync.ts`, **tylko odczyt**, natywny moduł ładowany leniwie (statyczny import wywracał iOS), bez `EXPO_PUBLIC_POWERSYNC_URL` no-op. Fala 2 (zapisy zamiast outboxu) — otwarta; dopóki obie ścieżki zapisu istnieją równolegle, outbox zostaje źródłem prawdy.
+- [~] **TanStack Query** — fala 1 dostarczona (#310): `QueryProvider` nad panelem `(app)`. Przepinanie kolejnych ekranów idzie falami, bo każda lista ma inny kształt zapytań i inne warunki unieważniania.
+- [ ] **shadcn/ui** — nadal nie ma (zero zależności w `apps/*`/`packages/*`, brak `components.json`). Dziś własne prymitywy w `packages/ui` + komponenty w apkach.
 
 ## 🔵 P5 — Produkt / rozwój (szerzej w raporcie audytu)
 - [x] ~~**KSeF fala 1** — XML FA(3) z faktury (przycisk „⬇️ XML KSeF")~~ (#326)

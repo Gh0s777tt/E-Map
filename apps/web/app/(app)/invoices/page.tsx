@@ -25,6 +25,7 @@ import {
   vatSummary,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { ListStatus } from "@/components/ListStatus";
@@ -33,6 +34,7 @@ import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
+import { queryKeyPrefixes } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 /**
@@ -49,6 +51,7 @@ export default function InvoicesPage() {
   const t = useT();
   const confirm = useConfirm();
   const toast = useToast();
+  const qc = useQueryClient();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -328,6 +331,13 @@ export default function InvoicesPage() {
         taxId: buyerTaxId,
         address: buyerAddress,
       }).catch(() => {});
+      /*
+       * `/kontrahenci` czyta rejestr z cache TanStack Query, a ten ekran do niego pisze.
+       * Bez unieważnienia nabywca dopisany przy fakturze nie widniał tam przez `staleTime`,
+       * więc dyspozytor zakładał go po raz drugi ręcznie — a `upsertContractor` przy
+       * różnicy w NIP/adresie tworzy wtedy osobny wpis i rejestr zostaje z duplikatem.
+       */
+      void qc.invalidateQueries({ queryKey: queryKeyPrefixes.contractors() });
       setShowNew(false);
       setBuyerName("");
       setBuyerTaxId("");

@@ -68,22 +68,33 @@ function memLimit(key: string, limit = 30, windowMs = 60_000): boolean {
   return hits.length <= limit;
 }
 
+/** Komunikaty degradacji — stałe, bo służą też za klucz „raz na proces" i za kryterium odbioru. */
+export const RATE_LIMIT_DEGRADACJA = {
+  brakKonfiguracji:
+    "Rate-limit: brak konfiguracji Upstash na produkcji — działa wyłącznie fallback in-memory.",
+  bladUpstash:
+    "Rate-limit: wywołanie Upstash zakończone błędem — działa fallback in-memory (zły token/URL albo awaria usługi).",
+} as const;
+
 /**
- * #368: sygnał o braku konfiguracji Upstash na produkcji — wysyłany RAZ na proces
- * (inaczej zalałby Sentry przy każdym żądaniu). Repo nie loguje do konsoli, więc
- * jedynym kanałem jest obserwowalność wpięta w #306.
+ * Sygnał degradacji rate-limitu — wysyłany RAZ NA PROCES dla każdej przyczyny osobno
+ * (inaczej zalałby Sentry przy każdym żądaniu). Repo nie loguje do konsoli, więc jedynym
+ * kanałem jest obserwowalność wpięta w #306.
+ *
+ * Raportujemy OBIE przyczyny, nie tylko brak zmiennych. Fallback in-memory ma dokładnie ten
+ * sam próg co Upstash (30/60 s), więc z zewnątrz degradacja jest NIEWIDOCZNA: żądanie 31.
+ * dostaje 429 tak samo przy działającym limiterze, jak przy zepsutym tokenie. Dopóki gałąź
+ * `catch` milczała, literówka w tokenie przy rotacji nie zostawiała ŻADNEGO śladu, a runbook
+ * uczył operatora, że brak alertu = sukces — przy N instancjach Vercela realny limit robił się
+ * N×30/60 s, w tym na anty-brute-force logowania passkey. Celowo bez treści błędu: to jedyne
+ * miejsce, w którym mogłaby wyciec wartość poświadczenia.
  */
-let missingLimiterReported = false;
-function reportMissingLimiter(): void {
-  if (missingLimiterReported) return;
-  missingLimiterReported = true;
+const zgloszoneDegradacje = new Set<string>();
+function reportDegradation(message: string): void {
+  if (zgloszoneDegradacje.has(message)) return;
+  zgloszoneDegradacje.add(message);
   import("@sentry/nextjs")
-    .then((Sentry) =>
-      Sentry.captureMessage(
-        "Rate-limit: brak konfiguracji Upstash na produkcji — działa wyłącznie fallback in-memory.",
-        "warning",
-      ),
-    )
+    .then((Sentry) => Sentry.captureMessage(message, "warning"))
     .catch(() => {
       // brak Sentry (np. bez DSN) — degradacja i tak zadziałała, nie przerywamy żądania
     });
@@ -104,7 +115,7 @@ export async function rateLimit(req: Request, action: string): Promise<{ ok: boo
     // bez żadnego sygnału. Na produkcji degradujemy do fallbacku in-memory (jak przy
     // awarii Upstash) i raportujemy to raz do Sentry; lokalnie/dev zostaje bez limitów.
     if (process.env.NODE_ENV === "production") {
-      reportMissingLimiter();
+      reportDegradation(RATE_LIMIT_DEGRADACJA.brakKonfiguracji);
       return { ok: memLimit(key) };
     }
     return { ok: true };
@@ -113,7 +124,10 @@ export async function rateLimit(req: Request, action: string): Promise<{ ok: boo
     const { success } = await limiter.limit(key);
     return { ok: success };
   } catch {
-    // Upstash niedostępny — zamiast fail-open dajemy fallback in-memory (proces-lokalny).
+    // Upstash niedostępny albo odrzucił poświadczenia — zamiast fail-open dajemy fallback
+    // in-memory (proces-lokalny) i MÓWIMY o tym, bo po samych odpowiedziach HTTP tej
+    // degradacji nie da się odróżnić od działającego limitera (ten sam próg 30/60 s).
+    reportDegradation(RATE_LIMIT_DEGRADACJA.bladUpstash);
     return { ok: memLimit(key) };
   }
 }

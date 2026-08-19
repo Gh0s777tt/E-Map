@@ -24,11 +24,19 @@ export interface ChecklistSubmission {
   created_at: string;
 }
 
+/**
+ * Szablony pisze się ręcznie i używa wielokrotnie — firma ma ich kilka
+ * (wyjazd, powrót, ADR, zima), a nie kilkaset. Wysoki sufit niczego by tu nie
+ * uratował, bo każdy szablon niesie ze sobą pełną listę pozycji w `items`,
+ * więc koszt zapytania rośnie z ZAWARTOŚCIĄ wierszy, nie z ich liczbą.
+ */
+const CHECKLIST_TEMPLATES_DEFAULT_LIMIT = 200;
+
 /** Szablony firmy (aktywne pierwsze). RLS: każdy członek czyta. */
 export async function listChecklistTemplates(
   client: SupabaseClient,
   companyId: string,
-  opts: { activeOnly?: boolean } = {},
+  opts: { activeOnly?: boolean; limit?: number } = {},
 ): Promise<ChecklistTemplate[]> {
   let q = client
     .from("checklist_templates")
@@ -36,6 +44,7 @@ export async function listChecklistTemplates(
     .eq("company_id", companyId)
     .order("name");
   if (opts.activeOnly) q = q.eq("active", true);
+  q = q.limit(opts.limit ?? CHECKLIST_TEMPLATES_DEFAULT_LIMIT);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((r) => ({

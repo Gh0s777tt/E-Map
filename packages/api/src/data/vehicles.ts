@@ -2,25 +2,53 @@
 import type { VehicleInput } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
-export async function listVehicles(client: SupabaseClient, companyId: string) {
+/**
+ * Sufit pobrania kartoteki pojazdów.
+ *
+ * Brak jawnego limitu nie oznaczał „bez ograniczeń" — oznaczał ograniczenie
+ * CUDZE i niewidoczne: PostgREST ucina odpowiedź na własnym progu, bez błędu
+ * i bez śladu w kodzie. Przy flocie rzędu kilkudziesięciu aut nikt tego nie
+ * zauważał; u pierwszego większego klienta z listy po prostu zniknęłaby część
+ * pojazdów, a ekran nadal wyglądałby na kompletny. Jawna liczba nie znosi
+ * granicy, tylko przenosi ją tam, gdzie widać ją przy czytaniu kodu i gdzie
+ * wywołujący może ją świadomie podnieść.
+ *
+ * 1000 jest wyraźnie powyżej realnej floty jednego przewoźnika (nawet duzi
+ * w PL liczą ciągniki w setkach), więc to próg absurdu, a nie próg pracy.
+ */
+const VEHICLES_DEFAULT_LIMIT = 1000;
+
+export async function listVehicles(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { limit?: number },
+) {
   const { data, error } = await client
     .from("vehicles")
     // select("*") zamiast listy kolumn: schema-safe udostępnia nowe kolumny (naczepa #250) —
     // przed migracją 0055 ich brak nie wywala zapytania, po niej dochodzą automatycznie.
     .select("*")
     .eq("company_id", companyId)
-    .order("registration");
+    .order("registration")
+    .limit(opts?.limit ?? VEHICLES_DEFAULT_LIMIT);
   if (error) throw error;
   return data ?? [];
 }
 
 /** Pojazdy z datami ważności (przegląd/OC/leasing) — do przypomnień. */
-export async function listVehiclesExpiry(client: SupabaseClient, companyId: string) {
+export async function listVehiclesExpiry(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { limit?: number },
+) {
   const { data, error } = await client
     .from("vehicles")
     .select("id, registration, inspection_expiry, insurance_expiry, leasing_end, license_expiry")
     .eq("company_id", companyId)
-    .order("registration");
+    .order("registration")
+    // Ten sam zbiór co w `listVehicles`, więc ten sam sufit — rozjazd oznaczałby,
+    // że przypomnienia o przeglądach milczą dla aut widocznych na liście floty.
+    .limit(opts?.limit ?? VEHICLES_DEFAULT_LIMIT);
   if (error) throw error;
   return data ?? [];
 }

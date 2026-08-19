@@ -15,11 +15,13 @@ import {
 import { computeDriverGamification } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 interface Score {
@@ -51,27 +53,32 @@ function stars(n: number): string {
 
 export default function ScoringPage() {
   const t = useT();
-  const [rows, setRows] = useState<Score[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const rankLabel = (r: string) => {
     const key = RANK_LABEL[r];
     return key ? t(key) : r;
   };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  // #310 (fala 2): ranking przez TanStack Query. To najdroższy odczyt w panelu —
+  // trzy zapytania (do 2000 zleceń i 1000 checklist z 90 dni) plus przeliczenie
+  // gamifikacji; bez cache płaci się je od nowa przy każdym wejściu na zakładkę.
+  const membership = useQuery({
+    queryKey: queryKeys.membership(),
+    queryFn: () => getCachedMembership(getBrowserSupabase()),
+  });
+  const companyId = membership.data?.companyId ?? null;
+
+  const scoringQuery = useQuery({
+    queryKey: queryKeys.driverScoring(companyId),
+    queryFn: async (): Promise<Score[]> => {
       const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) throw new Error(t("scoring.noCompany"));
+      // Brak firmy to tutaj błąd, nie pusta lista — rankingu nie ma z czego policzyć.
+      if (!companyId) throw new Error(t("scoring.noCompany"));
       const from = new Date(Date.now() - 90 * 86_400_000).toISOString();
       const [members, orders, subs] = await Promise.all([
         listCompanyMembers(sb),
-        listOrders(sb, m.companyId, { from, limit: 2000 }),
-        listChecklistSubmissions(sb, m.companyId, { limit: 1000 }),
+        listOrders(sb, companyId, { from, limit: 2000 }),
+        listChecklistSubmissions(sb, companyId, { limit: 1000 }),
       ]);
 
       const drivers = (members as CompanyMember[]).filter((x) => x.role === "driver");
@@ -130,16 +137,18 @@ export default function ScoringPage() {
       });
 
       scored.sort((a, b) => b.points - a.points || b.stars - a.stars);
-      setRows(scored);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("scoring.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-  useEffect(() => {
-    load();
-  }, [load]);
+      return scored;
+    },
+    enabled: !membership.isPending,
+  });
+  const rows = scoringQuery.data ?? [];
+  const loading = membership.isPending || scoringQuery.isPending;
+  const error = queryErrorMessage(membership.error ?? scoringQuery.error, t("scoring.loadError"));
+  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy oba zapytania. */
+  const retry = () => {
+    void membership.refetch();
+    void scoringQuery.refetch();
+  };
 
   return (
     <div>
@@ -150,7 +159,7 @@ export default function ScoringPage() {
         error={error}
         empty={!loading && rows.length === 0}
         emptyText={t("scoring.empty")}
-        onRetry={load}
+        onRetry={retry}
       />
 
       {rows.length > 0 && (

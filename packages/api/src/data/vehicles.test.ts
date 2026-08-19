@@ -12,7 +12,8 @@
  */
 import { vehicleSchema } from "@e-logistic/core";
 import { describe, expect, it } from "vitest";
-import { vehicleToPatch, vehicleToRow } from "./vehicles";
+import { mockSupabase } from "../test-utils";
+import { listVehicles, listVehiclesExpiry, vehicleToPatch, vehicleToRow } from "./vehicles";
 
 /** Minimum, które `vehicleSchema` uznaje za poprawny pojazd. */
 const MINIMUM = {
@@ -126,5 +127,31 @@ describe("vehicleToRow — wstawianie nowego pojazdu bez zmian", () => {
     // nie ma poprzedniej wartości, którą można by zachować.
     expect(row.height_cm).toBeNull();
     expect(row.adr_tunnel_code).toBeNull();
+  });
+});
+
+describe("sufit pobrania kartoteki", () => {
+  it("obie listy floty nakładają TEN SAM domyślny limit", async () => {
+    /*
+     * Rozjazd między tymi dwiema funkcjami byłby groźniejszy niż sam brak
+     * limitu: ekran floty pokazywałby auto, o którego przeglądzie moduł
+     * przypomnień nic by nie wiedział — i nikt nie miałby jak tego powiązać.
+     */
+    const lista = mockSupabase({ data: [], error: null });
+    await listVehicles(lista.client, "c1");
+    const terminy = mockSupabase({ data: [], error: null });
+    await listVehiclesExpiry(terminy.client, "c1");
+    expect(terminy.argsOf("limit")?.[0]).toBe(lista.argsOf("limit")?.[0]);
+    expect(lista.argsOf("limit")?.[0]).toBe(1000);
+  });
+
+  it("opts.limit nadpisuje domyślny w obu", async () => {
+    const lista = mockSupabase({ data: [], error: null });
+    await listVehicles(lista.client, "c1", { limit: 5 });
+    expect(lista.argsOf("limit")?.[0]).toBe(5);
+
+    const terminy = mockSupabase({ data: [], error: null });
+    await listVehiclesExpiry(terminy.client, "c1", { limit: 5 });
+    expect(terminy.argsOf("limit")?.[0]).toBe(5);
   });
 });

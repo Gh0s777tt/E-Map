@@ -16,3 +16,15 @@ describe("listContractors (kształt zapytania)", () => {
     await expect(listContractors(client, "c")).rejects.toThrow("RLS");
   });
 });
+
+describe("listContractors — sufit pobrania", () => {
+  it("nakłada domyślny limit i pozwala go nadpisać", async () => {
+    const domyslne = mockSupabase({ data: [], error: null });
+    await listContractors(domyslne.client, "c1");
+    expect(domyslne.argsOf("limit")?.[0]).toBe(2000);
+
+    const wlasne = mockSupabase({ data: [], error: null });
+    await listContractors(wlasne.client, "c1", { limit: 25 });
+    expect(wlasne.argsOf("limit")?.[0]).toBe(25);
+  });
+});

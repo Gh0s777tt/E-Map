@@ -32,15 +32,33 @@ export interface UploadDocumentInput {
 const COLS =
   "id, vehicle_id, name, path, size_bytes, mime, category, expiry_date, uploaded_by, created_at, visibility, allowed_user_ids";
 
+/**
+ * Sejf dokumentów. Świadomie BEZ domyślnego sufitu.
+ *
+ * Ta lista nie jest tylko listą: `components/AttentionPanel.tsx` przelatuje ją po
+ * `expiry_date` i z niej bierze ostrzeżenia o wygasających terminach. Obcięcie działałoby
+ * po `created_at`, a sprawdzenie po `expiry_date` — a te dwie daty w tej domenie prawie
+ * nie korelują. Wypis z licencji wspólnotowej (10 lat), świadectwo kierowcy (5 lat) czy
+ * umowa leasingu to skany wgrane dawno, z terminem daleko w przyszłości: przy flocie po
+ * kilku latach wypadałyby poza pierwszy tysiąc NAJNOWSZYCH wpisów i termin ustawowy
+ * mijałby po cichu, bo ani panel uwagi, ani ekran sejfu nie mają jak pokazać, że lista
+ * jest ucięta. Sufit wróci tu razem ze stronicowaniem albo z osobnym zapytaniem
+ * o wygasające dokumenty — nie wcześniej.
+ *
+ * `opts.limit` zostaje dla wywołującego, który chce podglądu (np. kilku ostatnich wpisów).
+ */
 export async function listDocuments(
   client: SupabaseClient,
   companyId: string,
+  opts?: { limit?: number },
 ): Promise<DocumentMeta[]> {
-  const { data, error } = await client
+  let query = client
     .from("documents")
     .select(COLS)
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
+  if (opts?.limit !== undefined) query = query.limit(opts.limit);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as DocumentMeta[];
 }

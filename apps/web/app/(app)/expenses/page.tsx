@@ -20,6 +20,8 @@ import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 export default function ExpensesPage() {
@@ -38,23 +40,37 @@ export default function ExpensesPage() {
 
   // #310: TanStack Query — cache + refetch zamiast ręcznych useState/useEffect.
   const membership = useQuery({
-    queryKey: ["membership"],
+    queryKey: queryKeys.membership(),
     queryFn: () => getCachedMembership(getBrowserSupabase()),
   });
   const manage = membership.data?.role === "owner" || membership.data?.role === "dispatcher";
+  // Fala 2: klucz listy niesie firmę. `listDriverExpenses` nie przyjmuje `companyId`
+  // (zasięg wierszy daje RLS), więc pod gołym kluczem wpis cache przeżyłby zmianę
+  // członkostwa i przez `staleTime` pokazywał zgłoszenia poprzedniej firmy.
+  const expensesKey = queryKeys.driverExpenses(membership.data?.companyId ?? null);
   const expensesQuery = useQuery({
-    queryKey: ["driver-expenses"],
+    queryKey: expensesKey,
     queryFn: () => listDriverExpenses(getBrowserSupabase(), { limit: 300 }),
+    // Dopiero po rozstrzygnięciu członkostwa — inaczej dane wylądowałyby pod kluczem `null`
+    // i zaraz potem trzeba by je pobrać drugi raz pod właściwym.
+    enabled: !membership.isPending,
   });
   const rows = expensesQuery.data ?? [];
-  const loading = expensesQuery.isPending;
-  const error = expensesQuery.error
-    ? (expensesQuery.error.message ?? t("expenses.loadError"))
-    : null;
-  const load = () => void expensesQuery.refetch();
+  const loading = membership.isPending || expensesQuery.isPending;
+  // Błąd odczytu członkostwa był tu dotąd POŁYKANY: `manage` schodziło cicho na false,
+  // więc właściciel dostawał listę bez przycisków Zatwierdź/Odrzuć i żadnego komunikatu —
+  // ekran wyglądał jak brak uprawnień, a był to błąd sieci. Łączymy oba błędy, jak
+  // pozostałe ekrany fali 2. `queryErrorMessage` zamiast `??`, bo `??` nie łapie pustego
+  // `message` (Error z pustym komunikatem dałby „⚠️ Błąd ładowania." bez zdania).
+  const error = queryErrorMessage(membership.error ?? expensesQuery.error, t("expenses.loadError"));
+  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy oba zapytania. */
+  const load = () => {
+    void membership.refetch();
+    void expensesQuery.refetch();
+  };
   /** Optymistyczna aktualizacja cache (ten sam kształt co dawne setRows). */
   const setRows = (up: (list: DriverExpense[]) => DriverExpense[]) =>
-    qc.setQueryData<DriverExpense[]>(["driver-expenses"], (old) => up(old ?? []));
+    qc.setQueryData<DriverExpense[]>(expensesKey, (old) => up(old ?? []));
 
   async function decide(row: DriverExpense, status: "approved" | "rejected") {
     const prev = row.status;

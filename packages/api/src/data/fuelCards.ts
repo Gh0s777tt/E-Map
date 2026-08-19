@@ -2,15 +2,33 @@
 import type { FuelCardInput } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
 
+/**
+ * Kart jest kilka na auto (osobna na paliwo, na myto, zapasowa) plus wygasłe,
+ * których nikt nie usuwa — więc zbiór jest wielokrotnością floty, a nie jej
+ * odpowiednikiem. Stąd sufit rzędu tysiąca przy flocie liczonej w setkach.
+ */
+const FUEL_CARDS_DEFAULT_LIMIT = 1000;
+
+/**
+ * Karty JEDNEGO auta. Osobny, niski sufit jest tu informacją: kilkadziesiąt
+ * kart przy jednym ciągniku to nie skala, tylko nieposprzątana kartoteka.
+ */
+const FUEL_CARDS_PER_VEHICLE_LIMIT = 50;
+
 /** Lista kart bez danych wrażliwych (PIN poza wynikiem — tylko przez `getFuelCardPin`). */
-export async function listFuelCardsSafe(client: SupabaseClient, companyId: string) {
+export async function listFuelCardsSafe(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { limit?: number },
+) {
   const { data, error } = await client
     .from("fuel_cards")
     .select(
       "id, provider, card_number_masked, valid_until, discount_percent, vehicle_id, vehicles(registration)",
     )
     .eq("company_id", companyId)
-    .order("provider");
+    .order("provider")
+    .limit(opts?.limit ?? FUEL_CARDS_DEFAULT_LIMIT);
   if (error) throw error;
   return data ?? [];
 }
@@ -27,12 +45,17 @@ export async function listFuelCardsForUser(client: SupabaseClient) {
 }
 
 /** Karty przypisane do danego pojazdu (do panelu pojazdu). */
-export async function listFuelCardsByVehicle(client: SupabaseClient, vehicleId: string) {
+export async function listFuelCardsByVehicle(
+  client: SupabaseClient,
+  vehicleId: string,
+  opts?: { limit?: number },
+) {
   const { data, error } = await client
     .from("fuel_cards")
     .select("id, provider, card_number_masked, valid_until, discount_percent")
     .eq("vehicle_id", vehicleId)
-    .order("provider");
+    .order("provider")
+    .limit(opts?.limit ?? FUEL_CARDS_PER_VEHICLE_LIMIT);
   if (error) throw error;
   return data ?? [];
 }

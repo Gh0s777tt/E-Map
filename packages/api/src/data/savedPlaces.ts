@@ -18,16 +18,25 @@ export interface SavedPlaceInput {
 
 const COLS = "id, name, category, lat, lng";
 
+/**
+ * Zbiór dopisywany RĘCZNIE, punkt po punkcie z mapy — rośnie w tempie pracy
+ * dyspozytora, nie floty. 1000 pinezek to już nieczytelna mapa, więc próg
+ * bardziej ostrzega przed bałaganem niż ogranicza pracę.
+ */
+const SAVED_PLACES_DEFAULT_LIMIT = 1000;
+
 /** Zapisane miejsca firmy (alfabetycznie). RLS: członek czyta. */
 export async function listSavedPlaces(
   client: SupabaseClient,
   companyId: string,
+  opts?: { limit?: number },
 ): Promise<SavedPlace[]> {
   const { data, error } = await client
     .from("saved_places")
     .select(COLS)
     .eq("company_id", companyId)
-    .order("name");
+    .order("name")
+    .limit(opts?.limit ?? SAVED_PLACES_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as SavedPlace[];
 }

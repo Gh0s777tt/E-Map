@@ -19,13 +19,29 @@ interface RateRow {
 
 const COLS = "id, vehicle_id, rate_per_km, currency, valid_from";
 
+/**
+ * `saveDefaultRate` DOPISUJE nowy wiersz zamiast nadpisywać — historia stawek
+ * jest tu funkcją, nie efektem ubocznym. Zbiór rośnie więc z każdą zmianą
+ * ceny za kilometr, per pojazd, przez cały czas życia firmy.
+ *
+ * Kolejność malejąca po `valid_from` sprawia, że obcięcie odcina najstarsze
+ * stawki, a `pickRate` i tak sięga po najnowszą obowiązującą — dlatego skutkiem
+ * jest utrata historii, nie błędne rozliczenie bieżącego miesiąca.
+ */
+const RATES_DEFAULT_LIMIT = 2000;
+
 /** Stawki firmy (najnowsze pierwsze). RLS: członek czyta. */
-export async function listRates(client: SupabaseClient, companyId: string): Promise<Rate[]> {
+export async function listRates(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { limit?: number },
+): Promise<Rate[]> {
   const { data, error } = await client
     .from("rates")
     .select(COLS)
     .eq("company_id", companyId)
-    .order("valid_from", { ascending: false });
+    .order("valid_from", { ascending: false })
+    .limit(opts?.limit ?? RATES_DEFAULT_LIMIT);
   if (error) throw error;
   return ((data ?? []) as RateRow[]).map((r) => ({
     id: r.id,

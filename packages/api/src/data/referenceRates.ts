@@ -53,12 +53,26 @@ export async function listFxRates(
   return (data ?? []) as FxRateRow[];
 }
 
+/**
+ * Stawek VAT jest kilkadziesiąt na kraj-rok, więc filtry są zbędne — ale sufit
+ * już nie. Sortowanie idzie po `country_code`, więc obcięcie ucięłoby koniec
+ * alfabetu W CAŁOŚCI: przewoźnik jeżdżący do Szwecji przestałby dostawać
+ * zwrot VAT, podczas gdy trasy do Austrii liczyłyby się normalnie. Taka awaria
+ * wygląda jak błąd w rozliczeniach, a nie jak brak danych — dlatego granica
+ * ma być wpisana wprost, nawet gdy zbiór jest dziś daleko od niej.
+ */
+const VAT_DEFAULT_LIMIT = 5000;
+
 /** Wszystkie stawki VAT — zbiór jest mały (kilkadziesiąt wierszy), więc bez filtrów. */
-export async function listVatRates(client: SupabaseClient): Promise<VatRateRow[]> {
+export async function listVatRates(
+  client: SupabaseClient,
+  opts?: { limit?: number },
+): Promise<VatRateRow[]> {
   const { data, error } = await client
     .from("vat_rates")
     .select("country_code, valid_from, rate, fuel_refundable")
-    .order("country_code");
+    .order("country_code")
+    .limit(opts?.limit ?? VAT_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as VatRateRow[];
 }

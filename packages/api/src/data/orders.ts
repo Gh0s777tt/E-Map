@@ -28,6 +28,15 @@ const COLS =
 /**
  * Zlecenia firmy (najnowsze pierwsze). `opts` ogranicza zakres dla stron analitycznych:
  * `from`/`to` filtrują po `created_at`, `limit` zabezpiecza przed pobraniem całej historii.
+ *
+ * Domyślnego sufitu tu NIE MA i to jest decyzja, nie przeoczenie — inaczej niż w listach,
+ * które tylko się wyświetlają. Z tej funkcji liczy się PIENIĄDZE: `apps/web/lib/exportAll.ts`
+ * buduje z niej arkusz „Statystyki" (suma `revenue` per pojazd) do eksportu księgowego,
+ * a `components/KpiStrip.tsx` — kafelki przychodu na pulpicie. Domyślne obcięcie
+ * zaniżyłoby te sumy o kwotę, której nikt nie zobaczy: wynik nadal wygląda jak pełna
+ * liczba. Wywołujący, któremu wystarczy okno czasowe albo kilkaset najnowszych pozycji
+ * (`stats`, `scoring`, `route-costs`), podaje `from`/`to`/`limit` jawnie — i wtedy wie,
+ * że patrzy na wycinek.
  */
 export async function listOrders(
   client: SupabaseClient,
@@ -41,23 +50,43 @@ export async function listOrders(
     .order("created_at", { ascending: false });
   if (opts?.from) query = query.gte("created_at", opts.from);
   if (opts?.to) query = query.lte("created_at", opts.to);
-  if (opts?.limit) query = query.limit(opts.limit);
+  // `!== undefined`, nie samo `opts?.limit` — wariant falsy po cichu ignorował `limit: 0`
+  // i rozjeżdżał się z konwencją `listMyOrders` w tym samym pliku (linia niżej).
+  if (opts?.limit !== undefined) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Order[];
 }
 
-/** Zlecenia przypisane do bieżącego użytkownika (kierowcy). RLS dopuszcza odczyt członka. */
-export async function listMyOrders(client: SupabaseClient): Promise<Order[]> {
+/**
+ * Zlecenia przypisane do bieżącego użytkownika (kierowcy). RLS dopuszcza odczyt członka.
+ *
+ * Świadomie BEZ domyślnego sufitu — w przeciwieństwie do `listOrders`, który zasila
+ * wyłącznie widoki firmowe. Z tej funkcji liczy się STATYSTYKI CAŁEGO STAŻU:
+ * `apps/mobile/lib/useGamification.ts` bierze stąd licznik dostaw i odsetek terminowych.
+ * Domyślne obcięcie do kilkuset najnowszych zamrażałoby licznik dostaw (kierowca
+ * z 900 zleceniami widziałby 500 i nigdy nie przekroczył kolejnego progu odznaki),
+ * a terminowość liczyłoby z okrojonego mianownika — bez żadnego sygnału, że liczba
+ * jest niepełna. Ekrany listy (`my-orders`, mobile `orders`) też nie mają stronicowania,
+ * więc obcięcie znaczyłoby tam po prostu zniknięcie starszych zleceń.
+ *
+ * `opts.limit` zostaje dla wywołującego, któremu wystarczy kilka najnowszych pozycji.
+ */
+export async function listMyOrders(
+  client: SupabaseClient,
+  opts?: { limit?: number },
+): Promise<Order[]> {
   const {
     data: { user },
   } = await client.auth.getUser();
   if (!user) return [];
-  const { data, error } = await client
+  let query = client
     .from("orders")
     .select(COLS)
     .eq("assigned_to", user.id)
     .order("created_at", { ascending: false });
+  if (opts?.limit !== undefined) query = query.limit(opts.limit);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Order[];
 }

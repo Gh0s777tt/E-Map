@@ -30,12 +30,24 @@ export interface Trailer {
 const COLS =
   "id, registration, trailer_type, vin, year, inspection_expiry, insurance_expiry, leasing_end, insurer, height_cm, width_cm, length_cm, curb_weight_kg, max_payload_kg, axle_count, note";
 
-export async function listTrailers(client: SupabaseClient, companyId: string): Promise<Trailer[]> {
+/**
+ * Naczep bywa WIĘCEJ niż ciągników — odstawione czekają na ładunek, a wymienne
+ * krążą między autami (o to chodziło w #405). Dlatego sufit jest wyższy niż
+ * flotowy `VEHICLES_DEFAULT_LIMIT`, mimo że to ta sama firma.
+ */
+const TRAILERS_DEFAULT_LIMIT = 1500;
+
+export async function listTrailers(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { limit?: number },
+): Promise<Trailer[]> {
   const { data, error } = await client
     .from("trailers")
     .select(COLS)
     .eq("company_id", companyId)
-    .order("registration");
+    .order("registration")
+    .limit(opts?.limit ?? TRAILERS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as Trailer[];
 }

@@ -28,8 +28,10 @@ const connector: PowerSyncBackendConnector = {
     if (!token) return null;
     return { endpoint: POWERSYNC_URL, token };
   },
-  // Fala 1: odczyt (hydracja list offline). Zapisy obsługuje istniejący outbox
-  // przez Supabase — lokalne mutacje PowerSync nie są jeszcze używane.
+  // Fala 1 = sama infrastruktura: baza się łączy i synchronizuje, ale ŻADEN ekran list
+  // nie czyta jeszcze z lokalnego SQLite (jedynym konsumentem jest kafelek statusu
+  // w Ustawieniach; w repo nie ma ani jednego `.watch()`). Zapisy obsługuje outbox przez
+  // Supabase — lokalne mutacje PowerSync nie są używane, stąd puste kwitowanie kolejki CRUD.
   async uploadData(db: AbstractPowerSyncDatabase) {
     const tx = await db.getNextCrudTransaction();
     if (tx) await tx.complete();

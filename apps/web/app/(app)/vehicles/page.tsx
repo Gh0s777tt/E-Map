@@ -27,6 +27,7 @@ import {
   zodFieldErrors,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -38,6 +39,7 @@ import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
+import { queryKeyPrefixes } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { downloadXlsx } from "@/lib/xlsx";
 
@@ -298,6 +300,18 @@ export default function VehiclesPage() {
   const [trailerType, setTrailerType] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const qc = useQueryClient();
+  /**
+   * Kartoteka floty żyje tu, ale czyta ją także zmigrowany ekran `/karty` (lista „Pojazd"
+   * w formularzu karty paliwowej) przez cache TanStack Query. Ten ekran nie ma jak sam
+   * zauważyć naszego zapisu, a przy `staleTime` 30 s i `refetchOnWindowFocus: false`
+   * właśnie dodany ciągnik po prostu nie pojawiał się na liście — karty nie dało się do
+   * niego przypisać. Wołamy po KAŻDEJ zmianie floty, także po imporcie z pliku.
+   */
+  const invalidateVehicleCache = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: queryKeyPrefixes.vehicles() });
+  }, [qc]);
+
   const loadVehicles = useCallback(async () => {
     setLoading(true);
     setLoadErr(null);
@@ -498,6 +512,7 @@ export default function VehiclesPage() {
         toast(t("vehicles.added"), "success");
       }
       resetForm();
+      invalidateVehicleCache();
       await loadVehicles();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("vehicles.saveError"), "error");
@@ -515,6 +530,7 @@ export default function VehiclesPage() {
       await deleteVehicle(getBrowserSupabase(), v.id);
       if (editingId === v.id) resetForm();
       toast(t("vehicles.deleted"), "success");
+      invalidateVehicleCache();
       await loadVehicles();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("vehicles.deleteError"), "error");
@@ -623,9 +639,10 @@ export default function VehiclesPage() {
           }
         }
       }
+      if (inserted > 0) invalidateVehicleCache();
       return { inserted, failed, errors };
     },
-    [t],
+    [t, invalidateVehicleCache],
   );
 
   return (

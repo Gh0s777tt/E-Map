@@ -17,11 +17,15 @@ docs_dir: docs
 # Wykluczenia z PUBLICZNEGO buildu (pliki pozostają w repo, poza stroną):
 # raporty audytowe (opisy podatności) i wewnętrzne analizy Discovery/QA.
 # NIE publikujemy szczegółów bezpieczeństwa na publicznej stronie.
+# SECRET-ROTATION.md z tego samego powodu NIE trafia do nav ani na stronę: mówi wprost,
+# które sekrety czekają na rotację i jak zachowuje się rate-limit przy złym tokenie —
+# to instrukcja dla właściciela, nie materiał dla publicznych Pages.
 exclude_docs: |
   AUDIT-*.md
   audit/
   DISCOVERY_REPORT.md
   TEST_REPORT.md
+  SECRET-ROTATION.md
 
 theme:
   name: material
@@ -120,4 +124,8 @@ nav:
       - Microsoft Store: MICROSOFT-STORE.md
   - API:
       - Referencja pakietów: api/index.md
-  - Changelog: CHANGELOG.md
+  - Changelog:
+      - Bieżące wydania: CHANGELOG.md
+      - Archiwum v1.100–v1.199: changelog/v1.100-v1.199.md
+      - Archiwum v1.0–v1.99: changelog/v1.0-v1.99.md
+      - Archiwum v0.1–v0.99: changelog/v0.x.md

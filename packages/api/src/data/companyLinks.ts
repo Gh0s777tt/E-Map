@@ -21,9 +21,17 @@ export interface CompanyLink {
 
 const COLS = "id, label, url, icon, note, management_only, sort_order, created_at";
 
+/**
+ * Skróty wpisuje właściciel z ręki i sam ustala im kolejność — zbiór z natury
+ * pozostaje krótki (myto, promy, awizacja, kilka portali klientów). Niski sufit
+ * jest tu celowy: setki linków to nie skala, tylko lista, której nikt nie użyje.
+ */
+const COMPANY_LINKS_DEFAULT_LIMIT = 200;
+
 export async function listCompanyLinks(
   client: SupabaseClient,
   companyId: string,
+  opts?: { limit?: number },
 ): Promise<CompanyLink[]> {
   const { data, error } = await client
     .from("company_links")
@@ -31,7 +39,8 @@ export async function listCompanyLinks(
     .eq("company_id", companyId)
     // Ręczna kolejność właściciela ma pierwszeństwo; nazwa tylko rozstrzyga remisy.
     .order("sort_order")
-    .order("label");
+    .order("label")
+    .limit(opts?.limit ?? COMPANY_LINKS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as CompanyLink[];
 }

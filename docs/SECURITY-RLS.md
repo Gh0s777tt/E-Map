@@ -18,22 +18,27 @@ Połączenie jak w [apply-migration.mjs](../scripts/apply-migration.mjs): pooler
 Skrypt jest **tylko do odczytu** (pyta katalog systemowy `pg_*`, nic nie zmienia).
 Kod wyjścia: `0` = czysto, `1` = wykryto problem, `2` = błąd połączenia.
 
-## W CI (GitHub Actions)
+## W CI (GitLab)
 
-Job **Audyt RLS** w [.github/workflows/ci.yml](../.github/workflows/ci.yml) odpala `pnpm audit:rls`
-przy każdym `push`/`pull_request` na `main`. Łączenie przez sekret repo **`SUPABASE_DB_URL`**:
+Job **`rls`** w [.gitlab-ci.yml](../.gitlab-ci.yml) odpala `pnpm audit:rls`. Jedynym CI w tym
+repo jest GitLab — GitHub to mirror z wyłączonymi Actions i **bez jakiegokolwiek workflow**,
+więc nie szukaj tam żadnej bramki. Łączenie przez zmienną CI **`SUPABASE_DB_URL`**:
 
 ```
 postgresql://postgres.<REF>:<HASŁO>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres
 ```
 
 Skrypt rozkłada URL ręcznie i wymusza `ssl: { rejectUnauthorized: false }` (pooler ma
-self-signed chain), więc sufiks `?sslmode=...` nie ma znaczenia. Gdy sekret nie jest ustawiony,
-job pomija się z ostrzeżeniem (nie blokuje PR). Sekret ustawia się raz:
+self-signed chain), więc sufiks `?sslmode=...` nie ma znaczenia. Bez tej zmiennej reguły joba
+się nie dopasowują i job w ogóle nie powstaje — bramka **nie blokuje** wtedy niczego. Zmienną
+dodaje się raz: *Settings → CI/CD → Variables*, `masked`.
 
-```bash
-gh secret set SUPABASE_DB_URL --repo <owner>/<repo>   # wartość ze stdin (bez śladu w historii)
-```
+> ⚠️ **Flaga „protected” decyduje o zakresie bramki.** GitLab podaje zmienne oznaczone jako
+> protected wyłącznie w pipeline'ach na gałęziach/tagach chronionych, a pipeline MR-owy biegnie
+> na niechronionej gałęzi źródłowej. Z „protected” audyt RLS jest więc bramką **po scaleniu**
+> (na `main`), a nie w recenzji. Bez „protected” chodzi też w MR-ach — ale wartość widzi każdy
+> pipeline, więc rób tak tylko z poświadczeniami tylko‑do‑odczytu. Ten sam kompromis dotyczy
+> joba `db-types`, który używa tej samej zmiennej.
 
 ## Co sprawdza ([scripts/audit-rls.mjs](../scripts/audit-rls.mjs))
 

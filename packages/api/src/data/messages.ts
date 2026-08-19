@@ -148,16 +148,29 @@ export async function editMessage(
   return data as ChatMessage;
 }
 
+/**
+ * Ile reakcji na wiadomość mieści się w sufircie. Pod jedną wiadomością
+ * podpisuje się co najwyżej cała załoga kanału, i to kilkoma emoji — 50
+ * z zapasem pokrywa firmowy czat.
+ */
+const REACTIONS_PER_MESSAGE = 50;
+
 /** [#374] Reakcje pod wskazanymi wiadomościami (jedno zapytanie na widok). */
 export async function listReactions(
   client: SupabaseClient,
   messageIds: readonly string[],
+  opts?: { limit?: number },
 ): Promise<MessageReaction[]> {
   if (messageIds.length === 0) return [];
   const { data, error } = await client
     .from("message_reactions")
     .select("message_id, user_id, emoji")
-    .in("message_id", messageIds as string[]);
+    .in("message_id", messageIds as string[])
+    // Sufit LICZONY z wejścia, nie stały: wywołujący sam decyduje, ile
+    // wiadomości pokazuje naraz, więc próg musi rosnąć razem z jego stronicą.
+    // Stała liczba oznaczałaby, że przy dłuższym widoku reakcje znikają
+    // z DOŁU listy — a brak reakcji wygląda dokładnie jak jej niepostawienie.
+    .limit(opts?.limit ?? messageIds.length * REACTIONS_PER_MESSAGE);
   if (error) throw error;
   return (data ?? []) as MessageReaction[];
 }
@@ -366,16 +379,25 @@ export function subscribeReactions(
 
 // ── Kanały (#291) ────────────────────────────────────────────────────────
 
+/**
+ * Kanały zakłada zarząd i nazywa je z ręki (#291) — to zbiór porządkujący,
+ * nie transakcyjny. Rośnie w tempie reorganizacji firmy, więc kilkaset to
+ * granica czytelności listy kanałów, a nie granica techniczna.
+ */
+const CHAT_THREADS_DEFAULT_LIMIT = 500;
+
 /** Wątki widoczne dla zalogowanego (RLS: zarząd wszystkie, kierowca swoje). */
 export async function listThreads(
   client: SupabaseClient,
   companyId: string,
+  opts?: { limit?: number },
 ): Promise<ChatThread[]> {
   const { data, error } = await client
     .from("chat_threads")
     .select("id, company_id, name, created_by, created_at, ephemeral_ttl_seconds")
     .eq("company_id", companyId)
-    .order("created_at");
+    .order("created_at")
+    .limit(opts?.limit ?? CHAT_THREADS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as ChatThread[];
 }
@@ -418,15 +440,24 @@ export async function deleteThread(client: SupabaseClient, threadId: string): Pr
   if (error) throw error;
 }
 
+/**
+ * Członkowie JEDNEGO kanału — górną granicą jest załoga firmy. Obcięcie byłoby
+ * tu wyjątkowo złośliwe, bo wynik zasila okno edycji składu: brakujący
+ * użytkownik pokazałby się jako niezaznaczony, a zapis WYPISAŁBY go z kanału.
+ */
+const CHAT_MEMBERS_DEFAULT_LIMIT = 2000;
+
 /** Identyfikatory członków kanału. */
 export async function listThreadMembers(
   client: SupabaseClient,
   threadId: string,
+  opts?: { limit?: number },
 ): Promise<string[]> {
   const { data, error } = await client
     .from("chat_members")
     .select("user_id")
-    .eq("thread_id", threadId);
+    .eq("thread_id", threadId)
+    .limit(opts?.limit ?? CHAT_MEMBERS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []).map((r) => r.user_id as string);
 }

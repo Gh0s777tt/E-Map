@@ -33,6 +33,12 @@ pnpm-debug.log*
 
 # OS / editor
 .DS_Store
+# Sidecary AppleDouble (`._<nazwa>`): macOS zrzuca do nich rozszerzone atrybuty pliku,
+# gdy repo leży na wolumenie bez natywnego wsparcia (exFAT/NTFS/sieciowy) — powstają
+# SAME z siebie przy każdej edycji, więc bez tego wzorca wpadają do `git add -A` jako
+# binarne śmieci obok realnych plików. Biome (`vcs.useIgnoreFile`) też je wtedy czyta
+# i zgłasza „stream did not contain valid UTF-8" jako błąd wewnętrzny.
+._*
 Thumbs.db
 .idea/
 .vscode/*

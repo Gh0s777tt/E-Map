@@ -32,3 +32,27 @@ describe("getFuelCardPin (RPC, audytowane)", () => {
     expect(await getFuelCardPin(client, "card-1")).toBe("");
   });
 });
+
+describe("karty paliwowe — sufity pobrania", () => {
+  it("lista firmowa ma sufit WYŻSZY niż lista jednego auta", async () => {
+    // Nie chodzi o konkretne liczby, tylko o relację: kart w firmie jest
+    // tyle, ile aut razy kilka, a przy jednym aucie kilkadziesiąt kart to
+    // już sygnał nieposprzątanej kartoteki, nie skali.
+    const firma = mockSupabase({ data: [], error: null });
+    await listFuelCardsSafe(firma.client, "c1");
+    const auto = mockSupabase({ data: [], error: null });
+    await listFuelCardsByVehicle(auto.client, "v1");
+    expect(firma.argsOf("limit")?.[0]).toBe(1000);
+    expect(auto.argsOf("limit")?.[0]).toBe(50);
+  });
+
+  it("opts.limit nadpisuje domyślny w obu", async () => {
+    const firma = mockSupabase({ data: [], error: null });
+    await listFuelCardsSafe(firma.client, "c1", { limit: 3 });
+    expect(firma.argsOf("limit")?.[0]).toBe(3);
+
+    const auto = mockSupabase({ data: [], error: null });
+    await listFuelCardsByVehicle(auto.client, "v1", { limit: 3 });
+    expect(auto.argsOf("limit")?.[0]).toBe(3);
+  });
+});
