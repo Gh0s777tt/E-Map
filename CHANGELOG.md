@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-413-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.245.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-414-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.246.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,64 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.246.0] — 🟢 Bramka, która ma gdzie się wykonać
+
+`[#408]` naprawił reguły CI i dowiódł, że działają: w pipelinie gałęziowym pojawiły się
+`quality` i `gitleaks`, których wcześniej tam nie było. Po czym **wszystkie joby padły na
+`ci_quota_exceeded`** — poprawna konfiguracja spotkała się z pustym budżetem.
+
+- `[#414]` 🟢 **Bramka jakości przeniesiona na GitHub Actions**
+  ([.github/workflows/ci.yml](.github/workflows/ci.yml))
+
+  Namespace GitLaba jest na planie **free**, a minuty współdzielonych runnerów kończą się
+  w połowie miesiąca. Job nie pada wtedy na błędzie — pada, **zanim runner cokolwiek pobierze**.
+  Żadna poprawka w `.gitlab-ci.yml` tego nie odblokuje, bo to limit rozliczeniowy, nie usterka.
+
+  Rozstrzyga obserwacja, którą wystarczyło zauważyć: **repo lustrzane na GitHubie jest publiczne,
+  a dla publicznych repo Actions nie zużywają płatnych minut.** Bramka `pnpm check` nie
+  potrzebuje ani jednego sekretu — Biome, `tsc`, testy i `docs:check` są czysto lokalne — więc
+  przeniesienie jej tam nic nie ujawnia i nic nie kosztuje.
+
+  **Granica przebiega dokładnie po sekretach:**
+  GitHub Actions dostaje bramkę jakości (Biome · `tsc` ×7 · testy · `next build` · `docs:check`);
+  GitLab zatrzymuje wszystko, co wymaga sekretów albo pełnej historii — `gitleaks`, SAST,
+  `db-types`/`rls` (`SUPABASE_DB_URL`), `release`, `pages`. Bramka bez sekretów nie może stać
+  na budżecie; bramka z sekretami nie może stać na publicznym repo. `quality` zostaje
+  w GitLabie jako bramka zapasowa i rusza sama, gdy minuty są dostępne.
+
+  Workflow uruchamia **tę samą komendę co GitLab** (`pnpm check`) — celowo, żeby dwie bramki
+  o tej samej nazwie nie zaczęły z czasem sprawdzać dwóch różnych rzeczy. Node bierze z
+  [`.nvmrc`](.nvmrc), a `corepack` doinstalowuje jawnie: to ta sama pułapka, która wysypywała
+  każdy job Node'owy na GitLabie.
+
+- `[#414]` 🧪 **`pnpm check` znów da się uruchomić lokalnie** (7 × `vitest.config.ts`)
+
+  Przy pierwszej próbie uruchomienia bramki wyszło, że komenda, którą wykonuje CI, **nie
+  przechodzi na maszynie autora** — i nie z powodu kodu. macOS na woluminach bez natywnych
+  xattr zapisuje metadane w sidecarach `._nazwa.ts`. Taki plik pasuje do wzorca `*.test.ts`,
+  więc vitest brał go za test i wywracał się na „Transform failed".
+
+  Najgorsza cecha tego błędu: dotyczył **wyłącznie plików niedawno edytowanych**, więc
+  `pnpm check` potrafił paść u jednej osoby i przejść u drugiej na tym samym commicie.
+  `exclude: [...defaultExclude, "**/._*"]` we wszystkich siedmiu konfiguracjach (dwie
+  utworzone — `i18n` i `ui` szły dotąd na domyślnych). Na runnerach Linuksa sidecarów nie ma,
+  więc zmiana jest bez skutku ubocznego, a lokalnie przywraca uruchamialność bramki.
+
+- `[#414]` 📚 **Osiem miejsc twierdziło, że Actions są wyłączone**
+  ([README.md](README.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ·
+  [docs/SECURITY-RLS.md](docs/SECURITY-RLS.md) · [docs/index.md](docs/index.md) ·
+  [.gitlab-ci.yml](.gitlab-ci.yml) · [.github/dependabot.yml](.github/dependabot.yml))
+
+  Dokładnie ta klasa nieprawdy, którą `[#409]` przed chwilą usuwał — więc poprawione od razu,
+  a nie „przy okazji". Wraca też ekosystem `github-actions` w Dependabocie, usunięty w `[#408]`
+  jako martwy: skoro workflow istnieje, nieaktualizowana akcja jest tym samym długiem
+  co nieaktualizowana zależność.
+
+**Bramki:** `biome` ✓ (593 pliki) · `tsc` 7/7 ✓ · testy **1164** ✓ · `next build` ✓ ·
+`docs:check` ✓ · **`pnpm check` ✓ (7/7 zadań)** — pierwszy raz uruchomiona jako całość,
+dokładnie ta komenda, którą wykonuje CI.
 
 
 ## [1.245.0] — 🔒 Bramki, które naprawdę chodzą

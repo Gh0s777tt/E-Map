@@ -21,7 +21,7 @@ Kod wyjścia: `0` = czysto, `1` = wykryto problem, `2` = błąd połączenia.
 ## W CI (GitLab)
 
 Job **`rls`** w [.gitlab-ci.yml](../.gitlab-ci.yml) odpala `pnpm audit:rls`. Jedynym CI w tym
-repo jest GitLab — GitHub to mirror z wyłączonymi Actions i **bez jakiegokolwiek workflow**,
+repo jest GitLab — na GitHubie stoi wyłącznie bramka jakości bez sekretów ([#414]),
 więc nie szukaj tam żadnej bramki. Łączenie przez zmienną CI **`SUPABASE_DB_URL`**:
 
 ```

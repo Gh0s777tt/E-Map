@@ -1,5 +1,11 @@
 # ══════════════════════════════════════════════════════════════════
-#  E-Logistic — GitLab CI/CD (źródło prawdy; GitHub = mirror, Actions OFF)
+#  E-Logistic — GitLab CI/CD (źródło prawdy repozytorium)
+#  PODZIAŁ Z [#414]: bramka jakości (biome/tsc/testy/build/docs:check) przeniesiona
+#  do GitHub Actions — namespace jest na planie free i minuty kończą się w połowie
+#  miesiąca (`ci_quota_exceeded`), więc bramka bez sekretów nie może stać na budżecie.
+#  Tutaj zostaje to, co WYMAGA sekretów albo pełnej historii: gitleaks, SAST,
+#  db-types/rls (SUPABASE_DB_URL), release, pages. `quality` zostaje jako bramka
+#  zapasowa — rusza sama, gdy minuty są dostępne.
 #  Bramki jakości + skan bezpieczeństwa + wydanie + publikacja dokumentacji.
 #  Bramki (quality, gitleaks) chodzą na KAŻDEJ gałęzi i w każdym MR — patrz
 #  `workflow:` niżej. Zielony pipeline ma znaczyć „bramki przeszły”, a nie

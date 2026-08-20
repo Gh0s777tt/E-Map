@@ -1,6 +1,6 @@
 # 🧠 Architektura — E‑Logistic
 
-> Status: **w realizacji** · stan na v1.245.0 (#413) · 2026-08-19
+> Status: **w realizacji** · stan na v1.246.0 (#414) · 2026-08-19
 > Decyzje wstępne: dokumentacja przed kodem · mapa = hybryda MapLibre+HERE/GraphHopper · web+mobile równolegle.
 >
 > **Stan implementacji** (ten dokument opisuje architekturę **docelową**):
@@ -228,7 +228,7 @@ Tego nie kupujemy — to przewaga produktu (dane są nasze):
 
 ## 10. CI/CD i obserwowalność
 
-- **Jedyne CI to [`.gitlab-ci.yml`](../.gitlab-ci.yml)** (GitHub jest mirrorem, Actions wyłączone — w repo nie ma ani jednego workflow Actions). Joby: `quality` (`pnpm check` = biome + tsc web/mobile + testy + `docs:check`), `db-types` (regeneracja `database.types.ts` i porównanie ze schematem), `rls` ([`audit:rls`](../scripts/audit-rls.mjs)), `gitleaks` (pełna historia), `semgrep-sast` (szablon GitLab SAST), `audit` (`pnpm audit`, doradczy), `release`, `pages`. `db-types` i `rls` włączają się po ustawieniu zmiennej CI `SUPABASE_DB_URL`. Dependabot: [`.github/dependabot.yml`](../.github/dependabot.yml) — to jedyna rzecz, którą GitHub tu robi.
+- **CI jest rozdzielone między dwie platformy [#414]** — nie z zamiłowania do rozproszenia, tylko dlatego, że namespace GitLaba jest na planie free i minuty współdzielonych runnerów kończą się w połowie miesiąca (`ci_quota_exceeded` ubija joby, zanim runner cokolwiek pobierze). Bramka `pnpm check` nie potrzebuje ani jednego sekretu, więc stoi na [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — publiczne repo lustrzane nie zużywa płatnych minut Actions. W [`.gitlab-ci.yml`](../.gitlab-ci.yml) zostaje to, co wymaga sekretów albo pełnej historii. Joby GitLaba: `quality` (`pnpm check` = biome + tsc web/mobile + testy + `docs:check`), `db-types` (regeneracja `database.types.ts` i porównanie ze schematem), `rls` ([`audit:rls`](../scripts/audit-rls.mjs)), `gitleaks` (pełna historia), `semgrep-sast` (szablon GitLab SAST), `audit` (`pnpm audit`, doradczy), `release`, `pages`. `db-types` i `rls` włączają się po ustawieniu zmiennej CI `SUPABASE_DB_URL`. Dependabot: [`.github/dependabot.yml`](../.github/dependabot.yml) — to jedyna rzecz, którą GitHub tu robi.
 - **Web**: Vercel. **Mobile**: EAS Build + EAS Update (OTA). **Migracje**: Supabase CLI w pipeline.
 - ✅ **Sentry** (web+mobile) — inicjalizacja warunkowa: bez DSN cały moduł jest no‑opem, więc lokalny dev i buildy bez sekretów nie płacą za obserwowalność. 🔜 logi Edge Functions (same funkcje też jeszcze nie istnieją).
 - **Wydania**: `semantic-release` w jobie `release` (ręczny, gałąź domyślna) — tag `vX.Y.Z` + **GitLab Release** z Conventional Commits ([`.releaserc.json`](../.releaserc.json)); treść wydania odpowiada wpisowi w `CHANGELOG.md`.

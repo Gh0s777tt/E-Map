@@ -62,7 +62,7 @@ To centrum dokumentacji technicznej i produktowej repozytorium. Kod: [`gitlab.co
 
 ## Model hostingu
 
-Rozwój prowadzony jest na **GitLab** (źródło prawdy, całe CI/CD), a **GitHub** służy jako publiczny mirror.
+Rozwój prowadzony jest na **GitLab** (źródło prawdy repozytorium; wydania, dokumentacja, skany wymagające sekretów), a **GitHub** to publiczny mirror, na którym chodzi bramka jakości.
 
 | Rola | Repozytorium |
 |:--|:--|
