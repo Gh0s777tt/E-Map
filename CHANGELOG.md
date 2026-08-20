@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-414-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.246.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-415-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.247.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,33 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.247.0] — 🩹 Bramka, która blokowała własny push
+
+- `[#415]` 🩹 **`docs:check` liczył sidecary AppleDouble jako migracje**
+  ([scripts/docs-check.mjs](scripts/docs-check.mjs))
+
+  `[#414]` uodpornił na sidecary vitest, ale ta sama pułapka siedziała w bramce dokumentacji
+  i wyszła dopiero przy `git push` — hook `pre-push` odrzucił wypchnięcie `main` komunikatem
+  o **zdublowanych numerach migracji: `._00`, `._01`**.
+
+  Mechanizm jest podstępny, bo sidecar **kończy się tym samym rozszerzeniem co plik źródłowy**:
+  `._0109_company_links.sql` przechodzi filtr `.endsWith(".sql")` i wchodzi do kontroli
+  unikalności numerów jako migracja o numerze `._01`. Kontrola z audytu `#214` — sensowna,
+  bo duplikat numeru znaczy niejednoznaczną kolejność stosowania — zaczęła więc zgłaszać
+  duplikaty, których nie ma, i **blokować push**.
+
+  Filtr `bezSidecarow` w trzech miejscach czytających katalogi: migracje, skan `docs/*.md`
+  (inaczej `._ARCHITECTURE.md` trafiłby do kontroli martwych linków) oraz skan
+  `apps/*`/`packages/*`. Pliki są ignorowane przez gita, więc na runnerach CI nie istnieją —
+  poprawka jest bez skutku ubocznego, a lokalnie przywraca uruchamialność bramki.
+
+  Wzorzec z `[#414]` powtórzył się co do joty: **narzędzie, które globuje po rozszerzeniu,
+  musi jawnie odsiać sidecary.** Trzeci raz w tej sesji — najpierw Biome, potem vitest, teraz
+  `docs:check`.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1164** ✓ · `next build` ✓ · `docs:check` ✓ (112 migracji)
 
 
 ## [1.246.0] — 🟢 Bramka, która ma gdzie się wykonać

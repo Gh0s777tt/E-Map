@@ -20,6 +20,17 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : null);
+/**
+ * Sidecary AppleDouble (`._nazwa.sql`) — macOS zapisuje w nich metadane na woluminach bez
+ * natywnych xattr (exFAT/NTFS/sieć). Dla tej bramki są trujące, bo KOŃCZĄ SIĘ tym samym
+ * rozszerzeniem co plik źródłowy: `._0109_company_links.sql` przechodził filtr `.endsWith(".sql")`
+ * i wchodził do kontroli unikalności numerów jako migracja o numerze „._01". Efekt: bramka
+ * zgłaszała zdublowane migracje, których nie ma, i blokowała `git push` (hook pre-push) —
+ * przy czym tylko na maszynie, która akurat dotknęła tych plików. Pliki są ignorowane przez
+ * gita, więc na runnerach CI nie istnieją; ten filtr przywraca uruchamialność bramki lokalnie.
+ */
+const bezSidecarow = (f) => !f.startsWith("._");
+
 const errors = [];
 const warnings = [];
 
@@ -116,6 +127,7 @@ function dokumentacjaBiezaca() {
   const dir = join(root, "docs");
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
+    .filter(bezSidecarow)
     .filter((f) => f.endsWith(".md") && !f.startsWith("AUDIT"))
     .filter((f) => !lstatSync(join(dir, f)).isSymbolicLink())
     .map((f) => `docs/${f}`);
@@ -177,7 +189,7 @@ function manifestyWorkspace() {
   for (const grupa of ["apps", "packages"]) {
     const dir = join(root, grupa);
     if (!existsSync(dir)) continue;
-    for (const nazwa of readdirSync(dir)) {
+    for (const nazwa of readdirSync(dir).filter(bezSidecarow)) {
       const sciezka = `${grupa}/${nazwa}/package.json`;
       const raw = read(sciezka);
       if (!raw) continue;
@@ -328,7 +340,11 @@ for (const w of ZNANE_MARTWE_LINKI) {
 
 // Info: liczba migracji + kontrola unikalności numerów (audyt #214).
 const migDir = join(root, "supabase/migrations");
-const migFiles = existsSync(migDir) ? readdirSync(migDir).filter((f) => f.endsWith(".sql")) : [];
+const migFiles = existsSync(migDir)
+  ? readdirSync(migDir)
+      .filter(bezSidecarow)
+      .filter((f) => f.endsWith(".sql"))
+  : [];
 const migCount = migFiles.length;
 
 // Numery migracji muszą być unikalne (duplikat = niejednoznaczna kolejność stosowania).
