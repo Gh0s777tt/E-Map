@@ -3,6 +3,7 @@ import {
   driverSchema,
   fuelCardSchema,
   fuelLogSchema,
+  orderSchema,
   tripEventSchema,
   vehicleSchema,
 } from "./schemas";
@@ -156,5 +157,32 @@ describe("tripEventSchema", () => {
       amount: 1200,
     });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("[#389] waluta zlecenia — kod ISO zamiast dowolnego tekstu", () => {
+  const BAZA = { title: "Ładunek", status: "new" as const };
+
+  it("normalizuje zapis, który realnie wpisuje człowiek", () => {
+    // Telefon z autokorektą i klawiaturą bez blokady wielkości liter — `pln`
+    // i `  eur ` mają przejść jako poprawne, a nie wywalić zapis zlecenia.
+    expect(orderSchema.parse({ ...BAZA, currency: "pln" }).currency).toBe("PLN");
+    expect(orderSchema.parse({ ...BAZA, currency: "  eur " }).currency).toBe("EUR");
+  });
+
+  it("odrzuca to, co baza i tak odrzuci CHECK-iem", () => {
+    // migracja 0100: `orders.currency` ma CHECK `^[A-Z]{3}$`. Wcześniej schemat
+    // przepuszczał te wartości, więc błąd wychodził dopiero z bazy — albo,
+    // dla wierszy sprzed migracji, nie wychodził wcale i cena zlecenia po cichu
+    // wypadała z przychodu, bo `pickFxRate` nie zna takiego kodu.
+    for (const zly of ["zł", "euro", "EU", "PLNN", "12"]) {
+      expect(orderSchema.safeParse({ ...BAZA, currency: zly }).success, zly).toBe(false);
+    }
+  });
+
+  it("brak waluty nadal daje EUR", () => {
+    // Import i starsze formularze nie podają waluty — pole jest w bazie wymagane,
+    // więc domyślne EUR musi zostać, inaczej zapis by się wywalił.
+    expect(orderSchema.parse(BAZA).currency).toBe("EUR");
   });
 });

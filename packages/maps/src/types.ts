@@ -1,4 +1,4 @@
-/** Wspólne typy warstwy map E-Logistic (niezależne od dostawcy). */
+/** Wspólne typy warstwy map E-Logistic (niezależne od dostawcy) + drobne konstruktory. */
 
 export interface LatLng {
   lat: number;
@@ -16,7 +16,36 @@ export interface VehicleProfile {
   weightKg?: number;
   /** Liczba osi (HERE: truck[axleCount]; domyślnie 5 dla zestawu). */
   axleCount?: number;
+  /**
+   * [#384] Kategoria tunelowa ADR — litera z pomarańczowej tablicy zestawu.
+   *
+   * Bez niej routing prowadzi zestaw z materiałem niebezpiecznym przez tunele,
+   * do których nie ma wstępu. To nie jest optymalizacja trasy, tylko warunek
+   * legalności przejazdu: kontrola przy wjeździe do tunelu kończy się zawróceniem
+   * i mandatem, a w gorszym wariancie zdarzeniem, przed którym te kategorie mają chronić.
+   *
+   * `null`/brak = ładunek zwykły. Litery od B (najostrzejsze ograniczenia)
+   * do E (najłagodniejsze) — tak jak w umowie ADR i w API obu dostawców.
+   */
+  adrTunnelCode?: AdrTunnelCode;
+  /**
+   * [#384] Klasa emisji (Euro). Dziś nieużywana w routingu — wchodzi do kontraktu,
+   * bo bez niej nie ruszy omijanie stref niskiej emisji, a dodanie pola później
+   * oznaczałoby drugą migrację kartoteki i drugą zmianę wszystkich wywołujących.
+   */
+  emissionClass?: EmissionClass;
 }
+
+/**
+ * [#384] Kategorie tunelowe ADR. Kolejność od najostrzejszej do najłagodniejszej —
+ * zestaw z kategorią B nie wjedzie do tunelu oznaczonego B, C, D ani E.
+ */
+export const ADR_TUNNEL_CODES = ["B", "C", "D", "E"] as const;
+export type AdrTunnelCode = (typeof ADR_TUNNEL_CODES)[number];
+
+/** Klasy emisji spalin używane przez strefy niskiej emisji. */
+export const EMISSION_CLASSES = ["euro3", "euro4", "euro5", "euro6"] as const;
+export type EmissionClass = (typeof EMISSION_CLASSES)[number];
 
 /** Opcje omijania (kraje, płatne drogi, promy, autokoszetki, drogi gruntowe). */
 export interface RouteOptions {
@@ -44,6 +73,55 @@ export interface RouteSegment {
   durationMin: number;
 }
 
+/**
+ * #383: fragment trasy prowadzący drogą płatną — zakres indeksów w `RouteResult.geometry`,
+ * obustronnie DOMKNIĘTY (punkty odcinka to `geometry.slice(startIndex, endIndex + 1)`).
+ *
+ * DLACZEGO INDEKSY, A NIE GOTOWE PODTABLICE WSPÓŁRZĘDNYCH:
+ *  1. `geometry` trasy międzynarodowej to tysiące punktów i jedzie już raz w odpowiedzi
+ *     `/api/route`, a do tego siedzi w pamięci podręcznej (apps/web/app/api/route/cache.ts,
+ *     gdzie limit wpisów jest niski WŁAŚNIE z powodu rozmiaru geometrii). Kopia płatnych
+ *     fragmentów potrafiłaby podwoić payload i zjeść ten sam budżet pamięci drugi raz.
+ *  2. Warstwa MapLibre i tak składa `Feature<LineString>` ręcznie, więc `slice` przy
+ *     renderze to jedna linijka — podtablica nie oszczędza tam żadnej pracy.
+ *  3. Indeks da się zweryfikować (mieści się w `geometry` albo nie); zduplikowane
+ *     współrzędne mogą się po cichu rozjechać z linią trasy i nikt tego nie zauważy.
+ * Cena tego wyboru: KAŻDE przekształcenie `geometry` musi przeliczyć indeksy —
+ * robi to `routeMultiLeg`, które skleja legi pomijając zdublowany punkt styku.
+ */
+export interface TollSection {
+  /** Indeks pierwszego punktu odcinka w `RouteResult.geometry`. */
+  startIndex: number;
+  /** Indeks ostatniego punktu odcinka w `RouteResult.geometry` — WŁĄCZNIE. */
+  endIndex: number;
+}
+
+/**
+ * #383: „nie wiem, gdzie są drogi płatne" i „na tej trasie nie ma dróg płatnych" to
+ * dwa RÓŻNE stany, a sama pusta lista skleja je w jeden i każe UI zgadywać. Dlatego
+ * obok listy jedzie `known`. Bez tego mapa z dostawcą, który nie raportuje odcinków
+ * (HERE, GraphHopper, mock), rysowałaby „trasa bez dróg płatnych" — czyli kłamała.
+ */
+export interface TollSections {
+  /**
+   * Czy dostawca w ogóle zwrócił informację o POŁOŻENIU odcinków płatnych.
+   * `false` → `sections` jest puste z braku danych, nie z braku myta.
+   * Uwaga: to nie to samo co `RouteResult.tollCost` — HERE zna koszt myta,
+   * ale nie mówi, którędy ono biegnie.
+   */
+  known: boolean;
+  sections: TollSection[];
+}
+
+/**
+ * #383: stan „dostawca nie raportuje odcinków płatnych". Osobna funkcja (a nie
+ * współdzielona stała), żeby żaden `RouteResult` nie trzymał tej samej tablicy —
+ * przypadkowa mutacja jednej trasy nie może zmienić drugiej.
+ */
+export function unknownTollSections(): TollSections {
+  return { known: false, sections: [] };
+}
+
 export interface RouteResult {
   distanceKm: number;
   durationMin: number;
@@ -53,7 +131,34 @@ export interface RouteResult {
   segments: RouteSegment[];
   /** Punkty linii trasy do narysowania na mapie. */
   geometry: LatLng[];
+  /**
+   * #383: gdzie na trasie leżą drogi płatne (indeksy w `geometry`). Pole jest WYMAGANE
+   * celowo — każdy adapter musi się zadeklarować, zamiast po cichu pominąć temat.
+   */
+  tollSections: TollSections;
+  /**
+   * [#384] Uwagi dostawcy do policzonej trasy — przede wszystkim kanał, którym
+   * mówi „zignorowałem twój parametr pojazdu".
+   *
+   * HERE deklarował pole `notices` w odpowiedzi i nikt go nie czytał. To jedyne
+   * miejsce, w którym dostawca informuje, że np. nie dało się uwzględnić wysokości
+   * i policzył trasę bez niej. Bez tego trasa bez gabarytów wygląda dokładnie tak
+   * samo jak trasa z gabarytami — a różnica jest taka, że jedna z nich prowadzi
+   * pod wiadukt.
+   *
+   * Pusta tablica znaczy „dostawca nic nie zgłosił", nie „nie sprawdziliśmy".
+   */
+  notices: RouteNotice[];
   provider: string;
+}
+
+/** Uwaga dostawcy do trasy. `severity` wg jego własnej skali, gdy ją poda. */
+export interface RouteNotice {
+  /** Kod dostawcy, np. `violatedVehicleRestriction`. */
+  code: string;
+  /** Treść dla człowieka, jeśli dostawca ją zwrócił. */
+  title?: string;
+  severity?: string;
 }
 
 /** Abstrakcja dostawcy routingu — adaptery: mock, GraphHopper, HERE. */

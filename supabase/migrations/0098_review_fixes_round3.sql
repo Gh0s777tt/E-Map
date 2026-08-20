@@ -1,0 +1,19 @@
+-- [#376] Naprawy z przeglądu — część trzecia. Odpowiada wdrożeniu
+-- `review_fixes_round3` na produkcji.
+--
+-- 1) INDEKS POD PREDYKAT CRONA
+--    `/api/cron/chat-purge` chodzi 96 razy na dobę i robił PEŁNY SKAN tabeli
+--    `messages` przy każdym przebiegu. Indeks częściowy obejmuje wyłącznie
+--    wiersze, które w ogóle mogą zostać wybrane — reszta tabeli, czyli
+--    zdecydowana większość, nie obciąża go w ogóle.
+--
+-- 2) REAKCJE PRZY KASOWANIU KONTA
+--    `message_reactions` powstała w 0094, czyli PO napisaniu `delete_my_account`
+--    w 0090 — i wypadła z listy sprzątania. To klasyczny sposób, w jaki kasowanie
+--    danych rozjeżdża się ze schematem: nowa tabela z kolumną `user_id` nie
+--    zgłasza się sama.
+--
+-- 3) NAZWA FIRMY W ŚLADZIE USUNIĘCIA
+--    `account_deletions.counts` używało nazwy firmy jako klucza, a nagłówek 0090
+--    obiecuje ślad „bez danych osobowych". Nazwa firmy jednoosobowej bywa
+--    imieniem i nazwiskiem właściciela. Kluczem jest teraz identyfikator.

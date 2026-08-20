@@ -43,12 +43,16 @@ describe("tripEventToRow (czysta funkcja)", () => {
 });
 
 describe("listTripEvents (kształt zapytania)", () => {
-  it("tabela trip_events, sort created_at desc, filtry opcjonalne", async () => {
+  // [#373] Zakres i sortowanie idą po `occurred_at`, nie `created_at`. Wpis zrobiony
+  // offline i zsynchronizowany później miał datę ZAPISU, więc wypadał poza zapytany
+  // miesiąc i cicho znikał z zestawienia. Ten test pilnuje, żeby nie wrócić do
+  // filtrowania po dacie zapisu.
+  it("tabela trip_events, sort occurred_at desc, filtry opcjonalne", async () => {
     const { client, called, argsOf } = mockSupabase({ data: [], error: null });
     await listTripEvents(client, { vehicleId: "v1", from: "2026-01-01", limit: 100 });
     expect(called("from", "trip_events")).toBe(true);
     expect(argsOf("eq")).toEqual(["vehicle_id", "v1"]);
-    expect(argsOf("gte")).toEqual(["created_at", "2026-01-01"]);
+    expect(argsOf("gte")).toEqual(["occurred_at", "2026-01-01"]);
     expect(argsOf("limit")?.[0]).toBe(100);
   });
 

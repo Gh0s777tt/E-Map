@@ -15,6 +15,7 @@ import {
   type ExpiryLevel,
   expiryStatus,
   invoicePaymentStatus,
+  maskedCardLabel,
   serviceStatus,
 } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
@@ -124,8 +125,10 @@ export function AttentionPanel() {
             key: `card-${c.id}`,
             icon: "💳",
             category: t("attention.cat.card"),
-            title:
-              `${String(c.provider ?? t("attention.cat.card")).toUpperCase()} ${c.card_number_masked ?? ""}`.trim(),
+            title: maskedCardLabel(
+              String(c.provider ?? t("attention.cat.card")),
+              c.card_number_masked,
+            ),
             detail: c.valid_until,
             level: st.level,
             urgency: st.daysLeft,

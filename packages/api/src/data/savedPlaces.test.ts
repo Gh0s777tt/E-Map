@@ -24,3 +24,15 @@ describe("insertSavedPlace", () => {
     expect(row.company_id).toBe("c1");
   });
 });
+
+describe("listSavedPlaces — sufit pobrania", () => {
+  it("nakłada domyślny limit i pozwala go nadpisać", async () => {
+    const domyslne = mockSupabase({ data: [], error: null });
+    await listSavedPlaces(domyslne.client, "c1");
+    expect(domyslne.argsOf("limit")?.[0]).toBe(1000);
+
+    const wlasne = mockSupabase({ data: [], error: null });
+    await listSavedPlaces(wlasne.client, "c1", { limit: 25 });
+    expect(wlasne.argsOf("limit")?.[0]).toBe(25);
+  });
+});

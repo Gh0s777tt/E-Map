@@ -7,13 +7,18 @@
 import {
   deleteVehicleCost,
   getActiveMembership,
+  getCompany,
   insertVehicleCost,
   listVehicleCosts,
   listVehicles,
   type VehicleCost,
 } from "@e-logistic/api";
 import {
+  CURRENCIES,
+  type Currency,
+  currencyForCountry,
   firstZodError,
+  isSupportedCurrency,
   VEHICLE_COST_CATEGORIES,
   type VehicleCostCategory,
   vehicleCostSchema,
@@ -41,11 +46,24 @@ const CAT_KEY: Record<VehicleCostCategory, MobileMessageKey> = {
   other: "m.mvc.cat.other",
 };
 
+/**
+ * [#388] Waluta jako WYBÓR, nie jako wolny tekst.
+ *
+ * Do tej pory pole waluty było `TextInput` z `maxLength={3}` i podpowiedzią
+ * „EUR". Kierowca albo dyspozytor wpisujący `PL` zamiast `PLN` zapisywał wiersz
+ * całkowicie poprawny dla bazy i dla `vehicleCostSchema` (`z.string().min(1)`),
+ * ale **niemożliwy do przeliczenia** — `pickFxRate` nie zna kodu `PL`, więc
+ * koszt cicho wypadał z każdego podsumowania w euro. Błąd nie zgłaszał się
+ * nigdzie: formularz mówił „zapisano", a kwota po prostu nie dochodziła.
+ *
+ * Lista pochodzi z rdzenia, więc telefon i panel oferują ten sam zbiór, a
+ * literówka przestała być możliwa do wpisania.
+ */
 const empty = {
   vehicleId: null as string | null,
   category: "repair" as VehicleCostCategory,
   amount: "",
-  currency: "EUR",
+  currency: "EUR" as Currency,
   costDate: todayISO(),
   description: "",
 };
@@ -56,6 +74,8 @@ export default function ManageVehicleCostsScreen() {
   const [vehicles, setVehicles] = useState<{ id: string; registration: string }[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [form, setForm] = useState<typeof empty | null>(null);
+  /** Waluta podpowiadana nowemu wpisowi — z kraju firmy, z EUR jako zapasem. */
+  const [defaultCurrency, setDefaultCurrency] = useState<Currency>("EUR");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -65,10 +85,18 @@ export default function ManageVehicleCostsScreen() {
     const m = await getActiveMembership(sb);
     if (!m) return;
     setCompanyId(m.companyId);
-    const [costs, veh] = await Promise.all([
+    const [costs, veh, comp] = await Promise.all([
       listVehicleCosts(sb, m.companyId, { limit: 200 }),
       listVehicles(sb, m.companyId),
+      // [#388] Kraj firmy służy wyłącznie podpowiedzi waluty — ten sam wzorzec
+      // co na webie. Brak firmy nie może zablokować ekranu, więc `catch`.
+      getCompany(sb, m.companyId).catch(() => null),
     ]);
+    const hint = currencyForCountry(comp?.country ?? null);
+    // Podpowiedź przepuszczona przez listę: `currencyForCountry` zna waluty,
+    // których formularz nie oferuje (np. UAH), a wtedy żaden chip nie byłby
+    // zaznaczony i użytkownik zapisywałby walutę, której nie widzi na ekranie.
+    if (isSupportedCurrency(hint)) setDefaultCurrency(hint);
     setRows(costs);
     setVehicles(
       (veh as { id: string; registration: string }[]).map((v) => ({
@@ -102,7 +130,7 @@ export default function ManageVehicleCostsScreen() {
       vehicleId: form.vehicleId ?? "",
       category: form.category,
       amount: amt,
-      currency: form.currency.trim() || "EUR",
+      currency: form.currency,
       costDate: form.costDate.trim(),
       description: form.description.trim() || undefined,
     });
@@ -184,9 +212,7 @@ export default function ManageVehicleCostsScreen() {
                 style={[s.chip, form.category === c && s.chipOn]}
                 onPress={() => set({ category: c })}
               >
-                <Text style={[s.chipText, form.category === c && { color: palette.white }]}>
-                  {catLabel(c)}
-                </Text>
+                <Text style={[s.chipText, form.category === c && s.chipTextOn]}>{catLabel(c)}</Text>
               </Pressable>
             ))}
           </View>
@@ -203,18 +229,19 @@ export default function ManageVehicleCostsScreen() {
                 keyboardType="decimal-pad"
               />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.lbl}>{t("m.mvc.currency")}</Text>
-              <TextInput
-                style={s.input}
-                value={form.currency}
-                onChangeText={(v) => set({ currency: v.toUpperCase() })}
-                placeholder="EUR"
-                placeholderTextColor={palette.smoke}
-                autoCapitalize="characters"
-                maxLength={3}
-              />
-            </View>
+          </View>
+
+          <Text style={s.lbl}>{t("m.mvc.currency")}</Text>
+          <View style={s.chips}>
+            {CURRENCIES.map((c) => (
+              <Pressable
+                key={c}
+                style={[s.chip, form.currency === c && s.chipOn]}
+                onPress={() => set({ currency: c })}
+              >
+                <Text style={[s.chipText, form.currency === c && s.chipTextOn]}>{c}</Text>
+              </Pressable>
+            ))}
           </View>
 
           <Text style={s.lbl}>{t("m.mvc.date")}</Text>
@@ -258,7 +285,7 @@ export default function ManageVehicleCostsScreen() {
               return;
             }
             setMsg(null);
-            setForm({ ...empty, costDate: todayISO() });
+            setForm({ ...empty, costDate: todayISO(), currency: defaultCurrency });
           }}
         >
           <Text style={s.addText}>➕ {t("m.mvc.new")}</Text>
@@ -331,6 +358,9 @@ const s = StyleSheet.create({
   },
   chipOn: { backgroundColor: palette.red, borderColor: palette.red },
   chipText: { color: palette.smoke, fontSize: 12.5, fontWeight: "600" },
+  // [#388] Wygląd tekstu wybranego chipa w jednym miejscu — kategorie miały go
+  // wpisanego w JSX-ie, więc drugi zestaw chipów musiałby to skopiować.
+  chipTextOn: { color: palette.white },
   err: { color: palette.red, fontSize: 13 },
   cancel: { color: palette.smoke, textAlign: "center", paddingVertical: 8 },
   rowTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },

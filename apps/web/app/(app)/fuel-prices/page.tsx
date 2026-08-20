@@ -1,39 +1,35 @@
 "use client";
 
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { Badge, BarChart, PageHeader } from "@/components/ui";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 
 type Row = { cc: string; name: string; dieselEur: number; dieselLocal: number; currency: string };
 
 export default function FuelPricesPage() {
   const t = useT();
-  const [rows, setRows] = useState<Row[]>([]);
-  const [updated, setUpdated] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  // #310 (fala 2): notowania z `/api/fuel-eu` przez TanStack Query. Kierowca porównuje
+  // kraje przed każdym wyjazdem, a ceny aktualizowane są raz na dobę — powtarzanie
+  // tego strzału przy każdym wejściu było czystą stratą.
+  const pricesQuery = useQuery({
+    queryKey: queryKeys.euFuelPrices(),
+    queryFn: async (): Promise<{ rows: Row[]; updated: string | null }> => {
       const res = await fetch("/api/fuel-eu");
       const data = (await res.json()) as { countries?: Row[]; updated?: string; error?: string };
       if (!res.ok || data.error) throw new Error(data.error ?? t("fuelPrices.loadError"));
-      setRows(data.countries ?? []);
-      setUpdated(data.updated ?? null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("fuelPrices.error"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+      return { rows: data.countries ?? [], updated: data.updated ?? null };
+    },
+  });
+  const rows = pricesQuery.data?.rows ?? [];
+  const updated = pricesQuery.data?.updated ?? null;
+  const loading = pricesQuery.isPending;
+  const error = queryErrorMessage(pricesQuery.error, t("fuelPrices.error"));
+  const retry = () => void pricesQuery.refetch();
 
   const chart = rows.slice(0, 12).map((r) => ({ label: r.cc, value: r.dieselEur }));
 
@@ -46,7 +42,7 @@ export default function FuelPricesPage() {
         error={error}
         empty={rows.length === 0}
         emptyText={t("fuelPrices.empty")}
-        onRetry={load}
+        onRetry={retry}
       />
 
       {rows.length > 0 && (

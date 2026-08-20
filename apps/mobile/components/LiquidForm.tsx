@@ -1,8 +1,11 @@
 import { listFuelCardsForUser } from "@e-logistic/api";
 import {
+  type Currency,
+  currencyForCountry,
   type FuelLogInput,
   firstZodError,
   fuelLogSchema,
+  maskCardNumber,
   parseReceiptText,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
@@ -16,7 +19,17 @@ import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 import { useFleet } from "../lib/useFleet";
 import { usePermission } from "../lib/usePermission";
+import { CountryField } from "./CountryField";
 import { VehiclePicker } from "./VehiclePicker";
+
+/** Waluty w zasięgu tras tej floty. Inną można wpisać z panelu web. */
+/**
+ * [#388] Skrót do czterech walut, ale **typowany kodami z rdzenia** (`Currency`).
+ * Ekran wpisywany jedną ręką w kabinie nie może pokazywać dziesięciu chipów,
+ * więc podzbiór zostaje — natomiast literówka albo kod bez notowania w EBC
+ * przestaje się kompilować, zamiast tworzyć wpis nie do przeliczenia.
+ */
+const CURRENCIES: readonly Currency[] = ["EUR", "PLN", "CZK", "GBP"];
 
 const STATUS_ICON: Record<OutboxItem["status"], string> = {
   queued: "⏳",
@@ -43,6 +56,16 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [odometer, setOdometer] = useState("");
   const [liters, setLiters] = useState("");
+  /**
+   * [#377] Kwota z paragonu. Do tej pory formularz kierowcy NIE MIAŁ tego pola,
+   * przez co `price_total` był NULL w 100% wpisów — a to on jest podstawą kosztu
+   * paliwa, rozbicia netto/VAT i zwrotu podatku. Cała pieniężna połowa statystyk
+   * liczyła z pustego zbioru.
+   */
+  const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState("EUR");
+  /** Czy walutę wybrał człowiek — jeśli tak, kraj i paragon jej nie nadpisują. */
+  const [currencyTouched, setCurrencyTouched] = useState(false);
   const [payment, setPayment] = useState<"card" | "cash">("cash");
   // #332: karty flotowe — wybór spośród kart przypisanych do wybranego auta
   const [cards, setCards] = useState<{ id: string; label: string; registration: string | null }[]>(
@@ -80,7 +103,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
             }[]
           ).map((r) => ({
             id: r.id,
-            label: `${r.provider} ${r.card_number_masked ?? ""}`.trim(),
+            label: `${r.provider} ${maskCardNumber(r.card_number_masked)}`.trim(),
             registration: r.registration ?? null,
           })),
         ),
@@ -125,10 +148,31 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       if (res.canceled || !asset?.uri) return;
       const TextRecognition = (await import("@react-native-ml-kit/text-recognition")).default;
       const parsed = parseReceiptText((await TextRecognition.recognize(asset.uri)).text);
-      if (parsed.liters != null && !liters.trim()) {
-        setLiters(String(parsed.liters));
+
+      // [#377] Parser zwracał kwotę i walutę od początku (#298), a formularz brał
+      // z niego wyłącznie litry i resztę wyrzucał — dokładnie te dwie wartości,
+      // bez których nie ma ani kosztu paliwa, ani zwrotu VAT.
+      // Wypełniamy tylko puste pola — skan ma pomagać, a nie kasować to,
+      // co kierowca zdążył wpisać z ręki.
+      const newPrice = parsed.amount != null && !price.trim() ? parsed.amount : null;
+      const newLiters = parsed.liters != null && !liters.trim() ? parsed.liters : null;
+      const cur = parsed.currency ?? currency;
+
+      if (newPrice != null) {
+        setPrice(String(newPrice));
+        if (parsed.currency && !currencyTouched) setCurrency(parsed.currency);
+      }
+      if (newLiters != null) setLiters(String(newLiters));
+
+      if (newLiters != null && newPrice != null) {
         success();
-        setMsg(t("m.fuel.scanOk", { l: parsed.liters }));
+        setMsg(t("m.fuel.scanOkFull", { l: newLiters, a: newPrice, c: cur }));
+      } else if (newLiters != null) {
+        success();
+        setMsg(t("m.fuel.scanOk", { l: newLiters }));
+      } else if (newPrice != null) {
+        success();
+        setMsg(t("m.fuel.scanOkPrice", { a: newPrice, c: cur }));
       } else {
         warn();
         setMsg(
@@ -184,6 +228,9 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       liters: Number(liters.replace(",", ".")),
       paymentMethod: payment,
       isFull,
+      // Kwota jest opcjonalna, ale gdy jest — leci z walutą, bo bez waluty
+      // liczba jest nieporównywalna z niczym innym w zestawieniu.
+      ...(price.trim() ? { priceTotal: Number(price.replace(",", ".")), currency } : {}),
       ...(payment === "card" && cardId ? { fuelCardId: cardId } : {}),
     });
     if (!parsed.success) {
@@ -198,6 +245,7 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
       setMsg(item.status === "synced" ? t("m.fuel.savedSynced") : t("m.fuel.savedLocal"));
       setOdometer("");
       setLiters("");
+      setPrice("");
       setPostcode("");
       setCompany("");
       setGeo(null);
@@ -270,6 +318,35 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
         placeholder={t("m.fuel.liters")}
         placeholderTextColor={palette.smoke}
       />
+      {/* [#377] Kwota z paragonu — pole, którego kierowca do tej pory nie miał. */}
+      <View style={styles.priceRow}>
+        <TextInput
+          style={[styles.input, styles.priceInput]}
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="decimal-pad"
+          placeholder={t("m.fuel.price")}
+          placeholderTextColor={palette.smoke}
+        />
+        <View style={styles.currencyChips}>
+          {CURRENCIES.map((c) => (
+            <Pressable
+              key={c}
+              style={[styles.currencyChip, currency === c && styles.currencyChipOn]}
+              onPress={() => {
+                setCurrency(c);
+                setCurrencyTouched(true);
+              }}
+            >
+              <Text style={[styles.currencyText, currency === c && styles.currencyTextOn]}>
+                {c}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+      <Text style={styles.priceHint}>{t("m.fuel.priceHint")}</Text>
+
       <TextInput
         style={styles.input}
         value={odometer}
@@ -287,13 +364,18 @@ export function LiquidForm({ kind: initialKind }: { kind: "fuel" | "adblue" }) {
           📍 {geoBusy ? t("m.fuel.geoFilling") : t("m.fuel.geoFill")}
         </Text>
       </Pressable>
-      <TextInput
-        style={styles.input}
+      <CountryField
         value={country}
-        onChangeText={setCountry}
+        onChange={(v) => {
+          setCountry(v);
+          // Kraj podpowiada walutę, ale nigdy nie nadpisuje ręcznego wyboru:
+          // tankowanie w Czechach bywa płacone kartą rozliczaną w euro.
+          if (!currencyTouched) {
+            const c = currencyForCountry(v);
+            if (c) setCurrency(c);
+          }
+        }}
         placeholder={t("m.fuel.country")}
-        placeholderTextColor={palette.smoke}
-        autoCapitalize="characters"
       />
       <TextInput
         style={styles.input}
@@ -446,6 +528,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   row: { flexDirection: "row", gap: 10 },
+  priceRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  priceInput: { flex: 1 },
+  priceHint: { color: palette.smoke, fontSize: 12, lineHeight: 17, marginTop: -4 },
+  currencyChips: { flexDirection: "row", gap: 4, flexWrap: "wrap", maxWidth: 150 },
+  currencyChip: {
+    borderColor: palette.graphite,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  currencyChipOn: { backgroundColor: palette.red, borderColor: palette.red },
+  currencyText: { color: palette.smoke, fontSize: 12, fontWeight: "700" },
+  currencyTextOn: { color: palette.white, fontWeight: "800" },
   chip: {
     flex: 1,
     borderColor: palette.graphite,

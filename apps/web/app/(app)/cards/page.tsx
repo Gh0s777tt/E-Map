@@ -20,7 +20,8 @@ import {
   zodFieldErrors,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { CardArt } from "@/components/CardArt";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { Field, fieldInputStyle as input } from "@/components/Field";
@@ -29,6 +30,8 @@ import { useT } from "@/components/LocaleProvider";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 type Card = {
@@ -47,12 +50,7 @@ const providerLabel = (p: string) =>
 
 export default function CardsPage() {
   const confirm = useConfirm();
-  const [cards, setCards] = useState<Card[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [isOwner, setIsOwner] = useState(false);
-  const [offline, setOffline] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const qc = useQueryClient();
   const [pins, setPins] = useState<Record<string, string>>({});
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,31 +64,54 @@ export default function CardsPage() {
   const toast = useToast();
   const t = useT();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadErr(null);
-    try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        setOffline(true);
-        return;
-      }
-      setOffline(false);
-      setIsOwner(m.role === "owner");
-      const [cs, vs] = await Promise.all([listFuelCardsForUser(sb), listVehicles(sb, m.companyId)]);
-      setCards(cs as Card[]);
-      setVehicles(vs.map((v) => ({ id: v.id, registration: v.registration })));
-    } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : t("cards.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  // #310 (fala 2): karty i pojazdy przez TanStack Query. `listFuelCardsForUser` nie
+  // przyjmuje `companyId` (zasięg daje RLS), ale klucz i tak niesie firmę — po zmianie
+  // członkostwa ten sam użytkownik widzi inny zestaw kart i cache nie może ich pomylić.
+  const membership = useQuery({
+    queryKey: queryKeys.membership(),
+    queryFn: () => getCachedMembership(getBrowserSupabase()),
+  });
+  const companyId = membership.data?.companyId ?? null;
+  const isOwner = membership.data?.role === "owner";
+  // Brak członkostwa = konto bez firmy (tryb podglądu) — nie mylić z błędem odczytu.
+  const offline = membership.isSuccess && membership.data === null;
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const cardsQuery = useQuery({
+    queryKey: queryKeys.fuelCards(companyId),
+    queryFn: async (): Promise<Card[]> =>
+      companyId ? ((await listFuelCardsForUser(getBrowserSupabase())) as Card[]) : [],
+    enabled: !membership.isPending,
+  });
+  const vehiclesQuery = useQuery({
+    queryKey: queryKeys.vehicles(companyId),
+    queryFn: async (): Promise<Vehicle[]> =>
+      companyId
+        ? (await listVehicles(getBrowserSupabase(), companyId)).map((v) => ({
+            id: v.id,
+            registration: v.registration,
+          }))
+        : [],
+    enabled: !membership.isPending,
+  });
+  const cards = cardsQuery.data ?? [];
+  const vehicles = vehiclesQuery.data ?? [];
+  const loading = membership.isPending || cardsQuery.isPending || vehiclesQuery.isPending;
+  const loadErr = queryErrorMessage(
+    membership.error ?? cardsQuery.error ?? vehiclesQuery.error,
+    t("cards.loadError"),
+  );
+
+  /** Odświeżenie listy kart po zapisie/usunięciu — pojazdów ta strona nie zmienia. */
+  const reloadCards = useCallback(
+    () => qc.invalidateQueries({ queryKey: queryKeys.fuelCards(companyId) }),
+    [qc, companyId],
+  );
+  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy wszystkie trzy. */
+  const retry = () => {
+    void membership.refetch();
+    void cardsQuery.refetch();
+    void vehiclesQuery.refetch();
+  };
 
   function resetForm() {
     setEditingId(null);
@@ -164,24 +185,23 @@ export default function CardsPage() {
       setErrors(map);
       return;
     }
+    if (!companyId) {
+      toast(t("cards.noCompany"), "error");
+      return;
+    }
     try {
       const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        toast(t("cards.noCompany"), "error");
-        return;
-      }
       if (editingId) {
         await updateFuelCard(sb, editingId, parsed.data);
         if (parsed.data.pin) await setFuelCardPin(sb, editingId, parsed.data.pin);
         toast(t("cards.updated"), "success");
       } else {
-        const cardId = await insertFuelCard(sb, parsed.data, m.companyId);
+        const cardId = await insertFuelCard(sb, parsed.data, companyId);
         if (parsed.data.pin) await setFuelCardPin(sb, cardId, parsed.data.pin);
         toast(t("cards.added"), "success");
       }
       resetForm();
-      await load();
+      await reloadCards();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("cards.saveError"), "error");
     }
@@ -198,7 +218,7 @@ export default function CardsPage() {
       });
       if (editingId === cardId) resetForm();
       toast(t("cards.deleted"), "success");
-      await load();
+      await reloadCards();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("cards.deleteError"), "error");
     }
@@ -299,7 +319,7 @@ export default function CardsPage() {
         error={loadErr}
         empty={!offline && cards.length === 0}
         emptyText={t("cards.empty")}
-        onRetry={load}
+        onRetry={retry}
       />
       {!loading && !loadErr && cards.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>

@@ -18,6 +18,7 @@ import {
   type FuelCardProvider,
   firstZodError,
   fuelCardSchema,
+  maskCardNumber,
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
@@ -135,7 +136,7 @@ export default function ManageCardsScreen() {
   function confirmDelete(r: Row) {
     Alert.alert(
       t("m.manage.deleteTitle"),
-      `${FUEL_CARD_PROVIDER_LABELS[r.provider]} ${r.card_number_masked ?? ""} — ${t("m.manage.deleteCard")}`,
+      `${FUEL_CARD_PROVIDER_LABELS[r.provider]} ${maskCardNumber(r.card_number_masked)} — ${t("m.manage.deleteCard")}`,
       [
         { text: t("m.manage.cancel"), style: "cancel" },
         {
@@ -261,7 +262,7 @@ export default function ManageCardsScreen() {
             <Card key={r.id} style={{ gap: 6 }}>
               <View style={s.rowTop}>
                 <Text style={s.reg}>
-                  💳 {FUEL_CARD_PROVIDER_LABELS[r.provider]} {r.card_number_masked ?? ""}
+                  💳 {FUEL_CARD_PROVIDER_LABELS[r.provider]} {maskCardNumber(r.card_number_masked)}
                 </Text>
                 <View style={{ flexDirection: "row", gap: 14 }}>
                   <Pressable

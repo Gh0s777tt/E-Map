@@ -24,11 +24,19 @@ export interface ChecklistSubmission {
   created_at: string;
 }
 
+/**
+ * Szablony pisze się ręcznie i używa wielokrotnie — firma ma ich kilka
+ * (wyjazd, powrót, ADR, zima), a nie kilkaset. Wysoki sufit niczego by tu nie
+ * uratował, bo każdy szablon niesie ze sobą pełną listę pozycji w `items`,
+ * więc koszt zapytania rośnie z ZAWARTOŚCIĄ wierszy, nie z ich liczbą.
+ */
+const CHECKLIST_TEMPLATES_DEFAULT_LIMIT = 200;
+
 /** Szablony firmy (aktywne pierwsze). RLS: każdy członek czyta. */
 export async function listChecklistTemplates(
   client: SupabaseClient,
   companyId: string,
-  opts: { activeOnly?: boolean } = {},
+  opts: { activeOnly?: boolean; limit?: number } = {},
 ): Promise<ChecklistTemplate[]> {
   let q = client
     .from("checklist_templates")
@@ -36,6 +44,7 @@ export async function listChecklistTemplates(
     .eq("company_id", companyId)
     .order("name");
   if (opts.activeOnly) q = q.eq("active", true);
+  q = q.limit(opts.limit ?? CHECKLIST_TEMPLATES_DEFAULT_LIMIT);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((r) => ({
@@ -121,25 +130,34 @@ export interface ChecklistSubmissionInput {
 }
 
 /** Zgłoszenie kierowcy — driver_id/driver_user_id dopina trigger po auth.uid(). */
+/** [#391] Jak przy wydatkach: `id` z kolejki offline zamienia powtórkę w brak zmian. */
 export async function insertChecklistSubmission(
   client: SupabaseClient,
   companyId: string,
   input: ChecklistSubmissionInput,
+  /** Identyfikator z kolejki offline — czyni ponowną wysyłkę bezpieczną. */
+  id?: string,
 ): Promise<string> {
   const { data, error } = await client
     .from("checklist_submissions")
-    .insert({
-      company_id: companyId,
-      template_id: input.templateId,
-      template_name: input.templateName,
-      vehicle_id: input.vehicleId ?? null,
-      driver_label: input.driverLabel,
-      answers: input.answers as unknown as Json,
-    })
+    .upsert(
+      {
+        ...(id ? { id } : {}),
+        company_id: companyId,
+        template_id: input.templateId,
+        template_name: input.templateName,
+        vehicle_id: input.vehicleId ?? null,
+        driver_label: input.driverLabel,
+        answers: input.answers as unknown as Json,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    )
+    // [#391] `maybeSingle` — patrz `insertDriverExpense`: przy powtórce z kolejki
+    // `ignoreDuplicates` nie zwraca wiersza, a to poprawne zakończenie, nie błąd.
     .select("id")
-    .single();
+    .maybeSingle();
   if (error) throw error;
-  return data.id;
+  return data?.id ?? id ?? "";
 }
 
 /** Zgłoszenia firmy (zarząd) lub własne (kierowca — RLS zawęża). Filtry + sort. */

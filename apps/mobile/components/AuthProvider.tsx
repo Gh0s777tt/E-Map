@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 import { resetChatUnread } from "../lib/chatUnread";
 import { flushQueued } from "../lib/outbox";
-import { registerForPush } from "../lib/push";
+import { registerForPush, removeDevicePushToken } from "../lib/push";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
 
 interface AuthState {
@@ -121,6 +121,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const sb = getSupabase();
+        /*
+         * [#390] Token push zdejmujemy z urządzenia PRZED zamknięciem sesji —
+         * potem nie ma już czym się uwierzytelnić, a funkcja działa na `auth.uid()`.
+         *
+         * Bez tego firmowy telefon oddany innemu kierowcy odbierał powiadomienia
+         * poprzedniego użytkownika: przydziały zleceń i treści z czatu trafiały
+         * na ekran osoby, której nie dotyczyły. Błąd nie znikał sam — token
+         * zostawał przypisany do konta, które mogło się już nigdy nie zalogować.
+         *
+         * `catch` bez reakcji: brak sieci ani cofnięta zgoda na powiadomienia
+         * NIE MOGĄ zablokować wylogowania. Kolejny użytkownik przejmie token
+         * przy pierwszym logowaniu (`save_expo_push_token`), więc to jest
+         * zabezpieczenie podwójne, nie jedyne.
+         */
+        await removeDevicePushToken(sb).catch(() => {});
         try {
           await sb.auth.signOut();
         } catch {

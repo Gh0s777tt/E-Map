@@ -9,7 +9,8 @@ import {
   upsertContractor,
 } from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { DataImport, type ImportColumn } from "@/components/DataImport";
 import { type Column, DataTable } from "@/components/DataTable";
@@ -20,6 +21,8 @@ import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { downloadXlsx } from "@/lib/xlsx";
 
@@ -55,10 +58,7 @@ export default function ContractorsPage() {
   const t = useT();
   const confirm = useConfirm();
   const toast = useToast();
-  const [contractors, setContractors] = useState<Contractor[]>([]);
-  const [canManage, setCanManage] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -66,28 +66,42 @@ export default function ContractorsPage() {
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadErr(null);
-    try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        setContractors([]);
-        return;
-      }
-      setCanManage(m.role === "owner" || m.role === "dispatcher");
-      setContractors(await listContractors(sb, m.companyId));
-    } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : t("contractors.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  // #310 (fala 2): odczyt przez TanStack Query — rejestr kontrahentów otwiera się
+  // przy każdym wystawianiu faktury i zlecenia, więc wspólny cache oszczędza
+  // powtarzany round-trip, a mutacje niżej jawnie go unieważniają.
+  const membership = useQuery({
+    queryKey: queryKeys.membership(),
+    queryFn: () => getCachedMembership(getBrowserSupabase()),
+  });
+  const companyId = membership.data?.companyId ?? null;
+  const canManage = membership.data?.role === "owner" || membership.data?.role === "dispatcher";
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const contractorsQuery = useQuery({
+    queryKey: queryKeys.contractors(companyId),
+    // Bez firmy nie ma czego czytać — pusta lista, a nie błąd (tak działał dawny `load()`).
+    queryFn: (): Promise<Contractor[]> =>
+      companyId ? listContractors(getBrowserSupabase(), companyId) : Promise.resolve([]),
+    // Dopiero gdy znamy firmę — inaczej pierwszy strzał poszedłby pod klucz `null`
+    // i po chwili powtórzył się pod właściwym.
+    enabled: !membership.isPending,
+  });
+  const contractors = contractorsQuery.data ?? [];
+  const loading = membership.isPending || contractorsQuery.isPending;
+  const loadErr = queryErrorMessage(
+    membership.error ?? contractorsQuery.error,
+    t("contractors.loadError"),
+  );
+
+  /** Odświeżenie rejestru po zapisie/usunięciu/imporcie — bez tego lista byłaby nieświeża. */
+  const reloadList = useCallback(
+    () => qc.invalidateQueries({ queryKey: queryKeys.contractors(companyId) }),
+    [qc, companyId],
+  );
+  /** „Ponów" w ListStatus: błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy oba. */
+  const retry = () => {
+    void membership.refetch();
+    void contractorsQuery.refetch();
+  };
 
   function resetForm() {
     setEditingId(null);
@@ -112,13 +126,12 @@ export default function ContractorsPage() {
       toast(t("contractors.nameRequired"), "error");
       return;
     }
+    if (!companyId) {
+      toast(t("vehicles.noCompanyImport"), "error");
+      return;
+    }
     try {
       const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        toast(t("vehicles.noCompanyImport"), "error");
-        return;
-      }
       const input = {
         name: trimmed,
         taxId: taxId.trim() || null,
@@ -129,11 +142,11 @@ export default function ContractorsPage() {
         await updateContractor(sb, editingId, input);
         toast(t("contractors.updated"), "success");
       } else {
-        await upsertContractor(sb, m.companyId, input);
+        await upsertContractor(sb, companyId, input);
         toast(t("contractors.added"), "success");
       }
       resetForm();
-      await load();
+      await reloadList();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("contractors.saveError"), "error");
     }
@@ -150,7 +163,7 @@ export default function ContractorsPage() {
       await deleteContractor(getBrowserSupabase(), c.id);
       if (editingId === c.id) resetForm();
       toast(t("contractors.deleted"), "success");
-      await load();
+      await reloadList();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("contractors.deleteError"), "error");
     }
@@ -171,8 +184,7 @@ export default function ContractorsPage() {
   const importContractors = useCallback(
     async (values: ContractorInput[]) => {
       const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
+      if (!companyId) {
         return {
           inserted: 0,
           failed: values.length,
@@ -188,7 +200,7 @@ export default function ContractorsPage() {
         if (name) byName.set(name, { ...v, name });
       }
       const rows = [...byName.values()].map((v) => ({
-        company_id: m.companyId,
+        company_id: companyId,
         name: v.name,
         tax_id: v.taxId?.trim() || null,
         address: v.address?.trim() || null,
@@ -203,7 +215,7 @@ export default function ContractorsPage() {
       }
       return { inserted: rows.length, failed: 0, errors: [] };
     },
-    [t],
+    [companyId, t],
   );
 
   const cols: Column<Contractor>[] = [
@@ -317,7 +329,7 @@ export default function ContractorsPage() {
             validate={validateContractorRow}
             onImport={importContractors}
             templateBase="kontrahenci"
-            onDone={load}
+            onDone={() => void reloadList()}
           />
         </div>
       )}
@@ -342,7 +354,7 @@ export default function ContractorsPage() {
         error={loadErr}
         empty={contractors.length === 0}
         emptyText={t("contractors.empty")}
-        onRetry={load}
+        onRetry={retry}
       />
       {!loading && !loadErr && contractors.length > 0 && (
         <DataTable

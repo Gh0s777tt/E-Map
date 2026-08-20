@@ -6,7 +6,8 @@
  * (panel operacyjny — odświeżanie jawne lub przez mutacje/invalidate).
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { setActiveQueryClient } from "@/lib/queryClient";
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -17,5 +18,17 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         },
       }),
   );
+  /*
+   * Udostępniamy klienta kodowi spoza drzewa Reacta — konkretnie
+   * `clearMembershipCache()`, które musi unieważnić `["membership"]` po utworzeniu firmy
+   * lub przyjęciu zaproszenia. Bez tego wpis przeżywał zmianę członkostwa (ten provider
+   * nie odmontowuje się przy nawigacji wewnątrz `(app)`) i panel przez `staleTime`
+   * pokazywał świeżemu właścicielowi stan sprzed założenia firmy. Szczegóły:
+   * `lib/queryClient.ts`.
+   */
+  useEffect(() => {
+    setActiveQueryClient(client);
+    return () => setActiveQueryClient(null);
+  }, [client]);
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }

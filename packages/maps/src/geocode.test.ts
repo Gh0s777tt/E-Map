@@ -212,3 +212,88 @@ describe("geocode — fallback nie zatruwa pamięci podręcznej (#369)", () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 });
+
+// [#372] Kraj MUSI pochodzić z pól strukturalnych dostawcy, nie z tekstu etykiety.
+// Przyczyna błędu: formularz odtwarzał kraj jako „ostatni człon po przecinku",
+// a TomTom kraju we `freeformAddress` nie umieszcza — do pola „Kraj" wpadał
+// kod pocztowy z miastem („31-042 Kraków").
+describe("geocode — pola strukturalne adresu", () => {
+  it("TomTom: countryCode/city/postcode trafiają do wyniku, choć etykieta ich nie zawiera", {
+    timeout: 30_000,
+  }, async () => {
+    stubFetch({
+      json: {
+        results: [
+          {
+            position: { lat: 50.06, lon: 19.94 },
+            address: {
+              freeformAddress: "Rynek Główny 1, 31-042 Kraków",
+              municipality: "Kraków",
+              postalCode: "31-042",
+              countryCode: "PL",
+              country: "Polska",
+            },
+          },
+        ],
+      },
+    });
+    const [hit] = await geocode("Rynek Główny", { tomtomKey: "T" });
+    // Etykieta faktycznie nie niesie kraju — stąd brał się błąd.
+    expect(hit?.label).not.toContain("Polska");
+    expect(hit).toMatchObject({
+      countryCode: "PL",
+      country: "Polska",
+      city: "Kraków",
+      postcode: "31-042",
+    });
+  });
+
+  it("Nominatim: kod kraju jest normalizowany do wielkich liter", async () => {
+    const fetchFn = stubFetch({
+      json: [
+        {
+          display_name: "Berlin, Deutschland",
+          lat: "52.52",
+          lon: "13.405",
+          address: {
+            country: "Deutschland",
+            country_code: "de",
+            city: "Berlin",
+            postcode: "10115",
+          },
+        },
+      ],
+    });
+    const [hit] = await geocode("Berlin");
+    // Bez `addressdetails=1` Nominatim w ogóle nie zwraca obiektu `address`.
+    expect(String(fetchFn.mock.calls[0]?.[0])).toContain("addressdetails=1");
+    expect(hit).toMatchObject({
+      countryCode: "DE", // z "de" — formularz porównuje z listą zapisaną wielkimi
+      country: "Deutschland",
+      city: "Berlin",
+      postcode: "10115",
+    });
+  });
+
+  it("Nominatim: miasto bywa pod town/village — bierzemy pierwszy dostępny wariant", async () => {
+    stubFetch({
+      json: [
+        {
+          display_name: "Zakopane",
+          lat: "49.3",
+          lon: "19.95",
+          address: { country_code: "pl", village: "Zakopane" },
+        },
+      ],
+    });
+    const [hit] = await geocode("Zakopane");
+    expect(hit?.city).toBe("Zakopane");
+  });
+
+  it("brak danych adresowych nie psuje wyniku — pola zostają puste", async () => {
+    stubFetch({ json: [{ display_name: "Gdzieś", lat: "1", lon: "2" }] });
+    const [hit] = await geocode("gdzies");
+    expect(hit).toMatchObject({ label: "Gdzieś", lat: 1, lng: 2 });
+    expect(hit?.countryCode).toBeUndefined();
+  });
+});

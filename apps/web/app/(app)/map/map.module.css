@@ -157,6 +157,55 @@
   text-align: left;
 }
 
+/*
+ * [#383] Chipsy zapisanych miejsc (SavedPlacesChips w mapPanels.tsx).
+ * Klasy `savedChip`/`savedAdd`/`savedDel` były używane w JSX, ale nie istniały w tym
+ * module — `styles.savedChip` zwracało `undefined`, więc chipsy jechały bez klasy:
+ * naga lista z dwoma systemowymi przyciskami zamiast pastylek w motywie. Stylistyka
+ * jak `.segment`/`.priceRow`, żeby panel pozostał jednorodny.
+ */
+.savedChip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--el-background, #0a0a0a);
+  border: 1px solid var(--el-border, #2a2a2a);
+  border-radius: 999px;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.savedAdd {
+  background: transparent;
+  border: none;
+  color: var(--el-text, #f5f5f5);
+  font-size: 12px;
+  padding: 6px 4px 6px 10px;
+  cursor: pointer;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savedAdd:hover {
+  color: var(--el-red, #e50914);
+}
+
+.savedDel {
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--el-border, #2a2a2a);
+  color: var(--el-muted, #a3a3a3);
+  font-size: 11px;
+  line-height: 1;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.savedDel:hover {
+  color: var(--el-red, #e50914);
+}
+
 /* Wiersz podsumowania trasy (Row). */
 .row {
   display: flex;

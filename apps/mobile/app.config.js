@@ -63,7 +63,7 @@ module.exports = {
     name: "E-Logistic",
     slug: "e-logistic",
     scheme: "elogistic",
-    version: "1.94.0",
+    version: "1.95.0",
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,

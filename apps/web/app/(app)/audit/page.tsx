@@ -3,11 +3,14 @@
 import { type AuditEntry, listAuditLog } from "@e-logistic/api";
 import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 /** Kod akcji audytu → klucz i18n (reszta wyświetlana surowo). */
@@ -23,10 +26,6 @@ const ACTION_LABEL: Record<string, MessageKey> = {
 
 export default function AuditPage() {
   const t = useT();
-  const [allowed, setAllowed] = useState<boolean | null>(null);
-  const [entries, setEntries] = useState<AuditEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
 
   const actionLabel = (a: string) => {
@@ -34,28 +33,45 @@ export default function AuditPage() {
     return key ? t(key) : a;
   };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (m?.role !== "owner") {
-        setAllowed(false);
-        return;
-      }
-      setAllowed(true);
-      setEntries(await listAuditLog(sb, m.companyId, { limit: 200 }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("audit.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  // #310 (fala 2): dziennik audytu przez TanStack Query — 200 wpisów przy każdym wejściu
+  // to najcięższy pojedynczy odczyt w ustawieniach, a treść zmienia się rzadko.
+  const membership = useQuery({
+    queryKey: queryKeys.membership(),
+    queryFn: () => getCachedMembership(getBrowserSupabase()),
+  });
+  // `null` = jeszcze nie wiadomo. Świadomie `isSuccess`, a nie „nie trwa ładowanie":
+  // gdy odczyt członkostwa PADNIE, użytkownik ma zobaczyć błąd z „Ponów", a nie
+  // komunikat „brak dostępu" sugerujący, że to kwestia uprawnień.
+  const allowed = membership.isSuccess ? membership.data?.role === "owner" : null;
+  const companyId = membership.data?.companyId ?? null;
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const entriesQuery = useQuery({
+    queryKey: queryKeys.auditLog(companyId),
+    // Nie-właściciel dostaje ekran „brak dostępu" — nie ma po co pytać bazy.
+    queryFn: (): Promise<AuditEntry[]> =>
+      allowed && companyId
+        ? listAuditLog(getBrowserSupabase(), companyId, { limit: 200 })
+        : Promise.resolve([]),
+    enabled: !membership.isPending,
+    /*
+     * Wyjątek od globalnych 30 s (`components/QueryProvider.tsx`): do `audit_log` pisze
+     * BAZA przy akcjach z zupełnie innych ekranów — m.in. RPC odsłaniające PIN karty
+     * paliwowej — więc żaden `invalidateQueries` stąd nie poleci. Właściciel, który
+     * odsłania PIN i od razu wraca sprawdzić, czy odczyt został zapisany, zobaczyłby
+     * dziennik bez tego wpisu i wyciągnął wniosek, że PIN-y NIE są audytowane. Ten
+     * jeden ekran nie może pokazywać nieaktualnego stanu — od tego jest. Cache zostaje
+     * (dane widać od razu, bez migotania), ale każde wejście odświeża je w tle.
+     */
+    staleTime: 0,
+  });
+  const entries = entriesQuery.data ?? [];
+  const loading = membership.isPending || entriesQuery.isPending;
+  const error = queryErrorMessage(membership.error ?? entriesQuery.error, t("audit.loadError"));
+  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy oba zapytania. */
+  const retry = () => {
+    void membership.refetch();
+    void entriesQuery.refetch();
+  };
 
   if (allowed === false) {
     return (
@@ -96,7 +112,7 @@ export default function AuditPage() {
         error={error}
         empty={!loading && entries.length === 0}
         emptyText={t("audit.empty")}
-        onRetry={load}
+        onRetry={retry}
       />
 
       {allowed && shown.length > 0 && (

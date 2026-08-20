@@ -17,16 +17,26 @@ export interface OrderPhoto {
   kind?: string | null;
 }
 
+/**
+ * Zbiór jednego zlecenia: zdjęcia zabezpieczenia ładunku plus skany CMR.
+ * Kierowca robi ich kilka–kilkanaście na załadunek, więc 200 to próg absurdu,
+ * a nie próg pracy — i jednocześnie ochrona przed zleceniem, do którego ktoś
+ * wgrał całą galerię z telefonu.
+ */
+const ORDER_PHOTOS_DEFAULT_LIMIT = 200;
+
 /** Zdjęcia danego zlecenia (najnowsze pierwsze). RLS: członek czyta. */
 export async function listOrderPhotos(
   client: SupabaseClient,
   orderId: string,
+  opts?: { limit?: number },
 ): Promise<OrderPhoto[]> {
   const { data, error } = await client
     .from("order_photos")
     .select("*")
     .eq("order_id", orderId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(opts?.limit ?? ORDER_PHOTOS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as OrderPhoto[];
 }

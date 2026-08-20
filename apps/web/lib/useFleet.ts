@@ -1,16 +1,58 @@
 "use client";
 
 import { listFuelCardsForUser, listVehicles } from "@e-logistic/api";
-import { FUEL_CARD_PROVIDER_LABELS, type FuelCardProvider } from "@e-logistic/core";
+import {
+  FUEL_CARD_PROVIDER_LABELS,
+  type FuelCardProvider,
+  maskCardNumber,
+  type VehicleType,
+} from "@e-logistic/core";
 import { useEffect, useState } from "react";
 import { DEMO_CARDS, DEMO_VEHICLES } from "@/lib/demo";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
+type VehicleRow = {
+  id: string;
+  registration: string;
+  vehicle_type?: string | null;
+  height_cm?: number | null;
+  width_cm?: number | null;
+  length_cm?: number | null;
+  curb_weight_kg?: number | null;
+  max_payload_kg?: number | null;
+  axle_count?: number | null;
+  adr_tunnel_code?: string | null;
+  emission_class?: string | null;
+};
+
 export interface FleetVehicle {
   id: string;
   registration: string;
+  /**
+   * [#387] Gabaryty i pola routingu z kartoteki pojazdu.
+   *
+   * `listVehicles` robi `select("*")`, więc te kolumny **od zawsze przychodziły
+   * z bazy** — hook wyrzucał je w `.map()` tuż przed użyciem. Skutek: ekran mapy
+   * musiał ominąć ten hook własnym zapytaniem, żeby dostać wymiary do routingu,
+   * a każdy kolejny ekran potrzebujący gabarytów powtórzyłby to obejście.
+   *
+   * `null` znaczy „w kartotece pusto" i musi tak zostać. Podstawienie „typowej"
+   * wysokości 4 m byłoby zgadywaniem, a zgadywanie tutaj kończy się zestawem
+   * wbitym w wiadukt — brak wartości ma być widoczny na ekranie, nie zamaskowany.
+   *
+   * Kształt celowo zgodny z wersją mobilną (`apps/mobile/lib/useFleet.ts`), żeby
+   * ta sama logika profilu pojazdu dała się czytać na obu platformach tak samo.
+   */
+  vehicleType: VehicleType | null;
+  heightCm: number | null;
+  widthCm: number | null;
+  lengthCm: number | null;
+  curbWeightKg: number | null;
   maxPayloadKg?: number | null;
+  axleCount: number | null;
+  adrTunnelCode: string | null;
+  emissionClass: string | null;
 }
 export interface FleetCard {
   id: string;
@@ -60,13 +102,23 @@ export function useFleet() {
           listVehicles(sb, membership.companyId),
           listFuelCardsForUser(sb),
         ]);
-        const mappedVehicles = (
-          vs as { id: string; registration: string; max_payload_kg?: number | null }[]
-        ).map((v) => ({
-          id: v.id,
-          registration: v.registration,
-          maxPayloadKg: v.max_payload_kg ?? null,
-        }));
+        // [#387] Wiersz przepisywany w całości — kolumny i tak przyszły z `select("*")`,
+        // a odcinanie ich tutaj zmuszało ekran mapy do własnego zapytania.
+        const mappedVehicles = (vs as VehicleRow[]).map(
+          (v): FleetVehicle => ({
+            id: v.id,
+            registration: v.registration,
+            vehicleType: (v.vehicle_type as VehicleType | undefined) ?? null,
+            heightCm: v.height_cm ?? null,
+            widthCm: v.width_cm ?? null,
+            lengthCm: v.length_cm ?? null,
+            curbWeightKg: v.curb_weight_kg ?? null,
+            maxPayloadKg: v.max_payload_kg ?? null,
+            axleCount: v.axle_count ?? null,
+            adrTunnelCode: v.adr_tunnel_code ?? null,
+            emissionClass: v.emission_class ?? null,
+          }),
+        );
         setVehicles(mappedVehicles);
         setCards(
           (
@@ -83,7 +135,8 @@ export function useFleet() {
             return {
               id: c.id,
               provider,
-              label: `${brand} ${c.card_number_masked ?? ""}${reg ? ` · ${reg}` : ""}`.trim(),
+              label:
+                `${brand} ${maskCardNumber(c.card_number_masked)}${reg ? ` · ${reg}` : ""}`.trim(),
               registration: reg,
             };
           }),

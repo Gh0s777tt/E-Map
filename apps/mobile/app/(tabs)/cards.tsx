@@ -4,6 +4,7 @@
  * pokazuje na 30 s przez audytowane RPC get_fuel_card_pin.
  */
 import { getFuelCardPin, listFuelCardsForUser } from "@e-logistic/api";
+import { maskCardNumber } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -128,7 +129,7 @@ export default function FuelCardsScreen() {
               <Text style={s.provider}>{c.provider}</Text>
               {c.registration ? <Text style={s.reg}>🚚 {c.registration}</Text> : null}
             </View>
-            <Text style={s.number}>{c.card_number_masked ?? "•••• ••••"}</Text>
+            <Text style={s.number}>{maskCardNumber(c.card_number_masked)}</Text>
             <View style={s.cardBottom}>
               <View>
                 <Text style={s.metaLabel}>{t("m.cards.validUntil")}</Text>

@@ -55,16 +55,29 @@ export async function deleteMyPosition(client: SupabaseClient): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Jeden wiersz na kierowcę (upsert po `user_id`), więc zbiór nie rośnie z czasem
+ * — jego górną granicą jest załoga firmy. Sufit jest tu jednak istotny z innego
+ * powodu niż gdzie indziej: mapa odpytuje tę funkcję CYKLICZNIE, więc każdy
+ * wiersz ponad potrzebę mnoży się przez częstotliwość odświeżania.
+ *
+ * Sortowanie malejące po `updated_at` sprawia, że przy obcięciu w wyniku
+ * zostają pozycje najświeższe — a to jedyne, które na mapie live coś znaczą.
+ */
+const DRIVER_POSITIONS_DEFAULT_LIMIT = 1000;
+
 /** Aktualne pozycje kierowców firmy (RLS: członek czyta). */
 export async function listDriverPositions(
   client: SupabaseClient,
   companyId: string,
+  opts?: { limit?: number },
 ): Promise<DriverPosition[]> {
   const { data, error } = await client
     .from("driver_positions")
     .select("user_id, company_id, lat, lng, speed_kmh, heading, updated_at")
     .eq("company_id", companyId)
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .limit(opts?.limit ?? DRIVER_POSITIONS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as DriverPosition[];
 }

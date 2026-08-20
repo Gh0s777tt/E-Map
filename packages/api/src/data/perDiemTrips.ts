@@ -32,13 +32,30 @@ const COLS =
   "id, driver_name, destination, mode, hours, daily_rate, currency, trip_date, note, created_at";
 
 /** Zapisane podróże firmy (najnowsze pierwsze). Filtr: kierowca. RLS: członek czyta. */
+/**
+ * Podróże służbowe (diety).
+ *
+ * [#390] `from`/`to` doszły, bo raport miesięczny pobierał CAŁĄ historię firmy
+ * i dopiero potem filtrował po miesiącu w przeglądarce. Przy limicie 5000
+ * wierszy i kilkuletniej historii najstarsze miesiące wypadały poza limit —
+ * i to bez śladu: sekcja diet pokazywała kwotę zaniżoną albo znikała zupełnie,
+ * wyglądając identycznie jak miesiąc, w którym nikt nie jeździł.
+ *
+ * Filtrujemy po `trip_date` (dzień podróży), a nie po `created_at` (dzień
+ * wpisania do systemu) — z tego samego powodu, dla którego reszta repozytorium
+ * liczy okresy po dacie zdarzenia. Wiersze bez `trip_date` (kolumna jest
+ * nullowalna) przepuszczamy, żeby zawężenie zakresu nie ukryło danych,
+ * których nie umiemy umiejscowić w czasie.
+ */
 export async function listPerDiemTrips(
   client: SupabaseClient,
   companyId: string,
-  opts: { driverName?: string; limit?: number } = {},
+  opts: { driverName?: string; from?: string; to?: string; limit?: number } = {},
 ): Promise<PerDiemTrip[]> {
   let q = client.from("per_diem_trips").select(COLS).eq("company_id", companyId);
   if (opts.driverName) q = q.eq("driver_name", opts.driverName);
+  if (opts.from) q = q.or(`trip_date.gte.${opts.from},trip_date.is.null`);
+  if (opts.to) q = q.or(`trip_date.lt.${opts.to},trip_date.is.null`);
   q = q.order("created_at", { ascending: false }).limit(opts.limit ?? 1000);
   const { data, error } = await q;
   if (error) throw error;

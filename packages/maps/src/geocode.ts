@@ -9,12 +9,27 @@ export interface GeoHit {
   label: string;
   lat: number;
   lng: number;
+  /**
+   * [#372] Pola strukturalne z geokodera. Wcześniej `GeoHit` był płaski, więc
+   * formularze odtwarzały kraj heurystyką „ostatni człon po przecinku". TomTom
+   * nie podaje kraju we `freeformAddress` („Rynek 1, 31-042 Kraków”), więc do pola
+   * „Kraj” trafiał kod pocztowy z miastem. Dane były pobierane od dostawcy
+   * i wyrzucane przy budowie wyniku — teraz je przekazujemy.
+   *
+   * Opcjonalne, bo nie każdy dostawca podaje komplet dla każdego trafienia.
+   */
+  countryCode?: string;
+  country?: string;
+  city?: string;
+  postcode?: string;
 }
 
 interface MapTilerFeature {
   place_name?: string;
   text?: string;
   center?: [number, number];
+  /** Hierarchia miejsca (miasto → region → kraj); kraj niesie `short_code` ISO. */
+  context?: { id?: string; text?: string; short_code?: string }[];
 }
 interface MapTilerResponse {
   features?: MapTilerFeature[];
@@ -24,6 +39,16 @@ interface NominatimItem {
   display_name?: string;
   lat?: string;
   lon?: string;
+  /** Zwracane wyłącznie przy `addressdetails=1`. */
+  address?: {
+    country?: string;
+    country_code?: string;
+    postcode?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+  };
 }
 
 async function geocodeMapTiler(query: string, key: string, limit: number): Promise<GeoHit[]> {
@@ -34,13 +59,28 @@ async function geocodeMapTiler(query: string, key: string, limit: number): Promi
   const out: GeoHit[] = [];
   for (const f of data.features ?? []) {
     if (!f.center) continue;
-    out.push({ label: f.place_name ?? f.text ?? query, lng: f.center[0], lat: f.center[1] });
+    // MapTiler trzyma kraj/kod pocztowy w `context` — pozycje rozpoznajemy po
+    // prefiksie `id` („country.123", „postal_code.45"), bo kolejność bywa różna.
+    const ctx = f.context ?? [];
+    const byId = (prefix: string) => ctx.find((c) => c.id?.startsWith(`${prefix}.`));
+    const country = byId("country");
+    out.push({
+      label: f.place_name ?? f.text ?? query,
+      lng: f.center[0],
+      lat: f.center[1],
+      countryCode: country?.short_code?.toUpperCase(),
+      country: country?.text,
+      city: byId("municipality")?.text ?? byId("place")?.text,
+      postcode: byId("postal_code")?.text,
+    });
   }
   return out;
 }
 
 async function geocodeNominatim(query: string, limit: number): Promise<GeoHit[]> {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=${limit}&accept-language=pl`;
+  // `addressdetails=1` — bez tego Nominatim zwraca sam `display_name` i kraj
+  // trzeba by znów zgadywać z tekstu.
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&addressdetails=1&limit=${limit}&accept-language=pl`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`Nominatim ${res.status}`);
   const data = (await res.json()) as NominatimItem[];
@@ -50,7 +90,18 @@ async function geocodeNominatim(query: string, limit: number): Promise<GeoHit[]>
     const lat = Number(it.lat);
     const lng = Number(it.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue; // odsiej śmieci (NaN)
-    out.push({ label: it.display_name ?? query, lat, lng });
+    const a = it.address;
+    out.push({
+      label: it.display_name ?? query,
+      lat,
+      lng,
+      // OSM zwraca kod kraju małymi literami — normalizujemy, bo formularz
+      // porównuje go z listą krajów zapisaną wielkimi.
+      countryCode: a?.country_code?.toUpperCase(),
+      country: a?.country,
+      city: a?.city ?? a?.town ?? a?.village ?? a?.municipality,
+      postcode: a?.postcode,
+    });
   }
   return out;
 }

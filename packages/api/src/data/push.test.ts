@@ -61,3 +61,39 @@ describe("listPushSubscriptionsForDelivery — scoping multi-tenant", () => {
     );
   });
 });
+
+describe("listPushSubscriptionsForDelivery — sufit pobrania", () => {
+  it("przy znanych adresatach sufit WYNIKA z ich liczby", async () => {
+    /*
+     * Stała liczba byłaby tu najgorszym wyborem: obcięcie nie psuje żadnego
+     * ekranu, tylko wycina komuś powiadomienie — objaw, którego nikt nie
+     * zgłosi, bo „nie przyszło" wygląda jak „nic się nie działo". Sufit
+     * związany z rozmiarem wysyłki nie ma jak zadziałać przy większej firmie.
+     */
+    const jeden = mockSupabase({ data: [], error: null });
+    await listPushSubscriptionsForDelivery(jeden.client, { userIds: ["u1"] });
+    const dziesieciu = mockSupabase({ data: [], error: null });
+    await listPushSubscriptionsForDelivery(dziesieciu.client, {
+      userIds: Array.from({ length: 10 }, (_, i) => `u${i}`),
+    });
+    expect(dziesieciu.argsOf("limit")?.[0]).toBe((jeden.argsOf("limit")?.[0] as number) * 10);
+  });
+
+  it("wysyłka do całej firmy (bez listy adresatów) dostaje stały sufit z zapasem", async () => {
+    const { client, argsOf } = mockSupabase({ data: [], error: null });
+    await listPushSubscriptionsForDelivery(client, { companyId: "c" });
+    expect(argsOf("limit")?.[0]).toBe(5000);
+  });
+
+  it("gdy podano oba filtry, decyduje WĘŻSZY — lista adresatów", async () => {
+    const { client, argsOf } = mockSupabase({ data: [], error: null });
+    await listPushSubscriptionsForDelivery(client, { companyId: "c", userIds: ["u1", "u2"] });
+    expect(argsOf("limit")?.[0]).toBeLessThan(5000);
+  });
+
+  it("opts.limit nadpisuje wyliczony", async () => {
+    const { client, argsOf } = mockSupabase({ data: [], error: null });
+    await listPushSubscriptionsForDelivery(client, { companyId: "c", limit: 12 });
+    expect(argsOf("limit")?.[0]).toBe(12);
+  });
+});

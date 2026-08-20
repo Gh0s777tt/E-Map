@@ -1,19 +1,99 @@
 # ══════════════════════════════════════════════════════════════════
-#  E-Logistic — GitLab CI/CD (źródło prawdy; GitHub = mirror, Actions OFF)
+#  E-Logistic — GitLab CI/CD (źródło prawdy repozytorium)
+#  PODZIAŁ Z [#414]: bramka jakości (biome/tsc/testy/build/docs:check) przeniesiona
+#  do GitHub Actions — namespace jest na planie free i minuty kończą się w połowie
+#  miesiąca (`ci_quota_exceeded`), więc bramka bez sekretów nie może stać na budżecie.
+#  Tutaj zostaje to, co WYMAGA sekretów albo pełnej historii: gitleaks, SAST,
+#  db-types/rls (SUPABASE_DB_URL), release, pages. `quality` zostaje jako bramka
+#  zapasowa — rusza sama, gdy minuty są dostępne.
 #  Bramki jakości + skan bezpieczeństwa + wydanie + publikacja dokumentacji.
+#  Bramki (quality, gitleaks) chodzą na KAŻDEJ gałęzi i w każdym MR — patrz
+#  `workflow:` niżej. Zielony pipeline ma znaczyć „bramki przeszły”, a nie
+#  „przeszedł sam SAST”.
 # ══════════════════════════════════════════════════════════════════
 stages:
   - test
   - security
   - deploy
 
+# ── Kiedy w ogóle powstaje pipeline ────────────────────────────────
+# Wcześniej `quality`, `gitleaks` i `db-types` miały reguły ograniczone do MR-ów
+# i gałęzi domyślnej. Na gałęzi feature odpalał się więc TYLKO semgrep-sast i pipeline
+# świecił na zielono, choć ani lint, ani testy, ani skan sekretów nigdy nie poszły —
+# fałszywa gwarancja jakości (potwierdzone: 84 pipeline'y, w każdym jeden job).
+# Rozszerzenie reguł jobów na wszystkie gałęzie samo w sobie rodzi klasyczny problem
+# GitLaba: push do gałęzi z otwartym MR-em tworzy DWA pipeline'y (gałęziowy + MR-owy),
+# które liczą to samo dwa razy i podwajają zużycie minut.
+# Rozwiązaniem jest przełącznik na poziomie `workflow` — kolejność reguł jest istotna,
+# wygrywa pierwsza dopasowana:
+#   1. zdarzenie MR → pipeline MR-owy (widzi wynik scalenia, nie sam commit),
+#   2. PUSH do gałęzi innej niż domyślna, mającej otwarty MR → nic (pkt 1 już policzył),
+#   3. cokolwiek innego, co ma gałąź → zwykły pipeline gałęziowy.
+# Blokada z pkt 2 jest zawężona dwoma warunkami i oba są konieczne:
+#   · `$CI_PIPELINE_SOURCE == "push"` — duplikat pipeline'u powstaje WYŁĄCZNIE przy pushu.
+#     Bez tego warunku blokada łapałaby także źródła `web`, `api`, `trigger`, `pipeline`
+#     i `schedule`: ręczne „Run pipeline” z UI na gałęzi z otwartym MR-em (typowe po
+#     dodaniu zmiennej w Settings → CI/CD) kończyłoby się komunikatem o odfiltrowaniu
+#     przez workflow zamiast przebiegiem, a nocny harmonogram znikałby dla każdej gałęzi,
+#     która akurat ma MR-a. Reguła 3 przepuszcza je wszystkie — mają `CI_COMMIT_BRANCH`.
+#   · `$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH` — `CI_OPEN_MERGE_REQUESTS` wylicza MR-y,
+#     w których BIEŻĄCA gałąź jest ŹRÓDŁOWA. Jeden otwarty MR o źródle `main` (np. `main`
+#     → gałąź wydaniowa) wygasiłby pipeline'y na `main`, czyli na jedynej gałęzi, gdzie
+#     żyją `release` i `pages`. Ceną jest podwójny przebieg na `main` w tym rzadkim
+#     przypadku — tańszą niż cisza dokładnie tam, gdzie publikujemy.
+# Zmienna `CI_OPEN_MERGE_REQUESTS` jest ustawiona tylko dla gałęzi będącej źródłem MR-a —
+# to jej istnienie odróżnia „gałąź z MR-em” od „gałęzi bez MR-a”.
+# Tagi celowo NIE tworzą pipeline'u: w pipelinie tagowym `CI_COMMIT_BRANCH` jest puste,
+# więc żadna reguła się nie dopasuje, a tag pushowany przez semantic-release generowałby
+# pusty, mylący przebieg.
+# `auto_cancel.on_new_commit` — uzasadnienie przy `interruptible` w `.node` niżej.
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
 # Statyczna analiza kodu (Semgrep) — zarządzana przez GitLab.
 include:
   - template: Security/SAST.gitlab-ci.yml
 
+# ── Przełącznik wymagany przez szablon SAST ────────────────────────
+# `Jobs/SAST.gitlab-ci.yml` ma WSZYSTKIE reguły MR-owe (`semgrep-sast`,
+# `gitlab-advanced-sast`) obwarowane warunkiem `$AST_ENABLE_MR_PIPELINES == "true"`,
+# a sam nigdzie nie nadaje tej zmiennej wartości domyślnej. Ostatnia reguła w szablonie
+# to `if: $CI_COMMIT_BRANCH` — a w pipelinie `merge_request_event` `CI_COMMIT_BRANCH`
+# jest NIEZDEFINIOWANE. Bez tej zmiennej `workflow:` wyżej (gałąź z otwartym MR-em →
+# tylko pipeline MR-owy) skasowałby SAST dokładnie tam, gdzie odbywa się recenzja:
+# job nie byłby w ogóle tworzony, MR świeciłby na zielono, a skan poszedłby dopiero
+# na `main` PO scaleniu. Duplikatu nie będzie — reguła nr 2 w szablonie sama daje
+# `never` dla pipeline'u gałęziowego, gdy gałąź ma otwarty MR.
+variables:
+  AST_ENABLE_MR_PIPELINES: "true"
+
 # ── Wspólny setup dla jobów Node (NIE dla SAST/gitleaks/pages) ──
+# `interruptible` dopiero teraz ma sens i jest potrzebne: skoro bramki chodzą na każdym
+# pushu, seria szybkich pushy na jedną gałąź trzymałaby w kolejce kilka pełnych przebiegów
+# `pnpm check`. Sama flaga na jobie by jednak NIE wystarczyła: w domyślnym trybie
+# auto-anulowania (`conservative`) GitLab przestaje anulować pipeline w chwili, gdy ruszy
+# w nim jakikolwiek job BEZ `interruptible`, a pobierany szablon `Jobs/SAST.gitlab-ci.yml`
+# nie ustawia tej flagi nigdzie (domyślnie `false`) i wpina `semgrep-sast` w stage `test`,
+# czyli równolegle z `quality`. Stąd `workflow.auto_cancel.on_new_commit: interruptible`
+# wyżej — anuluje NASZE joby niezależnie od tego, co jeszcze biegnie w pipelinie.
+# Czego to nie daje: `semgrep-sast` (job szablonu, `allow_failure`) mimo wszystko dobiegnie
+# końca, a całość działa tylko przy włączonym auto-anulowaniu w Settings → CI/CD.
+#
+# `corepack enable` samo nie wystarcza: obrazy `node:26-*` NIE zawierają już corepacka
+# (odpięty od dystrybucji Node) — sprawdzone w `node:26-bookworm-slim` i `node:26-bookworm`:
+# `command -v corepack` jest puste, więc `before_script` kończyłby się kodem 127, a każdy
+# job Node'owy padałby przed pierwszą linią `script`. Instalujemy corepacka npm-em (npm
+# w obrazie jest) i dopiero on odczytuje `packageManager` z package.json — dzięki temu
+# wersja pnpm zostaje przypięta w JEDNYM miejscu, zamiast rozjeżdżać się z CI.
 .node:
   image: node:26-bookworm-slim
+  interruptible: true
   cache:
     key:
       files:
@@ -21,26 +101,47 @@ include:
     paths:
       - .pnpm-store
   before_script:
+    - npm install --global corepack
     - corepack enable
     - pnpm config set store-dir .pnpm-store
     - pnpm install --frozen-lockfile
 
+# ── Reguła „każda gałąź + każdy MR” ────────────────────────────────
+# Wspólna dla obu twardych bramek, żeby przy kolejnej edycji jedna nie została w tyle
+# za drugą. Dzięki `workflow:` wyżej te dwa warunki nigdy nie zadziałają jednocześnie,
+# więc nie ma tu ryzyka podwojenia pipeline'u.
+.rules-kazda-galaz:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
 # ── Bramka jakości: Biome · tsc (web+mobile) · testy · docs:check ──
 quality:
-  extends: .node
+  extends:
+    - .node
+    - .rules-kazda-galaz
   stage: test
   script:
     - pnpm check
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
 # ── Bramka spójności typów bazy ze schematem (#367) ──
 # `packages/api/src/database.types.ts` jest GENEROWANE ze schematu (`pnpm gen:types`),
 # ale nic dotąd nie pilnowało, by po migracji je zregenerowano — typy potrafiły więc
 # „gwarantować" nieistniejące kolumny (rozjazd zabroniony w CLAUDE.md).
-# Job WŁĄCZA SIĘ SAM po dodaniu zmiennej `SUPABASE_DB_URL` (Settings → CI/CD → Variables;
-# ustaw jako masked + protected). Bez zmiennej jest pomijany, więc nie blokuje pipeline'u.
+# Job WŁĄCZA SIĘ SAM po dodaniu zmiennej `SUPABASE_DB_URL` (Settings → CI/CD → Variables).
+# Bez zmiennej jest pomijany, więc nie blokuje pipeline'u — to celowe.
+#
+# ZAKRES ZALEŻY OD FLAGI „protected” i trzeba to wybrać świadomie, bo nie ma tu opcji
+# bez kosztu — `SUPABASE_DB_URL` niesie hasło do bazy produkcyjnej:
+#   · masked + PROTECTED (bezpieczniej, domyślne zalecenie): GitLab podaje zmienną wyłącznie
+#     w pipeline'ach na gałęziach/tagach CHRONIONYCH. Pipeline MR-owy biegnie na niechronionej
+#     gałęzi źródłowej, więc obie reguły niżej są tam martwe — job jest bramką PO SCALENIU,
+#     na `main`. Rozjazd typów wykryje się dzień po merge'u, nie w recenzji.
+#   · masked, BEZ „protected”: job rusza też w MR-ach i na gałęziach feature (realna bramka
+#     w recenzji), ale wartość widzi każdy pipeline, czyli w praktyce każdy, kto może pushnąć
+#     gałąź. Wybieraj to WYŁĄCZNIE z poświadczeniami tylko-do-odczytu.
+# Cokolwiek wybierzesz, obie reguły zostają: przy „protected” po prostu nie dopasuje się
+# ta MR-owa, a nie chcemy, by przełączenie flagi wymagało edycji pipeline'u.
 # Porównujemy przez `cp`+`diff`, NIE `git diff` — obraz `node:*-slim` nie zawiera gita
 # (repo klonuje kontener helpera), więc `git` w jobie kończyłby się „command not found",
 # a `||` zamieniłoby to w mylący komunikat o rozjeździe typów.
@@ -55,21 +156,51 @@ db-types:
       { echo "❌ database.types.ts rozjechane ze schematem — uruchom 'pnpm gen:types' i zacommituj wynik."; exit 1; }
   rules:
     - if: '$SUPABASE_DB_URL && $CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$SUPABASE_DB_URL && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$SUPABASE_DB_URL && $CI_COMMIT_BRANCH'
+
+# ── Bramka RLS: izolacja multi-tenant w ŻYWEJ bazie ──
+# `scripts/audit-rls.mjs` sprawdza to, czego pliki migracji nie udowodnią: czy na produkcji
+# każda tabela `public` ma włączone RLS, czy nie ma policy `USING (true)` poza tabelami
+# wspólnotowymi i czy funkcje SECURITY DEFINER mają przypięty `search_path`. Skrypt istniał
+# od dawna jako `pnpm audit:rls`, ale nic go nie uruchamiało — dokumentacja mówiła
+# o „bramce RLS w CI", której nie było. Tabela multi-tenant bez RLS = kierowca jednej firmy
+# czyta dane innej, więc to najdroższa możliwa cicha regresja w tym repo.
+# Zakres identyczny z `db-types` i z tego samego powodu (ta sama zmienna, ten sam kompromis
+# „protected” ↔ pokrycie MR-ów) — patrz komentarz wyżej. Skrypt jest TYLKO DO ODCZYTU
+# (pyta katalog `pg_*`), więc nawet uruchomiony na gałęzi niczego nie zmienia.
+rls:
+  extends: .node
+  stage: security
+  script:
+    - pnpm audit:rls
+  rules:
+    - if: '$SUPABASE_DB_URL && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$SUPABASE_DB_URL && $CI_COMMIT_BRANCH'
 
 # ── Skan sekretów (pełna historia, konfiguracja .gitleaks.toml) ──
+# `GIT_DEPTH: 0` (pełny klon) jest tu warunkiem sensu tego joba: domyślny płytki klon
+# GitLaba daje ~20 commitów, a `gitleaks detect` skanuje HISTORIĘ — bez tego „pełna
+# historia" z nagłówka byłaby nieprawdą i sekret sprzed 30 commitów przeszedłby gładko.
 gitleaks:
+  extends: .rules-kazda-galaz
   stage: security
+  interruptible: true
   image:
     name: zricethezav/gitleaks:latest
     entrypoint: [""]
+  variables:
+    GIT_DEPTH: 0
   script:
     - gitleaks detect --source . --config .gitleaks.toml --redact --verbose
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
 # ── Audyt podatności zależności (doradczy) ──
+# Świadomie NIE na każdej gałęzi. Ten job nie ocenia kodu z commita, tylko konfrontuje
+# `pnpm-lock.yaml` z bazą CVE — na gałęzi feature bez zmian w zależnościach jego wynik
+# jest identyczny jak na `main`, a `allow_failure` sprawia, że i tak niczego nie zatrzyma.
+# Uruchamiamy go tam, gdzie wynik ma odbiorcę: w MR (recenzent widzi skutek nowej paczki),
+# na gałęzi domyślnej oraz w harmonogramie — bo nowe CVE pojawiają się bez naszego pusha,
+# a tylko cykliczny przebieg jest w stanie je wychwycić. Do czasu założenia harmonogramu
+# (Settings → CI/CD → Schedules) trzecia reguła po prostu nigdy się nie dopasuje.
 audit:
   extends: .node
   stage: security
@@ -77,14 +208,32 @@ audit:
     - pnpm audit --audit-level=high
   allow_failure: true
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
 
 # ── Wydanie: semantic-release (RĘCZNIE; wymaga zmiennej CI: GITLAB_TOKEN) ──
 # Tworzy tag vX.Y.Z + GitLab Release z Conventional Commits. Patrz .releaserc.json.
+# Zakres celowo zostaje na gałęzi domyślnej — wydanie z gałęzi feature nie ma sensu.
+# Obraz PEŁNY, nie `-slim`: semantic-release stoi w całości na binarce `git` (odczyt tagów,
+# `git log` od ostatniego wydania, weryfikacja gałęzi z `branches: ["main"]`, push tagu),
+# a `node:*-slim` gita nie ma — ten sam brak, który przy `db-types` wymusił `cp`+`diff`.
+# Doinstalowanie przez apt też by działało, ale dokładałoby jobowi wydaniowemu zależność
+# od mirrora Debiana; `node:26-bookworm` ma gita (2.39.x) i certyfikaty CA od razu.
+# `GIT_DEPTH: 0` z tego samego powodu co w `gitleaks`: przy domyślnym płytkim klonie
+# semantic-release nie widzi poprzedniego tagu i policzyłby wersję z uciętej historii.
+# `allow_failure: true` zostaje ŚWIADOMIE i nie jest tu cichą zgodą na porażkę: manualny
+# job BEZ tej flagi jest blokujący, więc każdy pipeline na `main` stałby w stanie „blocked”
+# do czasu kliknięcia wydania i nigdy nie świeciłby na zielono. Wybór jest między „nieudane
+# wydanie = pipeline z ostrzeżeniem” a „main nigdy nie jest zielony”; job odpala człowiek
+# i patrzy na jego wynik, więc porażka ma odbiorcę tu i teraz.
 release:
   stage: deploy
-  image: node:26-bookworm-slim
+  image: node:26-bookworm
+  variables:
+    GIT_DEPTH: 0
   before_script:
+    - npm install --global corepack
     - corepack enable
   script:
     - pnpm dlx --package semantic-release --package @semantic-release/gitlab semantic-release
@@ -94,6 +243,7 @@ release:
       allow_failure: true
 
 # ── GitLab Pages: dokumentacja MkDocs (docs/api generowane wcześniej, commitowane) ──
+# Też wyłącznie gałąź domyślna: Pages publikuje jeden, produkcyjny serwis dokumentacji.
 pages:
   stage: deploy
   image: python:3.12-slim

@@ -9,24 +9,47 @@ import {
   type ChatMessage,
   type CompanyMember,
   chatPhotoUrl,
+  deleteMessage,
+  editMessage,
   getActiveMembership,
   listCompanyMembers,
   listMessages,
+  listReactions,
   listThreadMembers,
+  type MessageReaction,
   removeThreadMember,
   renameThread,
+  sendMessage,
+  setReaction,
   subscribeMessages,
   uploadChatPhotoBinary,
 } from "@e-logistic/api";
+import {
+  type ChatViewer,
+  canDeleteMessage,
+  canEditMessage,
+  EMOJI_CATEGORIES,
+  isDeleted,
+  mapLink,
+  QUICK_REACTIONS,
+  quotePreview,
+  readChatLocation,
+  summarizeReactions,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { decode } from "base64-arraybuffer";
+import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
+  AppState,
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -63,6 +86,22 @@ interface PendingMessage {
 /** Wiersz listy: potwierdzona wiadomość z serwera albo wpis z kolejki. */
 type Row = { kind: "sent"; msg: ChatMessage } | { kind: "pending"; item: PendingMessage };
 
+/** [#374] Pinezka w dymku — dotknięcie otwiera natywną mapę telefonu. */
+function LocationBubble({ meta, mine }: { meta: unknown; mine: boolean }) {
+  const t = useT();
+  const loc = readChatLocation(meta);
+  // Wadliwe `meta` nie może wywalić całej listy rozmowy.
+  if (!loc) return <Text style={mine ? s.bodyMine : s.body}>{t("m.chat.locationLabel")}</Text>;
+  return (
+    <Pressable onPress={() => Linking.openURL(mapLink(loc, "native")).catch(() => {})}>
+      <Text style={mine ? s.bodyMine : s.body}>📍 {loc.label ?? t("m.chat.locationLabel")}</Text>
+      <Text style={[s.time, mine && s.timeMine, { textDecorationLine: "underline" }]}>
+        {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}
+      </Text>
+    </Pressable>
+  );
+}
+
 /** Zdjęcie w dymku — pobiera podpisany URL raz i cache'uje w stanie. */
 function ChatImage({ path }: { path: string }) {
   const t = useT();
@@ -97,6 +136,15 @@ export default function ChatThreadScreen() {
   const listRef = useRef<FlatList<Row>>(null);
   // Panel zarządzania kanałem
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // [#374] Akcje na wiadomości: arkusz, tryb edycji, cytat, reakcje.
+  const [role, setRole] = useState<ChatViewer["role"]>("driver");
+  const [actionFor, setActionFor] = useState<ChatMessage | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [reactions, setReactions] = useState<MessageReaction[]>([]);
+  /** Pełny picker w arkuszu — domyślnie schowany za sześcioma szybkimi reakcjami. */
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [catIdx, setCatIdx] = useState(0);
   const [nameDraft, setNameDraft] = useState("");
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [threadMemberIds, setThreadMemberIds] = useState<Set<string>>(new Set());
@@ -112,22 +160,80 @@ export default function ChatThreadScreen() {
         if (!m || !alive) return;
         setCompanyId(m.companyId);
         setManage(m.role === "owner" || m.role === "dispatcher");
-        setMessages(await listMessages(sb, m.companyId, { threadId }));
-        cleanup = subscribeMessages(sb, m.companyId, (msg) => {
-          if ((msg.thread_id ?? null) !== threadId) return;
-          setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-          // #368/#369: rozmowa jest otwarta — czytamy na bieżąco, ale znacznik
-          // zapisujemy ZDŁAWIONY. Zapis do bazy na KAŻDĄ wiadomość u każdego
-          // patrzącego był zbędny (RLS liczy `created_at > last_read_at`);
-          // zaległy zapis domyka `setOpenChatChannel(null, false)` przy wyjściu.
-          if (msg.sender_id !== me) markChannelReadThrottled(threadId, m.companyId);
-        });
+        setRole(m.role as ChatViewer["role"]);
+        const loaded = await listMessages(sb, m.companyId, { threadId });
+        setMessages(loaded);
+        // [#374] Reakcje jednym zapytaniem dla całego widoku — per dymek
+        // oznaczałoby setki zapytań przy dłuższej rozmowie i na słabym zasięgu.
+        setReactions(
+          await listReactions(
+            sb,
+            loaded.map((x) => x.id),
+          ),
+        );
+        cleanup = subscribeMessages(
+          sb,
+          m.companyId,
+          (msg) => {
+            if ((msg.thread_id ?? null) !== threadId) return;
+            setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+            // #368/#369: rozmowa jest otwarta — czytamy na bieżąco, ale znacznik
+            // zapisujemy ZDŁAWIONY. Zapis do bazy na KAŻDĄ wiadomość u każdego
+            // patrzącego był zbędny (RLS liczy `created_at > last_read_at`);
+            // zaległy zapis domyka `setOpenChatChannel(null, false)` przy wyjściu.
+            if (msg.sender_id !== me) markChannelReadThrottled(threadId, m.companyId);
+          },
+          // [#374] UPDATE niesie edycję ORAZ miękkie usunięcie — podmieniamy
+          // dymek w miejscu, a render sam decyduje, co pokazać.
+          (msg) => {
+            if ((msg.thread_id ?? null) !== threadId) return;
+            setMessages((list) => list.map((x) => (x.id === msg.id ? msg : x)));
+          },
+        );
       } catch {
         if (alive) setErr(t("m.chat.loadFail"));
       }
     })();
+    /*
+     * [#401] Dociągnięcie po powrocie z tła.
+     *
+     * Realtime dostarcza wyłącznie zdarzenia BIEŻĄCE. Gdy system uśpi telefon
+     * (ekran zgaszony, aplikacja w tle), WebSocket zostaje zamknięty, a po
+     * ponownym połączeniu Postgres Changes NIE odtwarza tego, co przyszło
+     * w międzyczasie. Kierowca z otwartą rozmową w uchwycie widział więc wątek
+     * urwany na ostatniej wiadomości sprzed uśpienia — i nic mu tego nie
+     * sygnalizowało. Brakująca wiadomość w czacie firmowym to nie kosmetyka:
+     * tą drogą idą zmiany adresu załadunku i numeru rampy.
+     *
+     * Przy każdym przejściu na pierwszy plan pobieramy listę od nowa. Reakcje
+     * też, bo mogły dojść do wiadomości już widocznych.
+     */
+    const naPierwszyPlan = AppState.addEventListener("change", (stan) => {
+      if (stan !== "active" || !alive || !supabaseConfigured) return;
+      (async () => {
+        try {
+          const sb = getSupabase();
+          const m = await getActiveMembership(sb);
+          if (!m || !alive) return;
+          const swieze = await listMessages(sb, m.companyId, { threadId });
+          if (!alive) return;
+          setMessages(swieze);
+          setReactions(
+            await listReactions(
+              sb,
+              swieze.map((x) => x.id),
+            ),
+          );
+        } catch {
+          // Brak sieci zaraz po odblokowaniu telefonu jest normalny — zostajemy
+          // przy tym, co mamy, zamiast psuć ekran komunikatem o błędzie.
+        }
+      })();
+    });
+
     return () => {
       alive = false;
+      naPierwszyPlan.remove();
       cleanup?.();
     };
   }, [threadId, me, t]);
@@ -193,6 +299,129 @@ export default function ChatThreadScreen() {
     }
   }, [messages, pending]);
 
+  // ── [#374] Akcje na wiadomości ───────────────────────────────────────
+  // Reguły uprawnień pochodzą z `@e-logistic/core` — te same, których używa
+  // panel web. Bez wspólnego źródła interfejsy rozjechałyby się po cichu.
+
+  const viewer: ChatViewer = { userId: me ?? "", role };
+
+  const doDelete = useCallback(
+    (id: string) => {
+      Alert.alert(t("m.chat.delete"), t("m.chat.deleteConfirm"), [
+        { text: t("m.chat.cancel"), style: "cancel" },
+        {
+          text: t("m.chat.delete"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteMessage(getSupabase(), id);
+              setMessages((list) =>
+                list.map((x) => (x.id === id ? { ...x, deleted_at: new Date().toISOString() } : x)),
+              );
+              tap();
+            } catch (e) {
+              warn();
+              setErr(e instanceof Error ? e.message : t("m.chat.sendFail"));
+            }
+          },
+        },
+      ]);
+    },
+    [t],
+  );
+
+  /**
+   * Treść przychodzi PARAMETREM, nie ze stanu: `setState` jest asynchroniczne,
+   * więc odczyt `editDraft` tuż po jego ustawieniu zapisałby poprzednią wartość.
+   */
+  const doSaveEdit = useCallback(
+    async (nextBody: string) => {
+      if (!editingId) return;
+      const body = nextBody.trim();
+      if (!body) return;
+      try {
+        const updated = await editMessage(getSupabase(), editingId, body);
+        setMessages((list) => list.map((x) => (x.id === editingId ? updated : x)));
+        setEditingId(null);
+        tap();
+      } catch (e) {
+        warn();
+        setErr(e instanceof Error ? e.message : t("m.chat.sendFail"));
+      }
+    },
+    [editingId, t],
+  );
+
+  const doReact = useCallback(
+    async (id: string, emoji: string, on: boolean) => {
+      if (!me) return;
+      // Optymistycznie — reakcja to gest „kliknij i zapomnij", nie może czekać na sieć.
+      setReactions((rs) =>
+        on
+          ? [...rs, { message_id: id, user_id: me, emoji }]
+          : rs.filter((r) => !(r.message_id === id && r.user_id === me && r.emoji === emoji)),
+      );
+      tap();
+      try {
+        await setReaction(getSupabase(), id, emoji, on);
+      } catch {
+        warn();
+      }
+    },
+    [me],
+  );
+
+  const doCopy = useCallback(
+    async (body: string) => {
+      await Clipboard.setStringAsync(body);
+      tap();
+      setErr(null);
+      Alert.alert(t("m.chat.copied"));
+    },
+    [t],
+  );
+
+  /** Arkusz akcji po długim przytrzymaniu dymka. */
+  const openActions = useCallback((msg: ChatMessage) => {
+    if (isDeleted(msg)) return;
+    tap();
+    setActionFor(msg);
+  }, []);
+
+  /**
+   * [#374] Wysłanie własnej lokalizacji jako wiadomości — jednorazowy zrzut.
+   *
+   * Świadomie NIE korzysta z outboxu: pozycja sprzed godzin jest bezwartościowa
+   * albo myląca („jestem tutaj" o miejscu, w którym kierowcy dawno nie ma).
+   * Bez zasięgu mówimy wprost, że się nie udało.
+   */
+  const sendLocationMsg = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted) {
+        warn();
+        setErr(t("m.chat.locationDenied"));
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const msg = await sendMessage(getSupabase(), companyId, "", myLabel, {
+        threadId,
+        kind: "location",
+        meta: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        replyToId: replyTo?.id ?? null,
+      });
+      setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+      setReplyTo(null);
+      tap();
+    } catch {
+      warn();
+      setErr(t("m.chat.locationDenied"));
+    }
+  }, [companyId, myLabel, threadId, replyTo, t]);
+
   const send = useCallback(async () => {
     const body = text.trim();
     if (!body || !companyId || busy) return;
@@ -202,17 +431,24 @@ export default function ChatThreadScreen() {
       // #368: wiadomość ląduje NAJPIERW w outboxie (lokalnie, natychmiast) —
       // bez zasięgu nic nie ginie, a `enqueue` sam odpala próbę wysyłki w tle.
       // Dymek „wysyłanie…" pochodzi z kolejki; potwierdzoną treść przynosi realtime.
-      const input: ChatOutboxInput = { companyId, threadId, body, senderLabel: myLabel };
+      const input: ChatOutboxInput = {
+        companyId,
+        threadId,
+        body,
+        senderLabel: myLabel,
+        replyToId: replyTo?.id ?? null,
+      };
       await enqueue("chat", input, new Date().toISOString());
       tap();
       setText("");
+      setReplyTo(null);
     } catch {
       warn();
       setErr(t("m.chat.sendFail"));
     } finally {
       setBusy(false);
     }
-  }, [text, companyId, busy, myLabel, threadId, t]);
+  }, [text, companyId, busy, myLabel, threadId, replyTo?.id, t]);
 
   async function sendPhoto() {
     if (!companyId || photoBusy) return;
@@ -347,29 +583,252 @@ export default function ChatThreadScreen() {
           }
           const item = row.msg;
           const mine = item.sender_id === me;
+
+          // [#374] Usunięta wiadomość zostaje jako ślad — bez tego rozmowa
+          // traci sens, bo odpowiedzi wiszą w próżni.
+          if (isDeleted(item)) {
+            return (
+              <View style={[s.bubbleRow, mine && s.bubbleRowMine]}>
+                <View style={[s.bubble, s.bubbleGone]}>
+                  <Text style={s.goneText}>{t("m.chat.deleted")}</Text>
+                </View>
+              </View>
+            );
+          }
+
+          const quoted = messages.find((x) => x.id === item.reply_to_id) ?? null;
+          const summary = summarizeReactions(reactions, item.id, me ?? "");
+
           return (
             <View style={[s.bubbleRow, mine && s.bubbleRowMine]}>
-              <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther]}>
-                {!mine && (
-                  <Text style={s.sender} numberOfLines={1}>
-                    {item.sender_label || t("m.chat.member")}
+              <View style={{ maxWidth: "82%" }}>
+                <Pressable
+                  onLongPress={() => openActions(item)}
+                  delayLongPress={280}
+                  style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther]}
+                >
+                  {!mine && (
+                    <Text style={s.sender} numberOfLines={1}>
+                      {item.sender_label || t("m.chat.member")}
+                    </Text>
+                  )}
+                  {quoted && (
+                    <View style={s.quote}>
+                      <Text style={s.quoteAuthor} numberOfLines={1}>
+                        {quoted.sender_label || t("m.chat.member")}
+                      </Text>
+                      <Text style={s.quoteText} numberOfLines={2}>
+                        {quotePreview(quoted, {
+                          photo: t("m.chat.photoLabel"),
+                          location: t("m.chat.locationLabel"),
+                        })}
+                      </Text>
+                    </View>
+                  )}
+                  {item.kind === "location" ? (
+                    <LocationBubble meta={item.meta} mine={mine} />
+                  ) : item.photo_path ? (
+                    <ChatImage path={item.photo_path} />
+                  ) : (
+                    <Text style={mine ? s.bodyMine : s.body}>{item.body}</Text>
+                  )}
+                  <Text style={[s.time, mine && s.timeMine]}>
+                    {item.created_at.slice(11, 16)}
+                    {item.edited_at ? ` · ${t("m.chat.edited")}` : ""}
+                    {item.expires_at ? " · ⏱" : ""}
                   </Text>
+                </Pressable>
+
+                {summary.length > 0 && (
+                  <View style={[s.reactRow, mine && { justifyContent: "flex-end" }]}>
+                    {summary.map((r) => (
+                      <Pressable
+                        key={r.emoji}
+                        style={[s.reactChip, r.mine && s.reactChipMine]}
+                        onPress={() => doReact(item.id, r.emoji, !r.mine)}
+                      >
+                        <Text style={s.reactText}>
+                          {r.emoji} {r.count}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
                 )}
-                {item.photo_path ? (
-                  <ChatImage path={item.photo_path} />
-                ) : (
-                  <Text style={mine ? s.bodyMine : s.body}>{item.body}</Text>
-                )}
-                <Text style={[s.time, mine && s.timeMine]}>{item.created_at.slice(11, 16)}</Text>
               </View>
             </View>
           );
         }}
       />
       {err && messages.length > 0 && <Text style={s.err}>{err}</Text>}
+      {/* [#374] Arkusz akcji po długim przytrzymaniu dymka. Modal zamiast
+          menu przy dymku — na telefonie palec zasłaniałby własne menu. */}
+      <Modal
+        visible={actionFor !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setActionFor(null)}
+      >
+        <Pressable
+          style={s.actionBackdrop}
+          onPress={() => {
+            setActionFor(null);
+            setPickerOpen(false);
+          }}
+        >
+          <Pressable style={s.actionSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.actionTitle}>{t("m.chat.msgActions")}</Text>
+
+            <View style={s.sheetQuick}>
+              {QUICK_REACTIONS.map((emoji) => {
+                const on = actionFor
+                  ? summarizeReactions(reactions, actionFor.id, me ?? "").some(
+                      (r) => r.emoji === emoji && r.mine,
+                    )
+                  : false;
+                return (
+                  <Pressable
+                    key={emoji}
+                    onPress={() => {
+                      if (actionFor) doReact(actionFor.id, emoji, !on);
+                      setActionFor(null);
+                    }}
+                  >
+                    <Text style={[s.sheetEmoji, on && { opacity: 0.5 }]}>{emoji}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable onPress={() => setPickerOpen((v) => !v)}>
+                <Text style={s.sheetEmoji}>{pickerOpen ? "✕" : "➕"}</Text>
+              </Pressable>
+            </View>
+
+            {/* Pełny zestaw dopiero na żądanie — siatka 140 znaków otwarta
+                domyślnie zajęłaby cały arkusz na małym ekranie. */}
+            {pickerOpen && (
+              <View style={s.pickerBox}>
+                <View style={s.pickerTabs}>
+                  {EMOJI_CATEGORIES.map((c, i) => (
+                    <Pressable
+                      key={c.labelKey}
+                      onPress={() => setCatIdx(i)}
+                      style={[s.pickerTab, i === catIdx && s.pickerTabOn]}
+                    >
+                      <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <ScrollView style={{ maxHeight: 180 }}>
+                  <View style={s.pickerGrid}>
+                    {EMOJI_CATEGORIES[catIdx]?.emojis.map((emoji) => (
+                      <Pressable
+                        key={emoji}
+                        onPress={() => {
+                          if (actionFor) doReact(actionFor.id, emoji, true);
+                          setPickerOpen(false);
+                          setActionFor(null);
+                        }}
+                      >
+                        <Text style={s.sheetEmoji}>{emoji}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+
+            <Pressable
+              style={s.sheetItem}
+              onPress={() => {
+                setReplyTo(actionFor);
+                setActionFor(null);
+              }}
+            >
+              <Text style={s.sheetItemText}>{t("m.chat.reply")}</Text>
+            </Pressable>
+
+            <Pressable
+              style={s.sheetItem}
+              onPress={() => {
+                if (actionFor) doCopy(actionFor.body);
+                setActionFor(null);
+              }}
+            >
+              <Text style={s.sheetItemText}>{t("m.chat.copy")}</Text>
+            </Pressable>
+
+            {actionFor && canEditMessage(actionFor, viewer, Date.now()) && (
+              <Pressable
+                style={s.sheetItem}
+                onPress={() => {
+                  setEditingId(actionFor.id);
+                  // Treść trafia do zwykłego pola wpisywania — kierowca poprawia
+                  // ją tam, gdzie zawsze pisze, bez osobnego okna.
+                  setText(actionFor.body);
+                  setActionFor(null);
+                }}
+              >
+                <Text style={s.sheetItemText}>{t("m.chat.edit")}</Text>
+              </Pressable>
+            )}
+
+            {actionFor && canDeleteMessage(actionFor, viewer) && (
+              <Pressable
+                style={s.sheetItem}
+                onPress={() => {
+                  const id = actionFor.id;
+                  setActionFor(null);
+                  doDelete(id);
+                }}
+              >
+                <Text style={[s.sheetItemText, s.sheetItemDanger]}>{t("m.chat.delete")}</Text>
+              </Pressable>
+            )}
+
+            <Pressable style={s.sheetItem} onPress={() => setActionFor(null)}>
+              <Text style={s.sheetItemText}>{t("m.chat.cancel")}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* [#374] Stan „odpowiadam na" / „edytuję" — widoczny nad polem wpisywania,
+          żeby nie dało się wysłać cytatu albo poprawki, nie wiedząc o tym. */}
+      {replyTo && !editingId && (
+        <View style={s.editBar}>
+          <Text style={s.editBarText} numberOfLines={1}>
+            {t("m.chat.replyingTo")} {replyTo.sender_label || t("m.chat.member")} —{" "}
+            {quotePreview(replyTo, {
+              photo: t("m.chat.photoLabel"),
+              location: t("m.chat.locationLabel"),
+            })}
+          </Text>
+          <Pressable onPress={() => setReplyTo(null)}>
+            <Text style={{ color: palette.smoke, fontSize: 16 }}>✕</Text>
+          </Pressable>
+        </View>
+      )}
+      {editingId && (
+        <View style={s.editBar}>
+          <Text style={s.editBarText} numberOfLines={1}>
+            {t("m.chat.editTitle")}
+          </Text>
+          <Pressable
+            onPress={() => {
+              setEditingId(null);
+              setText("");
+            }}
+          >
+            <Text style={{ color: palette.smoke, fontSize: 16 }}>✕</Text>
+          </Pressable>
+        </View>
+      )}
+
       <View style={s.composer}>
         <Pressable style={s.photo} onPress={sendPhoto} disabled={photoBusy}>
           <Text style={s.photoText}>{photoBusy ? "…" : "📷"}</Text>
+        </Pressable>
+        <Pressable style={s.photo} onPress={sendLocationMsg}>
+          <Text style={s.photoText}>📍</Text>
         </Pressable>
         <TextInput
           style={s.input}
@@ -381,10 +840,19 @@ export default function ChatThreadScreen() {
         />
         <Pressable
           style={[s.send, (!text.trim() || busy) && { opacity: 0.5 }]}
-          onPress={send}
+          // [#374] W trybie edycji ten sam przycisk zapisuje poprawkę zamiast
+          // wysyłać nową wiadomość — pasek nad polem mówi, w którym trybie jesteśmy.
+          onPress={
+            editingId
+              ? () => {
+                  void doSaveEdit(text);
+                  setText("");
+                }
+              : send
+          }
           disabled={!text.trim() || busy}
         >
-          <Text style={s.sendText}>➤</Text>
+          <Text style={s.sendText}>{editingId ? "✓" : "➤"}</Text>
         </Pressable>
       </View>
 
@@ -434,6 +902,66 @@ export default function ChatThreadScreen() {
 }
 
 const s = StyleSheet.create({
+  // [#374] Ślad po usuniętej wiadomości — obrys zamiast wypełnienia, żeby nie
+  // udawał treści, ale zaznaczał, że coś tu było.
+  bubbleGone: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#2a2a2a",
+  },
+  goneText: { color: palette.smoke, fontSize: 13, fontStyle: "italic" },
+  quote: {
+    borderLeftWidth: 3,
+    borderLeftColor: palette.smoke,
+    paddingLeft: 8,
+    marginBottom: 6,
+    opacity: 0.85,
+  },
+  quoteAuthor: { fontSize: 11, fontWeight: "700", color: palette.offWhite },
+  quoteText: { fontSize: 12, color: palette.smoke },
+  reactRow: { flexDirection: "row", gap: 4, marginTop: 3, flexWrap: "wrap" },
+  reactChip: {
+    backgroundColor: "#1c1c1c",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  reactChipMine: { borderColor: palette.red },
+  reactText: { color: palette.offWhite, fontSize: 12 },
+  actionBackdrop: { flex: 1, backgroundColor: "#000000aa", justifyContent: "flex-end" },
+  actionSheet: {
+    backgroundColor: "#141414",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    gap: 4,
+  },
+  actionTitle: { color: palette.smoke, fontSize: 12, marginBottom: 6 },
+  sheetQuick: { flexDirection: "row", gap: 6, marginBottom: 10, flexWrap: "wrap" },
+  sheetEmoji: { fontSize: 26, padding: 4 },
+  sheetItem: { paddingVertical: 13 },
+  pickerBox: { borderTopWidth: 1, borderTopColor: "#2a2a2a", paddingTop: 8, marginBottom: 6 },
+  pickerTabs: { flexDirection: "row", gap: 4, marginBottom: 6 },
+  pickerTab: { padding: 4, borderRadius: 8 },
+  pickerTabOn: { backgroundColor: "#2a2a2a" },
+  pickerGrid: { flexDirection: "row", flexWrap: "wrap", gap: 2 },
+  sheetItemText: { color: palette.offWhite, fontSize: 16 },
+  sheetItemDanger: { color: palette.red },
+  editBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#141414",
+    borderLeftWidth: 3,
+    borderLeftColor: palette.red,
+  },
+  editBarText: { color: palette.smoke, fontSize: 12, flex: 1 },
+
   screen: { flex: 1, backgroundColor: palette.black },
   list: { padding: 16, gap: 10, flexGrow: 1 },
   empty: { color: palette.smoke, textAlign: "center", marginTop: 40, lineHeight: 20 },

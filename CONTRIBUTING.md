@@ -7,7 +7,7 @@ wyłącznie po uprzednim uzgodnieniu. Poniższe zasady obowiązują też pracę 
 ## Model hostingu
 
 - **GitLab** [`Gh0s777tt/e-logistic`](https://gitlab.com/Gh0s777tt/e-logistic) — **źródło prawdy**: tu trafiają zmiany i całe CI/CD.
-- **GitHub** [`Gh0s777tt/E-Map`](https://github.com/Gh0s777tt/E-Map) — publiczny mirror (Actions wyłączone).
+- **GitHub** [`Gh0s777tt/E-Map`](https://github.com/Gh0s777tt/E-Map) — publiczny mirror; tam też chodzi bramka jakości (`.github/workflows/ci.yml`).
 
 ## Wymagania
 

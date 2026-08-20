@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { routeCacheKey } from "./cache";
 import { itemsNearRoute, pointToRouteKm } from "./disruptions";
 import { createRoutingProvider } from "./factory";
 import { haversineKm } from "./geo";
-import { buildGraphHopperBody, graphHopperProfile } from "./graphhopper";
-import { buildHereUrl, decodeFlexiblePolyline } from "./here";
+import { buildGraphHopperBody, downgradeNotices, graphHopperProfile } from "./graphhopper";
+import { buildHereUrl, decodeFlexiblePolyline, readHereNoticesForTest } from "./here";
 import { buildHereTrafficUrl, jamSeverity, parseHereTraffic } from "./heretraffic";
 import { MockRoutingProvider } from "./mock";
 import { routeMultiLeg } from "./multileg";
 import { type BBox, buildOverpassQuery, parseOverpass } from "./poi";
 import { estimateTollEur, estimateTruckDurationMin } from "./toll";
-import type { LatLng } from "./types";
+import { buildTomTomRouteUrl } from "./tomtom";
+import type { LatLng, RoutingProvider } from "./types";
 
 const BERLIN: LatLng = { lat: 52.52, lng: 13.405 };
 const WARSAW: LatLng = { lat: 52.2297, lng: 21.0122 };
@@ -111,6 +113,80 @@ describe("routeMultiLeg", () => {
 
   it("rzuca przy mniej niż 2 punktach", async () => {
     await expect(routeMultiLeg(provider, { waypoints: [BERLIN] })).rejects.toThrow(RangeError);
+  });
+
+  it("mock nie zna przebiegu dróg płatnych mimo doszacowanego myta (#383)", async () => {
+    const r = await routeMultiLeg(provider, { waypoints: [BERLIN, WIEN, WARSAW] });
+    expect(r.tollCost).toBeGreaterThan(0);
+    expect(r.tollSections).toEqual({ known: false, sections: [] });
+  });
+
+  /**
+   * #383: każdy leg to osobne zapytanie, a sklejanie geometrii pomija zdublowany punkt
+   * styku — indeksy odcinków płatnych z drugiego legu muszą się przesunąć, inaczej
+   * warstwa myta podświetla nie ten kawałek trasy.
+   */
+  it("przelicza indeksy odcinków płatnych na sklejoną geometrię", async () => {
+    const legGeometry: LatLng[] = [
+      { lat: 1, lng: 1 },
+      { lat: 2, lng: 2 },
+      { lat: 3, lng: 3 },
+      { lat: 4, lng: 4 },
+    ];
+    const tollProvider: RoutingProvider = {
+      name: "fake",
+      route: async () => ({
+        distanceKm: 10,
+        durationMin: 10,
+        tollCost: 0,
+        currency: "EUR",
+        segments: [],
+        geometry: legGeometry,
+        // odcinek płatny na indeksach 1..2 W OBRĘBIE legu
+        notices: [],
+        tollSections: { known: true, sections: [{ startIndex: 1, endIndex: 2 }] },
+        provider: "fake",
+      }),
+    };
+
+    const r = await routeMultiLeg(tollProvider, { waypoints: [BERLIN, WIEN, WARSAW] });
+    // 4 punkty pierwszego legu + 3 drugiego (punkt styku wstawiony raz).
+    expect(r.geometry).toHaveLength(7);
+    expect(r.tollSections.known).toBe(true);
+    expect(r.tollSections.sections).toEqual([
+      { startIndex: 1, endIndex: 2 },
+      { startIndex: 4, endIndex: 5 },
+    ]);
+  });
+
+  it("jeden leg bez danych o odcinkach → cała trasa known:false", async () => {
+    let call = 0;
+    const mixed: RoutingProvider = {
+      name: "fake",
+      route: async () => {
+        call += 1;
+        return {
+          distanceKm: 10,
+          durationMin: 10,
+          tollCost: 0,
+          currency: "EUR",
+          segments: [],
+          geometry: [
+            { lat: 1, lng: 1 },
+            { lat: 2, lng: 2 },
+          ],
+          notices: [],
+          tollSections:
+            call === 1
+              ? { known: true, sections: [{ startIndex: 0, endIndex: 1 }] }
+              : { known: false, sections: [] },
+          provider: "fake",
+        };
+      },
+    };
+    const r = await routeMultiLeg(mixed, { waypoints: [BERLIN, WIEN, WARSAW] });
+    expect(r.tollSections.known).toBe(false);
+    expect(r.tollSections.sections).toEqual([{ startIndex: 0, endIndex: 1 }]);
   });
 });
 
@@ -287,5 +363,171 @@ describe("HERE Traffic", () => {
   it("odporne na śmieci", () => {
     expect(parseHereTraffic(null)).toEqual([]);
     expect(parseHereTraffic({})).toEqual([]);
+  });
+});
+
+describe("[#384] kontrakt pojazdu: ADR i uwagi dostawcy", () => {
+  it("HERE wysyła kategorię tunelową dopiero, gdy ładunek jest niebezpieczny", () => {
+    const zwykly = buildHereUrl(
+      {
+        waypoints: [
+          { lat: 52, lng: 21 },
+          { lat: 53, lng: 22 },
+        ],
+        profile: { kind: "truck" },
+      },
+      "K",
+      "2026-08-10T00:00:00Z",
+    );
+    expect(zwykly).not.toContain("tunnelCategory");
+
+    const adr = buildHereUrl(
+      {
+        waypoints: [
+          { lat: 52, lng: 21 },
+          { lat: 53, lng: 22 },
+        ],
+        profile: { kind: "truck", adrTunnelCode: "C" },
+      },
+      "K",
+      "2026-08-10T00:00:00Z",
+    );
+    // Bez tego parametru dostawca liczy trasę jak dla ładunku zwykłego,
+    // a kontrola przy wjeździe do tunelu kończy się zawróceniem.
+    // Nawiasy idą niekodowane — tak samo jak istniejące `truck[grossWeight]`.
+    expect(adr).toContain("truck[tunnelCategory]=C");
+    expect(adr).toContain("truck[shippedHazardousGoods]");
+  });
+
+  it("TomTom dostaje kategorię ADR w swojej nomenklaturze", () => {
+    const url = buildTomTomRouteUrl(
+      {
+        waypoints: [
+          { lat: 52, lng: 21 },
+          { lat: 53, lng: 22 },
+        ],
+        profile: { kind: "truck", adrTunnelCode: "B" },
+      },
+      "K",
+    );
+    expect(url).toContain("vehicleAdrTunnelRestrictionCode=B");
+  });
+
+  it("uwagi HERE są odsiewane z duplikatów i zachowują kod", () => {
+    // To jedyny kanał, którym dostawca mówi „zignorowałem twój parametr pojazdu".
+    const notices = readHereNoticesForTest({
+      notices: [{ code: "violatedVehicleRestriction", title: "Height ignored" }],
+      routes: [
+        {
+          notices: [{ code: "violatedVehicleRestriction" }],
+          sections: [{ notices: [{ code: "noRouteFound", severity: "critical" }] }],
+        },
+      ],
+    });
+    expect(notices.map((n) => n.code)).toEqual(["violatedVehicleRestriction", "noRouteFound"]);
+    expect(notices[0]?.title).toBe("Height ignored");
+  });
+});
+
+describe("[#385] GraphHopper: degradacja do trasy osobowej jest widoczna", () => {
+  const req = {
+    waypoints: [
+      { lat: 52, lng: 21 },
+      { lat: 53, lng: 22 },
+    ],
+  };
+
+  it("ciężarówka bez profilu TIR → uwaga krytyczna", () => {
+    // Trasa osobowa wygląda identycznie jak TIR-owa; różnica jest taka,
+    // że jedna z nich nie wie o wiaduktach.
+    const n = downgradeNotices({ ...req, profile: { kind: "truck" } }, { truckProfile: false });
+    expect(n).toHaveLength(1);
+    expect(n[0]?.code).toBe("profileDowngradedToCar");
+    expect(n[0]?.severity).toBe("critical");
+  });
+
+  it("z włączonym profilem TIR — cisza", () => {
+    expect(
+      downgradeNotices({ ...req, profile: { kind: "truck" } }, { truckProfile: true }),
+    ).toEqual([]);
+  });
+
+  it("dostawczak nie potrzebuje ostrzeżenia", () => {
+    expect(downgradeNotices({ ...req, profile: { kind: "van" } }, { truckProfile: false })).toEqual(
+      [],
+    );
+  });
+
+  it("ciągnik i naczepa też są ciężarówkami", () => {
+    for (const kind of ["tractor", "trailer"] as const) {
+      expect(downgradeNotices({ ...req, profile: { kind } }, { truckProfile: false })).toHaveLength(
+        1,
+      );
+    }
+  });
+});
+
+describe("[#390] klucz cache obejmuje pełny profil pojazdu", () => {
+  const A = { lat: 52.2297, lng: 21.0122 };
+  const B = { lat: 45.4642, lng: 9.19 };
+  const bazowy = {
+    kind: "truck" as const,
+    weightKg: 40000,
+    heightCm: 400,
+    widthCm: 255,
+    lengthCm: 1650,
+    axleCount: 5,
+  };
+
+  it("zestaw ADR nie dostaje trasy policzonej dla zestawu bez ADR", () => {
+    /*
+     * To jest sedno błędu: kategoria tunelowa ADR nie wchodziła do klucza,
+     * więc oba zapytania trafiały w ten sam wpis. Kierowca z cysterną
+     * kategorii C dostawał trasę policzoną bez ograniczeń tunelowych —
+     * a to warunek legalności przejazdu, nie preferencja.
+     */
+    const bezAdr = routeCacheKey({ waypoints: [A, B], profile: bazowy }, "here");
+    const zAdr = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    expect(zAdr).not.toBe(bezAdr);
+  });
+
+  it("różne kategorie tunelowe to różne wpisy", () => {
+    const c = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    const e = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "E" } },
+      "here",
+    );
+    expect(c).not.toBe(e);
+  });
+
+  it("klasa emisji też rozróżnia wpisy (pod przyszłe strefy niskiej emisji)", () => {
+    const euro5 = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, emissionClass: "euro5" } },
+      "here",
+    );
+    const euro6 = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, emissionClass: "euro6" } },
+      "here",
+    );
+    expect(euro5).not.toBe(euro6);
+  });
+
+  it("ten sam profil nadal daje ten sam klucz", () => {
+    // Poprawka nie może zepsuć trafień cache — za każde nietrafienie płacimy.
+    const x = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    const y = routeCacheKey(
+      { waypoints: [A, B], profile: { ...bazowy, adrTunnelCode: "C" } },
+      "here",
+    );
+    expect(x).toBe(y);
   });
 });

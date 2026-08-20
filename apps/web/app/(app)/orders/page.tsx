@@ -9,14 +9,17 @@ import {
   getCompany,
   listCompanyMembers,
   listContractors,
+  listFxRates,
   listOrders,
   type Order,
   saveOrder,
   setOrderStatus,
+  toFxRates,
   upsertContractor,
 } from "@e-logistic/api";
 import {
   FREIGHT_EXPORT_HEADERS,
+  type FxRate,
   filterSortOrders,
   firstZodError,
   freightExportRows,
@@ -29,8 +32,10 @@ import {
   orderSchema,
   orderTransportCosts,
   round2,
+  rowAmountEur,
 } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -47,6 +52,7 @@ import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { orderStatusLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
+import { queryKeyPrefixes } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 import { downloadXlsx } from "@/lib/xlsx";
@@ -76,6 +82,14 @@ type FuelRow = {
   odometer_km: number;
   liters: number;
   price_total: number | null;
+  /**
+   * [#378] Waluta i data ZDARZENIA. Bez tych dwóch kolumn koszt/km pojazdu
+   * powstawał z sumy, w której tankowanie za 1200 PLN liczyło się jak 1200 € —
+   * koszt transportu zlecenia wychodził zawyżony ponad czterokrotnie, a linia
+   * „zysk" na karcie zlecenia potrafiła z tego powodu zrobić się ujemna.
+   */
+  currency: string | null;
+  occurred_at: string;
 };
 
 /** Kolumny importu zleceń (kolumna „Pojazd" = rejestracja, mapowana na pojazd w handlerze). */
@@ -139,11 +153,14 @@ export default function OrdersPage() {
   const confirm = useConfirm();
   const toast = useToast();
   const router = useRouter();
+  const qc = useQueryClient();
   const [orders, setOrders] = useState<Order[]>([]);
   // #246: surowe dane do kosztu transportu per zlecenie (trasy z order_id + tankowania).
   const [legRows, setLegRows] = useState<LegRow[]>([]);
   const [fuelRows, setFuelRows] = useState<FuelRow[]>([]);
   const [adblueRows, setAdblueRows] = useState<FuelRow[]>([]);
+  /** [#378] Kursy EBC — bez nich kwota w innej walucie niż euro nie ma jak wejść do sumy. */
+  const [rates, setRates] = useState<FxRate[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
@@ -188,7 +205,16 @@ export default function OrdersPage() {
       }
       const manage = m.role === "owner" || m.role === "dispatcher";
       setCanManage(manage);
-      const [ord, comp, mem, contr, legs, fuel, adblue] = await Promise.all([
+      // [#378] Okno kursów. Ten ekran nie ma wyboru okresu — lista jest pełna,
+      // więc bierzemy 24 miesiące wstecz (tyle samo, co analityka we /stats),
+      // co pokrywa każde zlecenie, którym ktokolwiek jeszcze się zajmuje.
+      // Starsze zlecenie w obcej walucie nie zniknie po cichu: wpadnie do
+      // licznika „brak kursu" pod podsumowaniem.
+      const now = new Date();
+      const fxFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
+        .toISOString()
+        .slice(0, 10);
+      const [ord, comp, mem, contr, legs, fuel, adblue, fxRows] = await Promise.all([
         listOrders(sb, m.companyId),
         getCompany(sb, m.companyId),
         manage ? listCompanyMembers(sb) : Promise.resolve([]),
@@ -203,18 +229,25 @@ export default function OrdersPage() {
           .then((r) => r.data ?? []),
         sb
           .from("fuel_logs")
-          .select("vehicle_id, odometer_km, liters, price_total")
+          .select("vehicle_id, odometer_km, liters, price_total, currency, occurred_at")
           .order("created_at", { ascending: false })
           .limit(2000)
           .then((r) => r.data ?? []),
         sb
           .from("adblue_logs")
-          .select("vehicle_id, odometer_km, liters, price_total")
+          .select("vehicle_id, odometer_km, liters, price_total, currency, occurred_at")
           .order("created_at", { ascending: false })
           .limit(2000)
           .then((r) => r.data ?? []),
+        // [#378] Zapas 10 dni wstecz: kurs bierzemy z DNIA zdarzenia, a EBC nie
+        // publikuje w weekendy i święta — zlecenie z 1. dnia miesiąca może
+        // potrzebować notowania sprzed kilku dni. Ten sam wzorzec co /stats.
+        listFxRates(sb, {
+          from: new Date(Date.parse(fxFrom) - 10 * 86_400_000).toISOString().slice(0, 10),
+        }),
       ]);
       setOrders(ord);
+      setRates(toFxRates(fxRows));
       // #268: mapa zlecenie→faktura (slim) — link 🧾 na wierszu zlecenia.
       sb.from("invoices")
         .select("id, number, order_id")
@@ -283,8 +316,23 @@ export default function OrdersPage() {
     [orders, filter, query, sort],
   );
 
+  /**
+   * [#378] Cena zlecenia przeliczona na euro po kursie z dnia ZAŁADUNKU.
+   *
+   * Data załadunku, a nie utworzenia wpisu: kurs ma odpowiadać momentowi, w którym
+   * fracht został zrealizowany, bo taką datę ma dokument. Fallback na `created_at`
+   * tylko wtedy, gdy załadunku nie wpisano.
+   *
+   * Zwraca `null` w DWÓCH różnych sytuacjach — brak kwoty i brak notowania — więc
+   * wywołujący musi je rozróżnić, zanim cokolwiek napisze użytkownikowi.
+   */
+  const priceEur = useCallback(
+    (o: Order) => rowAmountEur(o.price, o.currency, o.load_date ?? o.created_at, rates),
+    [rates],
+  );
+
   // #246: koszt transportu per zlecenie — dystans z liczników load→unload × koszt/km pojazdu.
-  const costByOrder = useMemo(() => {
+  const transportCost = useMemo(() => {
     const events = legRows
       .filter((r) => r.order_id)
       .map((r) => ({
@@ -298,29 +346,108 @@ export default function OrdersPage() {
       vehicleId: r.vehicle_id,
       odometerKm: r.odometer_km,
       liters: r.liters,
-      priceTotal: r.price_total,
+      // [#378] Wcześniej szła tu surowa `price_total` bez spojrzenia na walutę,
+      // więc tankowanie za 1200 PLN podbijało koszt/km pojazdu tak, jakby
+      // kosztowało 1200 €. Zawyżony koszt/km mnożył się potem przez dystans
+      // zlecenia i pokazywał stratę na trasie, która realnie zarobiła.
+      priceTotal: rowAmountEur(r.price_total, r.currency, r.occurred_at, rates),
     });
-    const list = orderTransportCosts({
-      orders: orders.map((o) => ({ id: o.id, price: o.price, currency: o.currency })),
-      events,
-      fuel: fuelRows.map(toFuel),
-      adblue: adblueRows.map(toFuel),
-    });
-    return new Map<string, OrderTransportCost>(list.map((c) => [c.orderId, c]));
-  }, [orders, legRows, fuelRows, adblueRows]);
+    const fuelAll = fuelRows.map(toFuel);
+    const adblueAll = adblueRows.map(toFuel);
 
-  // Podsumowanie (wartość liczona dla zleceń w EUR — mieszane waluty pomijane w sumie).
+    /**
+     * [#378] Wpis bez przeliczonej kwoty MUSI wypaść z licznika i z wydatku
+     * JEDNOCZEŚNIE. `fuelCostPerKmByVehicle` sumuje `priceTotal ?? 0`, ale dystans
+     * bierze z rozpiętości min–max licznika WSZYSTKICH przekazanych wierszy — więc
+     * tankowanie bez notowania (albo bez wpisanej kwoty) dokładało zero do wydatku,
+     * a mimo to rozciągało dystans. Pojazd z ośmioma tankowaniami w złotówkach bez
+     * kursu i dwoma w euro liczył wydatek z dwóch, a kilometry z całego zakresu:
+     * koszt/km wychodził kilkukrotnie za niski, `cost` na karcie zaniżony, a `profit`
+     * i `marginPercent` zawyżone — czyli trasa ze stratą wyglądała na dochodową.
+     * Filtr tutaj zdejmuje taki wiersz z obu stron ułamka naraz, więc koszt/km jest
+     * poprawnym średnim kosztem z tych tankowań, które dało się wycenić.
+     */
+    const priced = (e: { priceTotal: number | null }) => e.priceTotal != null;
+    const fuel = fuelAll.filter(priced);
+    const adblue = adblueAll.filter(priced);
+
+    const list = orderTransportCosts({
+      // [#378] Stawka też przeliczona, i to tym samym kursem co koszt. Silnik
+      // odejmuje `koszt` od `ceny` bez patrzenia na waluty — przy zleceniu
+      // w złotówkach i koszcie w euro „zysk" był odejmowaniem jabłek od gruszek
+      // i jeszcze podpisywał wynik walutą zlecenia.
+      orders: orders.map((o) => ({ id: o.id, price: priceEur(o), currency: "EUR" })),
+      events,
+      fuel,
+      adblue,
+    });
+
+    /**
+     * [#378] Ile wpisów odpadło i DLACZEGO — bo `summary.missingRate` pilnuje
+     * wyłącznie cen zleceń, więc szacunek liczony z okrojonej historii tankowań
+     * szedł na ekran jako liczba pewna. „Brak kwoty" i „brak notowania" to dwie
+     * różne akcje naprawcze (wpisz cenę vs. poczekaj na kurs), więc liczymy osobno.
+     */
+    const rows = [...fuelRows, ...adblueRows];
+    let skippedNoAmount = 0;
+    let skippedNoRate = 0;
+    // Pojazdy z okrojoną historią — tylko ich karty dostają znak „≈", żeby
+    // ostrzeżenie nie wisiało przy zleceniach, których liczba wcale nie dotyczy.
+    const partialVehicles = new Set<string>();
+    for (const r of rows) {
+      const dropped =
+        r.price_total == null ||
+        rowAmountEur(r.price_total, r.currency, r.occurred_at, rates) == null;
+      if (!dropped) continue;
+      if (r.price_total == null) skippedNoAmount += 1;
+      else skippedNoRate += 1;
+      if (r.vehicle_id) partialVehicles.add(r.vehicle_id);
+    }
+
+    return {
+      byOrder: new Map<string, OrderTransportCost>(list.map((c) => [c.orderId, c])),
+      skippedNoAmount,
+      skippedNoRate,
+      partialVehicles,
+      /**
+       * Baner nad listą tylko wtedy, gdy okrojona historia faktycznie stoi za jakąś
+       * pokazaną kwotą — pominięte tankowanie pojazdu, który nie wozi żadnego zlecenia
+       * z tej listy, nie psuje niczego, co widać na ekranie.
+       */
+      partial: list.some(
+        (c) => c.cost != null && c.vehicleId != null && partialVehicles.has(c.vehicleId),
+      ),
+    };
+  }, [orders, legRows, fuelRows, adblueRows, rates, priceEur]);
+
+  /**
+   * Podsumowanie nad listą — wartość zleceń w euro.
+   *
+   * [#378] Było `arr.filter((o) => o.currency === "EUR")`: zlecenie wystawione
+   * w złotówkach po cichu wypadało z sumy. Wiersz z ceną widniał w tabeli tuż
+   * pod spodem, więc podsumowanie wyglądało na zwykły błąd arytmetyczny —
+   * a im więcej firma woziła po Polsce, tym bardziej zaniżony był jej przychód.
+   * Teraz każde zlecenie przechodzi przez kurs z dnia załadunku.
+   */
   const summary = useMemo(() => {
-    const eur = (arr: Order[]) =>
-      round2(arr.filter((o) => o.currency === "EUR").reduce((a, o) => a + (o.price ?? 0), 0));
+    // Pozycji bez kursu NIE liczymy jako zero („darmowy fracht") — pomijamy je
+    // i mówimy wprost, ile ich było.
+    const sum = (arr: Order[]) => round2(arr.reduce((a, o) => a + (priceEur(o) ?? 0), 0));
     const delivered = filtered.filter((o) => o.status === "delivered");
     return {
       count: filtered.length,
-      valueEur: eur(filtered),
+      valueEur: sum(filtered),
       deliveredCount: delivered.length,
-      deliveredValueEur: eur(delivered),
+      deliveredValueEur: sum(delivered),
+      /**
+       * Zlecenia, które MAJĄ cenę, ale nie ma dla niej notowania na dzień
+       * załadunku. To coś innego niż „nie wpisano stawki" i nie wolno tego zlewać
+       * w jeden komunikat: temu, kto wpisał 5000 PLN, prośba „uzupełnij kwotę"
+       * jest nie do wykonania.
+       */
+      missingRate: filtered.filter((o) => o.price != null && priceEur(o) == null).length,
     };
-  }, [filtered]);
+  }, [filtered, priceEur]);
 
   function resetForm() {
     setEditingId(null);
@@ -393,11 +520,22 @@ export default function OrdersPage() {
         : "";
       const id = await saveOrder(sb, m.companyId, parsed.data, editingId ?? undefined);
       // Organicznie buduj rejestr kontrahentów z nadawcy/odbiorcy (best-effort).
-      await Promise.all(
-        [shipper.trim(), consignee.trim()]
-          .filter((n) => n && !contractors.some((c) => c.name === n))
-          .map((name) => upsertContractor(sb, m.companyId, { name }).catch(() => {})),
+      const nowiKontrahenci = [shipper.trim(), consignee.trim()].filter(
+        (n) => n && !contractors.some((c) => c.name === n),
       );
+      await Promise.all(
+        nowiKontrahenci.map((name) => upsertContractor(sb, m.companyId, { name }).catch(() => {})),
+      );
+      /*
+       * Rejestr kontrahentów jest już na TanStack Query (`/kontrahenci`), a ten ekran nie —
+       * bez unieważnienia wpis dopisany tutaj nie widniał tam przez `staleTime`, więc
+       * dyspozytor dodawał tego samego kontrahenta ręcznie i przy różnicy w NIP/adresie
+       * `upsertContractor` zakładał DRUGI rekord. Duplikat w rejestrze jest trwały,
+       * a nieświeża lista tylko chwilowa — dlatego pilnujemy tego tutaj, przy źródle.
+       */
+      if (nowiKontrahenci.length > 0) {
+        void qc.invalidateQueries({ queryKey: queryKeyPrefixes.contractors() });
+      }
       if (assignedTo && assignedTo !== prevAssigned) {
         // Natychmiastowy push do kierowcy (best-effort — powiadomienie w aplikacji powstaje przez trigger).
         void fetch("/api/orders/notify-assignment", {
@@ -816,6 +954,40 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* [#378] „Brak stawki" i „brak kursu" to dwie różne rzeczy. Tu chodzi
+          wyłącznie o to drugie: kwota jest wpisana, brakuje notowania na dzień
+          załadunku, więc zlecenie nie weszło do sumy. Bez tej informacji suma
+          wyglądałaby na kompletną — a właśnie ta cicha niekompletność była
+          pierwotnym błędem. */}
+      {summary.missingRate > 0 && (
+        <div style={styles.rateWarn}>
+          ⚠️ Suma niepełna — {summary.missingRate}{" "}
+          {summary.missingRate === 1 ? "zlecenie ma stawkę" : "zleceń ma stawkę"} w walucie bez
+          notowania na dzień załadunku. Kwoty są wpisane; brakuje kursu, więc nie weszły do
+          przeliczenia.
+        </div>
+      )}
+
+      {/* [#378] Osobny sygnał, bo `summary.missingRate` mówi tylko o cenach zleceń.
+          Koszt transportu bierze się z kosztu/km pojazdu, a ten liczymy wyłącznie
+          z tankowań, które dało się wycenić — reszta wypada z wydatku i z licznika
+          naraz. Liczba na karcie zlecenia jest więc poprawna, ale to szacunek z
+          okrojonej historii i użytkownik musi o tym wiedzieć, zanim uzna wynik trasy
+          za pewny. */}
+      {transportCost.partial && (
+        <div style={styles.rateWarn}>
+          ⚠️ Koszt transportu to szacunek — koszt/km liczony jest bez części tankowań.
+          {transportCost.skippedNoRate > 0 && (
+            <> Bez notowania waluty na dzień tankowania: {transportCost.skippedNoRate}.</>
+          )}
+          {transportCost.skippedNoAmount > 0 && (
+            <> Bez wpisanej kwoty: {transportCost.skippedNoAmount}.</>
+          )}{" "}
+          Te wpisy są pominięte razem ze swoimi licznikami, więc koszt/km pochodzi z pozostałych
+          tankowań.
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
         <input
           style={styles.search}
@@ -933,7 +1105,10 @@ export default function OrdersPage() {
                   </span>
                 )}
               </div>
-              <TransportCostLine tc={costByOrder.get(o.id)} />
+              <TransportCostLine
+                tc={transportCost.byOrder.get(o.id)}
+                partialVehicles={transportCost.partialVehicles}
+              />
               <div style={styles.cardActions}>
                 <Button variant="ghost" onClick={() => setCmrOrder(o)}>
                   📄 CMR
@@ -1024,25 +1199,47 @@ export default function OrdersPage() {
 }
 
 /** #246: linia kosztu transportu na karcie zlecenia (dystans · koszt · zysk/marża). */
-function TransportCostLine({ tc }: { tc: OrderTransportCost | undefined }) {
+function TransportCostLine({
+  tc,
+  /**
+   * [#378] Pojazdy, których koszt/km powstał z niepełnej historii tankowań (część
+   * wpisów bez kwoty albo bez notowania waluty — takie wypadają z wydatku i z licznika
+   * naraz). Liczba jest poprawna dla danych, które są, ale nie wolno jej pokazywać jako
+   * pewnej — stąd „≈" i podpowiedź przy samej wartości, a nie tylko baner na górze
+   * listy, którego przy przewiniętej karcie nikt nie widzi.
+   */
+  partialVehicles,
+}: {
+  tc: OrderTransportCost | undefined;
+  partialVehicles: ReadonlySet<string>;
+}) {
   const t = useT();
   if (!tc || tc.distanceKm == null) return null;
+  const partial = tc.vehicleId != null && partialVehicles.has(tc.vehicleId);
+  const approxTitle = partial
+    ? "Szacunek: koszt/km tego pojazdu policzony bez tankowań bez kwoty lub bez notowania waluty."
+    : undefined;
   return (
     <div style={styles.costLine}>
       🧭 {t("orders.transportLabel")}: <strong>{tc.distanceKm} km</strong>
       {tc.cost != null ? (
         <>
           {` · ${t("orders.costLabel")} `}
-          <strong>
+          <strong title={approxTitle}>
+            {partial ? "≈" : ""}
             {tc.cost} {tc.currency}
           </strong>
           {tc.profit != null && (
             <>
               {` · ${t("orders.profitLabel")} `}
-              <strong style={{ color: tc.profit >= 0 ? "#22c55e" : palette.red }}>
+              <strong
+                title={approxTitle}
+                style={{ color: tc.profit >= 0 ? "#22c55e" : palette.red }}
+              >
+                {partial ? "≈" : ""}
                 {tc.profit} {tc.currency}
               </strong>
-              {tc.marginPercent != null ? ` (${tc.marginPercent}%)` : ""}
+              {tc.marginPercent != null ? ` (${partial ? "≈" : ""}${tc.marginPercent}%)` : ""}
             </>
           )}
         </>
@@ -1094,6 +1291,17 @@ const styles: Record<string, React.CSSProperties> = {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,
     fontSize: 14,
+  },
+  /** [#378] Ostrzeżenie o niepełnej sumie — ten sam styl co na /stats. */
+  rateWarn: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginTop: 10,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+    background: palette.nearBlack,
   },
   filters: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 10 },
   search: {

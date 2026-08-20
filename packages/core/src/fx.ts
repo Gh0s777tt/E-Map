@@ -1,0 +1,231 @@
+/**
+ * [#373] Przeliczanie walut po kursie z DNIA ZDARZENIA.
+ *
+ * Dotąd jedenaście miejsc w kodzie po prostu odrzucało wszystko, co nie jest EUR
+ * (`if (currency !== "EUR") continue`). Efekt: koszt w PLN znikał z podsumowania
+ * bez słowa, a użytkownik widział sumę niższą niż rzeczywista i nie miał jak
+ * się zorientować.
+ *
+ * Dwie zasady, które rządzą tym modułem:
+ *
+ *  1. KIERUNEK KURSU JEST JAWNY. `unitsPerEur` = ile jednostek waluty kosztuje
+ *     1 EUR (format EBC, np. PLN ≈ 4.30). Nie ma tu żadnej inwersji, bo odwrócony
+ *     kurs to błąd, którego nikt nie zauważy, dopóki nie policzy zwrotu VAT.
+ *
+ *  2. BRAK KURSU TO `null`, NIGDY ZERO. Zwrócenie 0 dla brakującego kursu
+ *     zamieniłoby „nie wiem" w „nic nie kosztowało" — dokładnie ta klasa błędu,
+ *     przez którą zestawienie miesięczne pokazywało 0 €.
+ */
+import { round2 } from "./money";
+
+/** Notowanie: ile jednostek `currency` kosztuje 1 EUR w dniu `asOf`. */
+export interface FxRate {
+  /** Dzień notowania, `YYYY-MM-DD`. */
+  asOf: string;
+  /** Kod ISO 4217, wielkimi literami. */
+  currency: string;
+  /** Ile jednostek waluty za 1 EUR. Zawsze > 0. */
+  unitsPerEur: number;
+}
+
+/** Waluta rozliczeniowa systemu — względem niej wyrażone są wszystkie kursy. */
+export const BASE_CURRENCY = "EUR";
+
+/**
+ * [#388] Waluty do wyboru w formularzach — **jedna lista dla całego produktu**.
+ *
+ * Lista jest krótka celowo: to waluty, którymi realnie płaci się na trasach
+ * floty, i **każda z nich ma notowanie w EBC**, więc każda kwota da się
+ * przeliczyć na euro. Waluta spoza tego zbioru nie jest błędem formularza —
+ * jest wierszem, którego już nikt nie policzy, bo nie ma po czym.
+ *
+ * Wcześniej ta lista żyła w czterech kopiach (web `formShared.ts` oraz trzy
+ * ekrany mobilne), w różnej kolejności i z różną walutą domyślną, a piąty ekran
+ * (`manage-vehicle-costs`) brał walutę **wolnym tekstem**. Wystarczyło wpisać
+ * `PL` zamiast `PLN`, żeby koszt zapisał się poprawnie i zniknął z każdego
+ * podsumowania w euro — bez ostrzeżenia, bo z punktu widzenia bazy wiersz był
+ * w porządku.
+ */
+export const CURRENCIES = [
+  "EUR",
+  "PLN",
+  "CZK",
+  "HUF",
+  "RON",
+  "SEK",
+  "DKK",
+  "NOK",
+  "GBP",
+  "CHF",
+] as const;
+
+/** Kod waluty obsługiwanej przez formularze. */
+export type Currency = (typeof CURRENCIES)[number];
+
+/** Czy kod jest jedną z walut, które umiemy przeliczyć na euro. */
+export function isSupportedCurrency(code: string | null | undefined): code is Currency {
+  return (CURRENCIES as readonly string[]).includes((code ?? "").trim().toUpperCase());
+}
+
+/**
+ * Waluta, którą realnie zapłacisz w danym kraju. Formularz podpowiada ją po
+ * wybraniu kraju stacji — kierowca w Polsce płaci złotówkami i nie powinien
+ * musieć o tym pamiętać ani przestawiać ręcznie.
+ *
+ * Wymienione są tylko kraje strefy euro ORAZ te z własną walutą, w których
+ * realnie jeździ flota. Reszta dostaje EUR jako sensowną wartość wyjściową,
+ * którą i tak można zmienić w formularzu.
+ */
+const COUNTRY_CURRENCY: Record<string, string> = {
+  PL: "PLN",
+  CZ: "CZK",
+  HU: "HUF",
+  RO: "RON",
+  BG: "BGN",
+  SE: "SEK",
+  DK: "DKK",
+  NO: "NOK",
+  GB: "GBP",
+  UK: "GBP",
+  CH: "CHF",
+  UA: "UAH",
+  TR: "TRY",
+  IS: "ISK",
+  MD: "MDL",
+  RS: "RSD",
+};
+
+/** Podpowiedź waluty dla kraju (kod ISO2). Domyślnie EUR. */
+export function currencyForCountry(countryCode: string | null | undefined): string {
+  const cc = (countryCode ?? "").trim().toUpperCase();
+  return COUNTRY_CURRENCY[cc] ?? BASE_CURRENCY;
+}
+
+/**
+ * Najświeższe notowanie waluty NIE NOWSZE niż `onDate`.
+ *
+ * Kurs z przyszłości jest świadomie odrzucany: przeliczenie tankowania sprzed
+ * pół roku dzisiejszym kursem daje liczbę, która nie zgadza się z żadnym
+ * dokumentem księgowym.
+ *
+ * Weekendy i święta: EBC nie publikuje kursów, więc sięgamy po ostatni znany —
+ * to standardowa praktyka, a nie obejście.
+ */
+export function pickFxRate(
+  rates: readonly FxRate[],
+  currency: string,
+  onDate: string,
+): FxRate | null {
+  const cur = currency.trim().toUpperCase();
+  let best: FxRate | null = null;
+  for (const r of rates) {
+    if (r.currency.toUpperCase() !== cur) continue;
+    if (r.asOf > onDate) continue;
+    if (!best || r.asOf > best.asOf) best = r;
+  }
+  return best;
+}
+
+/**
+ * Przelicza kwotę na EUR. `null`, gdy nie znamy kursu — wywołujący MUSI
+ * rozstrzygnąć, co z tym zrobić (pokazać ostrzeżenie, pominąć, zapytać).
+ */
+export function toEur(
+  amount: number,
+  currency: string,
+  rates: readonly FxRate[],
+  onDate: string,
+): number | null {
+  const cur = currency.trim().toUpperCase();
+  if (cur === BASE_CURRENCY) return round2(amount);
+  const rate = pickFxRate(rates, cur, onDate);
+  if (!rate || rate.unitsPerEur <= 0) return null;
+  return round2(amount / rate.unitsPerEur);
+}
+
+/** Przelicza kwotę z EUR na wskazaną walutę. `null` przy braku kursu. */
+export function fromEur(
+  amountEur: number,
+  currency: string,
+  rates: readonly FxRate[],
+  onDate: string,
+): number | null {
+  const cur = currency.trim().toUpperCase();
+  if (cur === BASE_CURRENCY) return round2(amountEur);
+  const rate = pickFxRate(rates, cur, onDate);
+  if (!rate || rate.unitsPerEur <= 0) return null;
+  return round2(amountEur * rate.unitsPerEur);
+}
+
+/**
+ * Przelicza między dowolnymi walutami (przez EUR jako oś).
+ * `null`, gdy brakuje któregokolwiek z dwóch kursów.
+ */
+export function convert(
+  amount: number,
+  from: string,
+  to: string,
+  rates: readonly FxRate[],
+  onDate: string,
+): number | null {
+  if (from.trim().toUpperCase() === to.trim().toUpperCase()) return round2(amount);
+  const eur = toEur(amount, from, rates, onDate);
+  if (eur === null) return null;
+  return fromEur(eur, to, rates, onDate);
+}
+
+/**
+ * Przelicza kwotę pojedynczego wiersza na EUR — punkt wejścia dla ekranów,
+ * które dalej liczą wyłącznie w euro.
+ *
+ * Zwraca `null`, gdy kwoty nie ma ALBO gdy nie znamy kursu. Wywołujący MUSI
+ * rozróżnić te przypadki od zera: dotąd cały kod robił `price_total ?? 0`,
+ * przez co koszt w PLN wchodził do sumy jak euro (zawyżenie ~4,3×), a brak
+ * kwoty wyglądał jak zerowy koszt.
+ *
+ * `dateIso` to data ZDARZENIA — kurs bierzemy z dnia, w którym poniesiono
+ * wydatek, nie z dzisiaj.
+ */
+export function rowAmountEur(
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+  dateIso: string,
+  rates: readonly FxRate[],
+): number | null {
+  if (amount == null) return null;
+  return toEur(amount, currency ?? BASE_CURRENCY, rates, dateIso.slice(0, 10));
+}
+
+/** Wynik sumowania kwot w różnych walutach. */
+export interface SumResult {
+  /** Suma tego, co udało się przeliczyć. */
+  total: number;
+  /** Waluta wyniku. */
+  currency: string;
+  /**
+   * Pozycje pominięte z braku kursu — do pokazania użytkownikowi.
+   * Suma bez tej informacji jest myląca, bo wygląda na kompletną.
+   */
+  skipped: { amount: number; currency: string; date: string }[];
+}
+
+/**
+ * Sumuje kwoty w mieszanych walutach do jednej. Pozycje bez kursu NIE są
+ * wliczane po kursie 1:1 ani jako zero — trafiają do `skipped`, żeby interfejs
+ * mógł uczciwie powiedzieć „suma niepełna".
+ */
+export function sumInCurrency(
+  items: readonly { amount: number; currency: string; date: string }[],
+  target: string,
+  rates: readonly FxRate[],
+): SumResult {
+  const cur = target.trim().toUpperCase();
+  let total = 0;
+  const skipped: SumResult["skipped"] = [];
+  for (const it of items) {
+    const v = convert(it.amount, it.currency, cur, rates, it.date);
+    if (v === null) skipped.push(it);
+    else total += v;
+  }
+  return { total: round2(total), currency: cur, skipped };
+}

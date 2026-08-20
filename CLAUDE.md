@@ -9,14 +9,19 @@ zsynchronizowane i w jednej stylistyce.
 - Konwencja nazw repo: `E-<Nazwa>`.
 
 ## Stack (✅ = w kodzie · 🔜 = docelowe; szczegóły w docs/ARCHITECTURE.md)
+> Znacznik opisuje **obecność w kodzie**, nie kompletność adopcji: technologia wpięta falami
+> zostaje ✅ od pierwszej fali, a zakres kolejnej jest dopisany w tej samej linii. Bramka
+> [`docs:check`](scripts/docs-check.mjs) pilnuje, żeby nic oznaczonego 🔜 nie leżało już
+> w `package.json` — to ten rozjazd sprawił, że lista trzy razy kłamała naraz.
 - ✅ Node 26 · TypeScript 6 (strict) · **pnpm** · **Turborepo** · **Biome** (lint+format, NIE ESLint/Prettier).
 - ✅ Web: Next.js 16 · React 19 · Tailwind 4 · własne prymitywy UI. 🔜 shadcn/ui.
 - ✅ Mobile: Expo SDK 56 · React Native New Architecture · Expo Router.
 - ✅ Backend: Supabase (Postgres 17 + PostGIS · Auth · Realtime · Storage). 🔜 Edge Functions/Deno (dziś rolę pełnią trasy `/api` Next.js/Vercel).
-- ✅ Offline: **outbox** (localStorage web / AsyncStorage mobile). 🔜 PowerSync (lokalny SQLite ↔ Supabase).
-- ✅ Mapy: MapLibre GL (render) + abstrakcja `RoutingProvider` (adaptery HERE/GraphHopper).
+- ✅ Offline: **outbox** (localStorage web / AsyncStorage mobile) · ✅ **PowerSync** — fala 1 w mobile ([`lib/powersync.ts`](apps/mobile/lib/powersync.ts)): sam odczyt, bez `EXPO_PUBLIC_POWERSYNC_URL` pełny no-op. Zapisy dalej idą outboxem — przepięcie ich to fala 2.
+- ✅ Mapy: MapLibre GL (render) + abstrakcja `RoutingProvider` (adaptery HERE/TomTom/GraphHopper + mock).
 - ✅ Walidacja: Zod (współdzielona web↔mobile w `packages/core`).
-- 🔜 Stan: TanStack Query / Zustand (dziś React hooks). 🔜 Obserwowalność: Sentry.
+- ✅ Stan serwera: **TanStack Query** — [`QueryProvider`](apps/web/components/QueryProvider.tsx) opakowuje cały panel `(app)`, ekrany przepinane falami (nie hurtem — każdy ma własny kształt zapytań). 🔜 Zustand (stan klienta; dziś React hooks).
+- ✅ Obserwowalność: **Sentry** — web ([`instrumentation.ts`](apps/web/instrumentation.ts) · [`instrumentation-client.ts`](apps/web/instrumentation-client.ts) · [`global-error.tsx`](apps/web/app/global-error.tsx) · crony i rate-limit) + mobile ([`_layout.tsx`](apps/mobile/app/_layout.tsx), `ErrorBoundary`); bez DSN pełny no-op.
 
 ## Wersjonowanie i changelog (KRYTYCZNE — „na bieżąco")
 - **SemVer** + numeracja updatów `[#NNN]` (kolejne, bez luk, chronologicznie).

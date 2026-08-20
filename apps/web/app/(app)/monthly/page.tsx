@@ -3,10 +3,12 @@
 import {
   getCompany,
   listFuelLogs,
+  listFxRates,
   listOrders,
   listPerDiemTrips,
   listVehicleCosts,
   type PerDiemTrip,
+  toFxRates,
   type VehicleCost,
 } from "@e-logistic/api";
 import {
@@ -20,6 +22,7 @@ import {
   monthlyFleetTrend,
   monthsEndingAt,
   round2,
+  rowAmountEur,
   sumPerDiem,
   VEHICLE_COST_CATEGORY_LABELS,
   type VehicleCostCategory,
@@ -40,14 +43,36 @@ function thisMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
+/**
+ * [#378] Szerokość okna danych — jedna liczba dla pobierania, trendu i liczników.
+ *
+ * Rozjazd tych trzech miejsc był źródłem usterki: ostrzeżenie o brakujących kursach
+ * liczyło pozycje w jednym miesiącu, a wykres i Δ m/m brały dane z sześciu.
+ */
+const TREND_MONTHS = 6;
+
+/**
+ * [#378] Znacznik „kwota jest, tylko nie ma kursu".
+ *
+ * Po przeliczeniu na euro kwota bywa `null` z dwóch zupełnie różnych powodów:
+ * albo nikt jej nie wpisał, albo na dzień zdarzenia brakuje notowania. Ekran musi
+ * je rozróżniać, bo prowadzą do różnych działań — komunikat „uzupełnij kwotę"
+ * jest niewykonalny dla kogoś, kto wpisał 1200 PLN.
+ */
+type MissingRate = { missingRate: boolean };
+type MonthlyOrderRow = MonthlyOrderEntry & MissingRate;
+type MonthlyCostRow = MonthlyCostEntry & MissingRate;
+/** Koszt pojazdu z kwotą przeliczoną na euro po kursie z dnia poniesienia. */
+type VehicleCostRow = VehicleCost & { amountEur: number | null };
+
 export default function MonthlyPage() {
   const t = useT();
   const { vehicles, source } = useFleet();
   const [month, setMonth] = useState(thisMonth);
-  const [orders, setOrders] = useState<MonthlyOrderEntry[]>([]);
-  const [fuel, setFuel] = useState<MonthlyCostEntry[]>([]);
-  const [adblue, setAdblue] = useState<MonthlyCostEntry[]>([]);
-  const [costs, setCosts] = useState<VehicleCost[]>([]);
+  const [orders, setOrders] = useState<MonthlyOrderRow[]>([]);
+  const [fuel, setFuel] = useState<MonthlyCostRow[]>([]);
+  const [adblue, setAdblue] = useState<MonthlyCostRow[]>([]);
+  const [costs, setCosts] = useState<VehicleCostRow[]>([]);
   const [perDiems, setPerDiems] = useState<PerDiemTrip[]>([]);
   const [companyName, setCompanyName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -70,46 +95,81 @@ export default function MonthlyPage() {
       }
       // Okno danych = 6 miesięcy kończących na wybranym (trend + porównanie m/m).
       // Przeładowanie przy zmianie miesiąca — zamiast pobierania całej historii.
-      const window6 = monthsEndingAt(month, 6);
+      const window6 = monthsEndingAt(month, TREND_MONTHS);
       const from = window6.length ? `${window6[0]}-01` : undefined;
       const toDate = new Date(`${month}-01T00:00:00Z`);
       toDate.setUTCMonth(toDate.getUTCMonth() + 1);
       const to = toDate.toISOString().slice(0, 10); // 1. dzień kolejnego miesiąca
-      const [ord, f, a, vc, pd, comp] = await Promise.all([
+      const [ord, f, a, vc, pd, comp, fxRows] = await Promise.all([
         listOrders(sb, m.companyId, { from, to }),
         listFuelLogs(sb, { from, to, limit: 5000 }),
         listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
         listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
-        listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
+        // [#390] Zakres dat przekazany do bazy — wcześniej szła tu cała historia
+        // firmy, a filtr po miesiącu działał dopiero w przeglądarce, więc przy
+        // limicie 5000 najstarsze miesiące po prostu nie dojeżdżały.
+        listPerDiemTrips(sb, m.companyId, { from, to, limit: 5000 }),
         getCompany(sb, m.companyId),
+        // Zapas wstecz: kurs z dnia zdarzenia, a EBC nie publikuje w weekendy.
+        listFxRates(sb, {
+          from: from
+            ? new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10)
+            : undefined,
+        }),
       ]);
+      const rates = toFxRates(fxRows);
       setCompanyName(comp?.name ?? "");
-      setCosts(vc);
-      setPerDiems(pd);
-      setOrders(
-        ord.map((o) => ({
-          vehicleId: o.vehicle_id,
-          price: o.price,
-          currency: o.currency,
-          status: o.status,
-          date: o.load_date ?? o.created_at.slice(0, 10),
+      // [#378] Koszt pojazdu przeliczony na euro po kursie z dnia poniesienia.
+      // Kwota surowa zostaje w wierszu — rejestr kosztów pokazuje ją w uwadze,
+      // gdy notowania zabrakło.
+      setCosts(
+        vc.map((c) => ({
+          ...c,
+          amountEur: rowAmountEur(Number(c.amount), c.currency, c.cost_date, rates),
         })),
       );
-      const toCost = (r: {
+      setPerDiems(pd);
+      // [#378] Zlecenia normalizowane do euro TU, na granicy odczytu. Dalej liczy
+      // `monthlyFleetSummary`, który odsiewa wszystko, co nie jest EUR — więc
+      // zlecenie wystawione w złotówkach po cichu wypadało z przychodu, a wynik
+      // pojazdu (przychód − paliwo) wychodził zaniżony, czasem ujemny bez powodu.
+      // Zamiast zmieniać sygnaturę silnika w `packages/core`, podajemy mu kwotę
+      // już przeliczoną i walutę „EUR" — granica przeliczenia jest w jednym miejscu.
+      setOrders(
+        ord.map((o) => {
+          // Data ZAŁADUNKU, nie utworzenia: kurs ma odpowiadać momentowi zdarzenia.
+          const date = o.load_date ?? o.created_at.slice(0, 10);
+          const priceEur = rowAmountEur(o.price, o.currency, date, rates);
+          return {
+            vehicleId: o.vehicle_id,
+            priceEur: priceEur,
+            status: o.status,
+            date,
+            missingRate: o.price != null && priceEur == null,
+          };
+        }),
+      );
+      type Raw = {
         vehicle_id: string;
         price_total: number | null;
-        created_at: string;
-      }) => ({
-        vehicleId: r.vehicle_id,
-        priceTotal: r.price_total,
-        date: r.created_at.slice(0, 10),
-      });
-      setFuel(
-        (f as { vehicle_id: string; price_total: number | null; created_at: string }[]).map(toCost),
-      );
-      setAdblue(
-        (a as { vehicle_id: string; price_total: number | null; created_at: string }[]).map(toCost),
-      );
+        currency: string | null;
+        occurred_at: string;
+      };
+      const toCost = (r: Raw): MonthlyCostRow => {
+        // [#376] Przeliczenie na EUR po kursie z dnia zdarzenia. Wcześniej
+        // wchodziła tu surowa kwota — 1200 PLN sumowało się jako 1200 €.
+        const priceTotal = rowAmountEur(r.price_total, r.currency, r.occurred_at, rates);
+        return {
+          vehicleId: r.vehicle_id,
+          priceTotal,
+          date: r.occurred_at.slice(0, 10),
+          // [#378] Kwota jest, brakuje tylko notowania — to inny przypadek niż
+          // pusty formularz i musi dostać inny komunikat.
+          missingRate: r.price_total != null && priceTotal == null,
+        };
+      };
+      setFuel((f as Raw[]).map(toCost));
+      setAdblue((a as Raw[]).map(toCost));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych.");
     } finally {
@@ -129,12 +189,73 @@ export default function MonthlyPage() {
     [month, orders, fuel, adblue],
   );
 
-  // Trend 6 miesięcy kończący na wybranym + poprzedni miesiąc do porównania m/m.
+  // Okno trendu: TREND_MONTHS miesięcy kończących na wybranym. Ten sam zakres,
+  // z którego liczone są słupki wykresu i baza porównania Δ m/m.
+  const trendMonths = useMemo(() => monthsEndingAt(month, TREND_MONTHS), [month]);
   const trend = useMemo(
-    () => monthlyFleetTrend({ months: monthsEndingAt(month, 6), orders, fuel, adblue }),
-    [month, orders, fuel, adblue],
+    () => monthlyFleetTrend({ months: trendMonths, orders, fuel, adblue }),
+    [trendMonths, orders, fuel, adblue],
   );
   const prev = trend.length >= 2 ? trend[trend.length - 2] : null;
+
+  /**
+   * [#378] Dwa powody, dla których pozycja nie weszła do sumy — i właściwy ZASIĘG.
+   *
+   * 1) `missingPrice` z rdzenia zlicza każdy `priceTotal === null`, a po przeliczeniu
+   *    na euro wpadają tam także wpisy Z kwotą, ale bez notowania na dany dzień.
+   *    Rozdzielamy je, bo „uzupełnij kwotę" jest niewykonalne dla kogoś, kto kwotę wpisał.
+   * 2) Poprzednio licznik obejmował wyłącznie wybrany miesiąc, a `monthlyFleetSummary`
+   *    liczy nieprzeliczalną kwotę jako `?? 0` w KAŻDYM miesiącu, który dostanie.
+   *    Wykres trendu i Δ m/m biorą dane z całego okna, więc pozycja bez kursu sprzed
+   *    kilku miesięcy cicho zaniżała tamten słupek i bazę porównania — Δ pokazywała
+   *    wzrost, którego nie było, a ostrzeżenie milczało. Liczymy więc per miesiąc
+   *    całego okna i osobno raportujemy „w tym miesiącu" i „w oknie trendu".
+   */
+  const missing = useMemo(() => {
+    const monthOf = (d: string) => d.slice(0, 7);
+    const inWindow = new Set(trendMonths);
+    // Miesiąc → ile pozycji nie weszło do sumy (osobno: brak kursu / brak kwoty).
+    const byMonth = new Map<string, { rate: number; amount: number }>();
+    const bump = (date: string, kind: "rate" | "amount") => {
+      const m = monthOf(date);
+      if (!inWindow.has(m)) return;
+      const e = byMonth.get(m) ?? { rate: 0, amount: 0 };
+      e[kind] += 1;
+      byMonth.set(m, e);
+    };
+    for (const r of [...fuel, ...adblue]) {
+      if (r.priceTotal != null) continue;
+      bump(r.date, r.missingRate ? "rate" : "amount");
+    }
+    for (const o of orders) {
+      // Do przychodu wchodzą tylko zlecenia dostarczone/zafakturowane — reszta
+      // nie zaniża sumy, więc nie ma o czym ostrzegać.
+      if (!o.missingRate) continue;
+      if (o.status !== "delivered" && o.status !== "invoiced") continue;
+      bump(o.date, "rate");
+    }
+
+    const amountIn = (rows: MonthlyCostRow[]) =>
+      rows.filter((r) => r.priceTotal == null && !r.missingRate && monthOf(r.date) === month)
+        .length;
+    // Miesiące, których słupek/porównanie stoi na niepełnych danych — do oznaczenia
+    // przy samym wykresie, nie tylko przy kafelkach wybranego miesiąca.
+    const incompleteMonths = new Set(
+      trendMonths.filter((m) => {
+        const e = byMonth.get(m);
+        return e != null && e.rate + e.amount > 0;
+      }),
+    );
+    const prevMonth = trendMonths.length >= 2 ? trendMonths[trendMonths.length - 2] : null;
+    return {
+      amountFuel: amountIn(fuel),
+      amountAdblue: amountIn(adblue),
+      rateMonth: byMonth.get(month)?.rate ?? 0,
+      rateWindow: trendMonths.reduce((s, m) => s + (byMonth.get(m)?.rate ?? 0), 0),
+      incompleteMonths,
+      prevIncomplete: prevMonth != null && incompleteMonths.has(prevMonth),
+    };
+  }, [fuel, adblue, orders, month, trendMonths]);
 
   // Diety należne w wybranym miesiącu (filtr po dacie podróży), osobno per waluta.
   const perDiemTotals = useMemo(() => {
@@ -181,46 +302,79 @@ export default function MonthlyPage() {
   function exportCostRegister() {
     const inMonth = (d: string) => d.startsWith(month);
     const catLabel = (c: string) => VEHICLE_COST_CATEGORY_LABELS[c as VehicleCostCategory] ?? c;
-    type Entry = { date: string; vehicleId: string | null; category: string; amount: number };
+    /**
+     * [#378] Kwota `null` jedzie do pliku jako puste pole, nie jako zero.
+     *
+     * Wcześniej `round2(Number(r.priceTotal ?? 0))` wpisywało księgowej 0 € —
+     * czyli twierdzenie „ten wydatek nic nie kosztował" — także wtedy, gdy kwota
+     * była, tylko zabrakło kursu na dzień zdarzenia. Zero w rejestrze kosztów
+     * cicho zaniża podstawę; puste pole plus powód w kolumnie „Uwaga" widać.
+     */
+    type Entry = {
+      date: string;
+      vehicleId: string | null;
+      category: string;
+      amountEur: number | null;
+      note: string;
+    };
+    const logEntry = (r: MonthlyCostRow, category: string): Entry => ({
+      date: r.date,
+      vehicleId: r.vehicleId,
+      category,
+      amountEur: r.priceTotal,
+      note:
+        r.priceTotal != null
+          ? ""
+          : r.missingRate
+            ? "kwota w innej walucie — brak kursu na dzień zdarzenia"
+            : "brak kwoty we wpisie",
+    });
     const entries: Entry[] = [
-      ...fuel
-        .filter((r) => inMonth(r.date))
-        .map((r) => ({
-          date: r.date,
-          vehicleId: r.vehicleId,
-          category: "Paliwo",
-          amount: round2(Number(r.priceTotal ?? 0)),
-        })),
-      ...adblue
-        .filter((r) => inMonth(r.date))
-        .map((r) => ({
-          date: r.date,
-          vehicleId: r.vehicleId,
-          category: "AdBlue",
-          amount: round2(Number(r.priceTotal ?? 0)),
-        })),
+      ...fuel.filter((r) => inMonth(r.date)).map((r) => logEntry(r, "Paliwo")),
+      ...adblue.filter((r) => inMonth(r.date)).map((r) => logEntry(r, "AdBlue")),
+      // [#378] Było `c.currency === "EUR"` — naprawa opłacona w złotówkach
+      // wypadała z rejestru bez śladu, więc miesięczna suma kosztów była zaniżona
+      // i nie zgadzała się z tym, co widać na karcie pojazdu.
       ...costs
-        .filter((c) => c.currency === "EUR" && inMonth(c.cost_date))
+        .filter((c) => inMonth(c.cost_date))
         .map((c) => ({
           date: c.cost_date,
           vehicleId: c.vehicle_id,
           category: catLabel(c.category),
-          amount: round2(Number(c.amount)),
+          amountEur: c.amountEur,
+          note:
+            c.amountEur != null
+              ? ""
+              : `kwota ${c.amount} ${c.currency} — brak kursu na ${c.cost_date}`,
         })),
     ].sort((a, b) => a.date.localeCompare(b.date));
 
-    const reg = costRegister(entries.map((e) => ({ category: e.category, amount: e.amount })));
-    const headers = [t("common.date"), t("common.vehicle"), "Kategoria", "Kwota (EUR)"];
-    const rows: (string | number)[][] = entries.map((e) => [
+    // Do sumy wchodzi tylko to, co da się wyrazić w euro — reszta zostaje w wierszach
+    // jako pozycja bez kwoty, żeby nikt nie uznał rejestru za kompletny.
+    const priced = entries.filter((e): e is Entry & { amountEur: number } => e.amountEur != null);
+    const reg = costRegister(priced.map((e) => ({ category: e.category, amount: e.amountEur })));
+    const headers = [t("common.date"), t("common.vehicle"), "Kategoria", "Kwota (EUR)", "Uwaga"];
+    const rows: (string | number | null)[][] = entries.map((e) => [
       e.date,
       regOf(e.vehicleId),
       e.category,
-      e.amount,
+      e.amountEur,
+      e.note,
     ]);
     rows.push([]);
     rows.push(["Podsumowanie wg kategorii"]);
     for (const g of reg.groups) rows.push([g.category, "", `${g.count} szt.`, g.amount]);
     rows.push([t("common.total"), "", `${reg.count} szt.`, reg.total]);
+    const skipped = entries.length - priced.length;
+    if (skipped > 0) {
+      rows.push([
+        "Poza sumą (kwota nieprzeliczona)",
+        "",
+        `${skipped} szt.`,
+        null,
+        "patrz kolumna Uwaga przy pozycjach z pustą kwotą",
+      ]);
+    }
 
     // Diety osobno per waluta (nie sumowane do EUR — bez kursów).
     if (perDiemTotals.length > 0) {
@@ -254,7 +408,7 @@ export default function MonthlyPage() {
 
       <PageHeader
         title="Zestawienie miesięczne (flota)"
-        subtitle="Przychód ze zleceń (dostarczone i zafakturowane, EUR) zestawiony z kosztami paliwa i AdBlue — per pojazd, dla wybranego miesiąca. Eksport CSV (Excel) i wydruk/PDF."
+        subtitle="Przychód ze zleceń (dostarczone i zafakturowane, przeliczony na EUR) zestawiony z kosztami paliwa i AdBlue — per pojazd, dla wybranego miesiąca. Eksport CSV (Excel) i wydruk/PDF."
       />
 
       <SetupNotice source={source} />
@@ -289,29 +443,86 @@ export default function MonthlyPage() {
         onRetry={load}
       />
 
+      {!loading && !loadErr && missing.amountFuel + missing.amountAdblue > 0 && (
+        <div style={styles.warn}>
+          <strong>Koszt jest niepełny.</strong> W tym miesiącu{" "}
+          {missing.amountFuel > 0 && `${missing.amountFuel} tankowań`}
+          {missing.amountFuel > 0 && missing.amountAdblue > 0 && " i "}
+          {missing.amountAdblue > 0 && `${missing.amountAdblue} wpisów AdBlue`} nie ma wpisanej
+          kwoty — te pozycje liczą się jako 0 €. Uzupełnij je w{" "}
+          <Link href="/forms/history" style={styles.warnLink}>
+            historii formularzy
+          </Link>
+          , aby zestawienie było prawdziwe.
+        </div>
+      )}
+
+      {/* [#378] Brak kursu to nie brak kwoty — wcześniej jedno i drugie wpadało do
+          komunikatu „uzupełnij kwotę", nie do wykonania dla kogoś, kto kwotę wpisał
+          w złotówkach. Tu mówimy wprost, czego brakuje — i w jakim zakresie, bo
+          ostrzeżenie musi obejmować całe okno, z którego liczone są pokazywane liczby. */}
+      {!loading && !loadErr && missing.rateWindow > 0 && (
+        <div style={styles.warn}>
+          <strong>Suma jest niepełna.</strong> Pozycje z kwotą w walucie bez notowania na dzień
+          zdarzenia: <strong>w tym miesiącu {missing.rateMonth}</strong>, w oknie trendu (
+          {trendMonths.length} mies.) <strong>{missing.rateWindow}</strong>. Kwoty są wpisane;
+          brakuje kursu, więc nie weszły do przeliczenia na euro i liczą się jako 0 € — także w
+          miesiącach wcześniejszych, na których stoi wykres trendu i porównanie Δ m/m.
+        </div>
+      )}
+
       {!loading && !loadErr && summary.rows.length > 0 && (
         <>
           <div style={styles.cards}>
+            {/* [#378] `baseIncomplete` — Δ liczy się względem miesiąca poprzedniego,
+                a ten bywa zaniżony o pozycje bez kursu/bez kwoty. Bez oznaczenia
+                kafelek pokazywał wzrost, którego nie było. */}
             <Card
               label="Przychód (EUR)"
               value={`${summary.totals.revenueEur} €`}
-              sub={<Delta now={summary.totals.revenueEur} prev={prev?.revenueEur ?? null} />}
+              sub={
+                <Delta
+                  now={summary.totals.revenueEur}
+                  prev={prev?.revenueEur ?? null}
+                  baseIncomplete={missing.prevIncomplete}
+                />
+              }
             />
             <Card
               label="Koszt paliwa"
               value={`${summary.totals.fuelCost} €`}
-              sub={<Delta now={summary.totals.fuelCost} prev={prev?.fuelCost ?? null} invert />}
+              sub={
+                <Delta
+                  now={summary.totals.fuelCost}
+                  prev={prev?.fuelCost ?? null}
+                  baseIncomplete={missing.prevIncomplete}
+                  invert
+                />
+              }
             />
             <Card
               label="Koszt AdBlue"
               value={`${summary.totals.adblueCost} €`}
-              sub={<Delta now={summary.totals.adblueCost} prev={prev?.adblueCost ?? null} invert />}
+              sub={
+                <Delta
+                  now={summary.totals.adblueCost}
+                  prev={prev?.adblueCost ?? null}
+                  baseIncomplete={missing.prevIncomplete}
+                  invert
+                />
+              }
             />
             <Card
               label="Wynik"
               value={`${summary.totals.net} €`}
               accent={summary.totals.net >= 0 ? "#22c55e" : palette.red}
-              sub={<Delta now={summary.totals.net} prev={prev?.net ?? null} />}
+              sub={
+                <Delta
+                  now={summary.totals.net}
+                  prev={prev?.net ?? null}
+                  baseIncomplete={missing.prevIncomplete}
+                />
+              }
             />
           </div>
 
@@ -323,13 +534,26 @@ export default function MonthlyPage() {
                   (Δ na kartach = vs poprzedni miesiąc)
                 </span>
               </h2>
+              {/* [#378] Gwiazdka przy miesiącu, w którym część pozycji nie weszła do sumy.
+                  Taki słupek jest zaniżony, a użytkownik musi to widzieć przy wykresie —
+                  ostrzeżenie nad kafelkami dotyczyło samego wybranego miesiąca i milczało
+                  o miesiącach wcześniejszych, na których stoi cały trend. */}
               <BarChart
-                data={trend.map((t) => ({
-                  label: `${t.month.slice(5)}.${t.month.slice(2, 4)}`,
-                  value: t.revenueEur,
+                data={trend.map((p) => ({
+                  label: `${p.month.slice(5)}.${p.month.slice(2, 4)}${
+                    missing.incompleteMonths.has(p.month) ? "*" : ""
+                  }`,
+                  value: p.revenueEur,
                 }))}
                 unit=" €"
               />
+              {missing.incompleteMonths.size > 0 && (
+                <p style={{ color: palette.smoke, fontSize: 12, marginTop: 6 }}>
+                  * miesiąc, w którym część pozycji nie weszła do sumy (brak kursu na dzień
+                  zdarzenia albo brak kwoty we wpisie) — słupek jest zaniżony, a porównanie m/m
+                  liczone względem takiego miesiąca zawyża wzrost.
+                </p>
+              )}
             </div>
           )}
 
@@ -389,8 +613,14 @@ export default function MonthlyPage() {
             </tfoot>
           </table>
 
+          {/* [#378] Nota mówiła „kwoty w innych walutach przeliczone na euro" bez
+              zastrzeżeń — a przeliczenie udaje się tylko wtedy, gdy jest notowanie na
+              dzień zdarzenia. Ekran wyglądał przez to na kompletniejszy, niż jest.
+              Warunek dopisany wprost, razem ze skutkiem (pozycja liczy się jako 0 €). */}
           <p style={{ color: palette.smoke, fontSize: 12, marginTop: 12 }}>
-            Uwaga: przychód liczony tylko dla zleceń w EUR (inne waluty pominięte — bez kursów).
+            Kwoty w innych walutach przeliczane na euro po kursie z dnia zdarzenia (załadunku dla
+            zleceń, tankowania dla paliwa i AdBlue). Gdy notowania z tego dnia brakuje, pozycja nie
+            wchodzi do sumy i liczy się jako 0 € — takie pozycje wykazuje ostrzeżenie nad tabelą.
             Atrybucja po dacie załadunku (lub utworzenia zlecenia).
           </p>
         </>
@@ -458,15 +688,47 @@ function Card({
   );
 }
 
-/** Zmiana wartości m/m. `invert` = niżej znaczy lepiej (koszty). */
-function Delta({ now, prev, invert }: { now: number; prev: number | null; invert?: boolean }) {
+/**
+ * Zmiana wartości m/m. `invert` = niżej znaczy lepiej (koszty).
+ *
+ * [#378] `baseIncomplete` = miesiąc porównania (poprzedni) ma pozycje, które nie weszły
+ * do sumy. Δ jest wtedy policzona względem zaniżonej bazy — liczbę pokazujemy, ale
+ * jawnie oznaczoną, zamiast udawać, że porównanie jest wiarygodne.
+ */
+function Delta({
+  now,
+  prev,
+  invert,
+  baseIncomplete,
+}: {
+  now: number;
+  prev: number | null;
+  invert?: boolean;
+  baseIncomplete?: boolean;
+}) {
   if (prev == null) return <span style={{ fontSize: 12, color: palette.smoke }}>—</span>;
+  const flag = baseIncomplete ? (
+    <span
+      title="Miesiąc porównania ma pozycje, które nie weszły do sumy — Δ liczona względem zaniżonej bazy."
+      style={{ color: "#f0d98a" }}
+    >
+      {" "}
+      ⚠ baza niepełna
+    </span>
+  ) : null;
   const d = round2(now - prev);
-  if (d === 0) return <span style={{ fontSize: 12, color: palette.smoke }}>= bez zmian</span>;
+  if (d === 0)
+    return (
+      <span style={{ fontSize: 12, color: palette.smoke }}>
+        = bez zmian
+        {flag}
+      </span>
+    );
   const good = invert ? d < 0 : d > 0;
   return (
     <span style={{ fontSize: 12, color: good ? "#22c55e" : palette.red }}>
       {d > 0 ? "▲" : "▼"} {Math.abs(d)} € m/m
+      {flag}
     </span>
   );
 }
@@ -483,6 +745,19 @@ const styles: Record<string, React.CSSProperties> = {
     color: palette.offWhite,
   },
   cards: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 },
+  // Ostrzeżenie o niepełnych danych — brak kwoty ma być widoczny jako brak,
+  // nigdy jako koszt równy zeru.
+  warn: {
+    marginTop: 20,
+    padding: "12px 14px",
+    borderRadius: 10,
+    border: "1px solid #6b4a00",
+    background: "#241c05",
+    color: "#f0d98a",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+  warnLink: { color: "#ffcf4a", textDecoration: "underline" },
   card: {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,

@@ -1,6 +1,18 @@
 "use client";
 
-import { getCompany, updateCompany, wipeCompanyData } from "@e-logistic/api";
+import {
+  type CompanyLink,
+  deleteCompanyLink,
+  deleteMyAccount,
+  getAccountDeletionPreview,
+  getCompany,
+  insertCompanyLink,
+  listCompanyLinks,
+  updateCompany,
+  updateCompanyLink,
+  wipeCompanyData,
+} from "@e-logistic/api";
+import { companyLinkSchema, firstZodError } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { startRegistration } from "@simplewebauthn/browser";
 import { useCallback, useEffect, useState } from "react";
@@ -35,6 +47,97 @@ export default function SettingsPage() {
   // Dane firmy (sprzedawca na fakturach/CMR) — edycja tylko dla właściciela.
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+
+  /**
+   * [#404] Linki firmowe — skróty, które właściciel definiuje dla kierowców.
+   *
+   * Dziś przewoźnik wysyła adres portalu myta czy awizacji na czacie albo
+   * dyktuje przez telefon, a kierowca przepisuje go z pamięci na parkingu.
+   * Tu wpisuje się go raz.
+   */
+  const [links, setLinks] = useState<CompanyLink[]>([]);
+  const [linkForm, setLinkForm] = useState<{
+    id: string | null;
+    label: string;
+    url: string;
+    icon: string;
+    note: string;
+    managementOnly: boolean;
+  } | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+
+  const reloadLinks = useCallback(async (id: string) => {
+    setLinks(await listCompanyLinks(getBrowserSupabase(), id).catch(() => []));
+  }, []);
+
+  async function saveLink() {
+    if (!companyId || !linkForm || linkBusy) return;
+    const parsed = companyLinkSchema.safeParse({
+      label: linkForm.label,
+      url: linkForm.url,
+      icon: linkForm.icon.trim() || undefined,
+      note: linkForm.note.trim() || undefined,
+      managementOnly: linkForm.managementOnly,
+      // Nowy link ląduje na końcu listy; kolejność zmienia się strzałkami.
+      sortOrder: linkForm.id
+        ? (links.find((l) => l.id === linkForm.id)?.sort_order ?? 0)
+        : links.length,
+    });
+    if (!parsed.success) {
+      toast(firstZodError(parsed.error), "error");
+      return;
+    }
+    setLinkBusy(true);
+    try {
+      const sb = getBrowserSupabase();
+      if (linkForm.id) await updateCompanyLink(sb, linkForm.id, parsed.data);
+      else await insertCompanyLink(sb, parsed.data, companyId);
+      await reloadLinks(companyId);
+      setLinkForm(null);
+      toast(t("links.saved"), "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("links.saveError"), "error");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  async function removeLink(id: string) {
+    if (!companyId) return;
+    if (!(await confirm(t("links.deleteConfirm")))) return;
+    try {
+      await deleteCompanyLink(getBrowserSupabase(), id);
+      await reloadLinks(companyId);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("links.saveError"), "error");
+    }
+  }
+
+  /** Przesuwa link o jedno miejsce; zapisujemy OBA zamieniane wiersze. */
+  async function moveLink(id: string, kierunek: -1 | 1) {
+    if (!companyId) return;
+    const i = links.findIndex((l) => l.id === id);
+    const j = i + kierunek;
+    const a = links[i];
+    const b = links[j];
+    if (!a || !b) return;
+    try {
+      const sb = getBrowserSupabase();
+      const wspolne = (l: CompanyLink, order: number) => ({
+        label: l.label,
+        url: l.url,
+        icon: l.icon ?? undefined,
+        note: l.note ?? undefined,
+        managementOnly: l.management_only,
+        sortOrder: order,
+      });
+      await updateCompanyLink(sb, a.id, wspolne(a, b.sort_order));
+      await updateCompanyLink(sb, b.id, wspolne(b, a.sort_order));
+      await reloadLinks(companyId);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("links.saveError"), "error");
+    }
+  }
   const [exporting, setExporting] = useState(false);
   const [cName, setCName] = useState("");
   const [cTaxId, setCTaxId] = useState("");
@@ -51,6 +154,9 @@ export default function SettingsPage() {
   // Strefa niebezpieczna (#259): czyszczenie danych firmy — tylko owner, type-to-confirm.
   const [wipeConfirm, setWipeConfirm] = useState("");
   const [wipeBusy, setWipeBusy] = useState(false);
+  // [#372] Usunięcie własnego konta — osobne od czyszczenia danych firmy.
+  const [delConfirm, setDelConfirm] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
 
   const loadCompany = useCallback(async () => {
     try {
@@ -58,6 +164,8 @@ export default function SettingsPage() {
       const m = await getCachedMembership(sb);
       if (!m) return;
       setIsOwner(m.role === "owner");
+      // [#404] Linki ładujemy razem z resztą ustawień — RLS sam zawęzi zbiór.
+      void reloadLinks(m.companyId);
       setCompanyId(m.companyId);
       const c = await getCompany(sb, m.companyId);
       if (c) {
@@ -74,7 +182,11 @@ export default function SettingsPage() {
     } catch {
       // brak firmy / dostępu
     }
-  }, []);
+    // [#404] `reloadLinks` w zależnościach — jest stabilne (`useCallback` z pustą
+    // listą), więc nie powoduje ponownych wywołań, ale bez wpisania go tutaj
+    // reguła wyczerpujących zależności jest złamana, a to właśnie ona chroni
+    // przed domknięciem trzymającym nieaktualny stan.
+  }, [reloadLinks]);
 
   async function saveCompany() {
     if (!companyId) return;
@@ -104,6 +216,29 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * [#400] Kasuje PLIKI firmy przed czyszczeniem bazy.
+   *
+   * Musi iść pierwsze: po usunięciu `memberships` nie da się już potwierdzić,
+   * że proszący jest właścicielem tej firmy, a wtedy pliki zostają nieusuwalne
+   * dla kogokolwiek poza kluczem serwisowym.
+   *
+   * Rzuca przy niepowodzeniu — świadomie. Przejście dalej oznaczałoby
+   * potwierdzenie usunięcia danych, które nadal leżą na dysku, więc lepiej
+   * przerwać i pozwolić powtórzyć niż skłamać w komunikacie.
+   */
+  async function purgeCompanyStorage(id: string): Promise<void> {
+    const res = await fetch("/api/company/purge-storage", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ companyId: id }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error ?? t("settings.danger.storageFail"));
+    }
+  }
+
   async function wipeCompany() {
     if (!companyId || wipeBusy) return;
     if (wipeConfirm.trim() !== cName.trim()) {
@@ -117,6 +252,8 @@ export default function SettingsPage() {
     if (!ok) return;
     setWipeBusy(true);
     try {
+      // [#400] Najpierw pliki, potem wiersze — patrz `purgeCompanyStorage`.
+      await purgeCompanyStorage(companyId);
       const counts = await wipeCompanyData(getBrowserSupabase(), companyId, wipeConfirm.trim());
       const total = Object.values(counts).reduce((a, b) => a + b, 0);
       toast(t("settings.danger.success").replace("{count}", String(total)), "success");
@@ -125,6 +262,76 @@ export default function SettingsPage() {
       toast(e instanceof Error ? e.message : t("settings.danger.mismatch"), "error");
     } finally {
       setWipeBusy(false);
+    }
+  }
+
+  /**
+   * [#372] Usunięcie własnego konta — wymóg App Store 5.1.1(v) i Google Play.
+   *
+   * Odrębne od „wyczyść dane firmy" wyżej: tamto kasuje dane FIRMY i zostawia
+   * konta, to kasuje KONTO użytkownika. Właściciel firmy z pracownikami dostaje
+   * drugie, osobne potwierdzenie — jego usunięcie kasuje też cudze dane.
+   */
+  async function deleteAccount() {
+    if (delBusy) return;
+    if (delConfirm.trim() !== t("settings.account.delete.confirmWord")) {
+      toast(t("settings.account.delete.fail"), "error");
+      return;
+    }
+    setDelBusy(true);
+    try {
+      const sb = getBrowserSupabase();
+      const preview = await getAccountDeletionPreview(sb);
+
+      const lines = [
+        t("settings.account.delete.desc"),
+        t("settings.account.delete.summary")
+          .replace("{fuel}", String(preview.fuelLogs))
+          .replace("{adblue}", String(preview.adblueLogs))
+          .replace("{trip}", String(preview.tripEvents))
+          .replace("{messages}", String(preview.messages)),
+        ...preview.soloCompanies.map((c) =>
+          t("settings.account.delete.solo").replace("{company}", c.name),
+        ),
+      ];
+      const ok = await confirm(lines.join("\n\n"), {
+        danger: true,
+        confirmLabel: t("settings.account.delete.button"),
+      });
+      if (!ok) return;
+
+      let deleteCompany = false;
+      const blocking = preview.blockingCompanies[0];
+      if (blocking) {
+        const owned = await confirm(
+          t("settings.account.delete.owner")
+            .replace("{company}", blocking.name)
+            .replace("{members}", String(blocking.activeMembers)),
+          { danger: true, confirmLabel: t("settings.account.delete.button") },
+        );
+        if (!owned) return;
+        deleteCompany = true;
+      }
+
+      /*
+       * [#400] Przy usuwaniu konta RAZEM Z FIRMĄ pliki firmy też muszą zniknąć.
+       * Bez tego skany dokumentów i zdjęcia ładunku zostają na dysku, a po
+       * skasowaniu `memberships` nikt nie ma już do nich prawa — czyli stają się
+       * nieusuwalne, co jest gorszym stanem niż przed żądaniem usunięcia.
+       *
+       * Gdy użytkownik NIE kasuje firmy (odchodzi z niej, firma żyje dalej),
+       * plików nie ruszamy: należą do firmy, nie do niego.
+       */
+      if (deleteCompany && companyId) await purgeCompanyStorage(companyId);
+      await deleteMyAccount(sb, { deleteCompany });
+      // Konto w auth.users już nie istnieje — sesja jest martwa, więc wychodzimy
+      // na stronę publiczną zamiast czekać, aż kolejne zapytanie zwróci 401.
+      await sb.auth.signOut().catch(() => {});
+      window.location.href = "/";
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("settings.account.delete.fail"), "error");
+    } finally {
+      setDelBusy(false);
     }
   }
 
@@ -300,6 +507,135 @@ export default function SettingsPage() {
     <div style={{ maxWidth: 560 }}>
       <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>{t("nav.settings")}</h1>
       <p style={{ color: palette.smoke, marginTop: 4 }}>{t("settings.subtitle")}</p>
+
+      {companyId && isOwner && (
+        <div style={styles.card}>
+          <strong style={{ fontSize: 16 }}>🔗 {t("links.title")}</strong>
+          <p style={{ color: palette.smoke, fontSize: 13, margin: "6px 0 10px", lineHeight: 1.6 }}>
+            {t("links.subtitle")}
+          </p>
+
+          {links.length === 0 && (
+            <p style={{ color: palette.smoke, fontSize: 13 }}>{t("links.empty")}</p>
+          )}
+
+          {links.map((l, i) => (
+            <div key={l.id} style={styles.linkRow}>
+              <span style={{ fontSize: 18, width: 24 }}>{l.icon || "🔗"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ fontSize: 14 }}>{l.label}</strong>
+                {l.management_only && (
+                  <span style={styles.linkBadge}>{t("links.managementOnly")}</span>
+                )}
+                <div style={styles.linkUrl}>{l.url}</div>
+                {l.note && <div style={{ color: palette.smoke, fontSize: 12 }}>{l.note}</div>}
+              </div>
+              {/* Strzałki zamiast przeciągania: lista ma kilkanaście pozycji,
+                  a przeciąganie na telefonie w rękawicach nie działa. */}
+              <button
+                type="button"
+                style={styles.linkMove}
+                disabled={i === 0}
+                onClick={() => moveLink(l.id, -1)}
+                aria-label={t("links.moveUp")}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                style={styles.linkMove}
+                disabled={i === links.length - 1}
+                onClick={() => moveLink(l.id, 1)}
+                aria-label={t("links.moveDown")}
+              >
+                ↓
+              </button>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  setLinkForm({
+                    id: l.id,
+                    label: l.label,
+                    url: l.url,
+                    icon: l.icon ?? "",
+                    note: l.note ?? "",
+                    managementOnly: l.management_only,
+                  })
+                }
+              >
+                {t("common.edit")}
+              </Button>
+              <Button variant="ghost" onClick={() => removeLink(l.id)}>
+                {t("common.delete")}
+              </Button>
+            </div>
+          ))}
+
+          {linkForm ? (
+            <div style={styles.linkForm}>
+              <input
+                style={styles.input}
+                placeholder={t("links.labelPlaceholder")}
+                value={linkForm.label}
+                onChange={(e) => setLinkForm({ ...linkForm, label: e.target.value })}
+              />
+              <input
+                style={styles.input}
+                placeholder="https://…"
+                value={linkForm.url}
+                onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  style={{ ...styles.input, width: 70 }}
+                  placeholder="🛣️"
+                  maxLength={8}
+                  value={linkForm.icon}
+                  onChange={(e) => setLinkForm({ ...linkForm, icon: e.target.value })}
+                />
+                <input
+                  style={{ ...styles.input, flex: 1 }}
+                  placeholder={t("links.notePlaceholder")}
+                  value={linkForm.note}
+                  onChange={(e) => setLinkForm({ ...linkForm, note: e.target.value })}
+                />
+              </div>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={linkForm.managementOnly}
+                  onChange={(e) => setLinkForm({ ...linkForm, managementOnly: e.target.checked })}
+                />
+                {t("links.managementOnlyHint")}
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button onClick={saveLink} disabled={linkBusy}>
+                  {t("common.save")}
+                </Button>
+                <Button variant="ghost" onClick={() => setLinkForm(null)}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setLinkForm({
+                  id: null,
+                  label: "",
+                  url: "",
+                  icon: "",
+                  note: "",
+                  managementOnly: false,
+                })
+              }
+            >
+              ➕ {t("links.add")}
+            </Button>
+          )}
+        </div>
+      )}
 
       {companyId && isOwner && (
         <div style={styles.card}>
@@ -565,11 +901,88 @@ export default function SettingsPage() {
           </button>
         </div>
       )}
+
+      {/* [#372] Usunięcie konta musi być dostępne dla KAŻDEGO użytkownika
+          (App Store 5.1.1(v)) — świadomie poza warunkiem `isOwner`. */}
+      <div style={{ ...styles.card, borderColor: palette.red }}>
+        <strong style={{ fontSize: 16, color: palette.red }}>
+          {t("settings.account.delete.title")}
+        </strong>
+        <p style={{ color: palette.smoke, fontSize: 13, margin: 0 }}>
+          {t("settings.account.delete.desc")}
+        </p>
+        <label style={styles.field}>
+          <span style={{ fontSize: 12, color: palette.smoke }}>
+            {t("settings.account.delete.confirmLabel")}
+          </span>
+          <input
+            style={styles.cInput}
+            value={delConfirm}
+            onChange={(e) => setDelConfirm(e.target.value)}
+            placeholder={t("settings.account.delete.confirmWord")}
+            autoComplete="off"
+          />
+        </label>
+        <button
+          type="button"
+          style={{
+            ...styles.danger,
+            opacity:
+              delBusy || delConfirm.trim() !== t("settings.account.delete.confirmWord") ? 0.5 : 1,
+          }}
+          disabled={delBusy || delConfirm.trim() !== t("settings.account.delete.confirmWord")}
+          onClick={deleteAccount}
+        >
+          {delBusy
+            ? t("settings.account.delete.working")
+            : `🗑️ ${t("settings.account.delete.button")}`}
+        </button>
+      </div>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  // [#404] Linki firmowe.
+  linkRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "8px 0",
+    borderTop: `1px solid ${palette.graphite}`,
+  },
+  linkUrl: {
+    color: palette.smoke,
+    fontSize: 12,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  linkBadge: {
+    marginLeft: 8,
+    fontSize: 11,
+    color: palette.warning,
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 6,
+    padding: "1px 6px",
+  },
+  linkMove: {
+    background: "transparent",
+    color: palette.offWhite,
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    width: 30,
+    height: 30,
+    cursor: "pointer",
+  },
+  linkForm: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTop: `1px solid ${palette.graphite}`,
+  },
   card: {
     marginTop: 20,
     padding: 20,

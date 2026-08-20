@@ -1,6 +1,6 @@
 {
   "name": "e-logistic",
-  "version": "1.213.2",
+  "version": "1.246.0",
   "private": true,
   "description": "E-Logistic — platforma dla kierowców, spedytorów i firm transportowych",
   "license": "UNLICENSED",
@@ -21,7 +21,8 @@
     "docs:api": "typedoc",
     "e2e": "playwright test",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm docs:check",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "fx:backfill": "node scripts/fx-backfill.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.2",

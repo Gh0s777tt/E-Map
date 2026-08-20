@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TypedSupabaseClient } from "../client";
-import { uploadChatPhotoBinary } from "./messages";
+import { mockSupabase } from "../test-utils";
+import { listReactions, listThreadMembers, listThreads, uploadChatPhotoBinary } from "./messages";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -59,5 +60,49 @@ describe("uploadChatPhotoBinary (ścieżka = bramka RLS, #369)", () => {
       },
     } as unknown as TypedSupabaseClient;
     await expect(uploadChatPhotoBinary(client, "c1", new ArrayBuffer(4))).rejects.toThrow("RLS");
+  });
+});
+
+describe("czat — sufity pobrania", () => {
+  it("listReactions: sufit rośnie z liczbą wiadomości na stronicy", async () => {
+    /*
+     * Wywołujący sam decyduje, ile wiadomości pokazuje naraz, więc stały sufit
+     * oznaczałby, że przy dłuższym widoku reakcje znikają z DOŁU listy — a brak
+     * reakcji wygląda dokładnie tak samo jak jej niepostawienie.
+     */
+    const krotka = mockSupabase({ data: [], error: null });
+    await listReactions(krotka.client, ["m1", "m2"]);
+    const dluga = mockSupabase({ data: [], error: null });
+    await listReactions(
+      dluga.client,
+      Array.from({ length: 20 }, (_, i) => `m${i}`),
+    );
+    expect(dluga.argsOf("limit")?.[0]).toBe((krotka.argsOf("limit")?.[0] as number) * 10);
+  });
+
+  it("listReactions: pusta lista wiadomości nie generuje zapytania", async () => {
+    const { client, called } = mockSupabase({ data: [], error: null });
+    expect(await listReactions(client, [])).toEqual([]);
+    expect(called("from")).toBe(false);
+  });
+
+  it("listReactions: opts.limit nadpisuje wyliczony", async () => {
+    const { client, argsOf } = mockSupabase({ data: [], error: null });
+    await listReactions(client, ["m1"], { limit: 4 });
+    expect(argsOf("limit")?.[0]).toBe(4);
+  });
+
+  it("listThreads i listThreadMembers nakładają limit i pozwalają go nadpisać", async () => {
+    const kanaly = mockSupabase({ data: [], error: null });
+    await listThreads(kanaly.client, "c1");
+    expect(kanaly.argsOf("limit")?.[0]).toBe(500);
+
+    const sklad = mockSupabase({ data: [], error: null });
+    await listThreadMembers(sklad.client, "t1");
+    expect(sklad.argsOf("limit")?.[0]).toBe(2000);
+
+    const wlasny = mockSupabase({ data: [], error: null });
+    await listThreadMembers(wlasny.client, "t1", { limit: 8 });
+    expect(wlasny.argsOf("limit")?.[0]).toBe(8);
   });
 });

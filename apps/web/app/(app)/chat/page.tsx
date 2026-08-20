@@ -13,20 +13,33 @@ import {
   type CompanyMember,
   chatChannelKey,
   chatPhotoUrl,
+  copyChatPhotoToThread,
   createThread,
+  deleteMessage,
+  deleteThread,
+  editMessage,
+  getCompanyChatTtl,
   listCompanyMembers,
   listMessages,
+  listReactions,
   listThreadMembers,
   listThreads,
+  type MessageReaction,
   removeThreadMember,
   renameThread,
   sendMessage,
+  setChatTtl,
+  setReaction,
   subscribeMessages,
+  subscribeReactions,
   uploadChatPhotoBinary,
 } from "@e-logistic/api";
+import { type ChatViewer, mapLink, readChatLocation, TTL_OPTIONS } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useT } from "@/components/LocaleProvider";
+import { useToast } from "@/components/Toast";
 import { PageHeader } from "@/components/ui";
 import {
   markChannelRead,
@@ -36,6 +49,7 @@ import {
 } from "@/lib/chatUnread";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { MessageBubble } from "./MessageBubble";
 
 // #368: `companyId` jawnie w żądaniu — serwer nie może zgadywać firmy nadawcy
 // (konto w dwóch firmach rozsyłało podgląd treści do niewłaściwej).
@@ -80,8 +94,31 @@ function UnreadDot({ count }: { count: number }) {
   );
 }
 
+/** [#374] Pinezka w dymku — współrzędne + odnośnik do map. */
+function LocationCard({ meta }: { meta: unknown }) {
+  const t = useT();
+  const loc = readChatLocation(meta);
+  // Wadliwe `meta` (stary wpis, uszkodzone dane) nie może wywalić listy rozmowy.
+  if (!loc) return <div>{t("chat.msg.location")}</div>;
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      <div>📍 {loc.label ?? t("chat.msg.location")}</div>
+      <a
+        href={mapLink(loc, "web")}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "inherit", textDecoration: "underline", fontSize: 12 }}
+      >
+        {t("chat.location.open")} · {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}
+      </a>
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const t = useT();
+  const toast = useToast();
+  const confirm = useConfirm();
   const unread = useChatUnread();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThread, setActiveThread] = useState<ChatThread | null>(null); // null = Ogólny
@@ -91,6 +128,14 @@ export default function ChatPage() {
   const [me, setMe] = useState<string | null>(null);
   const [myLabel, setMyLabel] = useState("");
   const [manage, setManage] = useState(false);
+  const [role, setRole] = useState<ChatViewer["role"]>("driver");
+  // [#374] Reakcje wczytujemy jednym zapytaniem na widok, nie per dymek.
+  const [reactions, setReactions] = useState<MessageReaction[]>([]);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  // [#376] Ustawienie znikania kanału OGÓLNEGO mieszka w `companies`, nie
+  // w wątku — bez tego panel zawsze pokazywał „wyłączone", niezależnie od stanu.
+  const [companyTtl, setCompanyTtl] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   // panel tworzenia / edycji
   const [creating, setCreating] = useState(false);
@@ -122,8 +167,10 @@ export default function ChatPage() {
         meRef.current = userData.user?.id ?? null;
         setMyLabel(userData.user?.email ?? "panel");
         setManage(m.role === "owner" || m.role === "dispatcher");
+        setRole(m.role as ChatViewer["role"]);
         setCompanyId(m.companyId);
         setThreads(await listThreads(sb, m.companyId));
+        setCompanyTtl(await getCompanyChatTtl(sb, m.companyId).catch(() => null));
       } catch (e) {
         if (alive) setErr(e instanceof Error ? e.message : t("chat.loadError"));
       }
@@ -142,8 +189,18 @@ export default function ChatPage() {
     let alive = true;
     (async () => {
       try {
-        const msgs = await listMessages(getBrowserSupabase(), companyId, { threadId });
-        if (alive) setMessages(msgs);
+        const sb = getBrowserSupabase();
+        const msgs = await listMessages(sb, companyId, { threadId });
+        if (!alive) return;
+        setMessages(msgs);
+        // [#374] Reakcje jednym zapytaniem dla całego widoku — per dymek
+        // oznaczałoby setki zapytań przy dłuższej rozmowie.
+        setReactions(
+          await listReactions(
+            sb,
+            msgs.map((m) => m.id),
+          ),
+        );
       } catch {
         if (alive) setErr(t("chat.messagesLoadError"));
       }
@@ -157,14 +214,39 @@ export default function ChatPage() {
   // Przełączenie wątku NIE odtwarza połączenia — handler filtruje po refie (N15).
   useEffect(() => {
     if (!companyId) return;
-    return subscribeMessages(getBrowserSupabase(), companyId, (msg) => {
-      if ((msg.thread_id ?? null) !== threadIdRef.current) return;
-      setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
-      // #368/#369: otwarty kanał czytamy na bieżąco, ale znacznik zapisujemy
-      // ZDŁAWIONY — zapis do bazy na KAŻDĄ wiadomość u każdego patrzącego był
-      // zbędny (RLS liczy `created_at > last_read_at`, więc wystarczy jeden zapis
-      // „na koniec"; domyka go `setOpenChatChannel(null, false)` przy wyjściu).
-      if (msg.sender_id !== meRef.current) markChannelReadThrottled(threadIdRef.current, companyId);
+    return subscribeMessages(
+      getBrowserSupabase(),
+      companyId,
+      (msg) => {
+        if ((msg.thread_id ?? null) !== threadIdRef.current) return;
+        setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+        // #368/#369: otwarty kanał czytamy na bieżąco, ale znacznik zapisujemy
+        // ZDŁAWIONY — zapis do bazy na KAŻDĄ wiadomość u każdego patrzącego był
+        // zbędny (RLS liczy `created_at > last_read_at`, więc wystarczy jeden zapis
+        // „na koniec"; domyka go `setOpenChatChannel(null, false)` przy wyjściu).
+        if (msg.sender_id !== meRef.current)
+          markChannelReadThrottled(threadIdRef.current, companyId);
+      },
+      // [#374] UPDATE niesie edycję ORAZ miękkie usunięcie — podmieniamy
+      // w miejscu, a dymek sam decyduje, czy pokazać treść, czy ślad po niej.
+      (msg) => {
+        if ((msg.thread_id ?? null) !== threadIdRef.current) return;
+        setMessages((list) => list.map((x) => (x.id === msg.id ? msg : x)));
+      },
+    );
+  }, [companyId]);
+
+  // [#376] Reakcje na żywo. Bez tej subskrypcji reakcja innej osoby pojawiała
+  // się dopiero po przeładowaniu rozmowy, mimo że tabela była w publikacji.
+  useEffect(() => {
+    if (!companyId) return;
+    return subscribeReactions(getBrowserSupabase(), (r, event) => {
+      setReactions((list) => {
+        const without = list.filter(
+          (x) => !(x.message_id === r.message_id && x.user_id === r.user_id && x.emoji === r.emoji),
+        );
+        return event === "INSERT" ? [...without, r] : without;
+      });
     });
   }, [companyId]);
 
@@ -184,18 +266,187 @@ export default function ChatPage() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ── [#374] Akcje na wiadomościach ────────────────────────────────────
+  // Wszystkie aktualizują stan lokalnie od razu, a realtime i tak przyniesie
+  // ten sam wiersz — dzięki temu klikający widzi efekt bez czekania na sieć.
+
+  const onDelete = useCallback(
+    async (id: string) => {
+      const ok = await confirm(t("chat.msg.deleteConfirm"), { danger: true });
+      if (!ok) return;
+      try {
+        await deleteMessage(getBrowserSupabase(), id);
+        setMessages((list) =>
+          list.map((x) => (x.id === id ? { ...x, deleted_at: new Date().toISOString() } : x)),
+        );
+      } catch (e) {
+        toast(e instanceof Error ? e.message : t("chat.loadError"), "error");
+      }
+    },
+    [confirm, t, toast],
+  );
+
+  const onEdit = useCallback(
+    async (id: string, body: string) => {
+      try {
+        const updated = await editMessage(getBrowserSupabase(), id, body);
+        setMessages((list) => list.map((x) => (x.id === id ? updated : x)));
+      } catch (e) {
+        toast(e instanceof Error ? e.message : t("chat.loadError"), "error");
+      }
+    },
+    [t, toast],
+  );
+
+  const onReact = useCallback(
+    async (id: string, emoji: string, on: boolean) => {
+      if (!me) return;
+      // Optymistycznie: pasek reakcji ma zareagować natychmiast, bo to gest
+      // o charakterze „kliknij i zapomnij".
+      setReactions((rs) =>
+        on
+          ? [...rs, { message_id: id, user_id: me, emoji }]
+          : rs.filter((r) => !(r.message_id === id && r.user_id === me && r.emoji === emoji)),
+      );
+      try {
+        await setReaction(getBrowserSupabase(), id, emoji, on);
+      } catch (e) {
+        toast(e instanceof Error ? e.message : t("chat.loadError"), "error");
+      }
+    },
+    [me, t, toast],
+  );
+
+  const onCopy = useCallback(
+    async (text2: string) => {
+      try {
+        await navigator.clipboard.writeText(text2);
+        toast(t("chat.msg.copied"), "success");
+      } catch {
+        // Schowek bywa zablokowany (brak HTTPS, odmowa uprawnień) — mówimy
+        // o tym wprost zamiast udawać, że skopiowano.
+        toast(t("chat.loadError"), "error");
+      }
+    },
+    [t, toast],
+  );
+
+  /** [#374] Przekazanie: fizyczna KOPIA w docelowym kanale, nie referencja. */
+  const onForwardTo = useCallback(
+    async (msg: ChatMessage, targetThreadId: string | null) => {
+      if (!companyId) return;
+      try {
+        const sb = getBrowserSupabase();
+        // [#376] Załącznik trzeba SKOPIOWAĆ do folderu wątku docelowego.
+        // Zachowanie ścieżki źródłowej sprawiało, że odbiorca nie mógł podpisać
+        // URL-a (polityka 0088 bramkuje po wątku w nazwie pliku), a przekazanie
+        // z kanału ogólnego do rozmowy prywatnej zostawiało plik czytelny
+        // dla całej firmy.
+        const photoPath = msg.photo_path
+          ? await copyChatPhotoToThread(sb, msg.photo_path, companyId, targetThreadId)
+          : null;
+        await sendMessage(sb, companyId, msg.body, myLabel, {
+          threadId: targetThreadId,
+          photoPath,
+          kind: msg.kind,
+          meta: msg.meta,
+        });
+        setForwarding(null);
+        toast(t("chat.forward.done"), "success");
+      } catch (e) {
+        toast(e instanceof Error ? e.message : t("chat.loadError"), "error");
+      }
+    },
+    [companyId, myLabel, t, toast],
+  );
+
+  /** [#374] Usunięcie kanału — funkcja i polityka RLS istniały, brakowało UI. */
+  const onDeleteThread = useCallback(async () => {
+    if (!activeThread) return;
+    const ok = await confirm(t("chat.thread.deleteConfirm"), { danger: true });
+    if (!ok) return;
+    try {
+      await deleteThread(getBrowserSupabase(), activeThread.id);
+      setThreads((list) => list.filter((x) => x.id !== activeThread.id));
+      setActiveThread(null);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("chat.loadError"), "error");
+    }
+  }, [activeThread, confirm, t, toast]);
+
+  /** [#374] Znikanie wiadomości dla kanału. `null` wyłącza. */
+  const onSetTtl = useCallback(
+    async (seconds: number | null) => {
+      if (!companyId) return;
+      try {
+        await setChatTtl(getBrowserSupabase(), { companyId, threadId }, seconds);
+        if (activeThread) {
+          setThreads((list) =>
+            list.map((x) =>
+              x.id === activeThread.id ? { ...x, ephemeral_ttl_seconds: seconds } : x,
+            ),
+          );
+        } else {
+          setCompanyTtl(seconds);
+        }
+      } catch (e) {
+        toast(e instanceof Error ? e.message : t("chat.loadError"), "error");
+      }
+    },
+    [companyId, threadId, activeThread, t, toast],
+  );
+
+  /**
+   * [#374] Wysłanie własnej lokalizacji jako wiadomości.
+   *
+   * Świadomie JEDNORAZOWY zrzut pozycji, nie śledzenie na żywo: udostępnianie
+   * ciągłe to zupełnie inna kategoria danych (i zgód) — mieszkają w osobnym
+   * przełączniku w Ustawieniach, z własną podstawą prawną.
+   */
+  const sendLocation = useCallback(() => {
+    if (!companyId) return;
+    if (!navigator.geolocation) {
+      toast(t("chat.location.unavailable"), "error");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const msg = await sendMessage(getBrowserSupabase(), companyId, "", myLabel, {
+            threadId,
+            kind: "location",
+            meta: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+            replyToId: replyTo?.id ?? null,
+          });
+          setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
+          setReplyTo(null);
+        } catch (e) {
+          toast(e instanceof Error ? e.message : t("chat.location.unavailable"), "error");
+        }
+      },
+      // Odmowa zgody albo brak sygnału GPS — mówimy o tym wprost, zamiast
+      // zostawiać użytkownika z przyciskiem, który „nic nie robi".
+      () => toast(t("chat.location.unavailable"), "error"),
+      { enableHighAccuracy: true, timeout: 12_000 },
+    );
+  }, [companyId, myLabel, threadId, replyTo, t, toast]);
+
   const send = useCallback(async () => {
     const body = text.trim();
     if (!body || !companyId) return;
     try {
-      const msg = await sendMessage(getBrowserSupabase(), companyId, body, myLabel, { threadId });
+      const msg = await sendMessage(getBrowserSupabase(), companyId, body, myLabel, {
+        threadId,
+        replyToId: replyTo?.id ?? null,
+      });
       setMessages((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
       setText("");
+      setReplyTo(null);
       notifyChat(threadId, body, companyId);
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("chat.sendError"));
     }
-  }, [text, companyId, myLabel, threadId, t]);
+  }, [text, companyId, myLabel, threadId, replyTo, t]);
 
   async function sendFile(file: File) {
     if (!companyId) return;
@@ -393,31 +644,129 @@ export default function ChatPage() {
             </div>
           )}
 
+          {/* [#374] Ustawienia kanału dla zarządu: znikanie i usunięcie kanału.
+              Usunięcie kanału miało funkcję i politykę RLS od migracji 0067,
+              ale ŻADEN interfejs jej nie wywoływał — martwy kod przez trzy wydania. */}
+          {manage && (
+            <div style={s.panel}>
+              <strong style={{ fontSize: 13 }}>{t("chat.ttl.title")}</strong>
+              <div style={s.ttlRow}>
+                {TTL_OPTIONS.map((o) => {
+                  const current = activeThread
+                    ? (activeThread.ephemeral_ttl_seconds ?? null)
+                    : companyTtl;
+                  const on = current === o.seconds;
+                  return (
+                    <button
+                      key={String(o.seconds)}
+                      type="button"
+                      style={{ ...s.ttlChip, ...(on ? s.ttlChipOn : null) }}
+                      onClick={() => onSetTtl(o.seconds)}
+                    >
+                      {t(o.labelKey as Parameters<typeof t>[0])}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Uczciwość wobec użytkownika: znikanie nie cofa tego, co już poszło
+                  pushem na telefon. Mówimy o tym w interfejsie, nie tylko w kodzie. */}
+              <p style={s.ttlHint}>{t("chat.ttl.hint")}</p>
+              {activeThread && (
+                <button type="button" style={s.dangerBtn} onClick={onDeleteThread}>
+                  🗑️ {t("chat.thread.delete")}
+                </button>
+              )}
+            </div>
+          )}
+
           <div style={s.thread}>
             {messages.length === 0 && <p style={s.empty}>{t("chat.empty")}</p>}
-            {messages.map((m) => {
-              const mine = m.sender_id === me;
-              return (
-                <div
-                  key={m.id}
-                  style={{ ...s.row, justifyContent: mine ? "flex-end" : "flex-start" }}
-                >
-                  <div style={{ ...s.bubble, ...(mine ? s.bubbleMine : s.bubbleOther) }}>
-                    {!mine && (
-                      <div style={s.sender}>{m.sender_label || t("chat.companyMember")}</div>
-                    )}
-                    {m.photo_path ? <ChatImg path={m.photo_path} /> : <div>{m.body}</div>}
-                    <div style={{ ...s.time, color: mine ? "#ffffffaa" : palette.smoke }}>
-                      {m.created_at.slice(11, 16)}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {messages.map((m) => (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                repliedTo={messages.find((x) => x.id === m.reply_to_id) ?? null}
+                reactions={reactions}
+                viewer={{ userId: me ?? "", role }}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onReply={setReplyTo}
+                onForward={setForwarding}
+                onReact={onReact}
+                onCopy={onCopy}
+              >
+                {m.kind === "location" ? (
+                  <LocationCard meta={m.meta} />
+                ) : m.photo_path ? (
+                  <ChatImg path={m.photo_path} />
+                ) : (
+                  <div>{m.body}</div>
+                )}
+              </MessageBubble>
+            ))}
             <div ref={endRef} />
           </div>
 
+          {/* [#374] Pasek cytatu — widoczny stan „odpowiadam na", z wyjściem. */}
+          {replyTo && (
+            <div style={s.replyBar}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ fontSize: 12 }}>{replyTo.sender_label || "—"}</strong>
+                <div style={s.replyText}>{replyTo.body || t("chat.msg.photo")}</div>
+              </div>
+              <button
+                type="button"
+                style={s.replyClose}
+                aria-label={t("chat.reply.cancel")}
+                onClick={() => setReplyTo(null)}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* [#374] Przekazanie: wybór kanału docelowego. Tworzy KOPIĘ, nie referencję —
+              inaczej usunięcie oryginału opróżniłoby wiadomość w drugim kanale. */}
+          {forwarding && (
+            <div style={s.forwardBar}>
+              <strong style={{ fontSize: 12 }}>{t("chat.forward.title")}</strong>
+              <div style={s.forwardList}>
+                <button
+                  type="button"
+                  style={s.forwardItem}
+                  onClick={() => onForwardTo(forwarding, null)}
+                >
+                  {t("chat.general")}
+                </button>
+                {threads.map((th) => (
+                  <button
+                    key={th.id}
+                    type="button"
+                    style={s.forwardItem}
+                    onClick={() => onForwardTo(forwarding, th.id)}
+                  >
+                    {th.name}
+                  </button>
+                ))}
+              </div>
+              <button type="button" style={s.replyClose} onClick={() => setForwarding(null)}>
+                ✕
+              </button>
+            </div>
+          )}
+
           <div style={s.composer}>
+            {/* [#374] Jednorazowy zrzut pozycji jako wiadomość. Śledzenie ciągłe
+                to osobna kategoria danych i mieszka w przełączniku w Ustawieniach. */}
+            <button
+              type="button"
+              style={s.attach}
+              onClick={sendLocation}
+              title={t("chat.location.send")}
+              aria-label={t("chat.location.send")}
+            >
+              📍
+            </button>
             <label style={s.attach}>
               📷
               <input
@@ -455,6 +804,73 @@ export default function ChatPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
+  replyBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 10px",
+    borderLeft: `3px solid ${palette.red}`,
+    background: "#141414",
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  replyText: {
+    fontSize: 12,
+    color: palette.smoke,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  replyClose: {
+    background: "transparent",
+    border: "none",
+    color: palette.smoke,
+    cursor: "pointer",
+    fontSize: 14,
+  },
+  forwardBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 10px",
+    background: "#141414",
+    border: `1px solid ${palette.graphite}`,
+    borderRadius: 8,
+    marginBottom: 6,
+    flexWrap: "wrap",
+  },
+  forwardList: { display: "flex", gap: 6, flexWrap: "wrap", flex: 1 },
+  forwardItem: {
+    background: palette.graphite,
+    color: palette.offWhite,
+    border: "none",
+    borderRadius: 999,
+    padding: "4px 10px",
+    fontSize: 12,
+    cursor: "pointer",
+  },
+  ttlRow: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 },
+  ttlChip: {
+    background: "transparent",
+    border: `1px solid ${palette.graphite}`,
+    color: palette.smoke,
+    borderRadius: 999,
+    padding: "3px 10px",
+    fontSize: 12,
+    cursor: "pointer",
+  },
+  ttlChipOn: { background: palette.red, color: "#fff", borderColor: palette.red },
+  ttlHint: { fontSize: 11, color: palette.smoke, lineHeight: 1.5, marginTop: 4 },
+  dangerBtn: {
+    background: "transparent",
+    border: `1px solid ${palette.red}`,
+    color: palette.red,
+    borderRadius: 8,
+    padding: "5px 10px",
+    fontSize: 12,
+    cursor: "pointer",
+    marginTop: 8,
+  },
   page: { display: "flex", flexDirection: "column", height: "calc(100vh - 140px)" },
   err: { color: palette.danger, fontSize: 13 },
   layout: { display: "flex", gap: 16, flex: 1, minHeight: 0 },

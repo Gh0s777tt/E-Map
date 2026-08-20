@@ -2,16 +2,20 @@
 
 import {
   listFuelLogs,
+  listFxRates,
   listRates,
   listTripEvents,
   type Rate,
   saveDefaultRate,
+  toFxRates,
 } from "@e-logistic/api";
 import {
   buildSettlement,
   effectiveModules,
+  type FxRate,
   pickRate,
   round2,
+  rowAmountEur,
   type Settlement,
 } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
@@ -33,7 +37,15 @@ type FuelRow = {
   liters: number;
   is_full: boolean | null;
   price_total: number | null;
+  /**
+   * [#389] Kolumna była w wyniku zapytania od zawsze (`select("*")`) i ANI RAZU
+   * nieodczytana — kwoty szły do rachunku takie, jakie były, a wynik podpisywano
+   * znakiem €. Tankowanie za 430 PLN dokładało do rachunku „430 €", czyli około
+   * czterokrotność tego, co kierowca faktycznie zapłacił.
+   */
+  currency: string | null;
   created_at: string;
+  occurred_at: string;
   station_country: string | null;
   station_city: string | null;
   station_loc: string | null;
@@ -41,10 +53,13 @@ type FuelRow = {
 type TripRow = {
   action: string;
   amount: number | null;
+  /** [#389] Jak w `FuelRow` — opłaty drogowe też bywają w walucie lokalnej. */
+  currency: string | null;
   odometer_km: number | null;
   country: string | null;
   location: string | null;
   created_at: string;
+  occurred_at: string;
   comment: string | null;
 };
 
@@ -57,9 +72,23 @@ const TRIP_LABEL: Record<string, MessageKey> = {
   other: "settlements.trip.other",
 };
 
+/**
+ * [#390] Pierwszy dzień bieżącego miesiąca — liczony w UTC, nie lokalnie.
+ *
+ * Poprzednia wersja budowała LOKALNĄ północ (`new Date(rok, miesiac, 1)`),
+ * a `toISOString()` przeliczało ją na UTC. Dla użytkownika na wschód od
+ * Greenwich — czyli dla całej Polski — lokalna północ 1 sierpnia to 31 lipca
+ * 22:00 UTC, więc domyślne „od" ustawiało się na **ostatni dzień poprzedniego
+ * miesiąca**. Rachunek wyjazdu domyślnie zaczynał się dzień za wcześnie
+ * i wciągał tankowania z rozliczonego już okresu; latem (UTC+2) zawsze,
+ * zimą (UTC+1) też.
+ *
+ * `Date.UTC` buduje ten dzień bezpośrednio w tej skali, w której i tak
+ * zapisujemy datę — bez przeliczenia, więc bez przesunięcia.
+ */
 function firstOfMonth(): string {
   const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().slice(0, 10);
 }
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -78,6 +107,14 @@ export default function SettlementsPage() {
   const [adblue, setAdblue] = useState<FuelRow[]>([]);
   const [trips, setTrips] = useState<TripRow[]>([]);
   const [settlement, setSettlement] = useState<Settlement | null>(null);
+  /**
+   * [#389] Kursy EBC. Nazwa `fxRates`, a nie `rates`, świadomie: `rates` jest
+   * w tym pliku zajęte przez stawki €/km firmy i pomylenie tych dwóch rzeczy
+   * dałoby liczbę wyglądającą sensownie i całkowicie nieprawdziwą.
+   */
+  const [fxRates, setFxRates] = useState<FxRate[]>([]);
+  /** Ile pozycji MA kwotę, ale nie dało się jej wycenić (brak notowania na ten dzień). */
+  const [missingRate, setMissingRate] = useState(0);
   const [busy, setBusy] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
@@ -154,28 +191,68 @@ export default function SettlementsPage() {
       // Zakres dat filtrowany po stronie bazy (mniej danych w transferze) — `to` do końca dnia.
       const toEnd = `${to}T23:59:59.999Z`;
       const range = { from, to: toEnd };
-      const [f, a, tripEv] = await Promise.all([
+      const [f, a, tripEv, fxRows] = await Promise.all([
         listFuelLogs(sb, { vehicleId, ...range }),
         listFuelLogs(sb, { vehicleId, table: "adblue_logs", ...range }),
         listTripEvents(sb, { vehicleId, ...range }),
+        // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie publikuje
+        // w weekendy i święta — ten sam wzorzec co w /stats, /monthly i /wyjazdy.
+        listFxRates(sb, {
+          from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+        }),
       ]);
-      // Zakres dat już zastosowany w zapytaniu (gte/lte na created_at) — bez ponownego filtra w JS.
+      const fx = toFxRates(fxRows);
+      setFxRates(fx);
+      // Zakres dat już zastosowany w zapytaniu (gte/lte na occurred_at) — bez ponownego filtra w JS.
       const fFilt = f as FuelRow[];
       const aFilt = a as FuelRow[];
       const tFilt = tripEv as TripRow[];
       setFuel(fFilt);
       setAdblue(aFilt);
       setTrips(tFilt);
+      /*
+       * [#389] Kwoty przeliczane na euro kursem Z DNIA ZDARZENIA, a nie wrzucane
+       * do sumy takie, jakie były.
+       *
+       * Do tej pory rachunek wyjazdu dodawał 430 PLN i 100 EUR jak dwie liczby
+       * w tej samej walucie i podpisywał wynik znakiem €. Przy tankowaniach
+       * w Polsce zawyżało to koszt około czterokrotnie, więc „koszt na km"
+       * i marża wychodziły z rachunku, którego nie dało się obronić żadnym
+       * dokumentem.
+       *
+       * `rowAmountEur` zwraca `null` dwuznacznie — brak kwoty ALBO brak notowania
+       * na dany dzień — więc liczymy oba przypadki osobno i mówimy o nich niżej.
+       * `undefined` przekazane do `buildSettlement` znaczy „pozycja bez kwoty",
+       * czyli dokładnie to, czym jest wpis, którego nie umiemy wycenić. Zero
+       * byłoby kłamstwem: pokazywałoby tankowanie za darmo.
+       */
+      const eur = (kwota: number | null, waluta: string | null, kiedy: string) =>
+        rowAmountEur(kwota, waluta, kiedy, fx) ?? undefined;
+      const bezKursu = (kwota: number | null, waluta: string | null, kiedy: string) =>
+        kwota != null && rowAmountEur(kwota, waluta, kiedy, fx) == null;
+
+      setMissingRate(
+        fFilt.filter((r) => bezKursu(r.price_total, r.currency, r.occurred_at)).length +
+          aFilt.filter((r) => bezKursu(r.price_total, r.currency, r.occurred_at)).length +
+          tFilt.filter((r) => bezKursu(r.amount, r.currency, r.occurred_at)).length,
+      );
+
       setSettlement(
         buildSettlement({
           fuel: fFilt.map((r) => ({
             odometerKm: r.odometer_km,
             liters: r.liters,
             isFull: r.is_full ?? true,
-            priceTotal: r.price_total ?? undefined,
+            priceTotal: eur(r.price_total, r.currency, r.occurred_at),
           })),
-          adblue: aFilt.map((r) => ({ liters: r.liters, priceTotal: r.price_total ?? undefined })),
-          trips: tFilt.map((r) => ({ action: r.action, amount: r.amount })),
+          adblue: aFilt.map((r) => ({
+            liters: r.liters,
+            priceTotal: eur(r.price_total, r.currency, r.occurred_at),
+          })),
+          trips: tFilt.map((r) => ({
+            action: r.action,
+            amount: eur(r.amount, r.currency, r.occurred_at) ?? null,
+          })),
           ratePerKm: Number(ratePerKm) || 0,
           tollCost: Number(tollCost) || 0,
         }),
@@ -190,34 +267,72 @@ export default function SettlementsPage() {
 
   function exportCsv() {
     if (!settlement) return;
-    const headers = ["Typ", "Data", "Licznik (km)", "Litry", "Kwota", "Szczegóły"];
+    /*
+     * [#389] Kolumna „Kwota" nie mówiła, w JAKIEJ walucie — a wiersze bywają
+     * w różnych. Arkusz wyeksportowany do księgowości dawał się zsumować
+     * jednym `=SUMA()` i dawał liczbę bez znaczenia.
+     *
+     * Rozdzielamy więc to, co dokument mówi naprawdę, od tego, co z tego wynika:
+     * „Kwota" + „Waluta" to zapis z paragonu (tak zostanie w papierach),
+     * a „Kwota (€)" to przeliczenie kursem z dnia zdarzenia — tą samą drogą,
+     * którą policzone jest podsumowanie niżej. Puste pole w kolumnie euro
+     * znaczy „nie było notowania na ten dzień" i ma zostać puste, nie zerowe.
+     */
+    const headers = [
+      "Typ",
+      "Data",
+      "Licznik (km)",
+      "Litry",
+      "Kwota",
+      "Waluta",
+      "Kwota (€)",
+      "Szczegóły",
+    ];
+    const wEur = (kwota: number | null, waluta: string | null, kiedy: string) =>
+      rowAmountEur(kwota, waluta, kiedy, fxRates);
     const rows: (string | number | null)[][] = [];
     for (const r of fuel) {
       rows.push([
         r.is_full === false ? "Paliwo (częściowe)" : "Paliwo",
-        r.created_at.slice(0, 10),
+        r.occurred_at.slice(0, 10),
         r.odometer_km,
         r.liters,
         r.price_total,
+        r.currency,
+        wEur(r.price_total, r.currency, r.occurred_at),
         [r.station_country, r.station_city, r.station_loc].filter(Boolean).join(" "),
       ]);
     }
     for (const r of adblue) {
-      rows.push(["AdBlue", r.created_at.slice(0, 10), r.odometer_km, r.liters, r.price_total, ""]);
+      rows.push([
+        "AdBlue",
+        r.occurred_at.slice(0, 10),
+        r.odometer_km,
+        r.liters,
+        r.price_total,
+        r.currency,
+        wEur(r.price_total, r.currency, r.occurred_at),
+        "",
+      ]);
     }
     for (const r of trips) {
       rows.push([
         tripLabel(r.action),
-        r.created_at.slice(0, 10),
+        r.occurred_at.slice(0, 10),
         r.odometer_km,
         null,
         r.amount,
+        r.currency,
+        wEur(r.amount, r.currency, r.occurred_at),
         [r.country, r.location, r.comment].filter(Boolean).join(" "),
       ]);
     }
     const summary: (string | number | null)[][] = [
       [],
       ["PODSUMOWANIE", `${regOf(vehicleId)} · ${from} → ${to}`],
+      // [#389] Kwoty podsumowania są w euro — po przeliczeniu kursem z dnia
+      // zdarzenia. Bez tej linijki czytający miał prawo założyć złotówki.
+      ["Waluta podsumowania", "EUR (kurs EBC z dnia zdarzenia)"],
       ["Dystans (km)", settlement.distanceKm],
       ["Paliwo (L)", settlement.fuelLiters],
       ["Koszt paliwa", settlement.fuelCost],
@@ -320,6 +435,15 @@ export default function SettlementsPage() {
       )}
 
       {loadErr && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {loadErr}</p>}
+      {/* [#389] Pozycje z kwotą, których nie dało się wycenić — bo na dzień
+          zdarzenia nie ma notowania waluty. Wchodzą do rachunku jako brak,
+          nie jako zero, więc suma jest NIEPEŁNA i trzeba to powiedzieć.
+          Milcząc, pokazalibyśmy koszt niższy niż faktyczny i marżę wyższą. */}
+      {missingRate > 0 && (
+        <p style={{ color: palette.warning, marginTop: 12 }}>
+          ⚠️ {missingRate} {t("settlements.missingRate")}
+        </p>
+      )}
 
       {settlement && (
         <>
@@ -392,13 +516,13 @@ export default function SettlementsPage() {
             </thead>
             <tbody>
               {fuel.map((r) => (
-                <tr key={`f-${r.created_at}-${r.odometer_km}-${r.liters}`}>
+                <tr key={`f-${r.occurred_at}-${r.odometer_km}-${r.liters}`}>
                   <td className={styles.td}>
                     {r.is_full === false
                       ? t("settlements.fuelPartialShort")
                       : t("settlements.fuel")}
                   </td>
-                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.occurred_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km}</td>
                   <td className={styles.td}>{r.liters}</td>
                   <td className={styles.td}>
@@ -407,9 +531,9 @@ export default function SettlementsPage() {
                 </tr>
               ))}
               {adblue.map((r) => (
-                <tr key={`a-${r.created_at}-${r.odometer_km}-${r.liters}`}>
+                <tr key={`a-${r.occurred_at}-${r.odometer_km}-${r.liters}`}>
                   <td className={styles.td}>AdBlue</td>
-                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.occurred_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km}</td>
                   <td className={styles.td}>{r.liters}</td>
                   <td className={styles.td}>
@@ -418,9 +542,9 @@ export default function SettlementsPage() {
                 </tr>
               ))}
               {trips.map((r) => (
-                <tr key={`t-${r.created_at}-${r.action}-${r.odometer_km}`}>
+                <tr key={`t-${r.occurred_at}-${r.action}-${r.odometer_km}`}>
                   <td className={styles.td}>{tripLabel(r.action)}</td>
-                  <td className={styles.td}>{r.created_at.slice(0, 10)}</td>
+                  <td className={styles.td}>{r.occurred_at.slice(0, 10)}</td>
                   <td className={styles.td}>{r.odometer_km ?? "—"}</td>
                   <td className={styles.td}>—</td>
                   <td className={styles.td}>{r.amount != null ? `${round2(r.amount)} €` : "—"}</td>

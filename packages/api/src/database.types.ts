@@ -1,5 +1,14 @@
 // AUTOGENEROWANE z żywej bazy (introspekcja). Nie edytować ręcznie.
 // Regeneracja: pnpm gen:types (patrz scripts/gen-types.mjs).
+//
+// [#378] WYJĄTEK — ręczna łatka trzech pól, zweryfikowanych na żywym schemacie:
+//   • `driver_id` w fuel_logs / adblue_logs / trip_events jest NULLABLE od 0090
+//     (usuwanie konta anonimizuje wpisy zamiast je kasować). Plik deklarował
+//     `string`, więc statystyki per kierowca dostawały `null`, którego typ nie
+//     przewidywał — TypeScript nie ostrzegał, a wykres cicho gubił wiersze.
+//   • `trip_events.currency` dodane w 0100.
+// Pełna regeneracja wymaga connection stringa do bazy — do zrobienia przy
+// najbliższym dostępie; ta łatka nie zastępuje `pnpm gen:types`.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -37,7 +46,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id: string | null;
           vehicle_id: string;
           station_country: string;
           station_city: string | null;
@@ -57,11 +66,16 @@ export interface Database {
           is_full: boolean;
           station_postcode: string | null;
           station_company: string | null;
+          currency: string;
+          price_net: number | null;
+          vat_rate: number | null;
+          vat_amount: number | null;
+          occurred_at: string;
         };
         Insert: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id?: string | null;
           vehicle_id: string;
           station_country: string;
           station_city?: string | null;
@@ -81,11 +95,16 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Update: {
           id?: string;
           company_id?: string;
-          driver_id?: string;
+          driver_id?: string | null;
           vehicle_id?: string;
           station_country?: string;
           station_city?: string | null;
@@ -105,6 +124,11 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Relationships: [];
       };
@@ -212,6 +236,7 @@ export interface Database {
           company_id: string;
           name: string;
           created_by: string;
+          ephemeral_ttl_seconds: number | null;
           created_at: string;
         };
         Insert: {
@@ -219,6 +244,7 @@ export interface Database {
           company_id: string;
           name: string;
           created_by?: string;
+          ephemeral_ttl_seconds?: number | null;
           created_at?: string;
         };
         Update: {
@@ -226,6 +252,7 @@ export interface Database {
           company_id?: string;
           name?: string;
           created_by?: string;
+          ephemeral_ttl_seconds?: number | null;
           created_at?: string;
         };
         Relationships: [];
@@ -302,6 +329,113 @@ export interface Database {
         };
         Relationships: [];
       };
+      // [#405] Migracja 0110 — naczepy jako osobna encja. Dopisane ręcznie
+      // z tego samego powodu co `company_links`: `pnpm gen:types` wymaga
+      // poświadczeń do bazy, których nie ma w tym środowisku.
+      trailers: {
+        Row: {
+          id: string;
+          company_id: string;
+          registration: string;
+          trailer_type: string | null;
+          vin: string | null;
+          year: number | null;
+          inspection_expiry: string | null;
+          insurance_expiry: string | null;
+          leasing_end: string | null;
+          insurer: string | null;
+          height_cm: number | null;
+          width_cm: number | null;
+          length_cm: number | null;
+          curb_weight_kg: number | null;
+          max_payload_kg: number | null;
+          axle_count: number | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          registration: string;
+          trailer_type?: string | null;
+          vin?: string | null;
+          year?: number | null;
+          inspection_expiry?: string | null;
+          insurance_expiry?: string | null;
+          leasing_end?: string | null;
+          insurer?: string | null;
+          height_cm?: number | null;
+          width_cm?: number | null;
+          length_cm?: number | null;
+          curb_weight_kg?: number | null;
+          max_payload_kg?: number | null;
+          axle_count?: number | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          registration?: string;
+          trailer_type?: string | null;
+          vin?: string | null;
+          year?: number | null;
+          inspection_expiry?: string | null;
+          insurance_expiry?: string | null;
+          leasing_end?: string | null;
+          insurer?: string | null;
+          height_cm?: number | null;
+          width_cm?: number | null;
+          length_cm?: number | null;
+          curb_weight_kg?: number | null;
+          max_payload_kg?: number | null;
+          axle_count?: number | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      // [#404] Migracja 0109. Dopisane ręcznie: `pnpm gen:types` wymaga poświadczeń
+      // do bazy, których nie ma w tym środowisku. Kształt odpowiada migracji 1:1.
+      company_links: {
+        Row: {
+          id: string;
+          company_id: string;
+          label: string;
+          url: string;
+          icon: string | null;
+          note: string | null;
+          management_only: boolean;
+          sort_order: number;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          label: string;
+          url: string;
+          icon?: string | null;
+          note?: string | null;
+          management_only?: boolean;
+          sort_order?: number;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          label?: string;
+          url?: string;
+          icon?: string | null;
+          note?: string | null;
+          management_only?: boolean;
+          sort_order?: number;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       companies: {
         Row: {
           id: string;
@@ -316,6 +450,7 @@ export interface Database {
           bank_name: string | null;
           bank_account: string | null;
           notify_days_ahead: number;
+          chat_ephemeral_ttl_seconds: number | null;
         };
         Insert: {
           id?: string;
@@ -330,6 +465,7 @@ export interface Database {
           bank_name?: string | null;
           bank_account?: string | null;
           notify_days_ahead?: number;
+          chat_ephemeral_ttl_seconds?: number | null;
         };
         Update: {
           id?: string;
@@ -344,6 +480,7 @@ export interface Database {
           bank_name?: string | null;
           bank_account?: string | null;
           notify_days_ahead?: number;
+          chat_ephemeral_ttl_seconds?: number | null;
         };
         Relationships: [];
       };
@@ -948,7 +1085,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id: string | null;
           vehicle_id: string;
           station_country: string;
           station_city: string | null;
@@ -968,11 +1105,16 @@ export interface Database {
           is_full: boolean;
           station_postcode: string | null;
           station_company: string | null;
+          currency: string;
+          price_net: number | null;
+          vat_rate: number | null;
+          vat_amount: number | null;
+          occurred_at: string;
         };
         Insert: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id?: string | null;
           vehicle_id: string;
           station_country: string;
           station_city?: string | null;
@@ -992,11 +1134,16 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Update: {
           id?: string;
           company_id?: string;
-          driver_id?: string;
+          driver_id?: string | null;
           vehicle_id?: string;
           station_country?: string;
           station_city?: string | null;
@@ -1016,6 +1163,11 @@ export interface Database {
           is_full?: boolean;
           station_postcode?: string | null;
           station_company?: string | null;
+          currency?: string;
+          price_net?: number | null;
+          vat_rate?: number | null;
+          vat_amount?: number | null;
+          occurred_at?: string;
         };
         Relationships: [];
       };
@@ -1286,6 +1438,12 @@ export interface Database {
         };
         Relationships: [];
       };
+      message_reactions: {
+        Row: { message_id: string; user_id: string; emoji: string; created_at: string };
+        Insert: { message_id: string; user_id?: string; emoji: string; created_at?: string };
+        Update: { message_id?: string; user_id?: string; emoji?: string; created_at?: string };
+        Relationships: [];
+      };
       messages: {
         Row: {
           id: string;
@@ -1296,6 +1454,13 @@ export interface Database {
           created_at: string;
           thread_id: string | null;
           photo_path: string | null;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          edited_at: string | null;
+          expires_at: string | null;
+          reply_to_id: string | null;
+          kind: string;
+          meta: Json | null;
         };
         Insert: {
           id?: string;
@@ -1306,6 +1471,13 @@ export interface Database {
           created_at?: string;
           thread_id?: string | null;
           photo_path?: string | null;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          edited_at?: string | null;
+          expires_at?: string | null;
+          reply_to_id?: string | null;
+          kind?: string;
+          meta?: Json | null;
         };
         Update: {
           id?: string;
@@ -1316,6 +1488,13 @@ export interface Database {
           created_at?: string;
           thread_id?: string | null;
           photo_path?: string | null;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          edited_at?: string | null;
+          expires_at?: string | null;
+          reply_to_id?: string | null;
+          kind?: string;
+          meta?: Json | null;
         };
         Relationships: [];
       };
@@ -1670,6 +1849,231 @@ export interface Database {
         };
         Relationships: [];
       };
+      fx_rates: {
+        Row: {
+          as_of: string;
+          currency: string;
+          units_per_eur: number;
+          source: string;
+          fetched_at: string;
+        };
+        Insert: {
+          as_of: string;
+          currency: string;
+          units_per_eur: number;
+          source?: string;
+          fetched_at?: string;
+        };
+        Update: {
+          as_of?: string;
+          currency?: string;
+          units_per_eur?: number;
+          source?: string;
+          fetched_at?: string;
+        };
+        Relationships: [];
+      };
+      vat_rates: {
+        Row: {
+          country_code: string;
+          valid_from: string;
+          rate: number;
+          fuel_refundable: boolean;
+          note: string | null;
+        };
+        Insert: {
+          country_code: string;
+          valid_from: string;
+          rate: number;
+          fuel_refundable?: boolean;
+          note?: string | null;
+        };
+        Update: {
+          country_code?: string;
+          valid_from?: string;
+          rate?: number;
+          fuel_refundable?: boolean;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
+      pause_events: {
+        Row: {
+          id: string;
+          company_id: string;
+          driver_id: string | null;
+          vehicle_id: string | null;
+          occurred_at: string;
+          country: string;
+          city: string | null;
+          postcode: string | null;
+          location: string | null;
+          geo: unknown | null;
+          odometer_km: number | null;
+          price_total: number | null;
+          currency: string;
+          secured_parking: boolean;
+          payment_method: string | null;
+          fuel_card_id: string | null;
+          comment: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          driver_id?: string | null;
+          vehicle_id?: string | null;
+          occurred_at?: string;
+          country: string;
+          city?: string | null;
+          postcode?: string | null;
+          location?: string | null;
+          geo?: unknown | null;
+          odometer_km?: number | null;
+          price_total?: number | null;
+          currency?: string;
+          secured_parking?: boolean;
+          payment_method?: string | null;
+          fuel_card_id?: string | null;
+          comment?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          driver_id?: string | null;
+          vehicle_id?: string | null;
+          occurred_at?: string;
+          country?: string;
+          city?: string | null;
+          postcode?: string | null;
+          location?: string | null;
+          geo?: unknown | null;
+          odometer_km?: number | null;
+          price_total?: number | null;
+          currency?: string;
+          secured_parking?: boolean;
+          payment_method?: string | null;
+          fuel_card_id?: string | null;
+          comment?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      route_extra_costs: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string | null;
+          order_id: string | null;
+          occurred_at: string;
+          kind: string;
+          country: string | null;
+          city: string | null;
+          location: string | null;
+          amount: number;
+          currency: string;
+          payment_method: string | null;
+          fuel_card_id: string | null;
+          comment: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id?: string | null;
+          order_id?: string | null;
+          occurred_at?: string;
+          kind: string;
+          country?: string | null;
+          city?: string | null;
+          location?: string | null;
+          amount: number;
+          currency?: string;
+          payment_method?: string | null;
+          fuel_card_id?: string | null;
+          comment?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string | null;
+          order_id?: string | null;
+          occurred_at?: string;
+          kind?: string;
+          country?: string | null;
+          city?: string | null;
+          location?: string | null;
+          amount?: number;
+          currency?: string;
+          payment_method?: string | null;
+          fuel_card_id?: string | null;
+          comment?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      penalties: {
+        Row: {
+          id: string;
+          company_id: string;
+          vehicle_id: string | null;
+          driver_id: string | null;
+          occurred_at: string;
+          country: string | null;
+          city: string | null;
+          location: string | null;
+          amount: number;
+          currency: string;
+          reason: string;
+          status: string;
+          due_date: string | null;
+          comment: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          vehicle_id?: string | null;
+          driver_id?: string | null;
+          occurred_at?: string;
+          country?: string | null;
+          city?: string | null;
+          location?: string | null;
+          amount: number;
+          currency?: string;
+          reason: string;
+          status?: string;
+          due_date?: string | null;
+          comment?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          vehicle_id?: string | null;
+          driver_id?: string | null;
+          occurred_at?: string;
+          country?: string | null;
+          city?: string | null;
+          location?: string | null;
+          amount?: number;
+          currency?: string;
+          reason?: string;
+          status?: string;
+          due_date?: string | null;
+          comment?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -1905,7 +2309,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id: string | null;
           vehicle_id: string;
           action: Database["public"]["Enums"]["trip_action"];
           country: string;
@@ -1914,8 +2318,12 @@ export interface Database {
           odometer_km: number;
           weight_kg: number | null;
           amount: number | null;
+          currency: string;
           comment: string | null;
           device_id: string | null;
+          occurred_at: string;
+          express: boolean;
+          secured_parking: boolean;
           revision: number;
           created_at: string;
           updated_at: string;
@@ -1929,7 +2337,7 @@ export interface Database {
         Insert: {
           id: string;
           company_id: string;
-          driver_id: string;
+          driver_id?: string | null;
           vehicle_id: string;
           action: Database["public"]["Enums"]["trip_action"];
           country: string;
@@ -1938,8 +2346,12 @@ export interface Database {
           odometer_km: number;
           weight_kg?: number | null;
           amount?: number | null;
+          currency?: string;
           comment?: string | null;
           device_id?: string | null;
+          occurred_at?: string;
+          express?: boolean;
+          secured_parking?: boolean;
           revision?: number;
           created_at?: string;
           updated_at?: string;
@@ -1953,7 +2365,7 @@ export interface Database {
         Update: {
           id?: string;
           company_id?: string;
-          driver_id?: string;
+          driver_id?: string | null;
           vehicle_id?: string;
           action?: Database["public"]["Enums"]["trip_action"];
           country?: string;
@@ -1962,8 +2374,12 @@ export interface Database {
           odometer_km?: number;
           weight_kg?: number | null;
           amount?: number | null;
+          currency?: string;
           comment?: string | null;
           device_id?: string | null;
+          occurred_at?: string;
+          express?: boolean;
+          secured_parking?: boolean;
           revision?: number;
           created_at?: string;
           updated_at?: string;
@@ -2079,6 +2495,9 @@ export interface Database {
           height_cm: number | null;
           width_cm: number | null;
           length_cm: number | null;
+          axle_count: number | null;
+          adr_tunnel_code: string | null;
+          emission_class: string | null;
           vehicle_type: Database["public"]["Enums"]["vehicle_type"];
           forwarder: string | null;
           comment: string | null;
@@ -2092,6 +2511,7 @@ export interface Database {
           adblue_tank_l: number | null;
           trailer_registration: string | null;
           trailer_type: string | null;
+          trailer_id: string | null;
           license_expiry: string | null;
         };
         Insert: {
@@ -2109,6 +2529,9 @@ export interface Database {
           height_cm?: number | null;
           width_cm?: number | null;
           length_cm?: number | null;
+          axle_count?: number | null;
+          adr_tunnel_code?: string | null;
+          emission_class?: string | null;
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"];
           forwarder?: string | null;
           comment?: string | null;
@@ -2122,6 +2545,7 @@ export interface Database {
           adblue_tank_l?: number | null;
           trailer_registration?: string | null;
           trailer_type?: string | null;
+          trailer_id?: string | null;
           license_expiry?: string | null;
         };
         Update: {
@@ -2139,6 +2563,9 @@ export interface Database {
           height_cm?: number | null;
           width_cm?: number | null;
           length_cm?: number | null;
+          axle_count?: number | null;
+          adr_tunnel_code?: string | null;
+          emission_class?: string | null;
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"];
           forwarder?: string | null;
           comment?: string | null;
@@ -2152,6 +2579,7 @@ export interface Database {
           adblue_tank_l?: number | null;
           trailer_registration?: string | null;
           trailer_type?: string | null;
+          trailer_id?: string | null;
           license_expiry?: string | null;
         };
         Relationships: [];
@@ -2204,6 +2632,7 @@ export interface Database {
       _card_key: { Args: Record<PropertyKey, never>; Returns: string };
       _pii_key: { Args: Record<PropertyKey, never>; Returns: string };
       accept_invite: { Args: { p_token: string | null }; Returns: string };
+      account_deletion_preview: { Args: Record<PropertyKey, never>; Returns: Json };
       bootstrap_company: { Args: { p_name: string | null }; Returns: string };
       chat_mark_read: {
         Args: { p_company: string | null; p_thread?: string | null };
@@ -2251,6 +2680,18 @@ export interface Database {
         Args: { p_order: string | null; p_vat_rate?: number | null };
         Returns: Json;
       };
+      delete_my_account: {
+        Args: { p_confirm: string | null; p_delete_company?: boolean | null };
+        Returns: Json;
+      };
+      // [#390] Migracja 0107 — przejęcie i zdjęcie tokenu push urządzenia.
+      // Dopisane ręcznie: `pnpm gen:types` wymaga poświadczeń do bazy,
+      // których nie ma w tym środowisku. Sygnatury odpowiadają migracji 1:1.
+      save_expo_push_token: {
+        Args: { p_token: string; p_platform?: string | null; p_company?: string | null };
+        Returns: undefined;
+      };
+      delete_expo_push_token: { Args: { p_token: string }; Returns: undefined };
       dev_stats: { Args: Record<PropertyKey, never>; Returns: Json };
       driver_documents: { Args: { p_driver: string | null }; Returns: Json };
       driver_link_user: {

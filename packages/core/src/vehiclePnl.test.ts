@@ -29,10 +29,13 @@ describe("fleetPnlByVehicle", () => {
   it("liczy P&L per pojazd, sortuje malejąco wg zysku", () => {
     const rows = fleetPnlByVehicle(
       [
-        { vehicleId: "v1", price: 5000, currency: "EUR", status: "delivered" },
-        { vehicleId: "v2", price: 2000, currency: "EUR", status: "invoiced" },
-        { vehicleId: "v1", price: 1000, currency: "PLN", status: "delivered" }, // pominięte (PLN)
-        { vehicleId: "v2", price: 999, currency: "EUR", status: "new" }, // pominięte (niezrealizowane)
+        { vehicleId: "v1", priceEur: 5000, status: "delivered" },
+        { vehicleId: "v2", priceEur: 2000, status: "invoiced" },
+        // [#381] Było w PLN i test sprawdzał, że wypada z wyniku. Filtr walutowy
+        // usunięty — silnik dostaje kwoty już przeliczone, więc to zlecenie liczy się
+        // normalnie i podnosi przychód v1 z 5000 do 6000.
+        { vehicleId: "v1", priceEur: 1000, status: "delivered" },
+        { vehicleId: "v2", priceEur: 999, status: "new" }, // pominięte (niezrealizowane)
       ],
       [
         { vehicleId: "v1", eur: 1000 },
@@ -43,10 +46,10 @@ describe("fleetPnlByVehicle", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
       vehicleId: "v1",
-      revenue: 5000,
+      revenue: 6000,
       fuel: 1000,
       costs: 500,
-      net: 3500,
+      net: 4500,
     });
     expect(rows[1]).toMatchObject({
       vehicleId: "v2",

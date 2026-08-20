@@ -84,18 +84,50 @@ export async function upsertParkingReview(sb: DB, input: ParkingReviewInput): Pr
   if (error) throw error;
 }
 
+/**
+ * Ile ocen na parking mieści się w sufircie agregacji. Tu obcięcie nie skraca
+ * listy — PRZEKŁAMUJE ŚREDNIĄ: parking z 40 opiniami dostałby ocenę policzoną
+ * z części z nich i nikt by tego nie zauważył, bo wynik nadal wygląda na liczbę.
+ * Dlatego próg jest liczony z wejścia (`poiIds` × ten mnożnik), a nie stały —
+ * mapa z jednym parkingiem nie ma prawa konkurować o miejsce z mapą z dwustoma.
+ *
+ * Mnożnik jest hojny (a nie oszczędny), bo to SUFIT, nie rozmiar pobrania:
+ * większość parkingów nie ma żadnej oceny, więc podniesienie go nic nie kosztuje
+ * w typowym zapytaniu, a chroni dokładnie ten przypadek, o który tu chodzi —
+ * popularny parking przy trasie, gdzie ocen uzbiera się najwięcej.
+ *
+ * Sto to nie jest liczba wzięta z sufitu: `listParkingReviews` pokazuje kierowcy
+ * DOKŁADNIE 100 najnowszych opinii tego parkingu. Dzięki temu podsumowanie liczy się
+ * z tego samego zbioru, który da się rozwinąć i policzyć ręcznie — średnia i lista
+ * nie mogą się rozjechać.
+ *
+ * Gdy zbiór ocen realnie do tego dorośnie, poprawnym rozwiązaniem nie jest
+ * większa liczba, tylko agregacja po stronie bazy (widok/RPC), której ta
+ * funkcja świadomie unika przy dzisiejszej skali.
+ */
+const REVIEWS_PER_POI = 100;
+
 /** Zbiorcze podsumowania dla widocznych POI (agregacja po stronie klienta —
  *  ocen na parking jest mało; unika RPC/widoku). */
 export async function parkingSummaries(
   sb: DB,
   poiIds: string[],
+  opts?: { limit?: number },
 ): Promise<Map<string, ParkingSummary>> {
   const out = new Map<string, ParkingSummary>();
   if (poiIds.length === 0) return out;
+  const pytane = poiIds.slice(0, 200);
   const { data, error } = await sb
     .from("parking_reviews")
     .select("poi_id, rating, has_shower, has_wc, has_food, security")
-    .in("poi_id", poiIds.slice(0, 200));
+    .in("poi_id", pytane)
+    // Bez `order` obcięcie brało DOWOLNE wiersze: parking z 150 opiniami dostawał
+    // średnią z przypadkowych 100 i przy każdym odświeżeniu mogła być inna liczba,
+    // nieodróżnialna od prawdziwej. Malejąco po dacie sufit ma zdefiniowane znaczenie
+    // — „N najnowszych opinii" — i pokrywa się z listą z `listParkingReviews`.
+    // Świeższe opinie są tu zresztą trafniejsze: prysznic bywa zamykany, ochrona znika.
+    .order("created_at", { ascending: false })
+    .limit(opts?.limit ?? pytane.length * REVIEWS_PER_POI);
   if (error) throw error;
   for (const r of data ?? []) {
     const cur = out.get(r.poi_id) ?? {

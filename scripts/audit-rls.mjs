@@ -154,6 +154,26 @@ try {
         `public.${p.table} · "${p.name}" (${p.cmd}): USING = ${p.using_expr ?? "∅"} — każdy może zmienić.`,
       );
     }
+
+    /*
+     * (4b) [#389] UPDATE bez WITH CHECK — ten sam błąd trzy razy z rzędu.
+     *
+     * Postgres przy braku WITH CHECK stosuje USING także do wiersza PO zmianie.
+     * Brzmi jak zabezpieczenie, ale broni wyłącznie kolumn, które w USING
+     * wystąpiły. Typowe `USING (driver_id = auth.uid() OR has_role(company_id, ...))`
+     * przepuszcza podmianę `company_id`, bo pierwszy człon pozostaje prawdziwy —
+     * kierowca przepina własny wiersz do obcej firmy i baza to przyjmuje.
+     *
+     * Naprawiane pojedynczo w migracjach 0094 (chat_threads) i 0101
+     * (driver_positions); 0103 domknęła pozostałe osiem polityk. Ta reguła
+     * istnieje po to, żeby dziewiąta nie powstała po cichu.
+     */
+    if (p.cmd === "UPDATE" && (p.check_expr === null || p.check_expr === undefined)) {
+      errors.push(
+        `public.${p.table} · "${p.name}" (UPDATE): brak WITH CHECK — USING nie broni kolumn, ` +
+          `których w nim nie ma (np. company_id). Powtórz w WITH CHECK warunek przynależności.`,
+      );
+    }
     if (p.cmd === "ALL" && global && (isBroad(p.using_expr) || isBroad(p.check_expr))) {
       errors.push(
         `public.${p.table} · "${p.name}" (ALL): zapis na tabeli wspólnotowej bez ograniczenia.`,
@@ -179,6 +199,60 @@ try {
     const hasPath = (f.config ?? []).some((c) => c.startsWith("search_path="));
     if (!hasPath)
       errors.push(`SECURITY DEFINER public.${f.name}() bez search_path — ryzyko hijacku.`);
+  }
+
+  /*
+   * ── 5b. [#390] Funkcje SECURITY DEFINER wywoływalne przez `anon` ────────────
+   *
+   * Znalezione doświadczalnie: `public._card_key()` i `public._pii_key()` —
+   * akcesory klucza pgcrypto, którym szyfrowane są PIN-y kart i dane osobowe —
+   * miały `EXECUTE` dla roli `PUBLIC`, a `anon` dziedziczy po `PUBLIC`.
+   * PostgREST wystawia funkcje z `public` jako `/rest/v1/rpc/<nazwa>`, więc klucz
+   * dało się pobrać bez logowania, kluczem publicznym leżącym w paczce aplikacji.
+   *
+   * Pułapka przy naprawie: `revoke ... from anon` NIC nie daje, dopóki `PUBLIC`
+   * ma nadanie. Dlatego reguła patrzy na `has_function_privilege('anon', ...)`,
+   * czyli na uprawnienie SKUTECZNE, a nie na treść `proacl`.
+   *
+   * Lista wyjątków jest jawna i krótka — każdy wpis to decyzja, nie przeoczenie.
+   */
+  const ANON_OK = new Set([
+    // Publiczny link śledzenia przesyłki — klient końcowy otwiera go bez konta.
+    "order_tracking",
+    // Predykaty używane WEWNĄTRZ polityk RLS. Wyrażenia polityk wykonują się
+    // z uprawnieniami roli pytającej, więc odebranie `EXECUTE` wyłączyłoby
+    // izolację zamiast ją wzmocnić. Dla `anon` i tak zwracają zawsze „nie".
+    "is_member_of",
+    "has_role",
+    "is_developer",
+    "is_thread_member",
+    "is_assigned_to_vehicle",
+    "thread_company",
+  ]);
+
+  const anonExec = (
+    await client.query(`
+      select p.proname as name
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.prosecdef = true
+        and has_function_privilege('anon', p.oid, 'EXECUTE')
+      order by p.proname
+    `)
+  ).rows;
+
+  const seenAnon = new Set();
+  for (const f of anonExec) {
+    if (extFns.has(f.name) || ANON_OK.has(f.name) || seenAnon.has(f.name)) continue;
+    seenAnon.add(f.name);
+    errors.push(
+      `SECURITY DEFINER public.${f.name}() wywoływalna przez anon — ` +
+        `PostgREST wystawia ją jako /rest/v1/rpc/${f.name} dla klucza publicznego. ` +
+        `Odbierz OD OBU: "revoke execute on function … from public, anon" — samo PUBLIC ` +
+        `nie wystarczy, bo Supabase nadaje anon EXECUTE jawnie przez default privileges ` +
+        `(a samo anon nie wystarczy, bo anon dziedziczy po PUBLIC). Albo dopisz do ANON_OK z uzasadnieniem.`,
+    );
   }
 
   // ── 6. Helpery multi-tenant istnieją i są SECURITY DEFINER ────────

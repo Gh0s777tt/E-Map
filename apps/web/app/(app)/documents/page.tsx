@@ -12,7 +12,8 @@ import {
 } from "@e-logistic/api";
 import { DOCUMENT_CATEGORIES, type ExpiryLevel, expiryStatus } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
@@ -21,6 +22,8 @@ import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
+import { queryErrorMessage } from "@/lib/queryError";
+import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
@@ -44,10 +47,7 @@ export default function DocumentsPage() {
   const { vehicles, source } = useFleet();
   const confirm = useConfirm();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [docs, setDocs] = useState<DocumentMeta[]>([]);
-  const [canManage, setCanManage] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
 
   const [file, setFile] = useState<File | null>(null);
@@ -58,38 +58,51 @@ export default function DocumentsPage() {
   // #275: widoczność — zarząd / cała firma / wybrane osoby.
   const [visibility, setVisibility] = useState<"management" | "company" | "selected">("management");
   const [allowed, setAllowed] = useState<string[]>([]);
-  const [members, setMembers] = useState<CompanyMember[]>([]);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadErr(null);
-    try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        setDocs([]);
-        return;
-      }
-      setCanManage(m.role === "owner" || m.role === "dispatcher");
-      setDocs(await listDocuments(sb, m.companyId));
-    } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : t("documents.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  // #310 (fala 2): kartoteka dokumentów przez TanStack Query — wchodzi się tu przy
+  // każdej kontroli terminów, a lista jest duża i praktycznie niezmienna między wejściami.
+  const membership = useQuery({
+    queryKey: queryKeys.membership(),
+    queryFn: () => getCachedMembership(getBrowserSupabase()),
+  });
+  const companyId = membership.data?.companyId ?? null;
+  const canManage = membership.data?.role === "owner" || membership.data?.role === "dispatcher";
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const docsQuery = useQuery({
+    queryKey: queryKeys.documents(companyId),
+    // Bez firmy pusta kartoteka, a nie błąd — tak zachowywał się dawny `load()`.
+    queryFn: (): Promise<DocumentMeta[]> =>
+      companyId ? listDocuments(getBrowserSupabase(), companyId) : Promise.resolve([]),
+    enabled: !membership.isPending,
+  });
+  const docs = docsQuery.data ?? [];
+  const loading = membership.isPending || docsQuery.isPending;
+  const loadErr = queryErrorMessage(membership.error ?? docsQuery.error, t("documents.loadError"));
 
-  useEffect(() => {
-    listCompanyMembers(getBrowserSupabase())
-      .then(setMembers)
-      .catch(() => {});
-  }, []);
+  // Lista członków zasila wyłącznie pole „kto widzi" w formularzu wgrywania, a ten
+  // renderuje się tylko dla zarządu — stąd `canManage` w `enabled`: kierowca nie ma po co
+  // wołać RPC, które i tak mu nic nie zwróci. Błąd tego zapytania świadomie NIE trafia
+  // do `loadErr` — brak podpowiedzi osób nie może zasłonić kartoteki (przed migracją
+  // dokładnie to samo robił `.catch(() => {})`).
+  const membersQuery = useQuery({
+    queryKey: queryKeys.companyMembers(companyId),
+    queryFn: (): Promise<CompanyMember[]> => listCompanyMembers(getBrowserSupabase()),
+    enabled: !membership.isPending && canManage,
+  });
+  const members = membersQuery.data ?? [];
+
+  /** Odświeżenie kartoteki po wgraniu/usunięciu/zmianie widoczności. */
+  const reloadDocs = useCallback(
+    () => qc.invalidateQueries({ queryKey: queryKeys.documents(companyId) }),
+    [qc, companyId],
+  );
+  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy oba zapytania. */
+  const retry = () => {
+    void membership.refetch();
+    void docsQuery.refetch();
+  };
 
   const today = new Date().toISOString().slice(0, 10);
   const regOf = (id: string | null) =>
@@ -132,15 +145,13 @@ export default function DocumentsPage() {
       );
       return;
     }
+    if (!companyId) {
+      toast(t("documents.noCompany"), "error");
+      return;
+    }
     setBusy(true);
     try {
-      const sb = getBrowserSupabase();
-      const m = await getCachedMembership(sb);
-      if (!m) {
-        toast(t("documents.noCompany"), "error");
-        return;
-      }
-      await uploadDocument(sb, m.companyId, file, {
+      await uploadDocument(getBrowserSupabase(), companyId, file, {
         name: name.trim() || file.name,
         vehicleId: vehicleId || undefined,
         category: category || undefined,
@@ -150,7 +161,7 @@ export default function DocumentsPage() {
       });
       toast(t("documents.uploaded"), "success");
       resetForm();
-      await load();
+      await reloadDocs();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("documents.uploadError"), "error");
     } finally {
@@ -208,7 +219,7 @@ export default function DocumentsPage() {
     try {
       await deleteDocument(getBrowserSupabase(), d);
       toast(t("documents.deleted"), "success");
-      await load();
+      await reloadDocs();
     } catch (e) {
       toast(e instanceof Error ? e.message : t("documents.deleteError"), "error");
     }
@@ -362,7 +373,7 @@ export default function DocumentsPage() {
         error={loadErr}
         empty={docs.length === 0}
         emptyText={t("documents.empty")}
-        onRetry={load}
+        onRetry={retry}
       />
       {!loading && !loadErr && filtered.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
@@ -385,7 +396,7 @@ export default function DocumentsPage() {
                       // wszystkim (listę osób ustawia się przy wgrywaniu) — blokujemy zmianę.
                       if (next === "selected" && (d.allowed_user_ids?.length ?? 0) === 0) {
                         toast(t("documents.selectedVisibilityWarning"), "error");
-                        await load();
+                        await reloadDocs();
                         return;
                       }
                       try {
@@ -395,7 +406,7 @@ export default function DocumentsPage() {
                           next,
                           d.allowed_user_ids,
                         );
-                        await load();
+                        await reloadDocs();
                       } catch {
                         toast(t("documents.visibilityError"), "error");
                       }

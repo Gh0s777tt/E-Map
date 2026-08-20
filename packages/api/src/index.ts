@@ -3,9 +3,11 @@
  * Współdzielona przez web i mobile. Build-safe (leniwe tworzenie klienta).
  */
 export * from "./client";
+export * from "./data/account";
 export * from "./data/audit";
 export * from "./data/checklists";
 export * from "./data/companies";
+export * from "./data/companyLinks";
 export * from "./data/contractors";
 export * from "./data/damageClaims";
 export * from "./data/damagePhotos";
@@ -17,6 +19,7 @@ export * from "./data/driverPayouts";
 export * from "./data/driverRoutes";
 export * from "./data/drivers";
 export * from "./data/expoPush";
+export * from "./data/formsPhase6";
 export * from "./data/fuelCards";
 export * from "./data/fuelLogs";
 export * from "./data/invites";
@@ -34,11 +37,13 @@ export * from "./data/positions";
 export * from "./data/profile";
 export * from "./data/push";
 export * from "./data/rates";
+export * from "./data/referenceRates";
 export * from "./data/savedPlaces";
 export * from "./data/service";
 export * from "./data/settlementSettings";
 export * from "./data/tachoDownloads";
 export * from "./data/tachoEvents";
+export * from "./data/trailers";
 export * from "./data/tripEvents";
 export * from "./data/vehicleCosts";
 export * from "./data/vehicles";

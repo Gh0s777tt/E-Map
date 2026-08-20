@@ -1,0 +1,92 @@
+# ══════════════════════════════════════════════════════════════════
+#  E-Logistic — bramka jakości (GitHub Actions)
+#
+#  DLACZEGO TU, skoro źródłem prawdy jest GitLab (patrz .gitlab-ci.yml):
+#  bo na GitLabie bramka fizycznie nie ma jak chodzić. Namespace jest na planie
+#  free, a minuty współdzielonych runnerów kończą się w połowie miesiąca —
+#  wszystkie joby padają wtedy na `ci_quota_exceeded`, zanim runner cokolwiek
+#  pobierze. To nie jest awaria konfiguracji, tylko limit rozliczeniowy, więc
+#  żadna poprawka w `.gitlab-ci.yml` tego nie odblokuje.
+#
+#  Repozytorium lustrzane na GitHubie jest PUBLICZNE, a dla publicznych repo
+#  Actions nie zużywają płatnych minut. Bramka `pnpm check` nie potrzebuje ANI
+#  JEDNEGO sekretu (Biome, tsc, testy, docs:check są czysto lokalne), więc
+#  przeniesienie jej tutaj nic nie ujawnia i nic nie kosztuje.
+#
+#  PODZIAŁ ODPOWIEDZIALNOŚCI (świadomy, nie przypadkowy):
+#   · GitHub Actions — bramka jakości: Biome, tsc ×7, testy, build web, docs:check.
+#   · GitLab CI      — `gitleaks` (pełna historia), SAST, `db-types`/`rls`
+#                      (wymagają `SUPABASE_DB_URL`), `release`, `pages`.
+#                      Tam są sekrety i tam jest źródło prawdy repozytorium.
+#  Bramki bez sekretów nie mogą stać na budżecie; bramki z sekretami nie mogą
+#  stać na publicznym forku. Stąd granica dokładnie w tym miejscu.
+# ══════════════════════════════════════════════════════════════════
+name: Bramka jakości
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# Nowy push na tę samą gałąź ubija poprzedni przebieg — bez tego seria commitów
+# trzyma w kolejce kilka pełnych przebiegów, a interesuje nas tylko ostatni.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  jakosc:
+    name: Biome · tsc ×7 · testy · build · docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node (wersja z .nvmrc — jedno źródło prawdy)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # Node ≥25 NIE dostarcza już corepacka, a projekt przypina pnpm przez pole
+      # `packageManager` w package.json. Bez tej linii `corepack enable` kończy się
+      # kodem 127 — dokładnie ten błąd wysypywał każdy job Node'owy na GitLabie
+      # (`quality`: 12 uruchomień, 12 porażek). Instalujemy corepacka, a NIE pnpm
+      # wprost, żeby wersja pozostała przypięta w jednym miejscu — w package.json.
+      - name: Corepack (Node 26 go nie ma) + pnpm z pola packageManager
+        run: |
+          npm install --global corepack@latest
+          corepack enable
+          pnpm --version
+
+      - name: Cache store pnpm
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Zależności
+        run: |
+          pnpm config set store-dir ~/.pnpm-store
+          pnpm install --frozen-lockfile
+
+      # `pnpm check` = biome + tsc (7 pakietów) + testy + docs:check.
+      # Ta sama komenda co w jobie `quality` na GitLabie — celowo, żeby obie
+      # bramki nie zaczęły sprawdzać dwóch różnych rzeczy pod tą samą nazwą.
+      - name: Bramka — pnpm check
+        run: pnpm check
+
+      # Build NIE jest częścią `pnpm check`, a CLAUDE.md wymienia go wśród bramek.
+      # Klucze są atrapami: build nie łączy się z Supabase, potrzebuje wyłącznie
+      # obecności zmiennych, żeby nie wywalić się na etapie konfiguracji klienta.
+      - name: Build produkcyjny web
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: atrapa-do-builda
+        run: pnpm build

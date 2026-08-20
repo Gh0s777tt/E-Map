@@ -83,6 +83,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               item("/forms/fuel", t("form.fuel.title"), "fuel"),
               item("/forms/adblue", t("form.adblue.title"), "droplet"),
               item("/forms/trip", t("form.trip.title"), "route"),
+              // [#375] Pauza wypełnia KIEROWCA — obok pozostałych formularzy.
+              item("/forms/pause", t("forms.pause.title"), "clock"),
             ],
           },
         ]
@@ -98,6 +100,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ...(manage ? [item("/scoring", t("nav.scoring"), "star")] : []),
         ...(manage ? [item("/damages", t("nav.damages"), "alert")] : []),
         ...(manage ? [item("/koszty", t("nav.costs"), "banknote")] : []),
+        // [#375] Oba formularze wypelnia ZARZAD po zakonczeniu trasy — stad
+        // przy flocie, a nie w grupie formularzy kierowcy.
+        ...(manage ? [item("/forms/route-costs", t("forms.routeCost.title"), "banknote")] : []),
+        ...(manage ? [item("/forms/penalties", t("forms.penalty.title"), "alert")] : []),
         ...(has("documents") ? [item("/documents", t("nav.documents"), "folder")] : []),
         ...(has("reports") ? [item("/reports", t("nav.reports"), "fileText")] : []),
         ...(has("checklists") ? [item("/checklists", t("nav.checklists"), "clipboard")] : []),

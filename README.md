@@ -1,4 +1,4 @@
-<!-- SYNC: v1.213.2 · #371 · 2026-07-26 — weryfikowane bramką `pnpm docs:check` (CI) -->
+<!-- SYNC: v1.246.0 · #414 · 2026-08-19 — weryfikowane bramką `pnpm docs:check` (CI) -->
 <!-- ╔══════════════════════════════════════════════════════════════════╗ -->
 <!-- ║                       E - L O G I S T I C                         ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->
@@ -13,7 +13,7 @@
 
 <br/><br/>
 
-![Wersja](https://img.shields.io/badge/wersja-1.213.2-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.246.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Status](https://img.shields.io/badge/status-produkcja-22c55e?style=for-the-badge&labelColor=0a0a0a)
 ![Licencja](https://img.shields.io/badge/licencja-PROPRIETARY-E50914?style=for-the-badge&labelColor=0a0a0a)
 ![Repo](https://img.shields.io/badge/repo-publiczne-E50914?style=for-the-badge&labelColor=0a0a0a)
@@ -180,7 +180,7 @@ E-Logistic/
 │   └── migrations/     # SQL: schema + RLS + PostGIS (0001–0080, 82 pliki)
 │   # functions/ (Edge Functions/Deno) — PLANOWANE; dziś rolę pełni apps/web/app/api
 ├── docs/               # ARCHITECTURE · ROADMAP · DATA-MODEL · ANALIZA · SECURITY-RLS
-└── .github/workflows/  # nieaktywne (Actions wyłączone) — CI/CD prowadzone na GitLab
+└── .github/workflows/  # ci.yml — bramka jakości (Actions); reszta CI/CD na GitLab
 ```
 
 <br/>
@@ -208,7 +208,7 @@ Stan dostarczenia jest autorytatywnie śledzony w [`CHANGELOG.md`](CHANGELOG.md)
 | Rola | Repozytorium | Przeznaczenie |
 |:--|:--|:--|
 | 🦊 **Źródło prawdy** | [`gitlab.com/Gh0s777tt/e-logistic`](https://gitlab.com/Gh0s777tt/e-logistic) | Wszystkie pushe i **całe CI/CD**; chroniona gałąź `main`. |
-| 🐙 **Mirror (publiczny)** | [`github.com/Gh0s777tt/E-Map`](https://github.com/Gh0s777tt/E-Map) | Widoczność/discovery; GitHub **Actions wyłączone**. |
+| 🐙 **Mirror (publiczny)** | [`github.com/Gh0s777tt/E-Map`](https://github.com/Gh0s777tt/E-Map) | Widoczność/discovery + **bramka jakości** ([`ci.yml`](.github/workflows/ci.yml)) — publiczne repo, więc Actions są darmowe. |
 
 To README ma jedno źródło (GitLab) i jest propagowane na mirror. Badge statusu CI (pipeline GitLab)
 oraz pokrycia testami zostaną dopięte wraz z pipeline’em w ramach automatyzacji CI/CD.

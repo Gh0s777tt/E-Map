@@ -2,6 +2,7 @@
 
 import { getFuelLog, listFuelLogs, updateFuelLog } from "@e-logistic/api";
 import {
+  currencyForCountry,
   fuelLogSchema,
   latestUnitPrice,
   PAYMENT_METHODS,
@@ -12,6 +13,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CountryInput } from "@/components/CountryInput";
 import { Field } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
@@ -21,16 +23,46 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 import styles from "./LiquidForm.module.css";
 
-/** Z etykiety geokodera „Miasto, …, Kraj" wyciąga miasto (pierwszy człon) i kraj (ostatni). */
-function splitPlace(label: string): { city: string; country: string } {
-  const parts = label
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return {
-    city: parts[0] ?? label,
-    country: parts.length > 1 ? (parts[parts.length - 1] ?? "") : "",
-  };
+/**
+ * Awaryjna nazwa miejsca, gdy geokoder nie podał `city` — pierwszy człon etykiety.
+ * Kraju NIE zgadujemy: pochodzi wyłącznie z pól strukturalnych `GeoHit`.
+ */
+function firstSegment(label: string): string {
+  return label.split(",")[0]?.trim() || label;
+}
+
+/**
+ * [#373] „Teraz" w formacie pola `datetime-local`, czyli w czasie LOKALNYM
+ * przeglądarki. `toISOString()` dałoby UTC i kierowca w Polsce zobaczyłby
+ * godzinę przesuniętą o dwie wstecz.
+ */
+/**
+ * Waluty do wyboru w formularzu. Lista celowo krótka — to waluty, którymi
+ * realnie płaci się za paliwo na trasach floty. Wszystkie mają notowanie w EBC,
+ * więc każda kwota da się przeliczyć.
+ */
+const CURRENCY_OPTIONS = [
+  "EUR",
+  "PLN",
+  "CZK",
+  "HUF",
+  "RON",
+  "SEK",
+  "DKK",
+  "NOK",
+  "GBP",
+  "CHF",
+] as const;
+
+function localNow(): string {
+  return toLocalInput(new Date().toISOString());
+}
+
+/** Znacznik czasu z bazy (UTC) → wartość pola `datetime-local` w czasie lokalnym. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** Formularz „płynów" — paliwo lub AdBlue (ta sama struktura, `fuelLogSchema`). */
@@ -47,6 +79,14 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
   const [vehicleId, setVehicleId] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
+  // [#372] Kod pocztowy był w schemacie i w aplikacji mobilnej, ale nie na webie —
+  // wpisy z panelu traciły go po cichu. W UK to on identyfikuje miejsce.
+  const [postcode, setPostcode] = useState("");
+  // [#373] Data zdarzenia i waluta kwoty.
+  const [occurredAt, setOccurredAt] = useState(localNow);
+  const [currency, setCurrency] = useState("EUR");
+  /** Czy użytkownik sam wybrał walutę — wtedy nie nadpisujemy jej przy zmianie kraju. */
+  const [currencyTouched, setCurrencyTouched] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [liters, setLiters] = useState("");
@@ -75,6 +115,9 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           vehicle_id: string;
           station_country: string;
           station_city: string | null;
+          station_postcode: string | null;
+          currency: string | null;
+          occurred_at: string | null;
           odometer_km: number;
           liters: number;
           is_full?: boolean;
@@ -86,6 +129,16 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
         setVehicleId(row.vehicle_id);
         setCountry(row.station_country);
         setCity(row.station_city ?? "");
+        // Bez tego edycja z panelu kasowałaby kod pocztowy zapisany z telefonu:
+        // pole startowałoby puste i wróciło do bazy jako `undefined`.
+        setPostcode(row.station_postcode ?? "");
+        // [#373] Ta sama pułapka dotyczy waluty i daty zdarzenia — bez wczytania
+        // edycja cofnęłaby walutę do EUR i przestawiła datę na „teraz".
+        if (row.currency) {
+          setCurrency(row.currency);
+          setCurrencyTouched(true);
+        }
+        if (row.occurred_at) setOccurredAt(toLocalInput(row.occurred_at));
         setOdometerKm(String(row.odometer_km));
         setLiters(String(row.liters));
         setIsFull(row.is_full !== false);
@@ -198,13 +251,24 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
     const input = {
       vehicleId,
-      station: { country, city: city || undefined, lat: coords?.lat, lng: coords?.lng },
+      station: {
+        country,
+        city: city || undefined,
+        postcode: postcode || undefined,
+        lat: coords?.lat,
+        lng: coords?.lng,
+      },
       odometerKm: Number(odometerKm),
       liters: Number(liters),
       isFull,
       paymentMethod,
       fuelCardId: paymentMethod === "card" ? fuelCardId || undefined : undefined,
       priceTotal: priceTotal ? Number(priceTotal) : undefined,
+      currency,
+      // Pole `datetime-local` daje czas lokalny bez strefy — `new Date()`
+      // interpretuje go w strefie przeglądarki, a `toISOString()` normalizuje
+      // do UTC, w którym baza trzyma znaczniki czasu.
+      occurredAt: occurredAt ? new Date(occurredAt).toISOString() : undefined,
       comment: comment || undefined,
     };
 
@@ -311,9 +375,18 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           <span style={{ fontSize: 12, color: palette.smoke }}>Wyszukaj miejsce (adres → GPS)</span>
           <PlaceSearch
             onPick={(h) => {
-              const p = splitPlace(h.label);
-              setCity(p.city);
-              if (p.country) setCountry(p.country);
+              // [#372] Pola idą wprost z geokodera. Wcześniej kraj odtwarzano jako
+              // „ostatni człon etykiety po przecinku", a TomTom kraju w etykiecie
+              // nie umieszcza — do pola „Kraj" wpadał kod pocztowy z miastem.
+              setCity(h.city ?? firstSegment(h.label));
+              const c = h.countryCode ?? h.country;
+              if (c) setCountry(c);
+              // Kierowca w Polsce płaci złotówkami — podpowiadamy walutę kraju,
+              // ale nie nadpisujemy wyboru, jeśli sam już ją ustawił.
+              if (h.countryCode && !currencyTouched) {
+                setCurrency(currencyForCountry(h.countryCode));
+              }
+              if (h.postcode) setPostcode(h.postcode);
               setCoords({ lat: h.lat, lng: h.lng });
             }}
           />
@@ -321,12 +394,7 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")} error={errors["station.country"]}>
-            <input
-              className={styles.input}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="DE"
-            />
+            <CountryInput className={styles.input} value={country} onChange={setCountry} />
           </Field>
           <Field label={t("form.field.location")} error={errors["station.city"]}>
             <input
@@ -334,6 +402,14 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Berlin"
+            />
+          </Field>
+          <Field label={t("form.field.postcode")} error={errors["station.postcode"]}>
+            <input
+              className={styles.input}
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              placeholder="10115"
             />
           </Field>
         </div>
@@ -411,13 +487,42 @@ export function LiquidForm({ kind }: { kind: "fuel" | "adblue" }) {
           </Field>
         )}
 
-        <Field label={`${t("form.field.amount")} (opcjonalnie)`} error={errors.priceTotal}>
+        {/* [#373] Data zdarzenia — bez niej wpis dodany po fakcie (albo zrobiony
+            offline i zsynchronizowany później) wpadał do złego miesiąca. */}
+        <Field label={t("form.field.occurredAt")} error={errors.occurredAt}>
           <input
             className={styles.input}
-            type="number"
-            value={priceTotal}
-            onChange={(e) => setPriceTotal(e.target.value)}
+            type="datetime-local"
+            value={occurredAt}
+            onChange={(e) => setOccurredAt(e.target.value)}
           />
+        </Field>
+
+        <Field label={`${t("form.field.amount")} (brutto, opcjonalnie)`} error={errors.priceTotal}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className={styles.input}
+              type="number"
+              value={priceTotal}
+              onChange={(e) => setPriceTotal(e.target.value)}
+            />
+            <select
+              className={styles.input}
+              style={{ maxWidth: 110 }}
+              value={currency}
+              onChange={(e) => {
+                setCurrency(e.target.value);
+                setCurrencyTouched(true);
+              }}
+              aria-label={t("form.field.currency")}
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
           {lastPrice != null && (
             <span style={{ fontSize: 12, color: palette.smoke }}>
               Ostatnia cena: <strong style={{ color: palette.offWhite }}>{lastPrice} /l</strong>

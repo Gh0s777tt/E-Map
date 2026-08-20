@@ -1,4 +1,10 @@
 version: 2
+# Dwa ekosystemy, oba mają w repo realne manifesty:
+#  · `npm` — `package.json` + `pnpm-lock.yaml` (workspace pnpm);
+#  · `github-actions` — `.github/workflows/ci.yml`, bramka jakości przeniesiona tu w [#414].
+# Wpis `github-actions` był wcześniej usunięty, bo katalog workflow nie istniał i deklaracja
+# wisiała martwa, sugerując, że pilnujemy wersji akcji, których nie używamy. Odkąd workflow
+# jest, wraca — nieaktualizowana akcja to ta sama klasa długu co nieaktualizowana zależność.
 updates:
   - package-ecosystem: npm
     directory: "/"

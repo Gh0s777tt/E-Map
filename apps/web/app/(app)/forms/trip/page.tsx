@@ -13,6 +13,7 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CargoPhotos } from "@/components/CargoPhotos";
+import { CountryInput } from "@/components/CountryInput";
 import { Field, fieldInputStyle as input } from "@/components/Field";
 import { useT } from "@/components/LocaleProvider";
 import { PlaceSearch } from "@/components/PlaceSearch";
@@ -22,15 +23,12 @@ import { enqueue } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
-function splitPlace(label: string): { city: string; country: string } {
-  const parts = label
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return {
-    city: parts[0] ?? label,
-    country: parts.length > 1 ? (parts[parts.length - 1] ?? "") : "",
-  };
+/**
+ * Awaryjna nazwa miejsca, gdy geokoder nie podał `city` — pierwszy człon etykiety.
+ * Kraju NIE zgadujemy z tekstu: pochodzi z pól strukturalnych `GeoHit` (#372).
+ */
+function firstSegment(label: string): string {
+  return label.split(",")[0]?.trim() || label;
 }
 
 /** Czytelna etykieta zlecenia w pickerze: numer · trasa/ładunek. */
@@ -54,6 +52,17 @@ export default function TripFormPage() {
   const [action, setAction] = useState<(typeof TRIP_ACTIONS)[number]>("load");
   const [country, setCountry] = useState("");
   const [location, setLocation] = useState("");
+  // [#372] Kod pocztowy: schemat i tabela `trip_events` miały go od dawna,
+  // brakowało wyłącznie pola na webie — wpisy z panelu traciły go po cichu.
+  const [postcode, setPostcode] = useState("");
+  // [#375] Przeładunek wymaga obu rejestracji — schemat je egzekwuje, a formularz
+  // ich NIE MIAŁ: wybór tej akcji kończył się błędem walidacji pól, których
+  // w interfejsie nie było. Akcja była w liście od początku, więc ślepa uliczka.
+  const [fromVehicleReg, setFromVehicleReg] = useState("");
+  const [toVehicleReg, setToVehicleReg] = useState("");
+  // [#375] Flagi ładunku przy załadunku/rozładunku.
+  const [express, setExpress] = useState(false);
+  const [securedParking, setSecuredParking] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [odometerKm, setOdometerKm] = useState("");
   const [weightKg, setWeightKg] = useState("");
@@ -123,6 +132,8 @@ export default function TripFormPage() {
   }, []);
 
   const needsWeight = action === "load" || action === "unload";
+  const isTransshipment = action === "transshipment";
+  const needsCargoFlags = action === "load" || action === "unload";
   const needsAmount = action === "service" || action === "other";
   const commentRequired = action === "service" || action === "other";
 
@@ -176,7 +187,13 @@ export default function TripFormPage() {
     const base = {
       action,
       vehicleId,
-      place: { country, location: location || undefined, lat: coords?.lat, lng: coords?.lng },
+      place: {
+        country,
+        location: location || undefined,
+        postcode: postcode || undefined,
+        lat: coords?.lat,
+        lng: coords?.lng,
+      },
       odometerKm: Number(odometerKm),
       comment: comment || undefined,
     };
@@ -185,10 +202,22 @@ export default function TripFormPage() {
           ...base,
           weightKg: weightKg ? Number(weightKg) : undefined,
           orderId: orderId || undefined,
+          express,
+          securedParking,
         }
-      : needsAmount
-        ? { ...base, amount: amount ? Number(amount) : undefined }
-        : base;
+      : isTransshipment
+        ? {
+            // [#375] Schemat wymaga OBU rejestracji — bez tych pól akcja była
+            // niemożliwa do zapisania z panelu, mimo że widniała na liście.
+            ...base,
+            weightKg: weightKg ? Number(weightKg) : undefined,
+            fromVehicleReg,
+            toVehicleReg,
+            orderId: orderId || undefined,
+          }
+        : needsAmount
+          ? { ...base, amount: amount ? Number(amount) : undefined }
+          : base;
 
     const parsed = tripEventSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -339,9 +368,10 @@ export default function TripFormPage() {
           <span style={{ fontSize: 12, color: palette.smoke }}>Wyszukaj miejsce (adres → GPS)</span>
           <PlaceSearch
             onPick={(h) => {
-              const p = splitPlace(h.label);
-              setLocation(p.city);
-              if (p.country) setCountry(p.country);
+              setLocation(h.city ?? firstSegment(h.label));
+              const c = h.countryCode ?? h.country;
+              if (c) setCountry(c);
+              if (h.postcode) setPostcode(h.postcode);
               setCoords({ lat: h.lat, lng: h.lng });
             }}
           />
@@ -349,12 +379,7 @@ export default function TripFormPage() {
 
         <div style={{ display: "flex", gap: 12 }}>
           <Field label={t("form.field.country")} error={errors["place.country"]}>
-            <input
-              style={input}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="PL"
-            />
+            <CountryInput style={input} value={country} onChange={setCountry} placeholder="PL" />
           </Field>
           <Field label={t("form.field.location")} error={errors["place.location"]}>
             <input
@@ -362,6 +387,14 @@ export default function TripFormPage() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Poznań"
+            />
+          </Field>
+          <Field label={t("form.field.postcode")} error={errors["place.postcode"]}>
+            <input
+              style={input}
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              placeholder="61-001"
             />
           </Field>
         </div>
@@ -391,7 +424,7 @@ export default function TripFormPage() {
               onChange={(e) => setOdometerKm(e.target.value)}
             />
           </Field>
-          {needsWeight && (
+          {(needsWeight || isTransshipment) && (
             <Field label={t("form.field.weight")} error={errors.weightKg}>
               <input
                 style={input}
@@ -400,6 +433,51 @@ export default function TripFormPage() {
                 onChange={(e) => setWeightKg(e.target.value)}
               />
             </Field>
+          )}
+
+          {/* [#375] Przeładunek: schemat wymaga obu rejestracji. Bez tych pól
+              akcja widniała na liście, ale nie dało się jej zapisać. */}
+          {isTransshipment && (
+            <div style={{ display: "flex", gap: 12 }}>
+              <Field label={t("form.field.fromVehicle")} error={errors.fromVehicleReg}>
+                <input
+                  style={input}
+                  value={fromVehicleReg}
+                  onChange={(e) => setFromVehicleReg(e.target.value)}
+                  placeholder="WX 12345"
+                />
+              </Field>
+              <Field label={t("form.field.toVehicle")} error={errors.toVehicleReg}>
+                <input
+                  style={input}
+                  value={toVehicleReg}
+                  onChange={(e) => setToVehicleReg(e.target.value)}
+                  placeholder="WY 67890"
+                />
+              </Field>
+            </div>
+          )}
+
+          {/* [#375] Flagi ładunku — kierowca zaznacza przy załadunku. */}
+          {needsCargoFlags && (
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={express}
+                  onChange={(e) => setExpress(e.target.checked)}
+                />
+                {t("form.field.express")}
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={securedParking}
+                  onChange={(e) => setSecuredParking(e.target.checked)}
+                />
+                {t("form.field.securedParking")}
+              </label>
+            </div>
           )}
           {needsAmount && (
             <Field label={`${t("form.field.amount")} (opcjonalnie)`} error={errors.amount}>

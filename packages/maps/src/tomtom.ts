@@ -4,9 +4,23 @@
  * geometrią trasy. TomTom Routing nie zwraca KOSZTU myta (tylko odcinki płatne),
  * więc `tollCost` = 0 (do estymacji osobnym warstwą). Klucz TomTom jest kluczem
  * klienta (jak MapTiler/Supabase anon) — dopuszczalny w EXPO_PUBLIC.
+ *
+ * #383: PRZEBIEG dróg płatnych (`sectionType=tollRoad`) leciał w każdym zapytaniu,
+ * ale typ odpowiedzi nie miał pola `sections`, więc parser wyrzucał go do kosza —
+ * płaciliśmy za dane, których nikt nigdy nie zobaczył. Teraz wracają jako
+ * `RouteResult.tollSections` (indeksy w `geometry`).
  */
 import { round2 } from "@e-logistic/core";
-import type { LatLng, RouteRequest, RouteResult, RoutingProvider, VehicleKind } from "./types";
+import {
+  type LatLng,
+  type RouteRequest,
+  type RouteResult,
+  type RoutingProvider,
+  type TollSection,
+  type TollSections,
+  unknownTollSections,
+  type VehicleKind,
+} from "./types";
 
 export const TOMTOM_BASE = "https://api.tomtom.com";
 
@@ -85,6 +99,13 @@ export function buildTomTomRouteUrl(req: RouteRequest, apiKey: string): string {
     if (pr.widthCm) p.push(`vehicleWidth=${(pr.widthCm / 100).toFixed(2)}`);
     if (pr.lengthCm) p.push(`vehicleLength=${(pr.lengthCm / 100).toFixed(2)}`);
     if (pr.axleCount) p.push(`vehicleNumberOfAxles=${pr.axleCount}`);
+    // [#384] ADR — patrz komentarz w adapterze HERE. TomTom nazywa to inaczej,
+    // ale znaczy to samo: `vehicleLoadType` mówi CO wieziemy, a kategoria tunelowa
+    // KTÓRE tunele wolno pokonać.
+    if (pr.adrTunnelCode) {
+      p.push("vehicleLoadType=USHazmatClass1");
+      p.push(`vehicleAdrTunnelRestrictionCode=${pr.adrTunnelCode}`);
+    }
   } else {
     p.push("travelMode=car");
   }
@@ -110,6 +131,24 @@ interface TTPoint {
 interface TTLeg {
   points?: TTPoint[];
 }
+/**
+ * #383: sekcja trasy z TomTom Routing. `startPointIndex`/`endPointIndex` NIE liczą się
+ * w obrębie legu — indeksują SPŁASZCZONĄ listę punktów całej trasy, czyli `legs[].points`
+ * sklejone po kolei. Dokładnie taką listę buduje niżej `parseTomTomRoute` jako `geometry`
+ * (jedna pętla po legach, jedna po punktach — bez pomijania punktu styku legów), więc
+ * mapowanie sekcja→geometria jest 1:1. Zakres jest obustronnie DOMKNIĘTY.
+ *
+ * W praktyce ten adapter dostaje z `routeMultiLeg` zawsze dwa waypointy naraz, czyli
+ * odpowiedź z jednym legiem — wielolegowa sklejka i przeliczanie indeksów dzieją się
+ * poziom wyżej (`multileg.ts`). Mimo to indeksy są tu przycinane do długości `geometry`:
+ * konwencji dostawcy nie sprawdzimy typem, a przycięty odcinek to najwyżej odrobinę
+ * krótsze podświetlenie, podczas gdy indeks poza tablicą to błąd w warstwie mapy.
+ */
+interface TTSection {
+  startPointIndex?: number;
+  endPointIndex?: number;
+  sectionType?: string;
+}
 interface TTRoute {
   summary?: {
     lengthInMeters?: number;
@@ -117,9 +156,67 @@ interface TTRoute {
     trafficDelayInSeconds?: number;
   };
   legs?: TTLeg[];
+  /**
+   * Zwracane, bo `buildTomTomRouteUrl` wysyła `sectionType=tollRoad` w KAŻDYM zapytaniu.
+   * TomTom dokłada do tego zawsze sekcję `TRAVEL_MODE` — stąd filtr po typie niżej.
+   */
+  sections?: TTSection[];
 }
 interface TTRouteResponse {
   routes?: TTRoute[];
+}
+
+/**
+ * #383: TomTom w ODPOWIEDZI używa UPPER_SNAKE (`TOLL_ROAD`), a w ZAPYTANIU camelCase
+ * (`tollRoad`) — normalizujemy obie formy, żeby zmiana konwencji po stronie dostawcy
+ * nie wygasiła po cichu całej warstwy myta.
+ */
+function isTollRoadSection(type?: string): boolean {
+  return type?.toUpperCase().replace(/_/g, "") === "TOLLROAD";
+}
+
+/**
+ * Indeks w `geometry` dla pierwszego punktu o indeksie surowym >= `from` (albo -1).
+ * Potrzebne, bo punkt bez współrzędnych nie trafia do `geometry` — patrz `parseTomTomRoute`.
+ */
+function firstGeomAtOrAfter(geomIndexByRaw: number[], from: number): number {
+  for (let i = Math.max(0, from); i < geomIndexByRaw.length; i++) {
+    const g = geomIndexByRaw[i] ?? -1;
+    if (g >= 0) return g;
+  }
+  return -1;
+}
+
+/** Indeks w `geometry` dla ostatniego punktu o indeksie surowym <= `to` (albo -1). */
+function lastGeomAtOrBefore(geomIndexByRaw: number[], to: number): number {
+  for (let i = Math.min(geomIndexByRaw.length - 1, to); i >= 0; i--) {
+    const g = geomIndexByRaw[i] ?? -1;
+    if (g >= 0) return g;
+  }
+  return -1;
+}
+
+/**
+ * #383: sekcje `TOLL_ROAD` → zakresy indeksów w `geometry`.
+ * Indeksy przechodzą przez `geomIndexByRaw`, a nie prosto do wyniku: strażnik typów
+ * w `parseTomTomRoute` potrafi odrzucić punkt bez `latitude`/`longitude`, a wtedy
+ * `geometry` jest krótsza od listy punktów TomToma i każdy surowy indeks za dziurą
+ * wskazywałby inne miejsce na mapie. Odcinki krótsze niż dwa punkty odrzucamy —
+ * z jednego punktu nie da się narysować linii w MapLibre.
+ */
+function tomtomTollSections(sections: TTSection[], geomIndexByRaw: number[]): TollSection[] {
+  const out: TollSection[] = [];
+  for (const s of sections) {
+    if (!isTollRoadSection(s.sectionType)) continue;
+    const rawStart = s.startPointIndex;
+    const rawEnd = s.endPointIndex;
+    if (typeof rawStart !== "number" || typeof rawEnd !== "number") continue;
+    const startIndex = firstGeomAtOrAfter(geomIndexByRaw, Math.min(rawStart, rawEnd));
+    const endIndex = lastGeomAtOrBefore(geomIndexByRaw, Math.max(rawStart, rawEnd));
+    if (startIndex < 0 || endIndex <= startIndex) continue;
+    out.push({ startIndex, endIndex });
+  }
+  return out;
 }
 
 /** Parsuje odpowiedź TomTom Routing do wspólnego `RouteResult`. */
@@ -131,20 +228,39 @@ export function parseTomTomRoute(
   const r = data.routes?.[0];
   if (!r?.summary) throw new Error("TomTom: brak trasy w odpowiedzi.");
   const geometry: LatLng[] = [];
+  // #383: surowy indeks punktu TomToma → indeks w `geometry`. Zwykle 1:1, ale musi być
+  // jawne, bo od tego zależy, czy odcinek płatny podświetli właściwy kawałek trasy.
+  const geomIndexByRaw: number[] = [];
   for (const leg of r.legs ?? []) {
     for (const pt of leg.points ?? []) {
       if (typeof pt.latitude === "number" && typeof pt.longitude === "number") {
+        geomIndexByRaw.push(geometry.length);
         geometry.push({ lat: pt.latitude, lng: pt.longitude });
+      } else {
+        geomIndexByRaw.push(-1);
       }
     }
   }
+
+  // Brak pola `sections` = odpowiedź nic nie mówi o odcinkach płatnych. To NIE znaczy
+  // „nie ma dróg płatnych" — dlatego `known: false`, a nie pusta lista jako fakt.
+  const tollSections: TollSections = r.sections
+    ? { known: true, sections: tomtomTollSections(r.sections, geomIndexByRaw) }
+    : unknownTollSections();
+
   return {
+    // [#384] TomTom nie zwraca uwag do trasy w tym endpointcie — pusta lista
+    // znaczy „nic nie zgłosił", a nie „nie sprawdziliśmy".
+    notices: [],
     distanceKm: round2((r.summary.lengthInMeters ?? 0) / 1000),
     durationMin: round2((r.summary.travelTimeInSeconds ?? 0) / 60),
+    // TomTom Routing podaje PRZEBIEG dróg płatnych, ale nie ich cenę — koszt dolicza
+    // osobno `/api/route` (estymata), stąd 0 mimo niepustych `tollSections`.
     tollCost: 0,
     currency,
     segments: [],
     geometry,
+    tollSections,
     provider,
   };
 }

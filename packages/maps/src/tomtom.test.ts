@@ -135,6 +135,163 @@ describe("parseTomTomRoute", () => {
   });
 });
 
+/**
+ * #383: `sectionType=tollRoad` leci w każdym zapytaniu (płacimy za to), więc odpowiedź
+ * MUSI wrócić aż do `RouteResult`. Kształt danych jak w realnej odpowiedzi TomTom
+ * Routing v1: dwa legi ze zdublowanym punktem styku, zawsze obecna sekcja `TRAVEL_MODE`
+ * obok `TOLL_ROAD`, indeksy liczone wobec spłaszczonej listy punktów CAŁEJ trasy.
+ */
+describe("parseTomTomRoute — odcinki płatne (#383)", () => {
+  type TTSectionLike = {
+    startPointIndex?: number;
+    endPointIndex?: number;
+    sectionType?: string;
+    travelMode?: string;
+  };
+
+  /** 4 + 3 punkty = 7 pozycji w spłaszczonej liście (punkt styku legów zdublowany). */
+  const twoLegRoute = (sections: TTSectionLike[]) => ({
+    routes: [
+      {
+        summary: { lengthInMeters: 120000, travelTimeInSeconds: 5400 },
+        legs: [
+          {
+            points: [
+              { latitude: 52.52, longitude: 13.405 },
+              { latitude: 52.5, longitude: 13.6 },
+              { latitude: 52.48, longitude: 14.0 },
+              { latitude: 52.45, longitude: 14.5 },
+            ],
+          },
+          {
+            points: [
+              { latitude: 52.45, longitude: 14.5 },
+              { latitude: 52.4, longitude: 15.2 },
+              { latitude: 52.35, longitude: 16.0 },
+            ],
+          },
+        ],
+        sections,
+      },
+    ],
+  });
+
+  it("zwraca zakres TOLL_ROAD jako indeksy w geometry i pomija TRAVEL_MODE", () => {
+    const r = parseTomTomRoute(
+      twoLegRoute([
+        { startPointIndex: 0, endPointIndex: 6, sectionType: "TRAVEL_MODE", travelMode: "truck" },
+        { startPointIndex: 2, endPointIndex: 5, sectionType: "TOLL_ROAD" },
+      ]),
+      "tomtom",
+      "EUR",
+    );
+    expect(r.geometry).toHaveLength(7);
+    expect(r.tollSections.known).toBe(true);
+    expect(r.tollSections.sections).toEqual([{ startIndex: 2, endIndex: 5 }]);
+    // Zakres domknięty: slice(start, end+1) to punkty odcinka płatnego.
+    const pts = r.geometry.slice(2, 6);
+    expect(pts).toHaveLength(4);
+    expect(pts[0]).toEqual({ lat: 52.48, lng: 14.0 });
+    expect(pts[3]).toEqual({ lat: 52.4, lng: 15.2 });
+  });
+
+  it("kilka odcinków płatnych zachowuje kolejność", () => {
+    const r = parseTomTomRoute(
+      twoLegRoute([
+        { startPointIndex: 0, endPointIndex: 6, sectionType: "TRAVEL_MODE" },
+        { startPointIndex: 0, endPointIndex: 2, sectionType: "TOLL_ROAD" },
+        { startPointIndex: 4, endPointIndex: 6, sectionType: "TOLL_ROAD" },
+      ]),
+      "tomtom",
+      "EUR",
+    );
+    expect(r.tollSections.sections).toEqual([
+      { startIndex: 0, endIndex: 2 },
+      { startIndex: 4, endIndex: 6 },
+    ]);
+  });
+
+  it("odpowiedź bez `sections` = brak danych (known:false), nie „brak dróg płatnych”", () => {
+    const r = parseTomTomRoute(
+      {
+        routes: [
+          {
+            summary: { lengthInMeters: 1000, travelTimeInSeconds: 60 },
+            legs: [{ points: [{ latitude: 1, longitude: 2 }] }],
+          },
+        ],
+      },
+      "tomtom",
+      "EUR",
+    );
+    expect(r.tollSections).toEqual({ known: false, sections: [] });
+  });
+
+  it("sekcje bez TOLL_ROAD = trasa bez dróg płatnych (known:true, pusto)", () => {
+    const r = parseTomTomRoute(
+      twoLegRoute([{ startPointIndex: 0, endPointIndex: 6, sectionType: "TRAVEL_MODE" }]),
+      "tomtom",
+      "EUR",
+    );
+    expect(r.tollSections).toEqual({ known: true, sections: [] });
+  });
+
+  it("akceptuje camelCase `tollRoad` (konwencja z zapytania)", () => {
+    const r = parseTomTomRoute(
+      twoLegRoute([{ startPointIndex: 1, endPointIndex: 3, sectionType: "tollRoad" }]),
+      "tomtom",
+      "EUR",
+    );
+    expect(r.tollSections.sections).toEqual([{ startIndex: 1, endIndex: 3 }]);
+  });
+
+  it("punkt bez współrzędnych nie przesuwa odcinka płatnego", () => {
+    // Drugi punkt jest ułomny → wypada z `geometry`, ale TomTom nadal liczy go w indeksach.
+    const r = parseTomTomRoute(
+      {
+        routes: [
+          {
+            summary: { lengthInMeters: 1000, travelTimeInSeconds: 60 },
+            legs: [
+              {
+                points: [
+                  { latitude: 1, longitude: 1 },
+                  { latitude: 2 },
+                  { latitude: 3, longitude: 3 },
+                  { latitude: 4, longitude: 4 },
+                ],
+              },
+            ],
+            sections: [{ startPointIndex: 2, endPointIndex: 3, sectionType: "TOLL_ROAD" }],
+          },
+        ],
+      },
+      "tomtom",
+      "EUR",
+    );
+    expect(r.geometry).toEqual([
+      { lat: 1, lng: 1 },
+      { lat: 3, lng: 3 },
+      { lat: 4, lng: 4 },
+    ]);
+    // Surowe 2..3 to w `geometry` 1..2 — bez mapy indeksów wskazywałoby poza tablicę.
+    expect(r.tollSections.sections).toEqual([{ startIndex: 1, endIndex: 2 }]);
+  });
+
+  it("odrzuca sekcje niekompletne, jednopunktowe i wystające poza trasę", () => {
+    const r = parseTomTomRoute(
+      twoLegRoute([
+        { sectionType: "TOLL_ROAD" }, // brak indeksów
+        { startPointIndex: 3, endPointIndex: 3, sectionType: "TOLL_ROAD" }, // 1 punkt = nie linia
+        { startPointIndex: 5, endPointIndex: 99, sectionType: "TOLL_ROAD" }, // przycięte do końca
+      ]),
+      "tomtom",
+      "EUR",
+    );
+    expect(r.tollSections.sections).toEqual([{ startIndex: 5, endIndex: 6 }]);
+  });
+});
+
 describe("TomTomRoutingProvider.route", () => {
   it("woła fetch i parsuje odpowiedź", async () => {
     stubFetch({

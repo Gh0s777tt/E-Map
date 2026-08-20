@@ -9,6 +9,7 @@ import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
+import { CountryField } from "../components/CountryField";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { fillFromLocation, requiresPostcode } from "../lib/geoFill";
 import { useT } from "../lib/i18n";
@@ -224,14 +225,7 @@ export default function TripScreen() {
       </Pressable>
 
       <Text style={styles.label}>{t("m.trip.country")}</Text>
-      <TextInput
-        style={styles.input}
-        value={country}
-        onChangeText={setCountry}
-        placeholder="PL"
-        placeholderTextColor={palette.smoke}
-        autoCapitalize="characters"
-      />
+      <CountryField value={country} onChange={setCountry} placeholder="PL" />
 
       <Text style={styles.label}>{t("m.trip.city")}</Text>
       <TextInput

@@ -13,7 +13,7 @@ import {
   listDriverExpenses,
   uploadExpensePhotoBinary,
 } from "@e-logistic/api";
-import { parseReceiptText } from "@e-logistic/core";
+import { type Currency, parseReceiptText } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { decode } from "base64-arraybuffer";
 import * as ImagePicker from "expo-image-picker";
@@ -49,7 +49,13 @@ const CATEGORY_KEY = {
   other: "m.cat.other",
 } as const;
 
-const CURRENCIES = ["PLN", "EUR", "GBP", "CZK"] as const;
+/**
+ * [#388] Skrót do czterech walut, ale **typowany kodami z rdzenia** (`Currency`).
+ * Ekran wpisywany jedną ręką w kabinie nie może pokazywać dziesięciu chipów,
+ * więc podzbiór zostaje — natomiast literówka albo kod bez notowania w EBC
+ * przestaje się kompilować, zamiast tworzyć wpis nie do przeliczenia.
+ */
+const CURRENCIES: readonly Currency[] = ["PLN", "EUR", "GBP", "CZK"];
 
 export default function ExpensesScreen() {
   const t = useT();

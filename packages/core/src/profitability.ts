@@ -7,8 +7,17 @@ import { round2 } from "./money";
 export interface ProfitOrderEntry {
   shipper: string | null;
   vehicleId: string | null;
-  price: number | null;
-  currency: string;
+  /**
+   * [#381] Kwota JUŻ przeliczona na euro — nazwa niesie jednostkę celowo.
+   *
+   * Pole `currency` zniknęło z tego typu razem z filtrem `currency === "EUR"`,
+   * który tu stał. Filtr wyglądał na ostrożność, a działał jak cichy kasownik:
+   * zlecenie w złotówkach po prostu wypadało z wyniku, bez komunikatu i bez
+   * licznika. Przeliczanie należy do warstwy, która zna kursy i datę zdarzenia
+   * (`rowAmountEur`), a nie do silnika liczącego — ten ma dostać liczby
+   * porównywalne i tyle.
+   */
+  priceEur: number | null;
   status: string;
 }
 
@@ -61,20 +70,20 @@ export function clientProfitability(
   }
 
   const realized = orders.filter(
-    (o) => REALIZED.has(o.status) && o.currency === "EUR" && o.price != null && o.price > 0,
+    (o) => REALIZED.has(o.status) && o.priceEur != null && o.priceEur > 0,
   );
 
   // Przychód EUR per pojazd (baza proporcji atrybucji kosztu).
   const vehRevenue = new Map<string, number>();
   for (const o of realized) {
     if (o.vehicleId)
-      vehRevenue.set(o.vehicleId, (vehRevenue.get(o.vehicleId) ?? 0) + (o.price ?? 0));
+      vehRevenue.set(o.vehicleId, (vehRevenue.get(o.vehicleId) ?? 0) + (o.priceEur ?? 0));
   }
 
   const acc = new Map<string, { orders: number; revenue: number; cost: number }>();
   let noVehicleRevenue = 0;
   for (const o of realized) {
-    const revenue = o.price ?? 0;
+    const revenue = o.priceEur ?? 0;
     const name = (o.shipper ?? "").trim() || NO_CLIENT;
     const vehRev = o.vehicleId ? (vehRevenue.get(o.vehicleId) ?? 0) : 0;
     const vehCost = o.vehicleId ? (costByVehicle.get(o.vehicleId) ?? 0) : 0;

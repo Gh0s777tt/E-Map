@@ -4,8 +4,7 @@ import { clientProfitability, clientProfitTrend, type ProfitOrderEntry } from ".
 const o = (p: Partial<ProfitOrderEntry>): ProfitOrderEntry => ({
   shipper: "A",
   vehicleId: "v1",
-  price: 1000,
-  currency: "EUR",
+  priceEur: 1000,
   status: "delivered",
   ...p,
 });
@@ -14,7 +13,7 @@ describe("clientProfitability", () => {
   it("przypisuje koszt pojazdu proporcjonalnie do przychodu zleceń", () => {
     // v1: koszt 300; dwa zlecenia EUR 1000 (A) i 500 (B) → udział 2:1.
     const r = clientProfitability(
-      [o({ shipper: "A", price: 1000 }), o({ shipper: "B", price: 500 })],
+      [o({ shipper: "A", priceEur: 1000 }), o({ shipper: "B", priceEur: 500 })],
       [{ vehicleId: "v1", cost: 300 }],
     );
     const a = r.clients.find((c) => c.client === "A");
@@ -30,26 +29,25 @@ describe("clientProfitability", () => {
   });
 
   it("liczy marżę procentową", () => {
-    const r = clientProfitability([o({ price: 1000 })], [{ vehicleId: "v1", cost: 250 }]);
+    const r = clientProfitability([o({ priceEur: 1000 })], [{ vehicleId: "v1", cost: 250 }]);
     expect(r.clients[0]?.marginPct).toBe(75); // (1000-250)/1000*100
   });
 
   it("sortuje malejąco po zysku", () => {
     const r = clientProfitability(
-      [o({ shipper: "Maly", price: 200 }), o({ shipper: "Duzy", price: 5000 })],
+      [o({ shipper: "Maly", priceEur: 200 }), o({ shipper: "Duzy", priceEur: 5000 })],
       [],
     );
     expect(r.clients[0]?.client).toBe("Duzy");
   });
 
-  it("pomija zlecenia niezrealizowane i nie-EUR", () => {
+  // [#381] Było „…i nie-EUR": test utrwalał filtr `currency === "EUR"`, który
+  // po cichu wyrzucał zlecenia w obcych walutach z rentowności. Silnik przyjmuje
+  // teraz kwoty JUŻ przeliczone (pole `priceEur`), więc waluta go nie dotyczy —
+  // odsiewamy wyłącznie po statusie.
+  it("pomija zlecenia niezrealizowane", () => {
     const r = clientProfitability(
-      [
-        o({ status: "new" }),
-        o({ status: "cancelled" }),
-        o({ currency: "PLN" }),
-        o({ price: 800, status: "invoiced" }),
-      ],
+      [o({ status: "new" }), o({ status: "cancelled" }), o({ priceEur: 800, status: "invoiced" })],
       [],
     );
     expect(r.totalRevenueEur).toBe(800);
@@ -59,7 +57,7 @@ describe("clientProfitability", () => {
 
   it("koszt pojazdu bez przychodu EUR → unattributed (nie wlicza w marżę)", () => {
     const r = clientProfitability(
-      [o({ vehicleId: "v1", price: 1000 })],
+      [o({ vehicleId: "v1", priceEur: 1000 })],
       [
         { vehicleId: "v1", cost: 200 },
         { vehicleId: "v2", cost: 500 }, // brak zleceń na v2
@@ -71,7 +69,7 @@ describe("clientProfitability", () => {
 
   it("zlecenie bez pojazdu → koszt 0 i ślad w noVehicleRevenueEur", () => {
     const r = clientProfitability(
-      [o({ vehicleId: null, price: 1200 })],
+      [o({ vehicleId: null, priceEur: 1200 })],
       [{ vehicleId: "v1", cost: 400 }],
     );
     expect(r.clients[0]?.costEur).toBe(0);
@@ -81,7 +79,7 @@ describe("clientProfitability", () => {
 
   it("pusty nadawca grupuje się jako (bez nadawcy), totale spójne", () => {
     const r = clientProfitability(
-      [o({ shipper: "", price: 300 }), o({ shipper: null, price: 100 })],
+      [o({ shipper: "", priceEur: 300 }), o({ shipper: null, priceEur: 100 })],
       [],
     );
     expect(r.clients[0]?.client).toBe("(bez nadawcy)");
@@ -102,8 +100,8 @@ describe("clientProfitTrend", () => {
 
   it("liczy punkt per miesiąc dla wskazanego klienta", () => {
     const orders = [
-      om("2026-01", { shipper: "A", price: 1000 }),
-      om("2026-02", { shipper: "A", price: 2000 }),
+      om("2026-01", { shipper: "A", priceEur: 1000 }),
+      om("2026-02", { shipper: "A", priceEur: 2000 }),
     ];
     const costs = [
       { vehicleId: "v1", cost: 200, month: "2026-01" },
@@ -126,7 +124,7 @@ describe("clientProfitTrend", () => {
   });
 
   it("miesiąc bez aktywności klienta → punkt zerowy (bez dziur)", () => {
-    const orders = [om("2026-02", { shipper: "A", price: 500 })];
+    const orders = [om("2026-02", { shipper: "A", priceEur: 500 })];
     const trend = clientProfitTrend("A", orders, [], ["2026-01", "2026-02", "2026-03"]);
     expect(trend.map((p) => p.month)).toEqual(["2026-01", "2026-02", "2026-03"]);
     expect(trend[0]).toMatchObject({ revenueEur: 0, profitEur: 0, marginPct: null });
@@ -136,8 +134,8 @@ describe("clientProfitTrend", () => {
 
   it("izoluje wybranego klienta (nie miesza z innymi)", () => {
     const orders = [
-      om("2026-01", { shipper: "A", price: 1000 }),
-      om("2026-01", { shipper: "B", price: 9000 }),
+      om("2026-01", { shipper: "A", priceEur: 1000 }),
+      om("2026-01", { shipper: "B", priceEur: 9000 }),
     ];
     const trend = clientProfitTrend("A", orders, [], ["2026-01"]);
     expect(trend[0]?.revenueEur).toBe(1000);

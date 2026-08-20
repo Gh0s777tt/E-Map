@@ -6,6 +6,7 @@
  */
 import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import type { Json } from "../database.types";
 
 export interface ChatMessage {
   id: string;
@@ -16,6 +17,22 @@ export interface ChatMessage {
   body: string;
   photo_path: string | null;
   created_at: string;
+  /** [#374] Ustawiony po edycji treści — znacznik nadaje baza, nie klient. */
+  edited_at: string | null;
+  /** [#374] Moment zniknięcia. `null` = wiadomość zostaje na stałe. */
+  expires_at: string | null;
+  /** [#374] Cytowana wiadomość. `null` po skasowaniu oryginału — odpowiedź zostaje. */
+  reply_to_id: string | null;
+  kind: "text" | "photo" | "location";
+  /** [#374] Dane zależne od `kind` — dla `location` współrzędne i etykieta. */
+  meta: Json | null;
+}
+
+/** [#374] Reakcja emoji pod wiadomością. */
+export interface MessageReaction {
+  message_id: string;
+  user_id: string;
+  emoji: string;
 }
 
 export interface ChatThread {
@@ -24,9 +41,15 @@ export interface ChatThread {
   name: string;
   created_by: string;
   created_at: string;
+  /** [#374] Znikanie wiadomości kanału w sekundach. `null` = wyłączone. */
+  ephemeral_ttl_seconds: number | null;
 }
 
-const COLS = "id, company_id, thread_id, sender_id, sender_label, body, photo_path, created_at";
+// [#374] Kolumny stanu wiadomości: miękkie usunięcie, edycja, znikanie, cytat.
+// Musi zostać POJEDYNCZYM literałem — klient Supabase parsuje listę kolumn na
+// poziomie typów, a konkatenacja zamienia wynik w `GenericStringError`.
+const COLS =
+  "id, company_id, thread_id, sender_id, sender_label, body, photo_path, created_at, edited_at, expires_at, reply_to_id, kind, meta";
 
 /** Wiadomości kanału (threadId null = kanał ogólny). Rosnąco, gotowe do renderu. */
 export async function listMessages(
@@ -49,7 +72,20 @@ export async function sendMessage(
   companyId: string,
   body: string,
   senderLabel: string,
-  opts: { threadId?: string | null; photoPath?: string | null } = {},
+  opts: {
+    threadId?: string | null;
+    photoPath?: string | null;
+    /** [#374] Cytowana wiadomość. */
+    replyToId?: string | null;
+    kind?: "text" | "photo" | "location";
+    meta?: Json | null;
+    /**
+     * [#374] Znikanie ustawione dla POJEDYNCZEJ wiadomości, w sekundach.
+     * Ma pierwszeństwo przed ustawieniem kanału. Termin wylicza baza —
+     * zegar urządzenia bywa przestawiony, a od tego zależy, kiedy treść zniknie.
+     */
+    expiresInSeconds?: number | null;
+  } = {},
 ): Promise<ChatMessage> {
   const { data, error } = await client
     .from("messages")
@@ -59,11 +95,169 @@ export async function sendMessage(
       body,
       sender_label: senderLabel,
       photo_path: opts.photoPath ?? null,
+      reply_to_id: opts.replyToId ?? null,
+      kind: opts.kind ?? (opts.photoPath ? "photo" : "text"),
+      meta: opts.meta ?? null,
+      ...(opts.expiresInSeconds
+        ? { expires_at: new Date(Date.now() + opts.expiresInSeconds * 1000).toISOString() }
+        : {}),
     })
     .select(COLS)
     .single();
   if (error) throw error;
   return data as ChatMessage;
+}
+
+/**
+ * [#374] Usunięcie wiadomości — MIĘKKIE.
+ *
+ * Twarde `DELETE` byłoby gorsze dla użytkownika: klient, który był offline,
+ * nigdy nie zobaczy zdarzenia DELETE i zostanie z wiadomością na ekranie.
+ * Przy `deleted_at` dostaje zwykły UPDATE i usuwa ją u siebie. Wiersz znika
+ * fizycznie później, przy czyszczeniu cronem.
+ *
+ * RLS dopuszcza nadawcę oraz zarząd (moderacja).
+ */
+export async function deleteMessage(client: SupabaseClient, id: string): Promise<void> {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  const { error } = await client
+    .from("messages")
+    .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id ?? null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * [#374] Edycja treści. Znacznik `edited_at` ustawia wyzwalacz w bazie —
+ * klient nie może udawać, że wiadomość nie była zmieniana.
+ */
+export async function editMessage(
+  client: SupabaseClient,
+  id: string,
+  body: string,
+): Promise<ChatMessage> {
+  const { data, error } = await client
+    .from("messages")
+    .update({ body })
+    .eq("id", id)
+    .select(COLS)
+    .single();
+  if (error) throw error;
+  return data as ChatMessage;
+}
+
+/**
+ * Ile reakcji na wiadomość mieści się w sufircie. Pod jedną wiadomością
+ * podpisuje się co najwyżej cała załoga kanału, i to kilkoma emoji — 50
+ * z zapasem pokrywa firmowy czat.
+ */
+const REACTIONS_PER_MESSAGE = 50;
+
+/** [#374] Reakcje pod wskazanymi wiadomościami (jedno zapytanie na widok). */
+export async function listReactions(
+  client: SupabaseClient,
+  messageIds: readonly string[],
+  opts?: { limit?: number },
+): Promise<MessageReaction[]> {
+  if (messageIds.length === 0) return [];
+  const { data, error } = await client
+    .from("message_reactions")
+    .select("message_id, user_id, emoji")
+    .in("message_id", messageIds as string[])
+    // Sufit LICZONY z wejścia, nie stały: wywołujący sam decyduje, ile
+    // wiadomości pokazuje naraz, więc próg musi rosnąć razem z jego stronicą.
+    // Stała liczba oznaczałaby, że przy dłuższym widoku reakcje znikają
+    // z DOŁU listy — a brak reakcji wygląda dokładnie jak jej niepostawienie.
+    .limit(opts?.limit ?? messageIds.length * REACTIONS_PER_MESSAGE);
+  if (error) throw error;
+  return (data ?? []) as MessageReaction[];
+}
+
+/**
+ * [#374] Dodaje lub zdejmuje własną reakcję. `on` mówi, jaki ma być stan
+ * docelowy — dzięki temu podwójne kliknięcie nie tworzy wyścigu, w którym
+ * dwa żądania na przemian dodają i usuwają tę samą reakcję.
+ */
+export async function setReaction(
+  client: SupabaseClient,
+  messageId: string,
+  emoji: string,
+  on: boolean,
+): Promise<void> {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) throw new Error("Brak sesji.");
+  if (on) {
+    const { error } = await client
+      .from("message_reactions")
+      .upsert(
+        { message_id: messageId, user_id: user.id, emoji },
+        { onConflict: "message_id,user_id,emoji", ignoreDuplicates: true },
+      );
+    if (error) throw error;
+    return;
+  }
+  const { error } = await client
+    .from("message_reactions")
+    .delete()
+    .eq("message_id", messageId)
+    .eq("user_id", user.id)
+    .eq("emoji", emoji);
+  if (error) throw error;
+}
+
+/**
+ * [#374] Znikanie wiadomości dla całego kanału. `null` wyłącza.
+ *
+ * Kanał ogólny firmy nie ma wiersza w `chat_threads` (thread_id IS NULL),
+ * więc jego ustawienie mieszka przy firmie.
+ *
+ * UWAGA przy prezentacji tej funkcji użytkownikowi: filtr w polityce UKRYWA
+ * wiadomość, fizycznie kasuje ją dopiero cron. Do czasu przebiegu treść żyje
+ * w bazie, w kopiach zapasowych i w powiadomieniach push, które już poszły.
+ */
+export async function setChatTtl(
+  client: SupabaseClient,
+  target: { companyId: string; threadId?: string | null },
+  ttlSeconds: number | null,
+): Promise<void> {
+  if (target.threadId) {
+    const { error, count } = await client
+      .from("chat_threads")
+      .update({ ephemeral_ttl_seconds: ttlSeconds }, { count: "exact" })
+      .eq("id", target.threadId);
+    if (error) throw error;
+    if (!count) throw new Error("Brak uprawnień do zmiany ustawień tego kanału.");
+    return;
+  }
+  // [#376] `count: "exact"` jest tu KONIECZNE. Kanał ogólny zapisuje ustawienie
+  // w `companies`, a `companies_update` (0013) dopuszcza wyłącznie właściciela.
+  // Dyspozytorowi RLS nie zwraca błędu — po prostu żaden wiersz nie pasuje,
+  // PostgREST odpowiada 204, `error` jest `null`, więc interfejs pokazywał
+  // sukces i dyspozytor wychodził przekonany, że wiadomości zaczęły znikać.
+  const { error, count } = await client
+    .from("companies")
+    .update({ chat_ephemeral_ttl_seconds: ttlSeconds }, { count: "exact" })
+    .eq("id", target.companyId);
+  if (error) throw error;
+  if (!count) throw new Error("Znikanie na kanale ogólnym może ustawić tylko właściciel firmy.");
+}
+
+/** [#376] Bieżące ustawienie znikania dla kanału ogólnego firmy. */
+export async function getCompanyChatTtl(
+  client: SupabaseClient,
+  companyId: string,
+): Promise<number | null> {
+  const { data, error } = await client
+    .from("companies")
+    .select("chat_ephemeral_ttl_seconds")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.chat_ephemeral_ttl_seconds ?? null;
 }
 
 /**
@@ -82,6 +276,8 @@ export async function upsertMessage(
     senderLabel: string;
     threadId?: string | null;
     photoPath?: string | null;
+    /** [#374] Cytat. Stare wpisy w kolejce go nie mają — stąd opcjonalność. */
+    replyToId?: string | null;
   },
 ): Promise<ChatMessage | null> {
   const { data, error } = await client
@@ -94,6 +290,7 @@ export async function upsertMessage(
         body: msg.body,
         sender_label: msg.senderLabel,
         photo_path: msg.photoPath ?? null,
+        reply_to_id: msg.replyToId ?? null,
       },
       { onConflict: "id", ignoreDuplicates: true },
     )
@@ -111,6 +308,12 @@ export function subscribeMessages(
   client: SupabaseClient,
   companyId: string,
   onMessage: (m: ChatMessage) => void,
+  /**
+   * [#374] Wywoływane, gdy wiadomość została zmieniona (edycja, reakcja,
+   * miękkie usunięcie). Osobne od `onMessage`, bo widok reaguje inaczej:
+   * INSERT dopisuje na koniec i przewija, UPDATE podmienia w miejscu.
+   */
+  onChange?: (m: ChatMessage) => void,
 ): () => void {
   const channel = client
     .channel(`chat-${companyId}-${Math.random().toString(36).slice(2, 8)}`)
@@ -124,6 +327,50 @@ export function subscribeMessages(
       },
       (payload) => onMessage(payload.new as ChatMessage),
     )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "messages",
+        filter: `company_id=eq.${companyId}`,
+      },
+      // Miękkie usunięcie przychodzi tą samą drogą co edycja — widok sam
+      // decyduje, czy podmienić treść, czy usunąć dymek (`deleted_at`).
+      (payload) => onChange?.(payload.new as ChatMessage),
+    )
+    .subscribe();
+  return () => {
+    channel.unsubscribe();
+  };
+}
+
+/**
+ * [#376] Subskrypcja reakcji firmy.
+ *
+ * `message_reactions` trafiła do publikacji realtime w migracji 0094, ale ŻADEN
+ * klient jej nie subskrybował — reakcja innej osoby pojawiała się dopiero po
+ * przeładowaniu rozmowy. Filtr po firmie nie jest możliwy (tabela nie ma
+ * `company_id`), więc odsiewa wywołujący: i tak trzyma w pamięci tylko
+ * wiadomości otwartego kanału.
+ */
+export function subscribeReactions(
+  client: SupabaseClient,
+  onChange: (r: MessageReaction, event: "INSERT" | "DELETE") => void,
+): () => void {
+  const channel = client
+    .channel(`reactions-${Math.random().toString(36).slice(2, 8)}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "message_reactions" },
+      (p) => onChange(p.new as MessageReaction, "INSERT"),
+    )
+    .on(
+      "postgres_changes",
+      { event: "DELETE", schema: "public", table: "message_reactions" },
+      // DELETE niesie stary wiersz dzięki `replica identity full` (0094).
+      (p) => onChange(p.old as MessageReaction, "DELETE"),
+    )
     .subscribe();
   return () => {
     channel.unsubscribe();
@@ -132,16 +379,25 @@ export function subscribeMessages(
 
 // ── Kanały (#291) ────────────────────────────────────────────────────────
 
+/**
+ * Kanały zakłada zarząd i nazywa je z ręki (#291) — to zbiór porządkujący,
+ * nie transakcyjny. Rośnie w tempie reorganizacji firmy, więc kilkaset to
+ * granica czytelności listy kanałów, a nie granica techniczna.
+ */
+const CHAT_THREADS_DEFAULT_LIMIT = 500;
+
 /** Wątki widoczne dla zalogowanego (RLS: zarząd wszystkie, kierowca swoje). */
 export async function listThreads(
   client: SupabaseClient,
   companyId: string,
+  opts?: { limit?: number },
 ): Promise<ChatThread[]> {
   const { data, error } = await client
     .from("chat_threads")
-    .select("id, company_id, name, created_by, created_at")
+    .select("id, company_id, name, created_by, created_at, ephemeral_ttl_seconds")
     .eq("company_id", companyId)
-    .order("created_at");
+    .order("created_at")
+    .limit(opts?.limit ?? CHAT_THREADS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []) as ChatThread[];
 }
@@ -156,7 +412,7 @@ export async function createThread(
   const { data, error } = await client
     .from("chat_threads")
     .insert({ company_id: companyId, name })
-    .select("id, company_id, name, created_by, created_at")
+    .select("id, company_id, name, created_by, created_at, ephemeral_ttl_seconds")
     .single();
   if (error) throw error;
   const thread = data as ChatThread;
@@ -184,15 +440,24 @@ export async function deleteThread(client: SupabaseClient, threadId: string): Pr
   if (error) throw error;
 }
 
+/**
+ * Członkowie JEDNEGO kanału — górną granicą jest załoga firmy. Obcięcie byłoby
+ * tu wyjątkowo złośliwe, bo wynik zasila okno edycji składu: brakujący
+ * użytkownik pokazałby się jako niezaznaczony, a zapis WYPISAŁBY go z kanału.
+ */
+const CHAT_MEMBERS_DEFAULT_LIMIT = 2000;
+
 /** Identyfikatory członków kanału. */
 export async function listThreadMembers(
   client: SupabaseClient,
   threadId: string,
+  opts?: { limit?: number },
 ): Promise<string[]> {
   const { data, error } = await client
     .from("chat_members")
     .select("user_id")
-    .eq("thread_id", threadId);
+    .eq("thread_id", threadId)
+    .limit(opts?.limit ?? CHAT_MEMBERS_DEFAULT_LIMIT);
   if (error) throw error;
   return (data ?? []).map((r) => r.user_id as string);
 }
@@ -254,6 +519,36 @@ export async function uploadChatPhotoBinary(
   });
   if (error) throw error;
   return path;
+}
+
+/**
+ * [#376] Kopiuje załącznik do folderu wątku DOCELOWEGO — używane przy
+ * przekazywaniu wiadomości.
+ *
+ * Dlaczego kopia, a nie ta sama ścieżka: polityka `cargo_photos_obj_select`
+ * (migracja 0088) bramkuje dostęp po TRZECIM segmencie ścieżki, czyli po wątku
+ * ZAPISANYM W NAZWIE PLIKU. Przekazanie z zachowaniem ścieżki dawało dwa złe
+ * skutki naraz:
+ *   • odbiorca w wątku docelowym nie mógł podpisać URL-a i widział wieczne
+ *     „ładowanie…", bo prefiks nadal wskazywał wątek źródłowy,
+ *   • przekazanie z kanału ogólnego do rozmowy prywatnej zostawiało prefiks
+ *     `general`, więc plik pozostawał czytelny dla CAŁEJ firmy.
+ *
+ * `copy` wykonuje się po stronie Storage z tokenem użytkownika, więc skopiować
+ * da się tylko to, co wywołujący i tak może odczytać.
+ */
+export async function copyChatPhotoToThread(
+  client: SupabaseClient,
+  sourcePath: string,
+  companyId: string,
+  targetThreadId: string | null,
+): Promise<string> {
+  const ext = sourcePath.split(".").pop() || "jpg";
+  const target = `${companyId}/chat/${targetThreadId ?? GENERAL_CHANNEL}/${newId()}.${ext}`;
+  if (sourcePath === target) return sourcePath;
+  const { error } = await client.storage.from(BUCKET).copy(sourcePath, target);
+  if (error) throw error;
+  return target;
 }
 
 /**
