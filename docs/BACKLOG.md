@@ -144,6 +144,27 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
       daje pełną kontrolę nad projektem Supabase, więc to najpoważniejsze z otwartych ryzyk.
 
 ## 🟢 P4 — Infra / docelowy stack
+
+> **🔴 BLOKER (#414, 2026-08-19) — CI nie ma gdzie się wykonać na ŻADNEJ z dwóch platform.**
+> Konfiguracja jest po obu stronach poprawna i zweryfikowana; blokada jest rozliczeniowa,
+> więc **nie da się jej usunąć zmianą w repo** — wymaga dostępu do kont.
+>
+> - **GitLab** — namespace na planie **free**, minuty współdzielonych runnerów wyczerpane.
+>   Wszystkie joby padają na `ci_quota_exceeded`, zanim runner cokolwiek pobierze. Job
+>   `quality` ma w historii projektu **12 uruchomień i 12 porażek — ani jednego sukcesu**.
+> - **GitHub** — Actions włączone (`enabled: true`), workflow [`ci.yml`](../.github/workflows/ci.yml)
+>   obecny w gałęzi, ale **nie powstaje ani jeden przebieg**. Przebiegi Dependabota wiszą
+>   w stanie `queued` od 15.08 (86–136 h), self-hosted runnerów zero. Runnery GitHuba nie są
+>   przydzielane temu kontu.
+>
+> **Do sprawdzenia przez właściciela** (kolejność od najtańszej):
+> 1. GitHub → Settings → Billing → **spending limit / metoda płatności** (zablokowane Actions
+>    dla konta objawiają się dokładnie tak: przebiegi w `queued` bez startu).
+> 2. GitLab → Settings → Usage Quotas — doładowanie minut albo **własny runner**
+>    (wtedy limit przestaje mieć znaczenie).
+> 3. Do czasu odblokowania jedyną realną bramką jest lokalne `pnpm check` + `next build`
+>    — uruchamialne od `[#414]` (wcześniej wywracały je sidecary `._*`).
+
 - [ ] **`docs:check`** w CI (dodane w #195) — utrzymać zielone przy zmianach.
 - [ ] **`supabase/config.toml`** — dla powtarzalnego dev/CI (wymaga Dockera; opcjonalne).
 - [x] ~~Rozważyć **Sentry** (obserwowalność)~~ — dostarczone (#306): web (`instrumentation.ts`, `instrumentation-client.ts`, `global-error.tsx`, crony, degradacja rate-limitu) + mobile (`_layout.tsx`, `ErrorBoundary`). Bez DSN no-op, więc dev i buildy bez sekretów nie płacą za obserwowalność.
