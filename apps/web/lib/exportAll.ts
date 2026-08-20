@@ -6,11 +6,12 @@
 import {
   listContractors,
   listDrivers,
-  listFuelLogs,
-  listOrders,
-  listTripEvents,
-  listVehicleCosts,
+  listFuelLogsAll,
+  listOrdersAll,
+  listTripEventsAll,
+  listVehicleCostsAll,
   listVehicles,
+  type PagedRows,
   type TypedSupabaseClient,
 } from "@e-logistic/api";
 import { round2 } from "@e-logistic/core";
@@ -44,20 +45,68 @@ export async function exportCompanyWorkbook(
   sb: TypedSupabaseClient,
   companyId: string,
 ): Promise<void> {
-  const [contractors, vehicles, drivers, orders, costs, fuelRaw, adblueRaw, tripsRaw] =
-    await Promise.all([
-      listContractors(sb, companyId),
-      listVehicles(sb, companyId),
-      listDrivers(sb, companyId),
-      listOrders(sb, companyId),
-      listVehicleCosts(sb, companyId),
-      listFuelLogs(sb, { table: "fuel_logs" }),
-      listFuelLogs(sb, { table: "adblue_logs" }),
-      listTripEvents(sb, {}),
-    ]);
-  const fuel: FuelRow[] = fuelRaw;
-  const adblue: FuelRow[] = adblueRaw;
-  const trips: TripRow[] = tripsRaw;
+  const [
+    contractors,
+    vehicles,
+    drivers,
+    ordersPaged,
+    costsPaged,
+    fuelPaged,
+    adbluePaged,
+    tripsPaged,
+  ] = await Promise.all([
+    listContractors(sb, companyId),
+    listVehicles(sb, companyId),
+    listDrivers(sb, companyId),
+    // STRONAMI — każdy zbiór, z którego cokolwiek się sumuje. Jedno zapytanie oddaje
+    // najwyżej `api.max_rows` PostgREST (domyślnie 1000) wierszy, bez błędu i bez
+    // śladu, więc u firmy z większą historią arkusz wychodził krótszy, a suma niższa.
+    // Wystarczy, że obcięta jest JEDNA z tych tabel: arkusz „Statystyki" liczy litry,
+    // koszt paliwa i zdarzenia trasy z tych samych wierszy, co arkusze szczegółowe.
+    listOrdersAll(sb, companyId),
+    listVehicleCostsAll(sb, companyId),
+    listFuelLogsAll(sb, { table: "fuel_logs" }),
+    listFuelLogsAll(sb, { table: "adblue_logs" }),
+    listTripEventsAll(sb),
+  ]);
+  /**
+   * Niekompletny zbiór = BRAK pliku, nie plik z adnotacją.
+   *
+   * Na ekranie ostrzeżenie wystarcza, bo stoi obok liczb i użytkownik widzi jedno
+   * i drugie naraz. Skoroszyt wychodzi z aplikacji i trafia do księgowej oderwany
+   * od kontekstu — po zapisaniu na dysku nie da się już odróżnić eksportu pełnego
+   * od obciętego, a suma przychodu wygląda tak samo wiarygodnie w obu przypadkach.
+   * Dlatego tu rzucamy: `handleExportAll` w ustawieniach łapie wyjątek i pokazuje
+   * treść w toaście, więc użytkownik dostaje powód, a nie zły dokument.
+   *
+   * Sprawdzamy WSZYSTKIE pobrania, nie same zlecenia. Bramka postawiona tylko na
+   * zleceniach była gorsza niż jej brak: milczenie przy pozostałych arkuszach czytało
+   * się jak potwierdzenie, że są kompletne — a firma z 800 zleceniami i 12 000 tankowań
+   * dostawała plik „zweryfikowany" z kosztem paliwa zaniżonym o dziewięć dziesiątych.
+   */
+  const pobrania: { arkusz: string; paged: PagedRows<unknown> }[] = [
+    { arkusz: "Zlecenia", paged: ordersPaged },
+    { arkusz: "Koszty pojazdu", paged: costsPaged },
+    { arkusz: "Paliwo", paged: fuelPaged },
+    { arkusz: "AdBlue", paged: adbluePaged },
+    { arkusz: "Trasa", paged: tripsPaged },
+  ];
+  const niepelne = pobrania.filter((p) => !p.paged.complete);
+  if (niepelne.length > 0) {
+    const opis = niepelne
+      .map((p) => `${p.arkusz} (${p.paged.pages} stron, ${p.paged.rows.length} wierszy)`)
+      .join(", ");
+    throw new Error(
+      `Nie wyeksportowano: te zbiory przekroczyły sufit pobrania — ${opis}. Plik byłby ` +
+        "niekompletny, a sumy w arkuszu „Statystyki” zaniżone bez żadnego znaku. " +
+        "Zgłoś to — sufit trzeba podnieść świadomie.",
+    );
+  }
+  const orders = ordersPaged.rows;
+  const costs = costsPaged.rows;
+  const fuel: FuelRow[] = fuelPaged.rows;
+  const adblue: FuelRow[] = adbluePaged.rows;
+  const trips: TripRow[] = tripsPaged.rows;
 
   const regOf = (id: string | null) =>
     id ? (vehicles.find((v) => v.id === id)?.registration ?? "—") : "—";

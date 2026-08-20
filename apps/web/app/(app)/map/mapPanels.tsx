@@ -1,16 +1,38 @@
 import type { SavedPlace } from "@e-logistic/api";
 import {
   estimateRouteFuel,
+  FUEL_CARD_PROVIDER_LABELS,
+  type FuelCardProvider,
   formatDuration,
+  REPORT_TYPES,
+  type ReportType,
   SAVED_PLACE_CATEGORIES,
   type SavedPlaceCategory,
 } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
-import type { FuelStationPrice, GeoHit, RouteNotice, VehicleProfile } from "@e-logistic/maps";
+import {
+  ADR_TUNNEL_CODES,
+  EMISSION_CLASSES,
+  type FuelStationPrice,
+  type GeoHit,
+  type RouteNotice,
+  type VehicleProfile,
+} from "@e-logistic/maps";
 import { cssPalette } from "@e-logistic/ui";
 import { useT } from "@/components/LocaleProvider";
-import { DISRUPTION_RADIUS_KM, REPORT_COLOR, REPORT_LABEL, SAVED_CAT_ICON } from "./mapTheme";
-import type { Report, RouteResponse, Stop } from "./mapTypes";
+import {
+  BASEMAPS,
+  DISRUPTION_RADIUS_KM,
+  INCIDENT_COLOR,
+  INCIDENT_LABEL,
+  MAPTILER_KEY,
+  REPORT_COLOR,
+  REPORT_LABEL,
+  SAVED_CAT_ICON,
+  TOMTOM_KEY,
+  TRAFFIC_COLOR,
+} from "./mapTheme";
+import type { BasemapKey, DimsFields, Report, RouteResponse, RouteVehicle, Stop } from "./mapTypes";
 import { Row, styles } from "./mapUi";
 
 /**
@@ -440,5 +462,702 @@ export function FuelPricesPanel({
         </button>
       ))}
     </div>
+  );
+}
+
+/**
+ * [#385] Formularz profilu ZESTAWU: wybór pojazdu z kartoteki + gabaryty do nadpisania.
+ *
+ * Prezentacyjny — stan (pola, rozwinięcie panelu, wybrany pojazd) trzyma strona, bo to
+ * ona wysyła profil do `/api/route`. Tutaj mieszka wyłącznie układ i te decyzje
+ * o czytelności, które są sednem tego ekranu: brak gabarytu pokazujemy jako „?", a nie
+ * jako wartość typową — trasa policzona bez wysokości nie może wyglądać tak samo jak
+ * trasa z wysokością.
+ */
+export function TruckProfileForm({
+  fleet,
+  vehicleId,
+  onPickVehicle,
+  selectedVehicle,
+  profileOverridden,
+  dimsOpen,
+  onToggleDims,
+  fields,
+  onFieldChange,
+  profile,
+  missing,
+}: {
+  fleet: RouteVehicle[];
+  vehicleId: string;
+  onPickVehicle: (id: string) => void;
+  /** `null` = wymiary wpisane ręcznie, bez kartoteki. */
+  selectedVehicle: RouteVehicle | null;
+  profileOverridden: boolean;
+  dimsOpen: boolean;
+  onToggleDims: () => void;
+  fields: DimsFields;
+  onFieldChange: (key: keyof DimsFields, value: string) => void;
+  /** Profil zbudowany z `fields` — to on poleci do dostawcy. */
+  profile: VehicleProfile;
+  missing: MissingDimension[];
+}) {
+  const t = useT();
+  return (
+    <>
+      {/*
+        [#385] Wybór pojazdu z kartoteki. Bez niego jedynym źródłem gabarytów były
+        stałe w kodzie, a panel poniżej — domyślnie zwinięty; typowy użytkownik
+        wysyłał więc zestaw domyślny, nie swój.
+      */}
+      <label className={styles.field}>
+        <span className={styles.label}>🚛 {t("mapPage.vehicleFromFleet")}</span>
+        <select
+          className={styles.input}
+          value={vehicleId}
+          onChange={(e) => onPickVehicle(e.target.value)}
+        >
+          <option value="">{t("mapPage.vehicleManual")}</option>
+          {fleet.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.registration}
+            </option>
+          ))}
+        </select>
+      </label>
+      {fleet.length === 0 ? (
+        <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+          {t("mapPage.vehicleFleetEmpty")}
+        </div>
+      ) : !selectedVehicle ? (
+        <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+          ⚠️ {t("mapPage.vehicleManualHint")}
+        </div>
+      ) : profileOverridden ? (
+        <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+          ✎ {t("mapPage.vehicleOverridden")}
+        </div>
+      ) : null}
+      <button
+        type="button"
+        className={styles.ghost}
+        style={{ textAlign: "left", padding: "8px 10px" }}
+        onClick={() => onToggleDims()}
+      >
+        {/*
+          [#385] Podsumowanie na zwiniętym panelu pokazuje to, co POLECI do dostawcy
+          — z „?" w miejscu braków. Dotąd było tu „{weightT} t · {axles} osie", więc
+          puste pola dawały napis „( t ·  osie)", a brak wymiarów nie był widoczny wcale.
+        */}
+        {dimsOpen ? "▾" : "▸"} {t("mapPage.dimsAndTonnage")} ({formatProfileDims(profile)} ·{" "}
+        {profile.axleCount ?? "?"} {t("mapPage.axlesSuffix")})
+      </button>
+      {dimsOpen && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          <label className={styles.field}>
+            <span className={styles.label}>{t("mapPage.grossWeightT")}</span>
+            <input
+              className={styles.input}
+              type="number"
+              value={fields.weightT}
+              onChange={(e) => onFieldChange("weightT", e.target.value)}
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{t("mapPage.axles")}</span>
+            <input
+              className={styles.input}
+              type="number"
+              value={fields.axles}
+              onChange={(e) => onFieldChange("axles", e.target.value)}
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{t("mapPage.heightCm")}</span>
+            <input
+              className={styles.input}
+              type="number"
+              value={fields.heightCm}
+              onChange={(e) => onFieldChange("heightCm", e.target.value)}
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{t("mapPage.widthCm")}</span>
+            <input
+              className={styles.input}
+              type="number"
+              value={fields.widthCm}
+              onChange={(e) => onFieldChange("widthCm", e.target.value)}
+            />
+          </label>
+          <label className={styles.field} style={{ gridColumn: "1 / -1" }}>
+            <span className={styles.label}>{t("mapPage.lengthCm")}</span>
+            <input
+              className={styles.input}
+              type="number"
+              value={fields.lengthCm}
+              onChange={(e) => onFieldChange("lengthCm", e.target.value)}
+            />
+          </label>
+          {/*
+            [#385] ADR i klasa emisji też są nadpisywalne — spedytor bywa proszony
+            o trasę dla zestawu, którego nie ma jeszcze w kartotece. PUSTE ADR znaczy
+            „ładunek zwykły", nie „nie wiemy", dlatego opcja pusta ma własny podpis
+            (ten sam co w kartotece pojazdów) i nie ostrzegamy o niej.
+          */}
+          <label className={styles.field}>
+            <span className={styles.label}>{t("vehicles.fieldAdrTunnel")}</span>
+            <select
+              className={styles.input}
+              value={fields.adrTunnelCode}
+              onChange={(e) => onFieldChange("adrTunnelCode", e.target.value)}
+            >
+              <option value="">{t("vehicles.adrTunnelNone")}</option>
+              {ADR_TUNNEL_CODES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>{t("vehicles.fieldEmissionClass")}</span>
+            <select
+              className={styles.input}
+              value={fields.emissionClass}
+              onChange={(e) => onFieldChange("emissionClass", e.target.value)}
+            >
+              <option value="">{t("vehicles.selectPlaceholder")}</option>
+              {EMISSION_CLASSES.map((c) => (
+                <option key={c} value={c}>
+                  Euro {c.slice(4)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      {/*
+        [#385] Braki gabarytów WPROST, jeszcze przed liczeniem trasy — tam, gdzie da
+        się je naprawić. Trasa policzona bez wysokości wygląda identycznie jak trasa
+        z wysokością, a różnica jest taka, że jedna z nich prowadzi pod wiadukt.
+      */}
+      {missing.length > 0 && (
+        <div
+          style={{
+            fontSize: 12,
+            lineHeight: 1.4,
+            color: cssPalette.offWhite,
+            background: cssPalette.black,
+            border: `1px solid ${cssPalette.red}`,
+            borderRadius: 8,
+            padding: "8px 10px",
+          }}
+        >
+          ⚠️ {selectedVehicle ? `${selectedVehicle.registration} · ` : ""}
+          {t("mapPage.vehicleMissing")} {missing.map((d) => t(MISSING_DIM_LABEL[d])).join(", ")} —{" "}
+          {t("mapPage.vehicleMissingTail")}
+          <div style={{ marginTop: 2, color: cssPalette.smoke }}>
+            {t("mapPage.vehicleMissingHint")}
+          </div>
+        </div>
+      )}
+      {selectedVehicle && missing.length === 0 && (
+        <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+          ✔ {selectedVehicle.registration} · {formatProfileDims(profile)}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Wybór podkładu mapy + przełączniki 3D. Teren i glob pokazujemy WYŁĄCZNIE przy kluczu
+ * MapTiler — bez niego podkład jest rastrowy i oba przełączniki nie miałyby czego zmienić.
+ */
+export function BasemapPicker({
+  current,
+  onSwitch,
+  terrain,
+  onTerrain,
+  globe,
+  onGlobe,
+}: {
+  current: BasemapKey;
+  onSwitch: (key: BasemapKey) => void;
+  terrain: boolean;
+  onTerrain: (on: boolean) => void;
+  globe: boolean;
+  onGlobe: (on: boolean) => void;
+}) {
+  const t = useT();
+  return (
+    <>
+      <span className={styles.label}>{t("mapPage.basemap")}</span>
+      <div style={{ display: "flex", gap: 6 }}>
+        {BASEMAPS.map((b) => (
+          <button
+            key={b.key}
+            type="button"
+            onClick={() => onSwitch(b.key)}
+            className={`${styles.segment} ${current === b.key ? styles.segmentActive : ""}`}
+          >
+            {t(b.label)}
+          </button>
+        ))}
+      </div>
+      {MAPTILER_KEY && (
+        <>
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={terrain}
+              onChange={(e) => onTerrain(e.target.checked)}
+            />{" "}
+            {t("mapPage.terrain3d")}
+          </label>
+          <label className={styles.check}>
+            <input type="checkbox" checked={globe} onChange={(e) => onGlobe(e.target.checked)} />{" "}
+            {t("mapPage.globe3d")}
+          </label>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Opcje trasy: auto-objazd (#309) i wykluczenia (opłaty, promy, Szwajcaria). */
+export function RouteOptions({
+  autoReroute,
+  onAutoReroute,
+  avoidTolls,
+  onAvoidTolls,
+  avoidFerries,
+  onAvoidFerries,
+  avoidCH,
+  onAvoidCH,
+}: {
+  autoReroute: boolean;
+  onAutoReroute: (on: boolean) => void;
+  avoidTolls: boolean;
+  onAvoidTolls: (on: boolean) => void;
+  avoidFerries: boolean;
+  onAvoidFerries: (on: boolean) => void;
+  avoidCH: boolean;
+  onAvoidCH: (on: boolean) => void;
+}) {
+  const t = useT();
+  return (
+    <>
+      <label className={styles.check}>
+        <input
+          type="checkbox"
+          checked={autoReroute}
+          onChange={(e) => onAutoReroute(e.target.checked)}
+        />{" "}
+        🔁 {t("mapPage.autoDetour")}
+      </label>
+      <label className={styles.check}>
+        <input
+          type="checkbox"
+          checked={avoidTolls}
+          onChange={(e) => onAvoidTolls(e.target.checked)}
+        />{" "}
+        {t("mapPage.avoidTolls")}
+      </label>
+      <label className={styles.check}>
+        <input
+          type="checkbox"
+          checked={avoidFerries}
+          onChange={(e) => onAvoidFerries(e.target.checked)}
+        />{" "}
+        {t("mapPage.avoidFerries")}
+      </label>
+      <label className={styles.check}>
+        <input type="checkbox" checked={avoidCH} onChange={(e) => onAvoidCH(e.target.checked)} />{" "}
+        {t("mapPage.avoidSwitzerland")}
+      </label>
+    </>
+  );
+}
+
+/** Wsad do szacunku kosztu paliwa: spalanie, cena za litr i rabat karty. */
+export function FuelCostInputs({
+  consumption,
+  onConsumption,
+  fuelPrice,
+  onFuelPrice,
+  fuelDiscount,
+  onDiscount,
+}: {
+  consumption: string;
+  onConsumption: (v: string) => void;
+  fuelPrice: string;
+  onFuelPrice: (v: string) => void;
+  fuelDiscount: string;
+  onDiscount: (v: string) => void;
+}) {
+  const t = useT();
+  return (
+    <>
+      <span className={styles.label}>{t("mapPage.fuelCostEstimate")}</span>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input
+          className={styles.input}
+          type="number"
+          value={consumption}
+          onChange={(e) => onConsumption(e.target.value)}
+          placeholder="l/100km"
+          title={t("mapPage.consumptionTitle")}
+        />
+        <input
+          className={styles.input}
+          type="number"
+          step="0.01"
+          value={fuelPrice}
+          onChange={(e) => onFuelPrice(e.target.value)}
+          placeholder="€/l"
+          title={t("mapPage.pricePerLiterTitle")}
+        />
+        <input
+          className={styles.input}
+          type="number"
+          value={fuelDiscount}
+          onChange={(e) => onDiscount(e.target.value)}
+          placeholder={t("mapPage.discountPlaceholder")}
+          title={t("mapPage.cardDiscountTitle")}
+        />
+      </div>
+    </>
+  );
+}
+
+/** Przyciski wczytania POI (widok / korytarz trasy / TomTom) + legenda z licznikami. */
+export function PoiTools({
+  busy,
+  onInView,
+  onAlongRoute,
+  onTomtom,
+  count,
+  kinds,
+}: {
+  busy: boolean;
+  onInView: () => void;
+  onAlongRoute: () => void;
+  onTomtom: (query: "fuel" | "parking", type: "fuel_station" | "parking") => void;
+  /** `null` = jeszcze nic nie wczytano; 0 to co innego niż „nie pytaliśmy". */
+  count: number | null;
+  kinds: { fuel: number; parking: number };
+}) {
+  const t = useT();
+  return (
+    <>
+      <div style={{ display: "flex", gap: 6 }}>
+        <button
+          type="button"
+          className={styles.ghost}
+          style={{ flex: 1 }}
+          onClick={onInView}
+          disabled={busy}
+        >
+          {busy ? t("mapPage.searching") : `📍 ${t("mapPage.poiInView")}`}
+        </button>
+        <button
+          type="button"
+          className={styles.ghost}
+          style={{ flex: 1 }}
+          onClick={onAlongRoute}
+          disabled={busy}
+        >
+          🛣️ {t("mapPage.poiAlongRoute")}
+        </button>
+      </div>
+      {TOMTOM_KEY && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            type="button"
+            className={styles.ghost}
+            style={{ flex: 1 }}
+            onClick={() => onTomtom("fuel", "fuel_station")}
+            disabled={busy}
+          >
+            ⛽ {t("mapPage.fuelAlongRoute")}
+          </button>
+          <button
+            type="button"
+            className={styles.ghost}
+            style={{ flex: 1 }}
+            onClick={() => onTomtom("parking", "parking")}
+            disabled={busy}
+          >
+            🅿️ {t("mapPage.parkingAlongRoute")}
+          </button>
+        </div>
+      )}
+      {/*
+        [#383] Legenda wymieniała „firmy" (niebieska kropka), a `OsmPoiType` zna
+        wyłącznie `parking | fuel_station` — takiego punktu nie dało się wczytać
+        ŻADNYM przyciskiem powyżej, więc pozycja kłamała przy każdym imporcie.
+        Zostają dwa typy, które mapa rzeczywiście rysuje, z liczbami.
+      */}
+      {count != null && (
+        <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+          {t("mapPage.found")} <strong>{count}</strong> ·{" "}
+          <span style={{ color: cssPalette.red }}>
+            ● {t("mapPage.legendStations")} ({kinds.fuel})
+          </span>{" "}
+          <span style={{ color: "#22c55e" }}>
+            ● {t("mapPage.legendParkings")} ({kinds.parking})
+          </span>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Filtr stacji wg marek kart flotowych użytkownika (poglądowy). */
+export function CardFilter({
+  on,
+  onToggle,
+  options,
+  providers,
+  onToggleProvider,
+}: {
+  on: boolean;
+  onToggle: (on: boolean) => void;
+  options: FuelCardProvider[];
+  providers: Set<FuelCardProvider>;
+  onToggleProvider: (provider: FuelCardProvider) => void;
+}) {
+  const t = useT();
+  return (
+    <>
+      <label className={styles.check}>
+        <input type="checkbox" checked={on} onChange={(e) => onToggle(e.target.checked)} />{" "}
+        {t("mapPage.onlyMyCardStations")}
+      </label>
+      {on &&
+        (options.length === 0 ? (
+          <div style={{ fontSize: 12, color: cssPalette.smoke }}>{t("mapPage.noCardsInFleet")}</div>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {options.map((p) => {
+              const active = providers.has(p);
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  className={`${styles.segment} ${active ? styles.segmentActive : ""}`}
+                  style={{ flex: "0 0 auto" }}
+                  onClick={() => onToggleProvider(p)}
+                >
+                  {FUEL_CARD_PROVIDER_LABELS[p]}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+    </>
+  );
+}
+
+/** Tryb zgłoszeń: klik w mapę zakłada wpis wybranego typu we wspólnej tabeli. */
+export function ReportModePanel({
+  on,
+  onToggle,
+  type,
+  onType,
+  msg,
+}: {
+  on: boolean;
+  onToggle: (on: boolean) => void;
+  type: ReportType;
+  onType: (type: ReportType) => void;
+  msg: string | null;
+}) {
+  const t = useT();
+  return (
+    <>
+      <label className={styles.check}>
+        <input type="checkbox" checked={on} onChange={(e) => onToggle(e.target.checked)} />{" "}
+        {t("mapPage.reportMode")}
+      </label>
+      {on && (
+        <select
+          className={styles.input}
+          value={type}
+          onChange={(e) => onType(e.target.value as ReportType)}
+        >
+          {REPORT_TYPES.map((rt) => (
+            <option key={rt} value={rt}>
+              {t(REPORT_LABEL[rt])}
+            </option>
+          ))}
+        </select>
+      )}
+      {msg && <div style={{ fontSize: 12, color: cssPalette.red }}>{msg}</div>}
+    </>
+  );
+}
+
+/** Warstwa natężenia ruchu (HERE) z legendą kolorów. */
+export function TrafficToggle({
+  on,
+  onToggle,
+  msg,
+}: {
+  on: boolean;
+  onToggle: (on: boolean) => void;
+  msg: string | null;
+}) {
+  const t = useT();
+  return (
+    <>
+      <label className={styles.check}>
+        <input type="checkbox" checked={on} onChange={(e) => onToggle(e.target.checked)} /> 🚦{" "}
+        {t("mapPage.liveTrafficHere")}
+      </label>
+      {on && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
+          <span style={{ color: TRAFFIC_COLOR.free }}>● {t("mapPage.trafficFree")}</span>
+          <span style={{ color: TRAFFIC_COLOR.moderate }}>● {t("mapPage.trafficModerate")}</span>
+          <span style={{ color: TRAFFIC_COLOR.heavy }}>● {t("mapPage.trafficHeavy")}</span>
+          <span style={{ color: TRAFFIC_COLOR.blocked }}>● {t("mapPage.trafficBlocked")}</span>
+        </div>
+      )}
+      {msg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{msg}</div>}
+    </>
+  );
+}
+
+/** #358: warstwa incydentów TomTom — sam przełącznik istnieje tylko przy kluczu klienta. */
+export function IncidentsToggle({
+  on,
+  onToggle,
+  msg,
+}: {
+  on: boolean;
+  onToggle: (on: boolean) => void;
+  msg: string | null;
+}) {
+  const t = useT();
+  return (
+    <>
+      {TOMTOM_KEY && (
+        <>
+          <label className={styles.check}>
+            <input type="checkbox" checked={on} onChange={(e) => onToggle(e.target.checked)} /> 🚧{" "}
+            {t("mapPage.incidentsTomtom")}
+          </label>
+          {on && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
+              <span style={{ color: INCIDENT_COLOR.closure }}>● {t(INCIDENT_LABEL.closure)}</span>
+              <span style={{ color: INCIDENT_COLOR.major }}>● {t(INCIDENT_LABEL.major)}</span>
+              <span style={{ color: INCIDENT_COLOR.moderate }}>● {t(INCIDENT_LABEL.moderate)}</span>
+              <span style={{ color: INCIDENT_COLOR.minor }}>● {t(INCIDENT_LABEL.minor)}</span>
+              <span style={{ color: INCIDENT_COLOR.unknown }}>● {t(INCIDENT_LABEL.unknown)}</span>
+            </div>
+          )}
+          {msg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{msg}</div>}
+        </>
+      )}
+    </>
+  );
+}
+
+/** [#383] Warstwa odcinków płatnych + uczciwy komunikat, gdy dostawca ich NIE raportuje. */
+export function TollLayerToggle({
+  on,
+  onToggle,
+  result,
+}: {
+  on: boolean;
+  onToggle: (on: boolean) => void;
+  /** `null` = brak policzonej trasy, więc nie ma czego kolorować. */
+  result: RouteResponse | null;
+}) {
+  const t = useT();
+  return (
+    <>
+      {/*
+        [#383] Warstwa odcinków płatnych. `sectionType=tollRoad` leciał do TomTom
+        w każdym zapytaniu o trasę, a odpowiedź szła do kosza. Kluczowe: gdy dostawca
+        NIE raportuje położenia opłat (`tollSections.known === false`), mówimy to
+        wprost — pusta warstwa nie może udawać „trasy bez opłat", zwłaszcza że
+        `tollCost` powyżej potrafi być wtedy większy od zera.
+      */}
+      <label className={styles.check}>
+        <input type="checkbox" checked={on} onChange={(e) => onToggle(e.target.checked)} /> 🛣️{" "}
+        {t("mapPage.tollLayer")}
+      </label>
+      {on &&
+        (!result ? (
+          <div style={{ fontSize: 12, color: cssPalette.smoke }}>{t("mapPage.planRouteFirst")}</div>
+        ) : !result.tollSections.known ? (
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.4,
+              color: cssPalette.offWhite,
+              background: cssPalette.black,
+              border: `1px solid ${cssPalette.red}`,
+              borderRadius: 8,
+              padding: "8px 10px",
+            }}
+          >
+            ⚠️ {t("mapPage.tollSectionsUnknown")} ({result.provider})
+          </div>
+        ) : result.tollSections.sections.length === 0 ? (
+          <div style={{ fontSize: 12, color: cssPalette.smoke }}>{t("mapPage.tollNoSections")}</div>
+        ) : (
+          <div style={{ fontSize: 11, color: cssPalette.smoke }}>
+            <span style={{ color: cssPalette.red }}>▬</span> {t("mapPage.tollLegend")} (
+            {result.tollSections.sections.length})
+          </div>
+        ))}
+    </>
+  );
+}
+
+/** [#383] Filtr świeżości pozycji aut live + licznik ukrytych pinezek. */
+export function LiveTrucksPanel({
+  total,
+  freshOnly,
+  onToggle,
+  staleHidden,
+  staleAfterMin,
+}: {
+  total: number;
+  freshOnly: boolean;
+  onToggle: (on: boolean) => void;
+  staleHidden: number;
+  staleAfterMin: number;
+}) {
+  const t = useT();
+  return (
+    <>
+      {/*
+        [#383] Auta live: `heading` z bazy obraca strzałkę, a filtr świeżości chowa
+        pozycje starsze niż staleAfterMin. Blok pokazujemy tylko wtedy, gdy
+        jakiekolwiek pozycje w ogóle przyszły.
+      */}
+      {total > 0 && (
+        <>
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={freshOnly}
+              onChange={(e) => onToggle(e.target.checked)}
+            />{" "}
+            🚛 {t("mapPage.freshPositionsOnly")} (≤ {staleAfterMin} min)
+          </label>
+          {staleHidden > 0 && (
+            <div style={{ fontSize: 12, color: cssPalette.smoke }}>
+              {t("mapPage.stalePositionsHidden")} {staleAfterMin} min:{" "}
+              <strong>{staleHidden}</strong>
+            </div>
+          )}
+        </>
+      )}
+    </>
   );
 }

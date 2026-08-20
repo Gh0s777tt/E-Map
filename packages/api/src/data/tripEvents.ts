@@ -1,6 +1,7 @@
 /** Warstwa danych: formularz Trip (załadunek/rozładunek/serwis/start/koniec/inne). */
 import type { TripEventInput } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset, type PagedRows } from "./pagination";
 
 export interface TripEventContext {
   /** UUID rekordu wygenerowany na kliencie (offline-first). */
@@ -89,23 +90,65 @@ export async function deleteTripEvent(client: SupabaseClient, id: string): Promi
   if (!count) throw new Error("Brak uprawnień do usunięcia tego wpisu.");
 }
 
-/**
- * Lista zdarzeń Trip (RLS zawęża do kierowcy/firmy).
- * Filtry `from`/`to` (zakres `occurred_at`, ISO) i `limit` ograniczają transfer.
- */
-export async function listTripEvents(
-  client: SupabaseClient,
-  opts?: { vehicleId?: string; from?: string; to?: string; limit?: number },
-) {
+/** Filtry listy zdarzeń Trip. Zakres po `occurred_at` (ISO), `to` WŁĄCZNIE (koniec dnia). */
+export interface TripEventFilter {
+  vehicleId?: string;
+  from?: string;
+  to?: string;
+}
+
+/** Zawężenie zbioru — jedno miejsce na filtry, bez sortowania (patrz `orders.ts`). */
+function tripEventsFilter(client: SupabaseClient, opts?: TripEventFilter) {
   // [#373] Zakres po dacie ZDARZENIA — patrz komentarz w `listFuelLogs`.
-  let query = client.from("trip_events").select("*").order("occurred_at", { ascending: false });
+  let query = client.from("trip_events").select("*");
   if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
   if (opts?.from) query = query.gte("occurred_at", opts.from);
   if (opts?.to) query = query.lte("occurred_at", opts.to);
+  return query;
+}
+
+/**
+ * Lista zdarzeń Trip (RLS zawęża do kierowcy/firmy) — JEDNO zapytanie.
+ *
+ * `limit` ogranicza transfer, ale nie daje kompletu: powyżej `api.max_rows` odpowiedź
+ * jest przycinana bez błędu (patrz `listFuelLogs`). Gdzie liczba zdarzeń ma się zgadzać
+ * — `listTripEventsAll`.
+ */
+export async function listTripEvents(
+  client: SupabaseClient,
+  opts?: TripEventFilter & { limit?: number },
+) {
+  let query = tripEventsFilter(client, opts).order("occurred_at", { ascending: false });
   if (opts?.limit) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
+}
+
+/** Wiersz zdarzenia Trip tak, jak widzi go warstwa danych (bez powielania listy kolumn). */
+export type TripEventRow = Awaited<ReturnType<typeof listTripEvents>>[number];
+
+/** Zdarzenia Trip pobrane STRONAMI — komplet albo `complete: false` (eksport zbiorczy). */
+export async function listTripEventsAll(
+  client: SupabaseClient,
+  opts?: TripEventFilter & { pageSize?: number; maxPages?: number },
+): Promise<PagedRows<TripEventRow>> {
+  const paged = await fetchAllByKeyset<TripEventRow>(
+    async (afterId, pageSize) => {
+      let query = tripEventsFilter(client, opts);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+      if (error) throw error;
+      return data ?? [];
+    },
+    { pageSize: opts?.pageSize, maxPages: opts?.maxPages },
+  );
+  return {
+    ...paged,
+    rows: [...paged.rows].sort(
+      (a, b) => b.occurred_at.localeCompare(a.occurred_at) || b.id.localeCompare(a.id),
+    ),
+  };
 }
 
 /** #314: zdarzenia Trip zalogowanego kierowcy (RLS ogranicza do własnych wpisów). */

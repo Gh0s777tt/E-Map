@@ -31,6 +31,7 @@ export * from "./data/notifications";
 export * from "./data/orderPhotos";
 export * from "./data/orders";
 export * from "./data/orderTracking";
+export * from "./data/pagination";
 export * from "./data/parkingReviews";
 export * from "./data/perDiemTrips";
 export * from "./data/positions";

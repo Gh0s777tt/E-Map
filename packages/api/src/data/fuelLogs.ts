@@ -1,6 +1,7 @@
 /** Warstwa danych: formularze paliwowe (i AdBlue — ta sama struktura). */
 import type { FuelLogInput } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset, type PagedRows } from "./pagination";
 
 export interface FuelLogContext {
   /** UUID rekordu wygenerowany na kliencie (offline-first). */
@@ -116,33 +117,73 @@ export async function deleteFuelLog(
   if (!count) throw new Error("Brak uprawnień do usunięcia tego wpisu.");
 }
 
+/** Filtry list paliwa/AdBlue. Zakres po `occurred_at` (ISO), `to` WŁĄCZNIE (koniec dnia). */
+export interface FuelLogFilter {
+  vehicleId?: string;
+  table?: "fuel_logs" | "adblue_logs";
+  from?: string;
+  to?: string;
+}
+
+/** Zawężenie zbioru — jedno miejsce na filtry, bez sortowania (patrz `orders.ts`). */
+function fuelLogsFilter(client: SupabaseClient, opts?: FuelLogFilter) {
+  let query = client.from(opts?.table ?? "fuel_logs").select("*");
+  if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
+  // [#373] Zakres po `occurred_at`, nie `created_at`. Wpis zrobiony offline
+  // i zsynchronizowany trzy dni później miał datę zapisu, więc wypadał poza
+  // zapytany miesiąc i cicho znikał z zestawienia.
+  if (opts?.from) query = query.gte("occurred_at", opts.from);
+  if (opts?.to) query = query.lte("occurred_at", opts.to);
+  return query;
+}
+
 /**
- * Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy).
- * Filtry `from`/`to` (zakres `occurred_at`, ISO) i `limit` ograniczają transfer —
- * statystyki/rozliczenia/historia nie ładują całej tabeli do pamięci.
+ * Lista formularzy paliwowych (RLS zawęża do kierowcy/firmy) — JEDNO zapytanie.
+ *
+ * `limit` ogranicza transfer, ale NIE gwarantuje kompletu: powyżej sufitu `api.max_rows`
+ * PostgREST (domyślnie 1000) odpowiedź jest przycinana bez błędu, więc `limit: 5000`
+ * to liczba, która nigdy nie działa. Sortowanie jest malejące, więc ucięcie zabiera
+ * wiersze NAJSTARSZE z zapytanego okna. Gdzie suma musi się zgadzać — `listFuelLogsAll`.
  */
 export async function listFuelLogs(
   client: SupabaseClient,
-  opts?: {
-    vehicleId?: string;
-    table?: "fuel_logs" | "adblue_logs";
-    from?: string;
-    to?: string;
-    limit?: number;
-  },
+  opts?: FuelLogFilter & { limit?: number },
 ) {
-  let query = client
-    .from(opts?.table ?? "fuel_logs")
-    .select("*")
-    // [#373] Sortowanie i zakres po `occurred_at`, nie `created_at`. Wpis zrobiony
-    // offline i zsynchronizowany trzy dni później miał datę zapisu, więc wypadał
-    // poza zapytany miesiąc i cicho znikał z zestawienia.
-    .order("occurred_at", { ascending: false });
-  if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
-  if (opts?.from) query = query.gte("occurred_at", opts.from);
-  if (opts?.to) query = query.lte("occurred_at", opts.to);
+  let query = fuelLogsFilter(client, opts).order("occurred_at", { ascending: false });
   if (opts?.limit) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
+}
+
+/** Wiersz paliwa/AdBlue tak, jak widzi go warstwa danych (bez powielania listy kolumn). */
+export type FuelLogRow = Awaited<ReturnType<typeof listFuelLogs>>[number];
+
+/**
+ * Paliwo/AdBlue pobrane STRONAMI — komplet albo `complete: false`.
+ *
+ * Dla eksportu księgowego i rejestru kosztów to jedyny dopuszczalny wariant: arkusz
+ * „Paliwo" z 1000 najnowszych tankowań zamiast 12 000 wygląda dokładnie tak samo jak
+ * kompletny, a koszt paliwa w podsumowaniu jest wtedy zaniżony o rząd wielkości.
+ */
+export async function listFuelLogsAll(
+  client: SupabaseClient,
+  opts?: FuelLogFilter & { pageSize?: number; maxPages?: number },
+): Promise<PagedRows<FuelLogRow>> {
+  const paged = await fetchAllByKeyset<FuelLogRow>(
+    async (afterId, pageSize) => {
+      let query = fuelLogsFilter(client, opts);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+      if (error) throw error;
+      return data ?? [];
+    },
+    { pageSize: opts?.pageSize, maxPages: opts?.maxPages },
+  );
+  return {
+    ...paged,
+    rows: [...paged.rows].sort(
+      (a, b) => b.occurred_at.localeCompare(a.occurred_at) || b.id.localeCompare(a.id),
+    ),
+  };
 }

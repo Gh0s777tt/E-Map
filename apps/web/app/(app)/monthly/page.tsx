@@ -2,11 +2,11 @@
 
 import {
   getCompany,
-  listFuelLogs,
+  listFuelLogsAll,
   listFxRates,
-  listOrders,
+  listOrdersAll,
   listPerDiemTrips,
-  listVehicleCosts,
+  listVehicleCostsAll,
   type PerDiemTrip,
   toFxRates,
   type VehicleCost,
@@ -20,7 +20,6 @@ import {
   type MonthlyOrderEntry,
   monthlyFleetSummary,
   monthlyFleetTrend,
-  monthsEndingAt,
   round2,
   rowAmountEur,
   sumPerDiem,
@@ -36,20 +35,13 @@ import { useT } from "@/components/LocaleProvider";
 import { BarChart, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { downloadCsv } from "@/lib/csv";
 import { getCachedMembership } from "@/lib/membership";
+import { monthWindow, TREND_MONTHS } from "@/lib/monthWindow";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 function thisMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
-
-/**
- * [#378] Szerokość okna danych — jedna liczba dla pobierania, trendu i liczników.
- *
- * Rozjazd tych trzech miejsc był źródłem usterki: ostrzeżenie o brakujących kursach
- * liczyło pozycje w jednym miesiącu, a wykres i Δ m/m brały dane z sześciu.
- */
-const TREND_MONTHS = 6;
 
 /**
  * [#378] Znacznik „kwota jest, tylko nie ma kursu".
@@ -75,6 +67,26 @@ export default function MonthlyPage() {
   const [costs, setCosts] = useState<VehicleCostRow[]>([]);
   const [perDiems, setPerDiems] = useState<PerDiemTrip[]>([]);
   const [companyName, setCompanyName] = useState("");
+  /**
+   * Zlecenia okna nie zmieściły się w sufit pobrania — liczby na tym ekranie są zaniżone.
+   *
+   * Nie da się tego wywnioskować z samych danych: obcięty zbiór wygląda dokładnie tak
+   * samo jak kompletny, tylko suma jest mniejsza. Trzymamy więc osobny znacznik i mówimy
+   * o nim wprost, zamiast pokazywać wiarygodnie wyglądającą, nieprawdziwą kwotę.
+   */
+  const [ordersIncomplete, setOrdersIncomplete] = useState(false);
+  /**
+   * To samo dla zbiorów kosztowych (paliwo, AdBlue, koszty pojazdu).
+   *
+   * Osobny znacznik, a nie wspólny ze zleceniami, bo unieważnia inny dokument:
+   * przychód i wynik zależą od zleceń, a rejestr kosztów dla księgowości — wyłącznie
+   * od tych trzech tabel. Dawny `limit: 5000` niczego nie chronił: sufit `api.max_rows`
+   * jest niższy i przycina odpowiedź bez błędu, a przy sortowaniu malejącym zabiera
+   * wiersze NAJSTARSZE — czyli, przy oknie „od 1. dnia miesiąca", dokładnie te,
+   * o które w rejestrze chodzi. Efektem był plik z pustą sekcją kosztów, nie do
+   * odróżnienia od miesiąca, w którym firma nic nie wydała.
+   */
+  const [costsIncomplete, setCostsIncomplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
@@ -82,6 +94,8 @@ export default function MonthlyPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadErr(null);
+    setOrdersIncomplete(false);
+    setCostsIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
@@ -95,16 +109,21 @@ export default function MonthlyPage() {
       }
       // Okno danych = 6 miesięcy kończących na wybranym (trend + porównanie m/m).
       // Przeładowanie przy zmianie miesiąca — zamiast pobierania całej historii.
-      const window6 = monthsEndingAt(month, TREND_MONTHS);
-      const from = window6.length ? `${window6[0]}-01` : undefined;
-      const toDate = new Date(`${month}-01T00:00:00Z`);
-      toDate.setUTCMonth(toDate.getUTCMonth() + 1);
-      const to = toDate.toISOString().slice(0, 10); // 1. dzień kolejnego miesiąca
-      const [ord, f, a, vc, pd, comp, fxRows] = await Promise.all([
-        listOrders(sb, m.companyId, { from, to }),
-        listFuelLogs(sb, { from, to, limit: 5000 }),
-        listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
-        listVehicleCosts(sb, m.companyId, { from, limit: 5000 }),
+      // Ta sama definicja co na pulpicie (`lib/monthWindow.ts`), żeby oba ekrany
+      // liczyły ten sam miesiąc z tego samego zbioru.
+      const { from, to } = monthWindow(month, TREND_MONTHS);
+      const [ordPaged, fPaged, aPaged, vcPaged, pd, comp, fxRows] = await Promise.all([
+        // Stronami: sam zakres dat nie jest ograniczeniem: sześć miesięcy pracy firmy
+        // spokojnie przekracza sufit `api.max_rows` PostgREST (domyślnie 1000), a ten
+        // ucina odpowiedź bez błędu — przychód na tym ekranie po prostu byłby mniejszy.
+        listOrdersAll(sb, m.companyId, { from, to }),
+        // Koszty tak samo, i z tego samego powodu — plus górna granica okna, której
+        // dotąd nie było: zapytanie „od 1. dnia stycznia" bez `to` szło po całej
+        // przyszłości i przy sortowaniu malejącym oddawało najnowsze wiersze, po czym
+        // filtr miesiąca w przeglądarce nie dopasowywał NICZEGO.
+        listFuelLogsAll(sb, { from, to }),
+        listFuelLogsAll(sb, { table: "adblue_logs", from, to }),
+        listVehicleCostsAll(sb, m.companyId, { from, to }),
         // [#390] Zakres dat przekazany do bazy — wcześniej szła tu cała historia
         // firmy, a filtr po miesiącu działał dopiero w przeglądarce, więc przy
         // limicie 5000 najstarsze miesiące po prostu nie dojeżdżały.
@@ -118,6 +137,10 @@ export default function MonthlyPage() {
         }),
       ]);
       const rates = toFxRates(fxRows);
+      const ord = ordPaged.rows;
+      const vc = vcPaged.rows;
+      setOrdersIncomplete(!ordPaged.complete);
+      setCostsIncomplete(!fPaged.complete || !aPaged.complete || !vcPaged.complete);
       setCompanyName(comp?.name ?? "");
       // [#378] Koszt pojazdu przeliczony na euro po kursie z dnia poniesienia.
       // Kwota surowa zostaje w wierszu — rejestr kosztów pokazuje ją w uwadze,
@@ -168,8 +191,8 @@ export default function MonthlyPage() {
           missingRate: r.price_total != null && priceTotal == null,
         };
       };
-      setFuel((f as Raw[]).map(toCost));
-      setAdblue((a as Raw[]).map(toCost));
+      setFuel((fPaged.rows as Raw[]).map(toCost));
+      setAdblue((aPaged.rows as Raw[]).map(toCost));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych.");
     } finally {
@@ -190,8 +213,8 @@ export default function MonthlyPage() {
   );
 
   // Okno trendu: TREND_MONTHS miesięcy kończących na wybranym. Ten sam zakres,
-  // z którego liczone są słupki wykresu i baza porównania Δ m/m.
-  const trendMonths = useMemo(() => monthsEndingAt(month, TREND_MONTHS), [month]);
+  // z którego pobrano dane — jedna definicja okna dla zapytania, wykresu i Δ m/m.
+  const trendMonths = useMemo(() => monthWindow(month, TREND_MONTHS).months, [month]);
   const trend = useMemo(
     () => monthlyFleetTrend({ months: trendMonths, orders, fuel, adblue }),
     [trendMonths, orders, fuel, adblue],
@@ -424,10 +447,28 @@ export default function MonthlyPage() {
           />
         </label>
         <span style={{ flex: 1 }} />
-        <Button variant="ghost" onClick={exportCsv}>
+        {/* Oba eksporty zablokowane przy niepełnym zbiorze — plik CSV wychodzi
+            z aplikacji i po zapisaniu nie da się już odróżnić kwoty prawdziwej od
+            zaniżonej. Każdy przycisk pilnuje SWOICH zbiorów: zestawienie stoi na
+            zleceniach i kosztach, rejestr — wyłącznie na kosztach. Bramka postawiona
+            tylko na zleceniach przepuszczała rejestr z pustą sekcją kosztów, i to
+            z komunikatem o kompletności obok. */}
+        <Button
+          variant="ghost"
+          onClick={exportCsv}
+          disabled={ordersIncomplete || costsIncomplete}
+          title={
+            ordersIncomplete || costsIncomplete ? "Dane niepełne — eksport wstrzymany." : undefined
+          }
+        >
           ⬇️ Eksport CSV
         </Button>
-        <Button variant="ghost" onClick={exportCostRegister}>
+        <Button
+          variant="ghost"
+          onClick={exportCostRegister}
+          disabled={costsIncomplete}
+          title={costsIncomplete ? "Koszty niepełne — eksport wstrzymany." : undefined}
+        >
           🧮 Rejestr kosztów (księgowość)
         </Button>
         <Button variant="ghost" onClick={() => window.print()}>
@@ -442,6 +483,29 @@ export default function MonthlyPage() {
         emptyText="Brak danych dla wybranego miesiąca."
         onRetry={load}
       />
+
+      {/* Zbiór urwany na sufit pobrania to inna klasa błędu niż brak kwoty czy kursu:
+          tam brakuje jednej pozycji i wiadomo której, tu nie wiadomo nawet ILU zleceń
+          nie widać. Komunikat idzie NAD pozostałe, bo unieważnia każdą liczbę niżej. */}
+      {!loading && !loadErr && ordersIncomplete && (
+        <div style={styles.warn}>
+          <strong>Zestawienie jest niepełne.</strong> Zleceń z tego okna jest więcej, niż zmieściło
+          się w sufit pobrania — przychód, wynik i wykres trendu są zaniżone o nieznaną kwotę. Zawęź
+          okno (wybierz wcześniejszy miesiąc) albo zgłoś to; eksport CSV jest wstrzymany, żeby
+          zaniżona suma nie trafiła do księgowości.
+        </div>
+      )}
+
+      {/* Osobny komunikat, bo unieważnia inny dokument niż powyższy: rejestr kosztów
+          nie bierze ze zleceń ani jednej liczby, więc milczenie tutaj czytałoby się
+          jak potwierdzenie, że akurat koszty są kompletne. */}
+      {!loading && !loadErr && costsIncomplete && (
+        <div style={styles.warn}>
+          <strong>Koszty są niepełne.</strong> Tankowań, AdBlue albo kosztów pojazdu z tego okna
+          jest więcej, niż zmieściło się w sufit pobrania — koszt paliwa, wynik i rejestr kosztów są
+          zaniżone o nieznaną kwotę. Eksport rejestru jest wstrzymany; zawęź okno albo zgłoś to.
+        </div>
+      )}
 
       {!loading && !loadErr && missing.amountFuel + missing.amountAdblue > 0 && (
         <div style={styles.warn}>

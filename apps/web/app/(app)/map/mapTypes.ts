@@ -1,5 +1,6 @@
+import type { listVehicles } from "@e-logistic/api";
 import type { ReportType } from "@e-logistic/core";
-import type { RouteResult } from "@e-logistic/maps";
+import type { AdrTunnelCode, EmissionClass, RouteResult } from "@e-logistic/maps";
 
 /** Moduł maplibre-gl ładowany dynamicznie (typ instancji). */
 export type MaplibreModule = typeof import("maplibre-gl");
@@ -27,3 +28,48 @@ export type Report = {
   comment: string | null;
 };
 export type BasemapKey = "tomtom" | "dark" | "satellite" | "terrain" | "osm";
+
+/**
+ * [#385] Pojazd z kartoteki w zakresie, który wchodzi do profilu routingu.
+ *
+ * `null` znaczy „kolumna w kartotece pusta" i MA tak zostać aż do ekranu — podstawienie
+ * „typowej" wysokości 4 m czy pięciu osi byłoby zgadywaniem, a zgadywanie kończy się
+ * zestawem pod niskim wiaduktem albo mytem policzonym dla cudzej klasy pojazdu.
+ */
+export interface RouteVehicle {
+  /** [#406] Rejestracja podpiętej naczepy — do pokazania przy wyborze pojazdu. */
+  trailerRegistration?: string | null;
+  /** [#406] `true`, gdy długość zestawu nie jest policzalna z kartoteki. */
+  rigLengthUnknown?: boolean;
+  id: string;
+  registration: string;
+  heightCm: number | null;
+  widthCm: number | null;
+  lengthCm: number | null;
+  curbWeightKg: number | null;
+  maxPayloadKg: number | null;
+  axleCount: number | null;
+  adrTunnelCode: AdrTunnelCode | null;
+  emissionClass: EmissionClass | null;
+}
+
+/** Wiersz kartoteki pojazdów tak, jak zwraca go `listVehicles` (select("*")). */
+export type VehicleRow = Awaited<ReturnType<typeof listVehicles>>[number];
+
+/**
+ * Pola formularza gabarytów jako JEDEN stan.
+ *
+ * Trzymamy je razem, bo razem jadą do `/api/route` i razem są nadpisywane przy wyborze
+ * pojazdu — siedem osobnych `useState` znaczyło siedem miejsc do zapomnienia przy
+ * każdej kolejnej fali. Wartości są `string`, nie `number`, celowo: puste pole musi
+ * zostać BRAKIEM parametru, a nie zerem (patrz `positiveNumber`).
+ */
+export interface DimsFields {
+  weightT: string;
+  axles: string;
+  heightCm: string;
+  widthCm: string;
+  lengthCm: string;
+  adrTunnelCode: string;
+  emissionClass: string;
+}
