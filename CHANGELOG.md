@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-415-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.247.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-419-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.248.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,77 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.248.0] — 🧾 Eksport księgowy przestaje po cichu gubić wiersze
+
+Audyt `[#413]` zostawił `listOrders` bez sufitu, świadomie: obcięta lista w dokumencie
+finansowym to zła liczba bez sygnału. Przy sprawdzaniu tego wyszło, że **problem nie był
+przyszły — był już aktywny**.
+
+- `[#417]` 🧾 **Pobieranie stronami zamiast cichego sufitu**
+  ([pagination.ts](packages/api/src/data/pagination.ts) · [exportAll.ts](apps/web/lib/exportAll.ts))
+
+  PostgREST ma `api.max_rows`, u Supabase ustawione na **1000**. Przekroczenie **nie jest
+  błędem**: wraca `200` z krótszą tablicą, a `supabase-js` nie konfrontuje jej z `Content-Range`.
+  Firma z ponad tysiącem zleceń dostawała więc niepełny eksport księgowy — bez żadnego znaku.
+
+  **Keyset, nie offset — i to jest sedno.** Pierwsze podejście stronicowało przez `range()`.
+  Zbiór zleceń jest sortowany **malejąco** po `created_at`, więc nowy wiersz wchodzi na
+  początek i przesuwa wszystkie offsety w dół. Wiersz z końca strony 1 wracał na początku
+  strony 2 — i jego kwota była liczona **dwa razy**, przy `complete: true`. Stronicowanie
+  po kluczu głównym (`gt("id", kursor)`) nie ma jak zdublować ani zgubić wiersza istniejącego
+  w chwili startu. Porządek prezentacyjny odtwarzają wywołujący po złożeniu stron.
+
+  **Sygnał zamiast milczenia.** Typ `PagedRows` niesie `complete`, którego nie da się ominąć,
+  żeby dostać wiersze. Decyzję o reakcji podejmuje wywołujący, bo medium jest różne:
+  **skoroszyt → wyjątek, pliku nie ma** (zapisany na dysku jest nieodróżnialny od pełnego);
+  **ekran → baner i zablokowany eksport**. Baner nie ma `no-print`, więc jedzie też na PDF.
+
+  **Stronicowanie objęło wszystkie pięć zbiorów skoroszytu**, nie tylko zlecenia. Pierwsza
+  wersja pilnowała samych zleceń — a to było **gorsze niż brak bramki**: milczenie przy
+  pozostałych czterech arkuszach czytało się jak potwierdzenie ich kompletności.
+
+  Przy okazji, z tej samej przyczyny: `KpiStrip` (kafelki przychodu na pulpicie), P&L na
+  karcie pojazdu, rejestr kosztów w `/monthly` i wykrywanie duplikatów przy imporcie zleceń.
+  Filtry `vehicleId`/`assignedTo`/`statuses` zeszły **do bazy** — koniec wzorca „ściągnij całą
+  firmę, odsiej w przeglądarce". Karta kierowcy zamiast kilkudziesięciu obiegów po całej
+  firmie robi jedną–dwie strony jednego kierowcy.
+
+- `[#418]` 🗺️ **Dekompozycja ekranu mapy — i pierwsze testy tego ekranu**
+  ([map/](apps/web/app/(app)/map))
+
+  `page.tsx`: **2803 → 1871 linii** (−33 %). Struktura była gotowa od `[#224]`, tylko plik
+  urósł dwukrotnie obok niej. Logika bez React → `mapFeatures.ts`, specyfikacje warstw
+  MapLibre → nowy `mapLayers.ts`, 11 komponentów prezentacyjnych → `mapPanels.tsx`.
+
+  Bramki „mapa jest / styl wczytany" **zostały w `page.tsx`** razem z komentarzami — wynikają
+  z cyklu życia Reacta, nie z rysowania, a kolejność efektów inicjalizujących MapLibre jest
+  krucha i nie było powodu jej dotykać.
+
+  Realny zysk nie jest w liczbie linii: **44 nowe testy** ([mapFeatures.test.ts](apps/web/app/(app)/map/mapFeatures.test.ts)).
+  Ekran, który liczy gabaryty zestawu, myto i koszty trasy, nie miał dotąd **ani jednego**.
+
+- `[#419]` 📚 **Trzy dokumenty przestają zmyślać**
+  ([ROADMAP.md](docs/ROADMAP.md) · [MOBILE-PLAN.md](docs/MOBILE-PLAN.md) · [DATA-MODEL.md](docs/DATA-MODEL.md))
+
+  ROADMAP twierdził, że `codeql.yml` **nigdy nie powstał** i że „w repo nie było ani jednego
+  workflow". Oba człony fałszywe i obalane jednym `git log`: pliki istniały od `[#002]`
+  i zostały usunięte dopiero 17.07. MOBILE-PLAN stemplował fazę M3 na „✅ zrealizowane",
+  choć `[#406]` — profil **zestawu** w routingu — nie ruszył ani jednego pliku w `apps/mobile`;
+  wiersz `vehicles` deklarował parytet, a naczep (encja `trailers`, migracja 0110) aplikacja
+  mobilna nie ma wcale.
+
+- `[#416]` 🖼️ **ImgBot — bezstratna optymalizacja grafik**
+
+  Zaległy PR z 4 lipca. 19 plików, **−30 %** (2713 → 1896 kB), ikona aplikacji −86 %.
+  Zweryfikowane przed scaleniem: poprawne PNG, **wymiary co do piksela identyczne**.
+
+**Bramki:** `biome` ✓ (592 pliki) · `tsc` 7/7 ✓ · testy **1228** ✓ (+64) · `next build` ✓ ·
+`docs:check` ✓ · `pnpm check` 7/7 ✓
+**Weryfikacja:** 3 agentów implementujących, 3 adwersaryjnych recenzentów — **15 znalezisk,
+1 krytyczne, 6 wysokich; 14 potwierdzonych i naprawionych.** Krytyczne trafiło w to, co ta
+sama sesja właśnie „naprawiała": stronicowanie objęło jeden arkusz z pięciu.
 
 
 ## [1.247.0] — 🩹 Bramka, która blokowała własny push

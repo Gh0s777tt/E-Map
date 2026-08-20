@@ -21,33 +21,22 @@ import {
   upsertParkingReview,
 } from "@e-logistic/api";
 import {
-  combineRigProfile,
-  FUEL_CARD_PROVIDER_LABELS,
   type FuelCardProvider,
-  formatDuration,
-  fuelCost,
   newId,
-  REPORT_TYPES,
   type ReportType,
   routeDelta,
   SAVED_PLACE_CATEGORIES,
   SAVED_PLACE_CATEGORY_LABELS,
   type SavedPlaceCategory,
-  stationMatchesProviders,
 } from "@e-logistic/core";
 import {
-  ADR_TUNNEL_CODES,
-  type AdrTunnelCode,
   anyWithinKm,
   buildGridIndex,
-  EMISSION_CLASSES,
-  type EmissionClass,
   type FuelStationPrice,
   fetchPois,
   type GeoHit,
   geocode,
   itemsNearRoute,
-  jamSeverity,
   type LatLng,
   type Poi,
   type TollSection,
@@ -69,43 +58,85 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
 
 import {
+  bestDieselPrices,
+  buildSharedRoute,
+  buildTruckProfile,
+  clampBbox,
+  countPoiKinds,
+  DEFAULT_DIMS,
+  describeDelta,
   escapeHtml,
+  filterPoisByCards,
+  geometryBbox,
   incidentFeatures,
+  isProfileOverridden,
   POI_TAG_ADDRESS,
   POI_TAG_DISTANCE_M,
+  parseSharedRoute,
   poiDetailsHtml,
   poiFeatures,
   reportFeatures,
+  routeCostTotals,
   routeFeature,
+  sampleGeometryForSearch,
   savedFeatures,
   tollSectionFeatures,
+  toRouteVehicle,
+  trafficFlowFeatures,
+  truckPositionFeatures,
+  vehicleToFields,
 } from "./mapFeatures";
 import {
+  add3dBuildings,
+  drawIncidentsLayer,
+  drawPoisLayer,
+  drawReportsLayer,
+  drawRouteLayer,
+  drawSavedLayer,
+  drawTollLayer,
+  drawTrafficLayer,
+  drawTrucksLayer,
+} from "./mapLayers";
+import {
+  BasemapPicker,
+  CardFilter,
+  FuelCostInputs,
   FuelPricesPanel,
-  formatProfileDims,
-  MISSING_DIM_LABEL,
+  IncidentsToggle,
+  LiveTrucksPanel,
   missingDimensions,
   type PlannedProfile,
+  PoiTools,
+  ReportModePanel,
+  RouteOptions,
   RouteSummary,
   SavedPlacesChips,
   StopsEditor,
+  TollLayerToggle,
+  TrafficToggle,
+  TruckProfileForm,
 } from "./mapPanels";
 import {
-  BASEMAPS,
   basemapStyle,
   DEFAULT_BASEMAP,
   DISRUPTION_RADIUS_KM,
-  INCIDENT_COLOR,
   INCIDENT_LABEL,
   MAPTILER_KEY,
   OSM_STYLE,
   POI_LABEL,
-  REPORT_LABEL,
   SAVED_CAT_ICON,
   TOMTOM_KEY,
-  TRAFFIC_COLOR,
 } from "./mapTheme";
-import type { BasemapKey, MaplibreModule, Report, RouteResponse, Stop } from "./mapTypes";
+import type {
+  BasemapKey,
+  DimsFields,
+  MaplibreModule,
+  Report,
+  RouteResponse,
+  RouteVehicle,
+  Stop,
+  VehicleRow,
+} from "./mapTypes";
 import { styles } from "./mapUi";
 
 /**
@@ -134,120 +165,6 @@ const CLICKABLE_LAYERS = [
  * (z licznikiem, ile ukryto), zamiast pokazywać je nieodróżnialnie od świeżych.
  */
 const STALE_POSITION_MIN = 30;
-
-/**
- * [#385] Pojazd z kartoteki w zakresie, który wchodzi do profilu routingu.
- *
- * `null` znaczy „kolumna w kartotece pusta" i MA tak zostać aż do ekranu — podstawienie
- * „typowej" wysokości 4 m czy pięciu osi byłoby zgadywaniem, a zgadywanie kończy się
- * zestawem pod niskim wiaduktem albo mytem policzonym dla cudzej klasy pojazdu.
- */
-interface RouteVehicle {
-  /** [#406] Rejestracja podpiętej naczepy — do pokazania przy wyborze pojazdu. */
-  trailerRegistration?: string | null;
-  /** [#406] `true`, gdy długość zestawu nie jest policzalna z kartoteki. */
-  rigLengthUnknown?: boolean;
-  id: string;
-  registration: string;
-  heightCm: number | null;
-  widthCm: number | null;
-  lengthCm: number | null;
-  curbWeightKg: number | null;
-  maxPayloadKg: number | null;
-  axleCount: number | null;
-  adrTunnelCode: AdrTunnelCode | null;
-  emissionClass: EmissionClass | null;
-}
-
-type VehicleRow = Awaited<ReturnType<typeof listVehicles>>[number];
-
-/** `vehicles.adr_tunnel_code` to w bazie zwykły `text` z CHECK-iem — zawężamy do enumu. */
-function asAdrTunnelCode(v: string | null | undefined): AdrTunnelCode | null {
-  return (ADR_TUNNEL_CODES as readonly string[]).includes(v ?? "") ? (v as AdrTunnelCode) : null;
-}
-function asEmissionClass(v: string | null | undefined): EmissionClass | null {
-  return (EMISSION_CLASSES as readonly string[]).includes(v ?? "") ? (v as EmissionClass) : null;
-}
-
-/**
- * [#406] Pojazd + PODPIĘTA NACZEPA złożone w profil ZESTAWU.
- *
- * Do tej pory do routingu szły gabaryty samego ciągnika — parametry wyglądały
- * kompletnie, tylko opisywały połowę pojazdu. Niski ciągnik z czterometrową
- * chłodnią jechał jako pojazd o wysokości 3,8 m, czyli pod wiadukt, którego
- * zestaw nie przejedzie.
- *
- * Reguły łączenia (wysokość MAX, osie SUMA, długość świadomie pominięta) siedzą
- * w `combineRigProfile` razem z uzasadnieniem i testami — tutaj tylko je stosujemy.
- */
-function toRouteVehicle(v: VehicleRow, naczepa: Trailer | null): RouteVehicle {
-  const zestaw = combineRigProfile(
-    {
-      heightCm: v.height_cm,
-      widthCm: v.width_cm,
-      lengthCm: v.length_cm,
-      curbWeightKg: v.curb_weight_kg,
-      maxPayloadKg: v.max_payload_kg,
-      axleCount: v.axle_count,
-    },
-    naczepa && {
-      heightCm: naczepa.height_cm,
-      widthCm: naczepa.width_cm,
-      lengthCm: naczepa.length_cm,
-      curbWeightKg: naczepa.curb_weight_kg,
-      maxPayloadKg: naczepa.max_payload_kg,
-      axleCount: naczepa.axle_count,
-    },
-  );
-  return {
-    id: v.id,
-    registration: v.registration,
-    heightCm: zestaw.heightCm,
-    widthCm: zestaw.widthCm,
-    lengthCm: zestaw.lengthCm,
-    // Masa jest tu już policzona dla ZESTAWU, więc rozbijamy ją z powrotem na
-    // parę, której oczekuje reszta ekranu: całość jako masa własna, zero jako
-    // ładowność. `grossWeightKg` niżej zsumuje to do tej samej liczby.
-    curbWeightKg: zestaw.grossWeightKg,
-    maxPayloadKg: zestaw.grossWeightKg == null ? null : 0,
-    axleCount: zestaw.axleCount,
-    adrTunnelCode: asAdrTunnelCode(v.adr_tunnel_code),
-    emissionClass: asEmissionClass(v.emission_class),
-    trailerRegistration: naczepa?.registration ?? null,
-    /** Naczepa podpięta → długości zestawu nie znamy; spedytor podaje ręcznie. */
-    rigLengthUnknown: zestaw.braki.includes("dlugosc-zestawu"),
-  };
-}
-
-/**
- * [#385] DMC = masa własna + ładowność. Liczymy TYLKO gdy znane są OBIE (wzorzec
- * z `apps/mobile/lib/vehicleProfile.ts`): sama masa własna zaniża wynik dla załadowanego
- * zestawu, a zaniżona masa to przejazd przez most z ograniczeniem tonażu.
- */
-function grossWeightKg(v: RouteVehicle): number | null {
-  return v.curbWeightKg != null && v.maxPayloadKg != null ? v.curbWeightKg + v.maxPayloadKg : null;
-}
-
-/**
- * [#385] Pole formularza → liczba albo BRAK. Puste, ujemne i nieliczbowe dają
- * `undefined`, żeby parametr został POMINIĘTY w żądaniu zamiast polecieć jako zero.
- * Dotąd było `Number(weightT) || 24` — czyszcząc pole dostawało się w ciszy 24 tony.
- */
-function positiveNumber(v: string): number | undefined {
-  const raw = v.replace(",", ".").trim();
-  if (raw === "") return undefined;
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? n : undefined;
-}
-function positiveInt(v: string): number | undefined {
-  const n = positiveNumber(v);
-  return n == null ? undefined : Math.round(n);
-}
-
-/** Liczba do pola formularza; `null` z kartoteki zostaje pustym polem, nie zerem. */
-function fieldValue(n: number | null): string {
-  return n == null ? "" : String(n);
-}
 
 export default function MapPage() {
   const t = useT();
@@ -352,14 +269,18 @@ export default function MapPage() {
   // Wymiary TIR (do routingu HERE) + filtr stacji wg kart flotowych.
   const { cards } = useFleet();
   const [dimsOpen, setDimsOpen] = useState(false);
-  const [weightT, setWeightT] = useState("24");
-  const [heightCm, setHeightCm] = useState("400");
-  const [widthCm, setWidthCm] = useState("255");
-  const [lengthCm, setLengthCm] = useState("1650");
-  const [axles, setAxles] = useState("5");
+  /**
+   * Gabaryty jako JEDEN stan (`DimsFields`) — komplet i tak leci razem do `/api/route`
+   * i razem jest nadpisywany przy wyborze pojazdu, więc siedem osobnych `useState`
+   * było siedmioma miejscami do zapomnienia przy każdej kolejnej fali funkcji.
+   */
+  const [dims, setDims] = useState<DimsFields>(DEFAULT_DIMS);
+  const setDimsField = useCallback((key: keyof DimsFields, value: string) => {
+    setDims((d) => ({ ...d, [key]: value }));
+  }, []);
   /**
    * [#385] Wybór pojazdu z kartoteki. Do tej pory ekran wysyłał do routingu wyłącznie
-   * powyższe stałe ze stanu komponentu (24 t / 400 / 255 / 1650 cm / 5 osi), a panel
+   * wartości startowe formularza (`DEFAULT_DIMS`: 24 t / 400 / 255 / 1650 cm / 5 osi), a panel
    * wymiarów był domyślnie ZWINIĘTY — solówka i pięcioosiowy zestaw dostawały tę samą
    * trasę i to samo myto, bo nikt tych pól nie otwierał.
    *
@@ -373,8 +294,6 @@ export default function MapPage() {
    */
   const [fleet, setFleet] = useState<RouteVehicle[]>([]);
   const [vehicleId, setVehicleId] = useState("");
-  const [adrTunnelCode, setAdrTunnelCode] = useState("");
-  const [emissionClass, setEmissionClass] = useState("");
   /** Profil, którym policzono AKTUALNIE pokazaną trasę (nie ten z formularza — patrz `plan()`). */
   const [plannedProfile, setPlannedProfile] = useState<PlannedProfile | null>(null);
   const [cardFilterOn, setCardFilterOn] = useState(false);
@@ -391,34 +310,8 @@ export default function MapPage() {
     [fleet, vehicleId],
   );
 
-  /**
-   * [#385] Profil, który NAPRAWDĘ poleci do `/api/route`: pola formularza (wypełnione
-   * z kartoteki przy wyborze pojazdu, potem swobodnie nadpisywalne). Puste pole = parametr
-   * POMINIĘTY, a nie zero i nie stała — dostawca ma wtedy własną wartość domyślną i to ona
-   * jest uczciwsza niż nasza zmyślona.
-   *
-   * Pusty `adrTunnelCode` znaczy „ładunek zwykły", a nie „nie wiemy" — zestaw bez ADR to
-   * normalny stan i nie ma o nim czego zgłaszać.
-   */
-  const truckProfile = useMemo<VehicleProfile>(() => {
-    const tons = positiveNumber(weightT);
-    const h = positiveInt(heightCm);
-    const w = positiveInt(widthCm);
-    const l = positiveInt(lengthCm);
-    const ax = positiveInt(axles);
-    const adr = asAdrTunnelCode(adrTunnelCode);
-    const emission = asEmissionClass(emissionClass);
-    return {
-      kind: "truck",
-      ...(tons != null ? { weightKg: Math.round(tons * 1000) } : {}),
-      ...(h != null ? { heightCm: h } : {}),
-      ...(w != null ? { widthCm: w } : {}),
-      ...(l != null ? { lengthCm: l } : {}),
-      ...(ax != null ? { axleCount: ax } : {}),
-      ...(adr ? { adrTunnelCode: adr } : {}),
-      ...(emission ? { emissionClass: emission } : {}),
-    };
-  }, [weightT, heightCm, widthCm, lengthCm, axles, adrTunnelCode, emissionClass]);
+  /** Profil, który NAPRAWDĘ poleci do `/api/route` — reguły i uzasadnienie w `buildTruckProfile`. */
+  const truckProfile = useMemo<VehicleProfile>(() => buildTruckProfile(dims), [dims]);
 
   /** Braki w profilu wysyłanym do dostawcy — puste przy trasie osobowej (gabaryty nieużywane). */
   const missingDims = useMemo(
@@ -426,32 +319,17 @@ export default function MapPage() {
     [kindHeavy, truckProfile],
   );
 
-  /**
-   * [#385] Czy formularz rozjechał się z kartoteką wybranego pojazdu. Nadpisanie jest
-   * dozwolone (spedytor liczy trasę dla zestawu, którego jeszcze nie ma w kartotece),
-   * ale nie może wyglądać tak samo jak dane z kartoteki — dlatego mówimy o nim wprost.
-   */
-  const profileOverridden = useMemo(() => {
-    const v = selectedVehicle;
-    if (!v) return false;
-    return (
-      truckProfile.heightCm !== (v.heightCm ?? undefined) ||
-      truckProfile.widthCm !== (v.widthCm ?? undefined) ||
-      truckProfile.lengthCm !== (v.lengthCm ?? undefined) ||
-      truckProfile.axleCount !== (v.axleCount ?? undefined) ||
-      truckProfile.weightKg !== (grossWeightKg(v) ?? undefined) ||
-      truckProfile.adrTunnelCode !== (v.adrTunnelCode ?? undefined) ||
-      truckProfile.emissionClass !== (v.emissionClass ?? undefined)
-    );
-  }, [selectedVehicle, truckProfile]);
+  /** Czy formularz rozjechał się z kartoteką wybranego pojazdu (pasek „✎ nadpisane"). */
+  const profileOverridden = useMemo(
+    () => isProfileOverridden(selectedVehicle, truckProfile),
+    [selectedVehicle, truckProfile],
+  );
 
   /**
-   * [#385] Wybór pojazdu przepisuje kartotekę do pól formularza. Pusta kolumna zostaje
-   * PUSTYM polem — brak ma być widoczny, a nie zamaskowany dotychczasową stałą (inaczej
-   * po wybraniu solówki bez wpisanej wysokości w polu dalej stałoby „400" z poprzedniego auta).
-   *
-   * Gdy czegoś brakuje, panel wymiarów rozwijamy — zwinięty panel to dokładnie ten stan,
-   * w którym użytkownik wysyłał cudzy zestaw, nie swój.
+   * [#385] Wybór pojazdu przepisuje kartotekę do pól formularza — z brakami zostawionymi
+   * jako puste pola (patrz `vehicleToFields`). Gdy czegoś brakuje, panel wymiarów
+   * rozwijamy: zwinięty panel to dokładnie ten stan, w którym użytkownik wysyłał
+   * cudzy zestaw, nie swój.
    */
   function pickVehicle(id: string) {
     setVehicleId(id);
@@ -459,15 +337,8 @@ export default function MapPage() {
     // „— bez pojazdu —": pola zostają takie, jakie są. Stają się wartościami ręcznymi,
     // a pasek pod wyborem mówi wprost, że nie pochodzą z kartoteki.
     if (!v) return;
-    const dmc = grossWeightKg(v);
-    setWeightT(dmc == null ? "" : String(dmc / 1000));
-    setHeightCm(fieldValue(v.heightCm));
-    setWidthCm(fieldValue(v.widthCm));
-    setLengthCm(fieldValue(v.lengthCm));
-    setAxles(fieldValue(v.axleCount));
-    setAdrTunnelCode(v.adrTunnelCode ?? "");
-    setEmissionClass(v.emissionClass ?? "");
-    const incomplete = v.heightCm == null || v.widthCm == null || v.lengthCm == null || dmc == null;
+    const { fields, incomplete } = vehicleToFields(v);
+    setDims(fields);
     if (incomplete && kindHeavy) setDimsOpen(true);
   }
 
@@ -505,27 +376,14 @@ export default function MapPage() {
       }
     })();
     try {
-      const r = new URLSearchParams(window.location.search).get("r");
-      if (r) {
-        const parsed = r
-          .split("|")
-          .map((seg) => {
-            const [lat, lng, ...rest] = seg.split(",");
-            return {
-              lat: Number(lat),
-              lng: Number(lng),
-              label: decodeURIComponent(rest.join(",")),
-            };
-          })
-          .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-        if (parsed.length >= 2) {
-          const next = parsed.map((p, i) => ({
-            key: i === 0 ? "s-start" : i === parsed.length - 1 ? "s-end" : newId(),
-            ...p,
-          }));
-          setStops(next);
-          setQueries(Object.fromEntries(next.map((s) => [s.key, s.label])));
-        }
+      const parsed = parseSharedRoute(new URLSearchParams(window.location.search).get("r"));
+      if (parsed.length >= 2) {
+        const next = parsed.map((p, i) => ({
+          key: i === 0 ? "s-start" : i === parsed.length - 1 ? "s-end" : newId(),
+          ...p,
+        }));
+        setStops(next);
+        setQueries(Object.fromEntries(next.map((s) => [s.key, s.label])));
       }
     } catch {
       // nieprawidłowy link
@@ -544,104 +402,14 @@ export default function MapPage() {
       // [#383] `addSource` na niewczytanym stylu rzuca („Style is not done loading.") —
       // ten sam guard co w `drawSaved`, bo odpytywanie leci z interwału, nie z eventu mapy.
       if (!map.isStyleLoaded()) return;
-      const now = Date.now();
-      const aged = rows.map((r) => ({
-        row: r,
-        ageMin: Math.round((now - new Date(r.updated_at).getTime()) / 60_000),
-      }));
-      // [#383] Filtr świeżości: pozycja sprzed godzin wyglądała dokładnie tak samo jak
-      // sprzed minuty (różnił je tylko odcień kropki), więc dyspozytor planował objazd
-      // wg auta, którego dawno tam nie ma. Ukryte pinezki liczymy i pokazujemy w panelu —
-      // „nie wiemy, gdzie jest" to informacja, a nie powód do milczenia.
-      const visible = freshOnlyRef.current
-        ? aged.filter((a) => a.ageMin <= STALE_POSITION_MIN)
-        : aged;
-      setTruckTotal(aged.length);
-      setStaleHidden(aged.length - visible.length);
-      const ageLabel = (m: number) => {
-        if (m < 1) return t("mapPage.now");
-        if (m < 60) return `${m} ${t("mapPage.minAgo")}`;
-        if (m < 1440) return `${Math.floor(m / 60)} ${t("mapPage.hoursAgo")}`;
-        return `${Math.floor(m / 1440)} ${t("mapPage.daysAgo")}`;
-      };
-      const data = {
-        type: "FeatureCollection" as const,
-        features: visible.map(({ row: r, ageMin }) => {
-          const props: Record<string, string | number> = {
-            color: ageMin <= 5 ? "#22c55e" : ageMin <= 30 ? "#f59e0b" : "#6b7280",
-            label: `🚛 ${ageLabel(ageMin)}${r.speed_kmh != null ? ` · ${r.speed_kmh} km/h` : ""}`,
-          };
-          // [#383] `heading` (0–359°, od północy zgodnie ze wskazówkami) siedział w bazie
-          // i w `select`, a mapa go nie czytała. Klucz dokładamy TYLKO gdy jest liczbą —
-          // filtr warstwy strzałek to `["has","heading"]`, a `null` też „jest".
-          if (r.heading != null && Number.isFinite(r.heading)) {
-            props.heading = ((r.heading % 360) + 360) % 360;
-          }
-          return {
-            type: "Feature" as const,
-            properties: props,
-            geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] },
-          };
-        }),
-      };
-      const existing = map.getSource("trucks");
-      if (existing) {
-        (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-        return;
-      }
-      map.addSource("trucks", { type: "geojson", data });
-      map.addLayer({
-        id: "trucks-layer",
-        type: "circle",
-        source: "trucks",
-        paint: {
-          "circle-radius": 9,
-          "circle-color": ["get", "color"],
-          "circle-stroke-width": 2.5,
-          "circle-stroke-color": palette.white,
-        },
-      } as import("maplibre-gl").AddLayerObject);
-      try {
-        // [#383] Strzałka obrócona o `heading` — kropka zostaje pod spodem CELOWO:
-        // styl rastrowy (fallback OSM) nie ma glyphów i warstwa symboli się nie doda,
-        // a wtedy pozycja auta nadal musi być widoczna. `text-rotation-alignment: map`
-        // trzyma strzałkę zgodnie z terenem (obrót mapy jej nie przekłamuje),
-        // `text-pitch-alignment: viewport` zostawia ją czytelną przy pochyleniu 3D.
-        map.addLayer({
-          id: "trucks-heading",
-          type: "symbol",
-          source: "trucks",
-          filter: ["has", "heading"],
-          layout: {
-            "text-field": "▲",
-            "text-size": 13,
-            "text-rotate": ["get", "heading"],
-            "text-rotation-alignment": "map",
-            "text-pitch-alignment": "viewport",
-            "text-allow-overlap": true,
-            "text-ignore-placement": true,
-          },
-          paint: { "text-color": palette.black },
-        } as import("maplibre-gl").AddLayerObject);
-      } catch {
-        // styl bez glyphów — zostaje sama kropka (bez kierunku, ale bez kłamstwa)
-      }
-      try {
-        map.addLayer({
-          id: "trucks-labels",
-          type: "symbol",
-          source: "trucks",
-          layout: {
-            "text-field": ["get", "label"],
-            "text-size": 11,
-            "text-offset": [0, 1.4],
-            "text-anchor": "top",
-          },
-          paint: { "text-color": "#ffffff", "text-halo-color": "#0a0a0a", "text-halo-width": 1.2 },
-        } as import("maplibre-gl").AddLayerObject);
-      } catch {
-        // styl bez glyphów (fallback OSM) — same kropki wystarczą
-      }
+      const view = truckPositionFeatures(
+        rows,
+        { now: Date.now(), staleAfterMin: STALE_POSITION_MIN, freshOnly: freshOnlyRef.current },
+        t,
+      );
+      setTruckTotal(view.total);
+      setStaleHidden(view.hidden);
+      drawTrucksLayer(map, view.data);
     },
     [t],
   );
@@ -676,24 +444,7 @@ export default function MapPage() {
   const drawReports = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
-    const data = reportFeatures(reportsRef.current, t);
-    const existing = map.getSource("reports");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-      return;
-    }
-    map.addSource("reports", { type: "geojson", data });
-    map.addLayer({
-      id: "reports-layer",
-      type: "circle",
-      source: "reports",
-      paint: {
-        "circle-radius": 7,
-        "circle-color": ["get", "color"],
-        "circle-stroke-width": 2,
-        "circle-stroke-color": palette.white,
-      },
-    } as import("maplibre-gl").AddLayerObject);
+    drawReportsLayer(map, reportFeatures(reportsRef.current, t));
   }, [t]);
 
   // Utrudnienia na trasie ze zgłoszeń społeczności (korki/wypadki/zamknięcia
@@ -728,74 +479,17 @@ export default function MapPage() {
     // [#383] `addSource` na niewczytanym stylu rzuca — a odświeżanie ruchu leci z `moveend`
     // i potrafi trafić w okno tuż po `setStyle`. Warstwę odtworzy `switchBasemap`.
     if (!map.isStyleLoaded()) return;
-    const fc = {
-      type: "FeatureCollection" as const,
-      features: flows.map((f) => ({
-        type: "Feature" as const,
-        properties: { color: TRAFFIC_COLOR[jamSeverity(f.jamFactor)] },
-        geometry: {
-          type: "LineString" as const,
-          coordinates: f.shape.map((p) => [p.lng, p.lat] as [number, number]),
-        },
-      })),
-    };
-    const existing = map.getSource("traffic");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(fc);
-      return;
-    }
-    map.addSource("traffic", { type: "geojson", data: fc });
-    const layer = {
-      id: "traffic-layer",
-      type: "line",
-      source: "traffic",
-      paint: { "line-color": ["get", "color"], "line-width": 4, "line-opacity": 0.7 },
-    } as import("maplibre-gl").AddLayerObject;
-    // Pod warstwą trasy, by trasa pozostała widoczna na wierzchu.
-    if (map.getLayer("route")) map.addLayer(layer, "route");
-    else map.addLayer(layer);
+    drawTrafficLayer(map, trafficFlowFeatures(flows));
   }, []);
 
   // #358: warstwa incydentów TomTom — punktowe piny kolorowane wg severity.
-  // [#383] sparametryzowana źródłem/warstwą, bo te same incydenty potrafi przynieść
-  // także `/api/traffic` (gdy serwer ma TomTom, a nie ma HERE) — wtedy jadą do własnej
-  // warstwy, żeby wyłączenie jednego przełącznika nie kasowało pinezek drugiego.
   const drawIncidentsInto = useCallback(
     (incidents: TrafficIncident[], sourceId: string, layerId: string) => {
       const map = mapRef.current;
       if (!map) return;
       // [#383] Ten sam guard co w `drawSaved`: `addSource` na niewczytanym stylu rzuca.
       if (!map.isStyleLoaded()) return;
-      const data = incidentFeatures(incidents);
-      const existing = map.getSource(sourceId);
-      if (existing) {
-        (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-        return;
-      }
-      map.addSource(sourceId, { type: "geojson", data });
-      map.addLayer({
-        id: layerId,
-        type: "circle",
-        source: sourceId,
-        paint: {
-          "circle-radius": 7,
-          "circle-color": [
-            "match",
-            ["get", "severity"],
-            "closure",
-            INCIDENT_COLOR.closure,
-            "major",
-            INCIDENT_COLOR.major,
-            "moderate",
-            INCIDENT_COLOR.moderate,
-            "minor",
-            INCIDENT_COLOR.minor,
-            INCIDENT_COLOR.unknown,
-          ],
-          "circle-stroke-width": 2,
-          "circle-stroke-color": palette.white,
-        },
-      } as import("maplibre-gl").AddLayerObject);
+      drawIncidentsLayer(map, incidentFeatures(incidents), sourceId, layerId);
     },
     [],
   );
@@ -888,22 +582,11 @@ export default function MapPage() {
     const map = mapRef.current;
     if (!map || !TOMTOM_KEY) return;
     const b = map.getBounds();
-    let west = b.getWest();
-    let south = b.getSouth();
-    let east = b.getEast();
-    let north = b.getNorth();
     // Ogranicz bbox do ~2° (jak HERE), by uniknąć zbyt dużego zapytania.
-    const MAX_DEG = 2;
-    if (east - west > MAX_DEG) {
-      const c = (east + west) / 2;
-      west = c - MAX_DEG / 2;
-      east = c + MAX_DEG / 2;
-    }
-    if (north - south > MAX_DEG) {
-      const c = (north + south) / 2;
-      south = c - MAX_DEG / 2;
-      north = c + MAX_DEG / 2;
-    }
+    const { west, south, east, north } = clampBbox(
+      { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
+      2,
+    );
     // bbox TomTom = "minLng,minLat,maxLng,maxLat" (kolejność lng,lat!).
     const bbox = `${west},${south},${east},${north}`;
     try {
@@ -917,65 +600,16 @@ export default function MapPage() {
 
   const drawRoute = useCallback((geometry: LatLng[]) => {
     const map = mapRef.current;
-    const ml = mlRef.current;
-    if (!map || !ml || geometry.length < 2) return;
-    const coords = geometry.map((p) => [p.lng, p.lat] as [number, number]);
-    const data = routeFeature(coords);
-    const existing = map.getSource("route");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-    } else {
-      map.addSource("route", { type: "geojson", data });
-      map.addLayer({
-        id: "route",
-        type: "line",
-        source: "route",
-        layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": palette.red, "line-width": 5 },
-      });
-    }
+    if (!map || !mlRef.current || geometry.length < 2) return;
+    drawRouteLayer(map, routeFeature(geometry.map((p) => [p.lng, p.lat] as [number, number])));
   }, []);
 
   const drawPois = useCallback((pois: Poi[]) => {
     const map = mapRef.current;
     if (!map) return;
-    const data = poiFeatures(pois);
-    const existing = map.getSource("pois");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-      return;
-    }
-    map.addSource("pois", { type: "geojson", data });
-    map.addLayer({
-      id: "pois-layer",
-      type: "circle",
-      source: "pois",
-      paint: {
-        "circle-radius": 6,
-        // [#383] Gałąź „company" (niebieska) usunięta: `OsmPoiType` to wyłącznie
-        // `parking | fuel_station`, więc dopasowanie nigdy nie mogło się ziścić —
-        // a legenda pod mapą obiecywała za nim „firmy". Zostaje szary domyślny kolor
-        // jako zabezpieczenie na wypadek nowego typu bez własnej barwy.
-        "circle-color": [
-          "match",
-          ["get", "type"],
-          "fuel_station",
-          palette.red,
-          "parking",
-          "#22c55e",
-          "#9ca3af",
-        ],
-        "circle-stroke-width": 1,
-        "circle-stroke-color": palette.black,
-      },
-    } as import("maplibre-gl").AddLayerObject);
+    drawPoisLayer(map, poiFeatures(pois));
   }, []);
 
-  /**
-   * #367: warstwa zapisanych miejsc firmy — obwódka w czerwieni marki + emoji
-   * kategorii (SAVED_CAT_ICON) jako `text-field` warstwy symbol. Symbol w try/catch
-   * jak przy autach live: styl rastrowy (fallback OSM) nie ma glyphów i by rzucił.
-   */
   const drawSaved = useCallback((places: SavedPlace[]) => {
     const map = mapRef.current;
     if (!map) return;
@@ -984,114 +618,16 @@ export default function MapPage() {
     // w tym oknie wysadziłby stronę do error boundary. Warstwę i tak odtworzy
     // `applyOverlays` na zdarzeniu `style.load`, czytając refy zaktualizowane wcześniej.
     if (!map.isStyleLoaded()) return;
-    const data = savedFeatures(places);
-    const existing = map.getSource("saved");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-      return;
-    }
-    map.addSource("saved", { type: "geojson", data });
-    map.addLayer({
-      id: "saved-layer",
-      type: "circle",
-      source: "saved",
-      paint: {
-        "circle-radius": 9,
-        "circle-color": palette.black,
-        "circle-opacity": 0.85,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": palette.red,
-      },
-    } as import("maplibre-gl").AddLayerObject);
-    try {
-      map.addLayer({
-        id: "saved-icons",
-        type: "symbol",
-        source: "saved",
-        layout: {
-          "text-field": ["get", "icon"],
-          "text-size": 13,
-          "text-allow-overlap": true,
-        },
-      } as import("maplibre-gl").AddLayerObject);
-    } catch {
-      // styl bez glyphów (fallback OSM) — zostaje samo kółko
-    }
+    drawSavedLayer(map, savedFeatures(places));
   }, []);
 
-  /**
-   * [#383] Warstwa odcinków płatnych trasy (`RouteResult.tollSections`).
-   *
-   * `sectionType=tollRoad` leciał do TomTom w KAŻDYM zapytaniu o trasę, a odpowiedź
-   * lądowała w koszu — płaciliśmy za dane, których nikt nie widział.
-   *
-   * Rysujemy dwie warstwy tego samego źródła: czerwoną poświatę POD linią trasy
-   * (żeby płatny fragment było widać z oddali) i czarną szrafurę NAD nią (czerń na
-   * czerwieni = motyw repo; kreski na jednolicie czerwonej trasie są jedynym
-   * rozróżnieniem, które nie wprowadza koloru spoza palety).
-   */
+  /** [#383] Warstwa odcinków płatnych ostatniej trasy — kształt i uzasadnienie w `drawTollLayer`. */
   const drawToll = useCallback((geometry: LatLng[], sections: TollSection[]) => {
     const map = mapRef.current;
     if (!map) return;
     // [#383] Ten sam guard co w `drawSaved`: `addSource` na niewczytanym stylu rzuca.
     if (!map.isStyleLoaded()) return;
-    const data = tollSectionFeatures(geometry, sections);
-    const existing = map.getSource("toll");
-    if (existing) {
-      (existing as import("maplibre-gl").GeoJSONSource).setData(data);
-      return;
-    }
-    map.addSource("toll", { type: "geojson", data });
-    const glow = {
-      id: "toll-glow",
-      type: "line",
-      source: "toll",
-      layout: { "line-join": "round", "line-cap": "round" },
-      paint: {
-        "line-color": palette.red,
-        "line-width": 13,
-        "line-opacity": 0.3,
-        "line-blur": 2,
-      },
-    } as import("maplibre-gl").AddLayerObject;
-    if (map.getLayer("route")) map.addLayer(glow, "route");
-    else map.addLayer(glow);
-    map.addLayer({
-      id: "toll-hatch",
-      type: "line",
-      source: "toll",
-      layout: { "line-join": "round", "line-cap": "butt" },
-      paint: {
-        "line-color": palette.black,
-        "line-width": 2.5,
-        "line-dasharray": [1, 2],
-        "line-opacity": 0.9,
-      },
-    } as import("maplibre-gl").AddLayerObject);
-  }, []);
-
-  const add3dBuildings = useCallback((map: MlMap) => {
-    if (!MAPTILER_KEY || map.getLayer("3d-buildings")) return;
-    const sources = map.getStyle().sources as Record<string, { type?: string }>;
-    const vectorSrc = Object.keys(sources).find((id) => sources[id]?.type === "vector");
-    if (!vectorSrc) return;
-    try {
-      map.addLayer({
-        id: "3d-buildings",
-        source: vectorSrc,
-        "source-layer": "building",
-        type: "fill-extrusion",
-        minzoom: 13,
-        paint: {
-          "fill-extrusion-color": "#3a3a3a",
-          "fill-extrusion-height": ["coalesce", ["get", "render_height"], ["get", "height"], 0],
-          "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-          "fill-extrusion-opacity": 0.85,
-        },
-      } as import("maplibre-gl").AddLayerObject);
-    } catch {
-      // styl bez warstwy budynków — pomijamy
-    }
+    drawTollLayer(map, tollSectionFeatures(geometry, sections));
   }, []);
 
   // ── Po (prze)ładowaniu stylu: teren, budynki, projekcja, odtworzenie warstw ──
@@ -1127,7 +663,7 @@ export default function MapPage() {
     // [#383] Odcinki płatne — rysujemy tylko gdy przełącznik włączony (jak przy ruchu).
     const route = routeResultRef.current;
     if (tollLayerOnRef.current && route) drawToll(route.geometry, route.tollSections.sections);
-  }, [add3dBuildings, drawReports, drawRoute, drawPois, drawSaved, drawTrucks, drawToll]);
+  }, [drawReports, drawRoute, drawPois, drawSaved, drawTrucks, drawToll]);
 
   // ── Inicjalizacja mapy ──
   useEffect(() => {
@@ -1636,25 +1172,6 @@ export default function MapPage() {
     }
   }
 
-  // Czytelny opis różnicy trasy po dodaniu miejsca.
-  function describeDelta(name: string, d: ReturnType<typeof routeDelta>): string {
-    if (d.negligible) return `${t("mapPage.added")} „${name}" — ${t("mapPage.deltaNoChange")}.`;
-    const distTxt = `${d.longer ? t("mapPage.deltaLonger") : t("mapPage.deltaShorter")} ${Math.abs(d.distanceKm)} km`;
-    const timeTxt =
-      d.durationMin > 0
-        ? `${t("mapPage.deltaSlower")} ${formatDuration(d.durationMin)}`
-        : d.durationMin < 0
-          ? `${t("mapPage.deltaFaster")} ${formatDuration(-d.durationMin)}`
-          : t("mapPage.deltaSameTime");
-    const tollTxt =
-      d.tollEur > 0
-        ? `${t("mapPage.deltaPricier")} ${d.tollEur} € ${t("mapPage.deltaTollWord")}`
-        : d.tollEur < 0
-          ? `${t("mapPage.deltaCheaper")} ${Math.abs(d.tollEur)} € ${t("mapPage.deltaTollWord")}`
-          : t("mapPage.deltaTollUnchanged");
-    return `${t("mapPage.added")} „${name}": ${distTxt}, ${timeTxt}, ${tollTxt}.`;
-  }
-
   async function addSavedAsStop(p: SavedPlace) {
     setDeltaMsg(null);
     const before = result;
@@ -1683,6 +1200,7 @@ export default function MapPage() {
                 tollEur: after.tollCost,
               },
             ),
+            t,
           ),
         );
       }
@@ -1734,11 +1252,35 @@ export default function MapPage() {
     }
   }
 
+  /** #309: przełącznik auto-objazdu ma też ref — `recomputeDisruptions` czyta go poza renderem. */
+  function toggleAutoReroute(on: boolean) {
+    setAutoReroute(on);
+    autoRerouteRef.current = on;
+  }
+
+  /**
+   * Włączenie filtra bez wybranej marki nie odfiltrowałoby niczego, więc przy pierwszym
+   * włączeniu zaznaczamy komplet kart użytkownika — inaczej przełącznik wyglądałby
+   * na zepsuty.
+   */
+  function toggleCardFilter(on: boolean) {
+    setCardFilterOn(on);
+    if (on && cardProviders.size === 0 && cardOptions.length) {
+      setCardProviders(new Set(cardOptions));
+    }
+  }
+
+  function toggleCardProvider(provider: FuelCardProvider) {
+    setCardProviders((s) => {
+      const n = new Set(s);
+      if (n.has(provider)) n.delete(provider);
+      else n.add(provider);
+      return n;
+    });
+  }
+
   function shareRoute() {
-    const r = stops
-      .map((s) => `${s.lat.toFixed(5)},${s.lng.toFixed(5)},${encodeURIComponent(s.label)}`)
-      .join("|");
-    const url = `${window.location.origin}/map?r=${r}`;
+    const url = `${window.location.origin}/map?r=${buildSharedRoute(stops)}`;
     navigator.clipboard
       ?.writeText(url)
       .then(() => setShareMsg(t("mapPage.linkCopied")))
@@ -1789,26 +1331,10 @@ export default function MapPage() {
 
   // Filtr stacji wg akceptacji kart (poglądowy): zostawia parkingi + stacje marek z kart.
   const applyPoiFilter = useCallback(() => {
-    const providers = Array.from(cardProviders);
-    const active = cardFilterOn && providers.length > 0;
-    const filtered = active
-      ? allPoisRef.current.filter(
-          (p) =>
-            p.type !== "fuel_station" ||
-            stationMatchesProviders(
-              `${p.tags.brand ?? ""} ${p.tags.operator ?? ""} ${p.name ?? ""}`,
-              providers,
-            ),
-        )
-      : allPoisRef.current;
+    const filtered = filterPoisByCards(allPoisRef.current, Array.from(cardProviders), cardFilterOn);
     poisRef.current = filtered;
     setPoiCount(filtered.length);
-    // [#383] Legenda pokazuje LICZBY z tego, co faktycznie leży na mapie — pozycja bez
-    // ani jednego punktu nie ma prawa wisieć w legendzie jako obietnica.
-    setPoiKinds({
-      fuel: filtered.filter((p) => p.type === "fuel_station").length,
-      parking: filtered.filter((p) => p.type === "parking").length,
-    });
+    setPoiKinds(countPoiKinds(filtered));
     drawPois(filtered);
   }, [cardFilterOn, cardProviders, drawPois]);
 
@@ -1847,17 +1373,7 @@ export default function MapPage() {
     }
     setPoiBusy(true);
     try {
-      // reduce zamiast Math.min(...arr) — spread wywala stos przy bardzo długich trasach.
-      const bbox = geo.reduce(
-        (b, p) => ({
-          south: Math.min(b.south, p.lat),
-          west: Math.min(b.west, p.lng),
-          north: Math.max(b.north, p.lat),
-          east: Math.max(b.east, p.lng),
-        }),
-        { south: 90, west: 180, north: -90, east: -180 },
-      );
-      const all = await fetchPois(bbox);
+      const all = await fetchPois(geometryBbox(geo));
       // Indeks kratowy (#261) zamiast O(n·m): POI zostaje, gdy ≤6 km od linii trasy.
       const index = buildGridIndex(geo, 6);
       const near = all.filter((poi) => anyWithinKm(index, { lat: poi.lat, lng: poi.lng }, 6));
@@ -1880,17 +1396,7 @@ export default function MapPage() {
     }
     setPoiBusy(true);
     try {
-      // TomTom zwraca 400 przy zbyt gęstej geometrii — próbkuj do ≤100 pkt (1. i ostatni zawsze).
-      // Dzielnik 99 (nie 100): pętla daje ≤99 punktów, +1 dołożony ostatni = ≤100.
-      const step = Math.max(1, Math.ceil(geo.length / 99));
-      const sampled: LatLng[] = [];
-      for (let i = 0; i < geo.length; i += step) {
-        const pt = geo[i];
-        if (pt) sampled.push(pt);
-      }
-      const last = geo[geo.length - 1];
-      if (last && sampled[sampled.length - 1] !== last) sampled.push(last);
-      const found = await tomtomSearchAlongRoute(sampled, query, TOMTOM_KEY, {
+      const found = await tomtomSearchAlongRoute(sampleGeometryForSearch(geo), query, TOMTOM_KEY, {
         maxDetourSec: 600,
         limit: 20,
       });
@@ -1930,10 +1436,7 @@ export default function MapPage() {
         setFuelPrices([]);
         return;
       }
-      const withDiesel = data.stations
-        .filter((s) => s.diesel != null)
-        .sort((a, b) => (a.diesel ?? 0) - (b.diesel ?? 0))
-        .slice(0, 8);
+      const withDiesel = bestDieselPrices(data.stations);
       setFuelPrices(withDiesel);
       if (withDiesel.length === 0) setFuelPriceMsg(t("mapPage.noFuelPricesNearby"));
     } catch {
@@ -2094,14 +1597,11 @@ export default function MapPage() {
     })();
   }, [mapReady]);
 
-  const fuelTotal = result
-    ? fuelCost(
-        (result.distanceKm * (Number(consumption) || 0)) / 100,
-        Number(fuelPrice) || 0,
-        Number(fuelDiscount) || 0,
-      )
-    : 0;
-  const grandTotal = result ? Math.round((result.tollCost + fuelTotal) * 100) / 100 : 0;
+  const { fuelTotal, grandTotal } = routeCostTotals(result, {
+    consumption,
+    fuelPrice,
+    fuelDiscount,
+  });
 
   return (
     <div>
@@ -2223,39 +1723,14 @@ export default function MapPage() {
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
-          <span className={styles.label}>{t("mapPage.basemap")}</span>
-          <div style={{ display: "flex", gap: 6 }}>
-            {BASEMAPS.map((b) => (
-              <button
-                key={b.key}
-                type="button"
-                onClick={() => switchBasemap(b.key)}
-                className={`${styles.segment} ${basemap === b.key ? styles.segmentActive : ""}`}
-              >
-                {t(b.label)}
-              </button>
-            ))}
-          </div>
-          {MAPTILER_KEY && (
-            <>
-              <label className={styles.check}>
-                <input
-                  type="checkbox"
-                  checked={terrain3d}
-                  onChange={(e) => toggleTerrain(e.target.checked)}
-                />{" "}
-                {t("mapPage.terrain3d")}
-              </label>
-              <label className={styles.check}>
-                <input
-                  type="checkbox"
-                  checked={globe}
-                  onChange={(e) => toggleGlobe(e.target.checked)}
-                />{" "}
-                {t("mapPage.globe3d")}
-              </label>
-            </>
-          )}
+          <BasemapPicker
+            current={basemap}
+            onSwitch={switchBasemap}
+            terrain={terrain3d}
+            onTerrain={toggleTerrain}
+            globe={globe}
+            onGlobe={toggleGlobe}
+          />
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
 
@@ -2268,302 +1743,53 @@ export default function MapPage() {
             {t("mapPage.truckRouting")}
           </label>
           {kindHeavy && (
-            <>
-              {/*
-                [#385] Wybór pojazdu z kartoteki. Bez niego jedynym źródłem gabarytów były
-                stałe w kodzie, a panel poniżej — domyślnie zwinięty; typowy użytkownik
-                wysyłał więc zestaw domyślny, nie swój.
-              */}
-              <label className={styles.field}>
-                <span className={styles.label}>🚛 {t("mapPage.vehicleFromFleet")}</span>
-                <select
-                  className={styles.input}
-                  value={vehicleId}
-                  onChange={(e) => pickVehicle(e.target.value)}
-                >
-                  <option value="">{t("mapPage.vehicleManual")}</option>
-                  {fleet.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.registration}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {fleet.length === 0 ? (
-                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                  {t("mapPage.vehicleFleetEmpty")}
-                </div>
-              ) : !selectedVehicle ? (
-                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                  ⚠️ {t("mapPage.vehicleManualHint")}
-                </div>
-              ) : profileOverridden ? (
-                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                  ✎ {t("mapPage.vehicleOverridden")}
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className={styles.ghost}
-                style={{ textAlign: "left", padding: "8px 10px" }}
-                onClick={() => setDimsOpen((o) => !o)}
-              >
-                {/*
-                  [#385] Podsumowanie na zwiniętym panelu pokazuje to, co POLECI do dostawcy
-                  — z „?" w miejscu braków. Dotąd było tu „{weightT} t · {axles} osie", więc
-                  puste pola dawały napis „( t ·  osie)", a brak wymiarów nie był widoczny wcale.
-                */}
-                {dimsOpen ? "▾" : "▸"} {t("mapPage.dimsAndTonnage")} (
-                {formatProfileDims(truckProfile)} · {truckProfile.axleCount ?? "?"}{" "}
-                {t("mapPage.axlesSuffix")})
-              </button>
-              {dimsOpen && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  <label className={styles.field}>
-                    <span className={styles.label}>{t("mapPage.grossWeightT")}</span>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      value={weightT}
-                      onChange={(e) => setWeightT(e.target.value)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    <span className={styles.label}>{t("mapPage.axles")}</span>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      value={axles}
-                      onChange={(e) => setAxles(e.target.value)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    <span className={styles.label}>{t("mapPage.heightCm")}</span>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      value={heightCm}
-                      onChange={(e) => setHeightCm(e.target.value)}
-                    />
-                  </label>
-                  <label className={styles.field}>
-                    <span className={styles.label}>{t("mapPage.widthCm")}</span>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      value={widthCm}
-                      onChange={(e) => setWidthCm(e.target.value)}
-                    />
-                  </label>
-                  <label className={styles.field} style={{ gridColumn: "1 / -1" }}>
-                    <span className={styles.label}>{t("mapPage.lengthCm")}</span>
-                    <input
-                      className={styles.input}
-                      type="number"
-                      value={lengthCm}
-                      onChange={(e) => setLengthCm(e.target.value)}
-                    />
-                  </label>
-                  {/*
-                    [#385] ADR i klasa emisji też są nadpisywalne — spedytor bywa proszony
-                    o trasę dla zestawu, którego nie ma jeszcze w kartotece. PUSTE ADR znaczy
-                    „ładunek zwykły", nie „nie wiemy", dlatego opcja pusta ma własny podpis
-                    (ten sam co w kartotece pojazdów) i nie ostrzegamy o niej.
-                  */}
-                  <label className={styles.field}>
-                    <span className={styles.label}>{t("vehicles.fieldAdrTunnel")}</span>
-                    <select
-                      className={styles.input}
-                      value={adrTunnelCode}
-                      onChange={(e) => setAdrTunnelCode(e.target.value)}
-                    >
-                      <option value="">{t("vehicles.adrTunnelNone")}</option>
-                      {ADR_TUNNEL_CODES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className={styles.field}>
-                    <span className={styles.label}>{t("vehicles.fieldEmissionClass")}</span>
-                    <select
-                      className={styles.input}
-                      value={emissionClass}
-                      onChange={(e) => setEmissionClass(e.target.value)}
-                    >
-                      <option value="">{t("vehicles.selectPlaceholder")}</option>
-                      {EMISSION_CLASSES.map((c) => (
-                        <option key={c} value={c}>
-                          Euro {c.slice(4)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              )}
-              {/*
-                [#385] Braki gabarytów WPROST, jeszcze przed liczeniem trasy — tam, gdzie da
-                się je naprawić. Trasa policzona bez wysokości wygląda identycznie jak trasa
-                z wysokością, a różnica jest taka, że jedna z nich prowadzi pod wiadukt.
-              */}
-              {missingDims.length > 0 && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    lineHeight: 1.4,
-                    color: cssPalette.offWhite,
-                    background: cssPalette.black,
-                    border: `1px solid ${cssPalette.red}`,
-                    borderRadius: 8,
-                    padding: "8px 10px",
-                  }}
-                >
-                  ⚠️ {selectedVehicle ? `${selectedVehicle.registration} · ` : ""}
-                  {t("mapPage.vehicleMissing")}{" "}
-                  {missingDims.map((d) => t(MISSING_DIM_LABEL[d])).join(", ")} —{" "}
-                  {t("mapPage.vehicleMissingTail")}
-                  <div style={{ marginTop: 2, color: cssPalette.smoke }}>
-                    {t("mapPage.vehicleMissingHint")}
-                  </div>
-                </div>
-              )}
-              {selectedVehicle && missingDims.length === 0 && (
-                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                  ✔ {selectedVehicle.registration} · {formatProfileDims(truckProfile)}
-                </div>
-              )}
-            </>
+            <TruckProfileForm
+              fleet={fleet}
+              vehicleId={vehicleId}
+              onPickVehicle={pickVehicle}
+              selectedVehicle={selectedVehicle}
+              profileOverridden={profileOverridden}
+              dimsOpen={dimsOpen}
+              onToggleDims={() => setDimsOpen((o) => !o)}
+              fields={dims}
+              onFieldChange={setDimsField}
+              profile={truckProfile}
+              missing={missingDims}
+            />
           )}
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={autoReroute}
-              onChange={(e) => {
-                setAutoReroute(e.target.checked);
-                autoRerouteRef.current = e.target.checked;
-              }}
-            />{" "}
-            🔁 {t("mapPage.autoDetour")}
-          </label>
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={avoidTolls}
-              onChange={(e) => setAvoidTolls(e.target.checked)}
-            />{" "}
-            {t("mapPage.avoidTolls")}
-          </label>
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={avoidFerries}
-              onChange={(e) => setAvoidFerries(e.target.checked)}
-            />{" "}
-            {t("mapPage.avoidFerries")}
-          </label>
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={avoidCH}
-              onChange={(e) => setAvoidCH(e.target.checked)}
-            />{" "}
-            {t("mapPage.avoidSwitzerland")}
-          </label>
+          <RouteOptions
+            autoReroute={autoReroute}
+            onAutoReroute={toggleAutoReroute}
+            avoidTolls={avoidTolls}
+            onAvoidTolls={setAvoidTolls}
+            avoidFerries={avoidFerries}
+            onAvoidFerries={setAvoidFerries}
+            avoidCH={avoidCH}
+            onAvoidCH={setAvoidCH}
+          />
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
-          <span className={styles.label}>{t("mapPage.fuelCostEstimate")}</span>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input
-              className={styles.input}
-              type="number"
-              value={consumption}
-              onChange={(e) => setConsumption(e.target.value)}
-              placeholder="l/100km"
-              title={t("mapPage.consumptionTitle")}
-            />
-            <input
-              className={styles.input}
-              type="number"
-              step="0.01"
-              value={fuelPrice}
-              onChange={(e) => setFuelPrice(e.target.value)}
-              placeholder="€/l"
-              title={t("mapPage.pricePerLiterTitle")}
-            />
-            <input
-              className={styles.input}
-              type="number"
-              value={fuelDiscount}
-              onChange={(e) => setFuelDiscount(e.target.value)}
-              placeholder={t("mapPage.discountPlaceholder")}
-              title={t("mapPage.cardDiscountTitle")}
-            />
-          </div>
+          <FuelCostInputs
+            consumption={consumption}
+            onConsumption={setConsumption}
+            fuelPrice={fuelPrice}
+            onFuelPrice={setFuelPrice}
+            fuelDiscount={fuelDiscount}
+            onDiscount={setFuelDiscount}
+          />
 
           <Button onClick={() => plan()} disabled={busy} style={{ marginTop: 6 }}>
             {busy ? t("mapPage.computing") : t("mapPage.planRoute")}
           </Button>
 
-          <div style={{ display: "flex", gap: 6 }}>
-            <button
-              type="button"
-              className={styles.ghost}
-              style={{ flex: 1 }}
-              onClick={loadPois}
-              disabled={poiBusy}
-            >
-              {poiBusy ? t("mapPage.searching") : `📍 ${t("mapPage.poiInView")}`}
-            </button>
-            <button
-              type="button"
-              className={styles.ghost}
-              style={{ flex: 1 }}
-              onClick={loadPoisAlongRoute}
-              disabled={poiBusy}
-            >
-              🛣️ {t("mapPage.poiAlongRoute")}
-            </button>
-          </div>
-          {TOMTOM_KEY && (
-            <div style={{ display: "flex", gap: 6 }}>
-              <button
-                type="button"
-                className={styles.ghost}
-                style={{ flex: 1 }}
-                onClick={() => loadTomtomAlongRoute("fuel", "fuel_station")}
-                disabled={poiBusy}
-              >
-                ⛽ {t("mapPage.fuelAlongRoute")}
-              </button>
-              <button
-                type="button"
-                className={styles.ghost}
-                style={{ flex: 1 }}
-                onClick={() => loadTomtomAlongRoute("parking", "parking")}
-                disabled={poiBusy}
-              >
-                🅿️ {t("mapPage.parkingAlongRoute")}
-              </button>
-            </div>
-          )}
-          {/*
-            [#383] Legenda wymieniała „firmy" (niebieska kropka), a `OsmPoiType` zna
-            wyłącznie `parking | fuel_station` — takiego punktu nie dało się wczytać
-            ŻADNYM przyciskiem powyżej, więc pozycja kłamała przy każdym imporcie.
-            Zostają dwa typy, które mapa rzeczywiście rysuje, z liczbami.
-          */}
-          {poiCount != null && (
-            <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-              {t("mapPage.found")} <strong>{poiCount}</strong> ·{" "}
-              <span style={{ color: cssPalette.red }}>
-                ● {t("mapPage.legendStations")} ({poiKinds.fuel})
-              </span>{" "}
-              <span style={{ color: "#22c55e" }}>
-                ● {t("mapPage.legendParkings")} ({poiKinds.parking})
-              </span>
-            </div>
-          )}
+          <PoiTools
+            busy={poiBusy}
+            onInView={loadPois}
+            onAlongRoute={loadPoisAlongRoute}
+            onTomtom={loadTomtomAlongRoute}
+            count={poiCount}
+            kinds={poiKinds}
+          />
 
           <button
             type="button"
@@ -2583,195 +1809,37 @@ export default function MapPage() {
             />
           )}
 
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={cardFilterOn}
-              onChange={(e) => {
-                const on = e.target.checked;
-                setCardFilterOn(on);
-                if (on && cardProviders.size === 0 && cardOptions.length) {
-                  setCardProviders(new Set(cardOptions));
-                }
-              }}
-            />{" "}
-            {t("mapPage.onlyMyCardStations")}
-          </label>
-          {cardFilterOn &&
-            (cardOptions.length === 0 ? (
-              <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                {t("mapPage.noCardsInFleet")}
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {cardOptions.map((p) => {
-                  const on = cardProviders.has(p);
-                  return (
-                    <button
-                      key={p}
-                      type="button"
-                      className={`${styles.segment} ${on ? styles.segmentActive : ""}`}
-                      style={{ flex: "0 0 auto" }}
-                      onClick={() =>
-                        setCardProviders((s) => {
-                          const n = new Set(s);
-                          if (n.has(p)) n.delete(p);
-                          else n.add(p);
-                          return n;
-                        })
-                      }
-                    >
-                      {FUEL_CARD_PROVIDER_LABELS[p]}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+          <CardFilter
+            on={cardFilterOn}
+            onToggle={toggleCardFilter}
+            options={cardOptions}
+            providers={cardProviders}
+            onToggleProvider={toggleCardProvider}
+          />
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={reportMode}
-              onChange={(e) => setReportMode(e.target.checked)}
-            />{" "}
-            {t("mapPage.reportMode")}
-          </label>
-          {reportMode && (
-            <select
-              className={styles.input}
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value as ReportType)}
-            >
-              {REPORT_TYPES.map((rt) => (
-                <option key={rt} value={rt}>
-                  {t(REPORT_LABEL[rt])}
-                </option>
-              ))}
-            </select>
-          )}
-          {reportMsg && <div style={{ fontSize: 12, color: cssPalette.red }}>{reportMsg}</div>}
+          <ReportModePanel
+            on={reportMode}
+            onToggle={setReportMode}
+            type={reportType}
+            onType={setReportType}
+            msg={reportMsg}
+          />
 
           <div style={{ height: 1, background: cssPalette.graphite, margin: "4px 0" }} />
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={trafficOn}
-              onChange={(e) => setTrafficOn(e.target.checked)}
-            />{" "}
-            🚦 {t("mapPage.liveTrafficHere")}
-          </label>
-          {trafficOn && (
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
-              <span style={{ color: TRAFFIC_COLOR.free }}>● {t("mapPage.trafficFree")}</span>
-              <span style={{ color: TRAFFIC_COLOR.moderate }}>
-                ● {t("mapPage.trafficModerate")}
-              </span>
-              <span style={{ color: TRAFFIC_COLOR.heavy }}>● {t("mapPage.trafficHeavy")}</span>
-              <span style={{ color: TRAFFIC_COLOR.blocked }}>● {t("mapPage.trafficBlocked")}</span>
-            </div>
-          )}
-          {trafficMsg && <div style={{ fontSize: 12, color: cssPalette.smoke }}>{trafficMsg}</div>}
+          <TrafficToggle on={trafficOn} onToggle={setTrafficOn} msg={trafficMsg} />
 
-          {TOMTOM_KEY && (
-            <>
-              <label className={styles.check}>
-                <input
-                  type="checkbox"
-                  checked={incidentsOn}
-                  onChange={(e) => setIncidentsOn(e.target.checked)}
-                />{" "}
-                🚧 {t("mapPage.incidentsTomtom")}
-              </label>
-              {incidentsOn && (
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11 }}>
-                  <span style={{ color: INCIDENT_COLOR.closure }}>
-                    ● {t(INCIDENT_LABEL.closure)}
-                  </span>
-                  <span style={{ color: INCIDENT_COLOR.major }}>● {t(INCIDENT_LABEL.major)}</span>
-                  <span style={{ color: INCIDENT_COLOR.moderate }}>
-                    ● {t(INCIDENT_LABEL.moderate)}
-                  </span>
-                  <span style={{ color: INCIDENT_COLOR.minor }}>● {t(INCIDENT_LABEL.minor)}</span>
-                  <span style={{ color: INCIDENT_COLOR.unknown }}>
-                    ● {t(INCIDENT_LABEL.unknown)}
-                  </span>
-                </div>
-              )}
-              {incidentMsg && (
-                <div style={{ fontSize: 12, color: cssPalette.smoke }}>{incidentMsg}</div>
-              )}
-            </>
-          )}
+          <IncidentsToggle on={incidentsOn} onToggle={setIncidentsOn} msg={incidentMsg} />
 
-          {/*
-            [#383] Warstwa odcinków płatnych. `sectionType=tollRoad` leciał do TomTom
-            w każdym zapytaniu o trasę, a odpowiedź szła do kosza. Kluczowe: gdy dostawca
-            NIE raportuje położenia opłat (`tollSections.known === false`), mówimy to
-            wprost — pusta warstwa nie może udawać „trasy bez opłat", zwłaszcza że
-            `tollCost` powyżej potrafi być wtedy większy od zera.
-          */}
-          <label className={styles.check}>
-            <input
-              type="checkbox"
-              checked={tollLayerOn}
-              onChange={(e) => setTollLayerOn(e.target.checked)}
-            />{" "}
-            🛣️ {t("mapPage.tollLayer")}
-          </label>
-          {tollLayerOn &&
-            (!result ? (
-              <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                {t("mapPage.planRouteFirst")}
-              </div>
-            ) : !result.tollSections.known ? (
-              <div
-                style={{
-                  fontSize: 12,
-                  lineHeight: 1.4,
-                  color: cssPalette.offWhite,
-                  background: cssPalette.black,
-                  border: `1px solid ${cssPalette.red}`,
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                }}
-              >
-                ⚠️ {t("mapPage.tollSectionsUnknown")} ({result.provider})
-              </div>
-            ) : result.tollSections.sections.length === 0 ? (
-              <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                {t("mapPage.tollNoSections")}
-              </div>
-            ) : (
-              <div style={{ fontSize: 11, color: cssPalette.smoke }}>
-                <span style={{ color: cssPalette.red }}>▬</span> {t("mapPage.tollLegend")} (
-                {result.tollSections.sections.length})
-              </div>
-            ))}
+          <TollLayerToggle on={tollLayerOn} onToggle={setTollLayerOn} result={result} />
 
-          {/*
-            [#383] Auta live: `heading` z bazy obraca strzałkę, a filtr świeżości chowa
-            pozycje starsze niż STALE_POSITION_MIN. Blok pokazujemy tylko wtedy, gdy
-            jakiekolwiek pozycje w ogóle przyszły.
-          */}
-          {truckTotal > 0 && (
-            <>
-              <label className={styles.check}>
-                <input
-                  type="checkbox"
-                  checked={freshOnly}
-                  onChange={(e) => setFreshOnly(e.target.checked)}
-                />{" "}
-                🚛 {t("mapPage.freshPositionsOnly")} (≤ {STALE_POSITION_MIN} min)
-              </label>
-              {staleHidden > 0 && (
-                <div style={{ fontSize: 12, color: cssPalette.smoke }}>
-                  {t("mapPage.stalePositionsHidden")} {STALE_POSITION_MIN} min:{" "}
-                  <strong>{staleHidden}</strong>
-                </div>
-              )}
-            </>
-          )}
+          <LiveTrucksPanel
+            total={truckTotal}
+            freshOnly={freshOnly}
+            onToggle={setFreshOnly}
+            staleHidden={staleHidden}
+            staleAfterMin={STALE_POSITION_MIN}
+          />
 
           {result && (
             <RouteSummary

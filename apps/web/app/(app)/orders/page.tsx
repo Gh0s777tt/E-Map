@@ -10,6 +10,7 @@ import {
   listCompanyMembers,
   listContractors,
   listFxRates,
+  listOrderReferences,
   listOrders,
   type Order,
   saveOrder,
@@ -711,10 +712,27 @@ export default function OrdersPage() {
         };
       }
       const regMap = new Map(vehicles.map((v) => [v.registration.toUpperCase(), v.id]));
+      /**
+       * Numery referencyjne CAŁEJ historii, stronami — nie 1000 najnowszych zleceń.
+       *
+       * Wykrywanie duplikatu na oknie „najnowszych" nie wykrywa niczego tam, gdzie
+       * duplikat naprawdę powstaje: ponownie wgrany plik sprzed kwartału nie trafia
+       * w to okno ani jednym numerem, więc każda pozycja wjeżdża do bazy drugi raz —
+       * a potem drugi raz do przychodu w eksporcie i w zestawieniu miesięcznym.
+       */
+      const refsPaged = await listOrderReferences(sb, m.companyId);
+      /**
+       * Niepełny zbiór numerów = BRAK importu, nie import „na oko".
+       *
+       * Przy obciętej liście nie wiadomo, czy numeru nie ma w bazie, czy tylko nie
+       * dojechał — a pomyłka w tę stronę kończy się podwojonym przychodem, którego
+       * nikt później nie odróżni od prawdziwego. Odmowa jest odwracalna, duplikat nie.
+       */
+      if (!refsPaged.complete) {
+        return { inserted: 0, failed: rows.length, errors: [t("orders.importRefsIncomplete")] };
+      }
       const existingRefs = new Set(
-        (await listOrders(sb, m.companyId))
-          .map((o) => (o.reference_no ?? "").trim().toUpperCase())
-          .filter(Boolean),
+        refsPaged.rows.map((o) => (o.reference_no ?? "").trim().toUpperCase()).filter(Boolean),
       );
       let inserted = 0;
       let failed = 0;

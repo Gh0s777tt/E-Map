@@ -768,6 +768,8 @@ export const pl = {
   "orders.deleted": "Zlecenie usunięte.",
   "orders.deleteError": "Błąd usuwania.",
   "orders.importDuplicate": "zlecenie już istnieje (pominięto)",
+  "orders.importRefsIncomplete":
+    "Import wstrzymany — nie udało się pobrać kompletu numerów referencyjnych firmy, więc duplikaty nie zostałyby wykryte. Spróbuj ponownie albo zgłoś problem.",
   "orders.importRowFallback": "zlecenie",
   "orders.importVehicleUnknownPrefix": "pojazd „",
   "orders.importVehicleUnknownSuffix": '" nierozpoznany (zapis bez pojazdu)',

@@ -4,13 +4,14 @@ import {
   listDriverPayouts,
   listFuelLogs,
   listFxRates,
-  listOrders,
+  listOrdersAll,
   listPerDiemTrips,
   toFxRates,
 } from "@e-logistic/api";
 import {
   computePerDiem,
   monthlyFleetSummary,
+  type OrderStatus,
   rowAmountEur,
   settleDriverPayouts,
   sumPerDiem,
@@ -19,6 +20,7 @@ import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getCachedMembership } from "@/lib/membership";
+import { monthWindow } from "@/lib/monthWindow";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
 interface Kpi {
@@ -35,9 +37,22 @@ interface Kpi {
    * suma podpisana jako niepełna.
    */
   noRate: number;
+  /**
+   * Zbiór zleceń urwał się na sufit pobrania — kwoty na pasku są zaniżone o nieznaną
+   * wartość. To inna klasa braku niż `noRate`: tam wiadomo, ilu pozycji brakuje i
+   * dlaczego, tu nie wiadomo nawet tego. Milczenie nie wchodzi w grę, bo obcięta suma
+   * wygląda dokładnie tak samo jak pełna.
+   */
+  incomplete: boolean;
 }
 
-const OPEN = new Set(["new", "assigned", "in_progress"]);
+/**
+ * Statusy „w toku". Ta sama lista jedzie do bazy jako filtr zapytania, więc jest
+ * tablicą typu `OrderStatus`, a nie luźnym `Set<string>` — literówka w statusie ma
+ * wywalić się na kompilacji, a nie po cichu zwrócić pusty licznik.
+ */
+const OPEN: OrderStatus[] = ["new", "assigned", "in_progress"];
+const OPEN_SET = new Set<string>(OPEN);
 
 type CostRow = {
   vehicle_id: string;
@@ -66,11 +81,22 @@ export function KpiStrip() {
         if (!m || (m.role !== "owner" && m.role !== "dispatcher")) return;
         const month = new Date().toISOString().slice(0, 7);
         const from = `${month}-01`;
-        const toD = new Date(`${month}-01T00:00:00Z`);
-        toD.setUTCMonth(toD.getUTCMonth() + 1);
-        const to = toD.toISOString().slice(0, 10);
-        const [orders, fuel, adblue, pds, pays, fxRows] = await Promise.all([
-          listOrders(sb, m.companyId),
+        // Okno zleceń SZERSZE niż sam miesiąc i identyczne z /monthly — patrz
+        // `lib/monthWindow.ts`. Zapytanie filtruje po `created_at`, a o miesiącu
+        // rozstrzyga data załadunku, więc okno przycięte do miesiąca gubiłoby
+        // zlecenia wprowadzone wcześniej, a wiezione teraz.
+        const okno = monthWindow(month);
+        const to = okno.to;
+        const [ordersPaged, otwartePaged, fuel, adblue, pds, pays, fxRows] = await Promise.all([
+          // STRONAMI, nie jednym zapytaniem: bez tego obowiązywał sufit `api.max_rows`
+          // PostgREST (domyślnie 1000, bez błędu i bez śladu), a z tych wierszy liczy się
+          // przychód i wynik miesiąca. Kafelek pokazywałby kwotę zaniżoną o nieznaną
+          // wartość — i inną niż /monthly dla tego samego miesiąca.
+          listOrdersAll(sb, m.companyId, { from: okno.from, to: okno.to }),
+          // Liczniki operacyjne biorą CAŁĄ historię, ale tylko interesujące statusy:
+          // zlecenie otwarte od roku dalej jest otwarte, a zawężenie po statusie
+          // trzyma zbiór przy jednej stronie, zamiast ściągać archiwum firmy.
+          listOrdersAll(sb, m.companyId, { statuses: [...OPEN, "delivered"] }),
           listFuelLogs(sb, { from, to, limit: 5000 }),
           listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
           listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
@@ -83,6 +109,7 @@ export function KpiStrip() {
           }),
         ]);
         const rates = toFxRates(fxRows);
+        const orders = ordersPaged.rows;
         const inMonth = (d: string) => d.slice(0, 7) === month;
         // [#378] Liczymy pozycje, które mają kwotę, ale przepadły na braku
         // notowania — tylko te z bieżącego miesiąca, bo tylko one wchodzą do KPI.
@@ -144,8 +171,8 @@ export function KpiStrip() {
           pays.map((p) => ({ kind: p.kind, amount: p.amount, currency: p.currency })),
         ).filter((b) => b.balance !== 0);
         setKpi({
-          inProgress: orders.filter((o) => OPEN.has(o.status)).length,
-          toInvoice: orders.filter((o) => o.status === "delivered").length,
+          inProgress: otwartePaged.rows.filter((o) => OPEN_SET.has(o.status)).length,
+          toInvoice: otwartePaged.rows.filter((o) => o.status === "delivered").length,
           revenue: summary.totals.revenueEur,
           net: summary.totals.net,
           perDiem: pdTotals.length
@@ -155,6 +182,7 @@ export function KpiStrip() {
             ? payBalances.map((b) => `${b.balance} ${b.currency}`).join(" · ")
             : "—",
           noRate,
+          incomplete: !ordersPaged.complete || !otwartePaged.complete,
         });
       } catch {
         // offline / brak dostępu → ukryj pasek
@@ -176,11 +204,15 @@ export function KpiStrip() {
         accent={kpi.net >= 0 ? palette.success : palette.red}
         // [#378] Gdy czegoś nie dało się przeliczyć, mówimy to wprost. Kafelek bez
         // tego dopisku obiecywałby pełny wynik miesiąca, którym nie jest.
-        sub={
-          kpi.noRate > 0
-            ? `przychód ${kpi.revenue} € · ${kpi.noRate} poz. bez kursu (nie wliczono)`
-            : `przychód ${kpi.revenue} €`
-        }
+        sub={[
+          `przychód ${kpi.revenue} €`,
+          kpi.noRate > 0 ? `${kpi.noRate} poz. bez kursu (nie wliczono)` : "",
+          // Sufit pobrania unieważnia liczbę nad tym podpisem, więc mówi o tym
+          // wprost, zamiast pozwolić jej wyglądać na kompletną.
+          kpi.incomplete ? "⚠️ dane niepełne — suma zaniżona" : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       />
       <Card href="/per-diem" label="Diety (mies.)" value={kpi.perDiem} small />
       <Card href="/payouts" label="Saldo do wypłaty" value={kpi.payout} small />

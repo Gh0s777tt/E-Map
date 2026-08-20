@@ -761,6 +761,8 @@ export const en: Record<MessageKey, string> = {
   "orders.deleted": "Order deleted.",
   "orders.deleteError": "Delete error.",
   "orders.importDuplicate": "order already exists (skipped)",
+  "orders.importRefsIncomplete":
+    "Import halted — the full list of company reference numbers could not be fetched, so duplicates would go undetected. Try again or report the problem.",
   "orders.importRowFallback": "order",
   "orders.importVehicleUnknownPrefix": 'vehicle "',
   "orders.importVehicleUnknownSuffix": '" unrecognized (saved without vehicle)',

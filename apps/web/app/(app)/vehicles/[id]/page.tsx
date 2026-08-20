@@ -6,11 +6,11 @@ import {
   insertVehicleCost,
   latestOdometers,
   listFuelCardsByVehicle,
-  listFuelLogs,
+  listFuelLogsAll,
   listFxRates,
-  listOrders,
+  listOrdersAll,
   listServiceTasks,
-  listVehicleCosts,
+  listVehicleCostsAll,
   listVehicles,
   type Order,
   type ServiceTask,
@@ -105,6 +105,15 @@ export default function VehicleCardPage() {
   const [fuel, setFuel] = useState<FuelRaw[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [costs, setCosts] = useState<VehicleCost[]>([]);
+  /**
+   * Którykolwiek ze zbiorów tej karty urwał się na sufit pobrania.
+   *
+   * Karta pokazuje P&L CAŁEGO ŻYCIA pojazdu — przychód, paliwo i koszty bez pola
+   * „od–do". Obcięcie jednego z tych zbiorów nie da się zauważyć po samych liczbach:
+   * wynik netto po prostu wychodzi inny, czasem ujemny dla auta, które zarabia.
+   * Dlatego trzymamy osobny znacznik i piszemy o nim nad kafelkami.
+   */
+  const [incomplete, setIncomplete] = useState(false);
   /** [#378] Kursy EBC — bez nich kwota w walucie innej niż euro nie ma jak wejść do sumy. */
   const [rates, setRates] = useState<FxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -131,6 +140,7 @@ export default function VehicleCardPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadErr(null);
+    setIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
@@ -146,14 +156,20 @@ export default function VehicleCardPage() {
       const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 35, 1))
         .toISOString()
         .slice(0, 10);
-      const [vs, st, od, cd, f, ord, vc, fxRows, comp] = await Promise.all([
+      const [vs, st, od, cd, fPaged, ordPaged, vcPaged, fxRows, comp] = await Promise.all([
         listVehicles(sb, m.companyId),
         listServiceTasks(sb, m.companyId),
         latestOdometers(sb, m.companyId),
         listFuelCardsByVehicle(sb, id),
-        listFuelLogs(sb, { vehicleId: id, limit: 2000 }),
-        listOrders(sb, m.companyId),
-        listVehicleCosts(sb, m.companyId, { vehicleId: id }),
+        // Trzy zbiory, z których liczy się P&L, schodzą STRONAMI i są zawężone do tego
+        // pojazdu PO STRONIE BAZY. Wcześniej zlecenia szły jednym zapytaniem o całą
+        // firmę (sufit `api.max_rows`, domyślnie 1000, bez błędu i bez śladu), a filtr
+        // po pojeździe robiła przeglądarka: przy flocie 20 aut mieściło się w tym kilka
+        // tygodni historii, więc przychód był zaniżony o rząd wielkości, podczas gdy
+        // koszty liczyły się z innego, pełniejszego zakresu.
+        listFuelLogsAll(sb, { vehicleId: id }),
+        listOrdersAll(sb, m.companyId, { vehicleId: id }),
+        listVehicleCostsAll(sb, m.companyId, { vehicleId: id }),
         // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie publikuje
         // w weekendy i święta — ten sam wzorzec co w /stats i /monthly.
         listFxRates(sb, {
@@ -168,9 +184,10 @@ export default function VehicleCardPage() {
       setTasks(st.filter((t) => t.vehicle_id === id));
       setOdo(od);
       setCards(cd as FuelCard[]);
-      setFuel(f as FuelRaw[]);
-      setOrders((ord as Order[]).filter((o) => o.vehicle_id === id));
-      setCosts(vc);
+      setFuel(fPaged.rows as FuelRaw[]);
+      setOrders(ordPaged.rows);
+      setCosts(vcPaged.rows);
+      setIncomplete(!fPaged.complete || !ordPaged.complete || !vcPaged.complete);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać danych pojazdu.");
     } finally {
@@ -407,6 +424,17 @@ export default function VehicleCardPage() {
               vehicle.year ? ` · ${vehicle.year}` : ""
             } · ${vehicle.vehicle_type ?? "—"}`}
           />
+
+          {/* Sufit pobrania unieważnia każdą liczbę na tej karcie, więc komunikat idzie
+              NAD ostrzeżeniem o kursach: tam brakuje konkretnych pozycji i wiadomo
+              których, tu nie wiadomo nawet ilu. */}
+          {incomplete && (
+            <div style={styles.rateWarn}>
+              ⚠️ Dane pojazdu są niepełne — historia przekroczyła sufit pobrania. Przychód, koszty i
+              wynik P&L poniżej są zaniżone o nieznaną kwotę. Zgłoś to, zanim użyjesz tych liczb do
+              rozliczenia.
+            </div>
+          )}
 
           {/* [#378] „Brak kwoty" i „brak kursu" to dwie różne rzeczy i nie wolno ich
               zlewać: temu, kto wpisał 1200 PLN, komunikat „uzupełnij kwotę" nic nie

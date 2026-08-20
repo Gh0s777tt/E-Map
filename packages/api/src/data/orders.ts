@@ -1,6 +1,7 @@
 /** Warstwa danych: zlecenia / ładunki. */
 import type { OrderInput, OrderStatus } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset, type PagedRows } from "./pagination";
 
 export interface Order {
   id: string;
@@ -26,36 +27,127 @@ const COLS =
   "id, reference_no, shipper, consignee, origin, destination, cargo, weight_kg, price, currency, status, vehicle_id, assigned_to, load_date, unload_date, notes, created_at";
 
 /**
- * Zlecenia firmy (najnowsze pierwsze). `opts` ogranicza zakres dla stron analitycznych:
- * `from`/`to` filtrują po `created_at`, `limit` zabezpiecza przed pobraniem całej historii.
+ * Zawężenie zbioru zleceń firmy — jedno miejsce na filtry, bez sortowania.
  *
- * Domyślnego sufitu tu NIE MA i to jest decyzja, nie przeoczenie — inaczej niż w listach,
- * które tylko się wyświetlają. Z tej funkcji liczy się PIENIĄDZE: `apps/web/lib/exportAll.ts`
- * buduje z niej arkusz „Statystyki" (suma `revenue` per pojazd) do eksportu księgowego,
- * a `components/KpiStrip.tsx` — kafelki przychodu na pulpicie. Domyślne obcięcie
- * zaniżyłoby te sumy o kwotę, której nikt nie zobaczy: wynik nadal wygląda jak pełna
- * liczba. Wywołujący, któremu wystarczy okno czasowe albo kilkaset najnowszych pozycji
- * (`stats`, `scoring`, `route-costs`), podaje `from`/`to`/`limit` jawnie — i wtedy wie,
- * że patrzy na wycinek.
+ * Sortowanie zostaje NA ZEWNĄTRZ, bo dwa tryby pobierania potrzebują dwóch różnych
+ * porządków: zapytanie jednorazowe chce najnowsze pierwsze (tak wygląda lista na
+ * ekranie), a pobranie stronami musi iść po kluczu głównym rosnąco, żeby kursor był
+ * odporny na wstawki — patrz [`pagination.ts`](./pagination.ts).
+ *
+ * `to` jest granicą WYŁĄCZNĄ (`lt`). Wywołujący podają tu 1. dzień kolejnego miesiąca,
+ * więc przy `lte` wiersz z `created_at` dokładnie o północy tego dnia należałby naraz
+ * do dwóch sąsiednich okien. Tak samo liczy okna `listPerDiemTrips`.
+ */
+function companyOrdersFilter(client: SupabaseClient, companyId: string, opts?: OrderFilter) {
+  let query = client.from("orders").select(COLS).eq("company_id", companyId);
+  if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
+  if (opts?.assignedTo) query = query.eq("assigned_to", opts.assignedTo);
+  if (opts?.statuses) query = query.in("status", opts.statuses);
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  if (opts?.to) query = query.lt("created_at", opts.to);
+  return query;
+}
+
+/** Filtry wspólne dla obu trybów pobrania (jednorazowego i stronami). */
+export interface OrderFilter {
+  /** Zakres `created_at`: `from` włącznie, `to` WYŁĄCZNIE. */
+  from?: string;
+  to?: string;
+  /** Zawężenie po stronie BAZY — zamiast ściągania całej firmy i odsiewania w przeglądarce. */
+  vehicleId?: string;
+  assignedTo?: string;
+  statuses?: OrderStatus[];
+}
+
+/** Najnowsze pierwsze; `id` rozstrzyga remis, bo `created_at` bywa identyczny w całej paczce importu. */
+function najnowszePierwsze(a: Order, b: Order): number {
+  return b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+}
+
+/**
+ * Zlecenia firmy (najnowsze pierwsze) — JEDNO zapytanie, więc obowiązuje sufit serwera.
+ *
+ * Brak `limit` NIE znaczy „bez granicy" — znaczy granicę CUDZĄ: sufit `api.max_rows`
+ * PostgREST (domyślnie 1000), egzekwowany bez błędu i bez śladu. Ta funkcja nadaje się
+ * więc wyłącznie tam, gdzie wycinek wystarcza: podpowiedzi w formularzach, wyszukiwarka,
+ * lista z filtrami na ekranie. Wywołujący, któremu wystarczy okno czasowe albo kilkaset
+ * najnowszych pozycji, podaje `from`/`to`/`limit` jawnie — i wtedy wie, że patrzy na wycinek.
+ *
+ * Tam, gdzie komplet jest warunkiem POPRAWNOŚCI LICZBY (przychód, eksport, wykrywanie
+ * duplikatów przy imporcie), wołaj `listOrdersAll` — z zawężeniem po pojeździe, kierowcy
+ * albo statusie, żeby komplet nie znaczył „cała historia firmy".
  */
 export async function listOrders(
   client: SupabaseClient,
   companyId: string,
-  opts?: { from?: string; to?: string; limit?: number },
+  opts?: OrderFilter & { limit?: number },
 ): Promise<Order[]> {
-  let query = client
-    .from("orders")
-    .select(COLS)
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false });
-  if (opts?.from) query = query.gte("created_at", opts.from);
-  if (opts?.to) query = query.lte("created_at", opts.to);
+  let query = companyOrdersFilter(client, companyId, opts).order("created_at", {
+    ascending: false,
+  });
   // `!== undefined`, nie samo `opts?.limit` — wariant falsy po cichu ignorował `limit: 0`
   // i rozjeżdżał się z konwencją `listMyOrders` w tym samym pliku (linia niżej).
   if (opts?.limit !== undefined) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Order[];
+}
+
+/**
+ * Zlecenia firmy pobrane STRONAMI — dla wywołujących, dla których komplet jest
+ * warunkiem poprawności wyniku (eksport księgowy, przychód per pojazd i per kierowca,
+ * zestawienie miesięczne, wykrywanie duplikatów przy imporcie). Każde pojedyncze
+ * zapytanie jest ograniczone do jednej strony, a zbiór wraca kompletny; gdy zadziała
+ * twardy sufit stron, mówi o tym `complete: false`.
+ *
+ * Strony schodzą po `id` rosnąco (kursor odporny na wstawki), a porządek „najnowsze
+ * pierwsze" wraca dopiero tutaj, po złożeniu wszystkich stron.
+ */
+export async function listOrdersAll(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: OrderFilter & { pageSize?: number; maxPages?: number },
+): Promise<PagedRows<Order>> {
+  const paged = await fetchAllByKeyset<Order>(
+    async (afterId, pageSize) => {
+      let query = companyOrdersFilter(client, companyId, opts);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+      if (error) throw error;
+      return (data ?? []) as Order[];
+    },
+    { pageSize: opts?.pageSize, maxPages: opts?.maxPages },
+  );
+  return { ...paged, rows: [...paged.rows].sort(najnowszePierwsze) };
+}
+
+/** Numer referencyjny zlecenia wraz z kluczem — tyle, ile trzeba do wykrycia duplikatu. */
+export interface OrderReference {
+  id: string;
+  reference_no: string | null;
+}
+
+/**
+ * KOMPLETNY zbiór numerów referencyjnych firmy — do wykrywania duplikatów przy imporcie.
+ *
+ * Osobna funkcja, a nie `listOrdersAll` z odrzuceniem reszty kolumn, bo tu naprawdę
+ * potrzebne są dwie kolumny z każdego wiersza historii. Import czytający `listOrders`
+ * porównywał plik z oknem 1000 NAJNOWSZYCH zleceń: powtórnie wgrany plik sprzed kwartału
+ * nie trafiał w to okno ani jednym numerem, więc każda pozycja wjeżdżała do bazy drugi
+ * raz — a potem drugi raz do przychodu w eksporcie.
+ */
+export async function listOrderReferences(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { pageSize?: number; maxPages?: number },
+): Promise<PagedRows<OrderReference>> {
+  return fetchAllByKeyset<OrderReference>(async (afterId, pageSize) => {
+    let query = client.from("orders").select("id, reference_no").eq("company_id", companyId);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+    if (error) throw error;
+    return (data ?? []) as OrderReference[];
+  }, opts);
 }
 
 /**

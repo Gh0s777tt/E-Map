@@ -1,14 +1,19 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.244.0** (#406 — 112 migracji; ostatnia: 0102 pola routingu w kartotece pojazdu) · 2026-08-10
+> Status: **wdrożone** · stan kodu **v1.248.0** (#419 — 112 plików migracji, numery 0001–0110; ostatnia: **0110** naczepy jako osobna encja) · 2026-08-20
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
 ---
 
-## 0. Aktualny schemat (stan v1.51.0 — migracje 0001–0052)
+## 0. Aktualny schemat (migracje 0001–0110)
 
-**~40 tabel `public` (wszystkie z RLS).** Poniżej rdzeń; sekcje 0.1–0.3 obejmują moduły dodawane kolejno (liczba tabel weryfikowana automatycznie — patrz [SECURITY-RLS.md](SECURITY-RLS.md) / `pnpm audit:rls`).
+**62 tabele `public` — każda z włączonym RLS.** Liczba jest sprawdzalna wprost w plikach migracji:
+tyle samo `create table` co `alter table … enable row level security`, bez ani jednej tabeli poza tą
+parą; żywy schemat weryfikuje [`pnpm audit:rls`](../scripts/audit-rls.mjs) (patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
+Stało tu wcześniej „~40 tabel" — prawdziwa liczba z v1.51.0, która przez następne sześćdziesiąt
+migracji nie drgnęła i zaniżała schemat o jedną trzecią. Poniżej **rdzeń** (v1.51.0, migracje
+0001–0052); sekcje 0.1–0.4 dokładają moduły dodawane kolejno, aż do 0110.
 
 **Tabele:**
 - `companies`, `memberships` (`role`, `status`, **`modules` text[]** — 0016), `profiles`, `driver_profiles`.
@@ -70,7 +75,7 @@ szyfruje platforma Supabase.
 - **`driver_payouts`** (0050) — rozliczenia kierowcy: `driver_name`, `type` (należność/zaliczka/potrącenie/wypłata), `amount`, `currency`, `entry_date`, notatka. Saldo do wypłaty per waluta liczone `settleDriverPayouts` w core (bez przeliczeń kursowych). RLS: członek czyta, owner/dispatcher zarządza.
 - **`damage_claims`** (0051) — rejestr szkód / OC: `vehicle_id`, kierowca, `claim_date`, rodzaj (kolizja/kradzież/szyby/żywioł/wandalizm/inne), status (zgłoszona/w likwidacji/naprawiona/zamknięta/odrzucona), koszt, ubezpieczyciel, `claim_number`, opis. Podsumowanie (`summarizeDamageClaims` w core) zasila panel „Co wymaga uwagi" (otwarte szkody). RLS: multi-tenant.
 
-### 0.4 Moduły dodane po v1.51 (migracje 0055–0100)
+### 0.4 Moduły dodane po v1.51 (migracje 0055–0110)
 
 Ta sekcja powstała, gdy dokument rozjechał się z kodem o dwadzieścia migracji —
 opisywał 82 migracje przy 102 faktycznych. Wszystkie kolumny poniżej **odczytane
@@ -135,6 +140,31 @@ opisywał stan rzeczywisty, a nie zamierzony. Gwiazdka `*` oznacza `NOT NULL`.
 - `trip_events` (0100): **`currency`** — do tej pory `amount` było kwotą bez jednostki.
 - `vehicle_costs.currency` i `orders.currency` (0100): CHECK na format ISO 4217. Bez niego „zł" albo „PLN " ze spacją przechodziło, a potem nie dopasowało się do żadnego kursu.
 - Kolumny kraju w sześciu tabelach formularzy (0099): trigger `normalize_country` sprowadza wpis do kodu ISO 3166-1 alpha-2. **Normalizuje, nie odrzuca** — buildy mobile ze sklepów nie mają nowej walidacji, a kierowcy przy dystrybutorze nie można zablokować zapisu przez literówkę.
+
+**Migracje bez nowych tabel (0104–0108)** — wymienione tu dlatego, że inaczej czytelnik tego
+dokumentu wnioskowałby z ostatniej opisanej migracji, że schemat kończy się na 0103. Żadna z nich
+nie dokłada tabeli ani kolumny — zmieniają RPC, grant, politykę albo indeks — więc **pełne
+uzasadnienia są w [SECURITY-RLS.md](SECURITY-RLS.md)**, a nie tutaj.
+- **0104** — `my_driver_identity()` zwraca też `id` wiersza kartoteki. Bez tego telefon znał
+  wyłącznie `auth.uid()`, a `work_time_entries.driver_id` wskazuje na `drivers.id`, więc „Moje
+  rozliczenie" i „Czas pracy" liczyły ewidencję CAŁEJ firmy jako własną kierowcy.
+- **0105** — `_card_key()`/`_pii_key()` (klucze pgcrypto do PIN-ów i PII kierowcy) przestają być
+  wywoływalne przez `anon`: PostgREST wystawia każdą funkcję z `public` jako `/rest/v1/rpc/…`,
+  więc klucz szyfrujący dało się pobrać **bez logowania**.
+- **0106** — 52 brakujące indeksy na kluczach obcych, założone na **pustej** bazie: na tabeli
+  z milionem wierszy `create index` blokuje zapisy, na pustej trwa milisekundy.
+- **0107** — polityka `storage.objects` dla sejfu dokumentów uwzględnia wreszcie `documents.visibility`
+  (`management`/`company`/`selected` + `allowed_user_ids`, kolumny z **0061**). Wcześniej widoczność
+  filtrowała tylko tabelę metadanych, więc kierowca nie widział dokumentu na liście, ale **plik
+  potrafił pobrać**. Ta sama migracja dołożyła `save_expo_push_token`/`delete_expo_push_token`
+  (SECURITY DEFINER): token Expo należy do URZĄDZENIA, nie do konta, więc gdy firmowy telefon
+  przechodzi z kierowcy A na B, upsert tokenu musi **przepiąć** wiersz na B — polityka UPDATE
+  by tu nie pomogła, bo B z definicji nie ma prawa dotknąć wiersza A, a bez przepięcia
+  powiadomienia dla A lądowały na ekranie, który trzyma B.
+- **0108** — druga warstwa problemu z 0105: `revoke … from public` nie kasuje **jawnego** nadania
+  dla `anon`, które Supabase zakłada przez `alter default privileges`. Skutek trzeba sprawdzać
+  `has_function_privilege('anon', …)`, nie obecnością instrukcji `revoke` w migracji. Najpoważniejsza
+  z domkniętych tu pozycji to `driver_save` — zapisuje tożsamość i numery dokumentów kierowcy.
 
 > **Analityka i wykresy bez własnych tabel:** trend przychodu/kosztów/paliwa (`monthlyFleetTrend`, `fuelByMonth`) oraz globalne wyszukiwanie (`searchEntities`) liczone w `packages/core` z danych istniejących tabel; wizualizacja (`BarChart`/`RevenueTrend`) po stronie web.
 

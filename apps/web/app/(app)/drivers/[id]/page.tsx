@@ -7,7 +7,7 @@ import {
   listCompanyMembers,
   listDrivers,
   listFxRates,
-  listOrders,
+  listOrdersAll,
   type Order,
   toFxRates,
 } from "@e-logistic/api";
@@ -52,6 +52,13 @@ export default function DriverCardPage() {
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  /**
+   * Historia zleceń kierowcy nie zmieściła się w sufit pobrania.
+   *
+   * Przychód kierowcy bywa podstawą rozmowy o premii, a zaniżony wygląda identycznie
+   * jak prawdziwy; trzymamy więc znacznik i piszemy o tym przy liczbach.
+   */
+  const [ordersIncomplete, setOrdersIncomplete] = useState(false);
   /** [#378] Kursy EBC — bez nich zlecenie w walucie innej niż euro nie ma jak wejść do przychodu. */
   const [rates, setRates] = useState<FxRate[]>([]);
   const [companyId, setCompanyId] = useState("");
@@ -62,6 +69,7 @@ export default function DriverCardPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadErr(null);
+    setOrdersIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
@@ -82,18 +90,32 @@ export default function DriverCardPage() {
       const fxFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 35, 1))
         .toISOString()
         .slice(0, 10);
-      const [drivers, mem, ord, fxRows] = await Promise.all([
+      const [drivers, mem, fxRows] = await Promise.all([
         listDrivers(sb, m.companyId),
         listCompanyMembers(sb),
-        listOrders(sb, m.companyId),
         listFxRates(sb, {
           from: new Date(Date.parse(fxFrom) - 10 * 86_400_000).toISOString().slice(0, 10),
         }),
       ]);
-      setDriver(drivers.find((d) => d.id === id) ?? null);
+      const kartoteka = drivers.find((d) => d.id === id) ?? null;
+      setDriver(kartoteka);
       setMembers(mem);
-      setOrders(ord);
       setRates(toFxRates(fxRows));
+      /**
+       * Zlecenia dopiero w drugiej fali — bo dopiero teraz znamy `user_id` kierowcy,
+       * a filtr `assigned_to` należy do BAZY, nie do przeglądarki.
+       *
+       * Wcześniej ekran ściągał całą historię firmy stronami (u firmy z 25 000 zleceń
+       * 26 kolejnych zapytań po 1000 wierszy) i odsiewał z niej jednego kierowcę, żeby
+       * pokazać 15 pozycji i trzy kafelki. Jedno dodatkowe okrążenie kosztuje mniej niż
+       * kilkadziesiąt sekund białego ekranu na telefonie — a wynik jest ten sam, tylko
+       * kompletny dla kierowcy, zamiast kompletnego dla firmy i ucinanego na sufit.
+       */
+      const ordPaged = kartoteka?.user_id
+        ? await listOrdersAll(sb, m.companyId, { assignedTo: kartoteka.user_id })
+        : null;
+      setOrders(ordPaged?.rows ?? []);
+      setOrdersIncomplete(ordPaged ? !ordPaged.complete : false);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać kartoteki.");
     } finally {
@@ -110,10 +132,12 @@ export default function DriverCardPage() {
     () => members.filter((mb) => mb.status === "active" && mb.role === "driver"),
     [members],
   );
-  const myOrders = useMemo(
-    () => (driver?.user_id ? orders.filter((o) => o.assigned_to === driver.user_id) : []),
-    [orders, driver],
-  );
+  /**
+   * Zbiór jest już zawężony do tego kierowcy przez zapytanie (`assigned_to`), więc
+   * `orders` i „zlecenia kierowcy" to od tej pory to samo. Alias zostaje, bo pod tą
+   * nazwą czyta go cała reszta ekranu.
+   */
+  const myOrders = orders;
   /**
    * [#378] Przychód kierowcy z dostarczonych zleceń — w euro, po kursie z dnia załadunku.
    *
@@ -278,6 +302,16 @@ export default function DriverCardPage() {
                     uczciwa, a jednostkę widać przy samej kwocie. */}
                 <Stat label="Przychód" value={`${stats.revenueEur} €`} accent="#22c55e" />
               </div>
+              {/* Obcięcie na sufit pobrania unieważnia WSZYSTKIE trzy kafelki naraz —
+                  także licznik zleceń, nie tylko sumę — więc komunikat idzie przed
+                  ostrzeżeniem o brakującym kursie, które dotyczy pojedynczych pozycji. */}
+              {ordersIncomplete && (
+                <div style={styles.rateWarn}>
+                  ⛔ Dane niepełne — historia zleceń tego kierowcy przekroczyła sufit pobrania, więc
+                  część kursów w ogóle tu nie dotarła. Liczniki i przychód są zaniżone o nieznaną
+                  wartość; nie opieraj na nich rozliczenia.
+                </div>
+              )}
               {/* [#378] „Brak kwoty" i „brak kursu" to dwie różne rzeczy — tu chodzi
                   wyłącznie o to drugie. Kwoty są wpisane, brakuje notowania na dzień
                   załadunku, więc suma jest niepełna i mówimy o tym wprost, zamiast
