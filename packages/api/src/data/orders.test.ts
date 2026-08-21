@@ -13,14 +13,34 @@ describe("listOrders (kształt zapytania)", () => {
   });
 
   it("stosuje from/to/limit gdy podane", async () => {
-    const { client, argsOf, called } = mockSupabase({ data: [], error: null });
+    const { client, calls, argsOf, called } = mockSupabase({ data: [], error: null });
     await listOrders(client, "c", { from: "2026-01-01", to: "2026-02-01", limit: 50 });
-    expect(argsOf("gte")).toEqual(["created_at", "2026-01-01"]);
-    // Granica górna WYŁĄCZNA: wywołujący podaje 1. dzień kolejnego miesiąca, więc
-    // `lte` wpuszczałby wiersz z północy tego dnia do dwóch sąsiednich okien naraz.
-    expect(argsOf("lt")).toEqual(["created_at", "2026-02-01"]);
+    /*
+     * Okno idzie po DACIE FRACHTU, nie po dacie wpisu. Sam `gte("created_at", …)`
+     * wyrzucał z zakresu fracht zabukowany z wyprzedzeniem (wpis w lipcu, załadunek
+     * we wrześniu) i wpuszczał do niego historię wgraną importem CSV, której wszystkie
+     * wiersze mają `created_at` z dnia importu — a po tej samej granicy powstają trzy
+     * eksporty księgowe. Granica górna zostaje WYŁĄCZNA: wywołujący podaje 1. dzień
+     * kolejnego miesiąca, więc `lte` wpuszczałby wiersz z tego dnia do dwóch okien naraz.
+     */
+    expect(calls.filter((c) => c.method === "or").map((c) => c.args[0])).toEqual([
+      "load_date.gte.2026-01-01,and(load_date.is.null,created_at.gte.2026-01-01)",
+      "load_date.lt.2026-02-01,and(load_date.is.null,created_at.lt.2026-02-01)",
+    ]);
+    expect(called("gte")).toBe(false);
     expect(called("lte")).toBe(false);
     expect(argsOf("limit")?.[0]).toBe(50);
+  });
+
+  it("do gałęzi `load_date` (kolumna date) idzie sam dzień granicy", async () => {
+    // Granica bywa pełnym znacznikiem czasu (selektor okresu na `/orders` liczy ją
+    // z `toISOString()`). `load_date` jest typu `date`, więc porównanie z całym
+    // znacznikiem opierałoby się na niejawnym rzutowaniu po stronie bazy.
+    const { client, calls } = mockSupabase({ data: [], error: null });
+    await listOrders(client, "c", { from: "2026-01-15T09:30:00.000Z" });
+    expect(calls.filter((c) => c.method === "or").map((c) => c.args[0])).toEqual([
+      "load_date.gte.2026-01-15,and(load_date.is.null,created_at.gte.2026-01-15T09:30:00.000Z)",
+    ]);
   });
 });
 
@@ -155,8 +175,12 @@ describe("listOrdersAll — pobieranie stronami", () => {
       ["assigned_to", "u9"],
     ]);
     expect(m.argsOf("in")).toEqual(["status", ["delivered"]]);
-    expect(m.argsOf("gte")).toEqual(["created_at", "2026-01-01"]);
-    expect(m.argsOf("lt")).toEqual(["created_at", "2026-02-01"]);
+    // Okno po dacie frachtu — ten sam warunek, z którego powstaje lista na ekranie,
+    // więc plik eksportu opisuje dokładnie ten zbiór, którego sumę widział użytkownik.
+    expect(m.calls.filter((c) => c.method === "or").map((c) => c.args[0])).toEqual([
+      "load_date.gte.2026-01-01,and(load_date.is.null,created_at.gte.2026-01-01)",
+      "load_date.lt.2026-02-01,and(load_date.is.null,created_at.lt.2026-02-01)",
+    ]);
     // Strony schodzą po kluczu głównym — jedyny porządek odporny na wstawki.
     expect(m.argsOf("order")).toEqual(["id", { ascending: true }]);
     // Żadne pojedyncze zapytanie nie jest nieograniczone: granicę stawia rozmiar strony.

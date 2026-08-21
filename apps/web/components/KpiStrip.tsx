@@ -103,15 +103,13 @@ export function KpiStrip() {
         if (!m || (m.role !== "owner" && m.role !== "dispatcher")) return;
         const month = new Date().toISOString().slice(0, 7);
         const from = `${month}-01`;
-        // Okno zleceń SZERSZE niż sam miesiąc i identyczne z /monthly — patrz
-        // `lib/monthWindow.ts`. Zapytanie filtruje po `created_at`, a o miesiącu
-        // rozstrzyga data załadunku, więc okno przycięte do miesiąca gubiłoby
-        // zlecenia wprowadzone wcześniej, a wiezione teraz.
+        // Okno zleceń IDENTYCZNE z /monthly — patrz `lib/monthWindow.ts`. Dwa ekrany
+        // z dwoma zakresami dawały dla jednego miesiąca dwie różne kwoty; zgodność
+        // jest tu ważniejsza niż oszczędność kilku wierszy.
         const okno = monthWindow(month);
         const to = okno.to;
-        // Okno JEDNOMIESIĘCZNE dla diet: ich przynależność rozstrzyga `trip_date`, więc
-        // zapytanie umie zawęzić je dokładnie do pokazywanego miesiąca — w odróżnieniu
-        // od zleceń, które trzeba brać z szerszego okna, bo filtrują się po `created_at`.
+        // Okno JEDNOMIESIĘCZNE dla diet: ich przynależność rozstrzyga `trip_date`,
+        // a nie data załadunku, więc nie mają czego uzgadniać z /monthly.
         const oknoDiet = monthWindow(month, 1);
         const [ordersPaged, otwartePaged, fPaged, aPaged, pdPaged, payPaged, fxRows] =
           await Promise.all([

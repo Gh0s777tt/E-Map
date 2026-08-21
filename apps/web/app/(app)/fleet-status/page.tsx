@@ -8,6 +8,7 @@ import {
   listVehicles,
 } from "@e-logistic/api";
 import { buildFleetStatus, type FleetVehicleState, type OrderStatus } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -42,6 +43,22 @@ const STATE_COLOR: Record<FleetVehicleState, string> = {
   planned: "#3b82f6",
   idle: palette.smoke,
 };
+
+/**
+ * Liczniki mają WŁASNE klucze, mimo że obok stoją `fleet.state.*` o tym samym sensie.
+ * Badge nad listą podpisuje zbiór pojazdów („Wolne: 5"), a badge w wierszu — jeden
+ * pojazd („Wolny”); w polskim to inna forma, w niemieckim inny rodzajnik. Sklejenie
+ * obu na jednym kluczu oszczędziłoby trzy wpisy i zepsuło jedną z dwóch fraz w każdym
+ * języku fleksyjnym — dokładnie ten rodzaj oszczędności, przez który tłumaczenia
+ * zaczynają brzmieć jak maszyna.
+ */
+const COUNT_KEY: Record<FleetVehicleState, MessageKey> = {
+  driving: "fleet.count.driving",
+  planned: "fleet.count.planned",
+  idle: "fleet.count.idle",
+};
+
+const STATES: readonly FleetVehicleState[] = ["driving", "planned", "idle"];
 
 /**
  * Stan pojazdu bierze się WYŁĄCZNIE z tych dwóch statusów (`buildFleetStatus`),
@@ -108,11 +125,11 @@ export default function FleetStatusPage() {
       setTrips(trPaged.rows as TripRaw[]);
       setMembers(mem);
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać statusu floty.");
+      setLoadErr(e instanceof Error ? e.message : t("fleet.error"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -161,20 +178,19 @@ export default function FleetStatusPage() {
 
   return (
     <div style={{ maxWidth: 920 }}>
-      <PageHeader
-        title="Status floty"
-        subtitle="Co robi każdy pojazd teraz: w trasie (aktywne zlecenie), zaplanowane czy wolny — z ostatnim zdarzeniem trasy."
-      />
+      <PageHeader title={t("fleet.title")} subtitle={t("fleet.subtitle")} />
 
-      <SetupNotice source={source} noVehicles="Dodaj pojazd, aby zobaczyć status floty." />
+      <SetupNotice source={source} noVehicles={t("fleet.noVehicles")} />
 
       <div style={styles.controls} className="no-print">
-        <Badge color={STATE_COLOR.driving}>W trasie: {counts.driving}</Badge>
-        <Badge color={STATE_COLOR.planned}>Zaplanowane: {counts.planned}</Badge>
-        <Badge color={STATE_COLOR.idle}>Wolne: {counts.idle}</Badge>
+        {STATES.map((st) => (
+          <Badge key={st} color={STATE_COLOR[st]}>
+            {t(COUNT_KEY[st])}: {counts[st]}
+          </Badge>
+        ))}
         <span style={{ flex: 1 }} />
         <Button variant="ghost" onClick={load}>
-          🔄 Odśwież
+          🔄 {t("fleet.refresh")}
         </Button>
       </div>
 
@@ -188,7 +204,7 @@ export default function FleetStatusPage() {
         loading={loading}
         error={loadErr}
         empty={!loading && vehicles.length === 0}
-        emptyText="Brak pojazdów."
+        emptyText={t("fleet.empty")}
         onRetry={load}
       />
 
@@ -205,7 +221,7 @@ export default function FleetStatusPage() {
                     variant="ghost"
                     onClick={() => showOnMap(r.order?.origin ?? null, r.order?.destination ?? null)}
                   >
-                    🗺️ Mapa
+                    🗺️ {t("fleet.map")}
                   </Button>
                 )}
               </div>
@@ -219,16 +235,24 @@ export default function FleetStatusPage() {
                   {emailOf(r.order.assignedTo) && (
                     <span style={styles.dim}>👤 {emailOf(r.order.assignedTo)}</span>
                   )}
-                  {r.order.loadDate && <span style={styles.dim}>zał. {r.order.loadDate}</span>}
-                  {r.order.unloadDate && <span style={styles.dim}>rozł. {r.order.unloadDate}</span>}
+                  {r.order.loadDate && (
+                    <span style={styles.dim}>
+                      {t("fleet.loadShort")} {r.order.loadDate}
+                    </span>
+                  )}
+                  {r.order.unloadDate && (
+                    <span style={styles.dim}>
+                      {t("fleet.unloadShort")} {r.order.unloadDate}
+                    </span>
+                  )}
                 </div>
               ) : (
-                <div style={{ ...styles.dim, fontSize: 13 }}>Brak aktywnego zlecenia.</div>
+                <div style={{ ...styles.dim, fontSize: 13 }}>{t("fleet.noOrder")}</div>
               )}
 
               {r.lastEvent ? (
                 <div style={{ ...styles.dim, fontSize: 12 }}>
-                  Ostatnio: {tripActionLabel(t, r.lastEvent.action)}
+                  {t("fleet.lastEvent")} {tripActionLabel(t, r.lastEvent.action)}
                   {r.lastEvent.location ? ` · ${r.lastEvent.location}` : ""}
                   {r.lastEvent.country ? ` (${r.lastEvent.country})` : ""} ·{" "}
                   {r.lastEvent.createdAt.slice(0, 16).replace("T", " ")}

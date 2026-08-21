@@ -104,6 +104,14 @@ const pl = {
     "Brak udostępnionych dokumentów — właściciel udostępnia je w panelu web (Dokumenty → widoczność).",
   "m.docs.fallbackCategory": "dokument",
   "m.docs.open": "otwórz ↗",
+  /*
+   * Sejf kierowcy schodzi jednym zapytaniem, więc obowiązuje go sufit pobrania.
+   * Bez tego zdania ucięta lista wygląda identycznie jak komplet i kierowca, który
+   * nie znajduje skanu, wyciąga jedyny dostępny wniosek: „biuro tego nie wgrało".
+   * Stąd nacisk nie na sam fakt ucięcia, tylko na to, co ma z nim zrobić.
+   */
+  "m.docs.truncated":
+    "Lista jest ucięta — widzisz {n} najnowszych dokumentów, starsze się tu nie zmieściły. Jeśli nie ma tu szukanego skanu, to nie znaczy, że go nie ma — poproś biuro.",
   "m.stats.consumption": "Spalanie",
   "m.stats.consumptionNote":
     "Liczone od pełna do pełna — tankowania częściowe wchodzą do litrów i kosztu, ale nie do spalania.",
@@ -512,6 +520,12 @@ const pl = {
   "m.msvc.remaining": "pozostało {v}",
   "m.msvc.noVehicles": "Najpierw dodaj pojazd (Zarządzaj pojazdami).",
   "m.msvc.days": "{v} dni",
+  "m.msvc.saved": "✅ Zapisano.",
+  "m.msvc.incompleteTasks":
+    "Plan niepełny — zadań serwisowych jest w bazie więcej, niż zmieściło się w pobraniu. Brak zadania na liście nie znaczy, że nikt go nie zaplanował.",
+  "m.msvc.incompleteOdo":
+    "Przebiegi niepełne — odpowiedź z licznikami została ucięta, więc części pojazdów w niej nie ma. Zadanie takiego pojazdu wygląda na mieszczące się w interwale, choć przebieg jest nieznany.",
+  "m.msvc.showMore": "Pokaż kolejne ({v})",
   "m.mdrv.drivers": "Kierowcy",
   "m.mdrv.new": "Nowy kierowca",
   "m.mdrv.edit": "Edytuj kierowcę",
@@ -844,6 +858,8 @@ const pl = {
   "m.schedule.deadlines": "terminy",
   "m.schedule.empty": "Brak nadchodzących terminów.",
   "m.schedule.error": "Nie udało się zbudować harmonogramu.",
+  "m.schedule.incomplete":
+    "Terminy serwisowe wg przebiegu są niepełne — plan serwisowy albo przebiegi z tankowań przekroczyły sufit pobrania. Brak pozycji na liście nie znaczy, że termin nie mija.",
   "m.fleet.driving": "W trasie",
   "m.fleet.planned": "Zaplanowany",
   "m.fleet.idle": "Wolny",
@@ -1259,6 +1275,8 @@ const en: Record<MobileMessageKey, string> = {
     "No shared documents — the owner shares them in the web panel (Documents → visibility).",
   "m.docs.fallbackCategory": "document",
   "m.docs.open": "open ↗",
+  "m.docs.truncated":
+    "This list is cut off — you can see the {n} newest documents; older ones did not fit. A scan missing here does not mean it does not exist — ask the office.",
   "m.stats.consumption": "Consumption",
   "m.stats.consumptionNote":
     "Measured full-to-full — partial refuels count towards litres and cost, but not consumption.",
@@ -1669,6 +1687,12 @@ const en: Record<MobileMessageKey, string> = {
   "m.msvc.remaining": "{v} left",
   "m.msvc.noVehicles": "Add a vehicle first (Manage vehicles).",
   "m.msvc.days": "{v} days",
+  "m.msvc.saved": "✅ Saved.",
+  "m.msvc.incompleteTasks":
+    "The plan is incomplete — the database holds more service tasks than this fetch could return. A task missing from the list has not necessarily gone unplanned.",
+  "m.msvc.incompleteOdo":
+    "Odometer data is incomplete — the readings response was truncated, so some vehicles are missing from it. A task on such a vehicle looks like it is still within its interval even though its mileage is unknown.",
+  "m.msvc.showMore": "Show next ({v})",
   "m.mdrv.drivers": "Drivers",
   "m.mdrv.new": "New driver",
   "m.mdrv.edit": "Edit driver",
@@ -2001,6 +2025,8 @@ const en: Record<MobileMessageKey, string> = {
   "m.schedule.deadlines": "deadlines",
   "m.schedule.empty": "No upcoming deadlines.",
   "m.schedule.error": "Could not build the schedule.",
+  "m.schedule.incomplete":
+    "Mileage-based service deadlines are incomplete — the service plan or the odometer readings exceeded the fetch ceiling. A deadline missing from the list may still be running out.",
   "m.fleet.driving": "On route",
   "m.fleet.planned": "Planned",
   "m.fleet.idle": "Idle",
@@ -2407,6 +2433,8 @@ const de: Record<MobileMessageKey, string> = {
     "Keine freigegebenen Dokumente — der Eigentümer gibt sie im Web-Panel frei (Dokumente → Sichtbarkeit).",
   "m.docs.fallbackCategory": "Dokument",
   "m.docs.open": "öffnen ↗",
+  "m.docs.truncated":
+    "Die Liste ist gekürzt — du siehst die {n} neuesten Dokumente, ältere haben nicht mehr hineingepasst. Fehlt hier ein Scan, heißt das nicht, dass es ihn nicht gibt — frag im Büro nach.",
   "m.stats.consumption": "Verbrauch",
   "m.stats.consumptionNote":
     "Von voll zu voll gerechnet — Teilbetankungen zählen zu Litern und Kosten, aber nicht zum Verbrauch.",
@@ -2818,6 +2846,12 @@ const de: Record<MobileMessageKey, string> = {
   "m.msvc.remaining": "noch {v}",
   "m.msvc.noVehicles": "Zuerst ein Fahrzeug hinzufügen (Fahrzeuge verwalten).",
   "m.msvc.days": "{v} Tage",
+  "m.msvc.saved": "✅ Gespeichert.",
+  "m.msvc.incompleteTasks":
+    "Plan unvollständig — in der Datenbank stehen mehr Serviceaufgaben, als dieser Abruf liefern konnte. Eine fehlende Aufgabe muss nicht ungeplant sein.",
+  "m.msvc.incompleteOdo":
+    "Kilometerstände unvollständig — die Antwort mit den Zählerständen wurde abgeschnitten, es fehlen also Fahrzeuge. Eine Aufgabe an einem solchen Fahrzeug wirkt fristgerecht, obwohl der Kilometerstand unbekannt ist.",
+  "m.msvc.showMore": "Weitere anzeigen ({v})",
   "m.mdrv.drivers": "Fahrer",
   "m.mdrv.new": "Neuer Fahrer",
   "m.mdrv.edit": "Fahrer bearbeiten",
@@ -3153,6 +3187,8 @@ const de: Record<MobileMessageKey, string> = {
   "m.schedule.deadlines": "Termine",
   "m.schedule.empty": "Keine anstehenden Termine.",
   "m.schedule.error": "Terminplan konnte nicht erstellt werden.",
+  "m.schedule.incomplete":
+    "Kilometerbasierte Servicetermine sind unvollständig — der Serviceplan oder die Kilometerstände haben das Abruflimit überschritten. Ein fehlender Termin kann trotzdem ablaufen.",
   "m.fleet.driving": "Unterwegs",
   "m.fleet.planned": "Geplant",
   "m.fleet.idle": "Frei",
@@ -3559,6 +3595,8 @@ const uk: Record<MobileMessageKey, string> = {
     "Немає наданих документів — власник надає їх у вебпанелі (Документи → видимість).",
   "m.docs.fallbackCategory": "документ",
   "m.docs.open": "відкрити ↗",
+  "m.docs.truncated":
+    "Список обрізано — ви бачите {n} найновіших документів, старіші сюди не вмістилися. Якщо потрібного скана тут немає, це не означає, що його не існує — запитайте в офісі.",
   "m.stats.consumption": "Витрата",
   "m.stats.consumptionNote":
     "Рахується від повного до повного — часткові заправки входять у літри та вартість, але не у витрату.",
@@ -3967,6 +4005,12 @@ const uk: Record<MobileMessageKey, string> = {
   "m.msvc.remaining": "залишилось {v}",
   "m.msvc.noVehicles": "Спершу додайте авто (Керування авто).",
   "m.msvc.days": "{v} дн.",
+  "m.msvc.saved": "✅ Збережено.",
+  "m.msvc.incompleteTasks":
+    "План неповний — у базі більше сервісних завдань, ніж вмістилося в цей запит. Відсутність завдання у списку не означає, що його не запланували.",
+  "m.msvc.incompleteOdo":
+    "Пробіги неповні — відповідь із показниками одометра обрізано, тож частини транспорту в ній немає. Завдання такої машини виглядає як таке, що вкладається в інтервал, хоча пробіг невідомий.",
+  "m.msvc.showMore": "Показати ще ({v})",
   "m.mdrv.drivers": "Водії",
   "m.mdrv.new": "Новий водій",
   "m.mdrv.edit": "Редагувати водія",
@@ -4300,6 +4344,8 @@ const uk: Record<MobileMessageKey, string> = {
   "m.schedule.deadlines": "терміни",
   "m.schedule.empty": "Немає найближчих термінів.",
   "m.schedule.error": "Не вдалося побудувати розклад.",
+  "m.schedule.incomplete":
+    "Сервісні терміни за пробігом неповні — план сервісу або показники одометра перевищили ліміт вибірки. Відсутність позиції у списку не означає, що термін не спливає.",
   "m.fleet.driving": "У дорозі",
   "m.fleet.planned": "Заплановано",
   "m.fleet.idle": "Вільний",

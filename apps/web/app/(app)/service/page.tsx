@@ -3,20 +3,29 @@
 import {
   deleteServiceTask,
   latestOdometers,
-  listServiceTasks,
+  listServiceTasksAll,
   markServiceDone,
   type OdometerReadout,
+  type PagedRows,
   type ServiceTask,
   saveServiceTask,
 } from "@e-logistic/api";
-import { serviceStatus } from "@e-logistic/core";
+import {
+  type ExpiryLevel,
+  expiryStatus,
+  LEVEL_RANK,
+  serviceDueDate,
+  serviceStatus,
+  serviceUrgency,
+} from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { ShowMore } from "@/components/ShowMore";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
@@ -24,6 +33,12 @@ import { queryErrorMessage } from "@/lib/queryError";
 import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
+import { useRenderWindow } from "@/lib/useRenderWindow";
+
+/** Jeden kolor pilności dla obu wymiarów — km i kalendarza; ten sam co na `/schedule`. */
+function poziomKoloru(level: ExpiryLevel): string {
+  return level === "expired" ? palette.red : level === "soon" ? "#f59e0b" : "#22c55e";
+}
 
 export default function ServicePage() {
   const t = useT();
@@ -57,11 +72,21 @@ export default function ServicePage() {
   const companyId = membership.data?.companyId ?? null;
   const canManage = membership.data?.role === "owner" || membership.data?.role === "dispatcher";
 
+  /*
+   * STRONAMI, i to bez zawężenia: ta strona jest jedynym miejscem, w którym plan się
+   * EDYTUJE, więc musi pokazać także pozycje czysto kalendarzowe („przegląd co 12
+   * miesięcy") i te bez ostatniego serwisu. Wariant jednorazowy prosił o 5000 wierszy,
+   * a dostawał 1000 (`api.max_rows`) — przy 300 ciągnikach × 15 pozycji dyspozytor
+   * widział jedną czwartą planu i nie miał jak tego zauważyć: brakujące zadanie
+   * wygląda tu identycznie jak zadanie, którego nigdy nie dopisano.
+   */
   const tasksQuery = useQuery({
     queryKey: queryKeys.serviceTasks(companyId),
     // Bez firmy pusta lista, a nie błąd — tak zachowywał się dawny `load()`.
-    queryFn: (): Promise<ServiceTask[]> =>
-      companyId ? listServiceTasks(getBrowserSupabase(), companyId) : Promise.resolve([]),
+    queryFn: (): Promise<PagedRows<ServiceTask>> =>
+      companyId
+        ? listServiceTasksAll(getBrowserSupabase(), companyId)
+        : Promise.resolve({ rows: [], complete: true, pages: 0 }),
     enabled: !membership.isPending,
   });
   const odoQuery = useQuery({
@@ -72,8 +97,65 @@ export default function ServicePage() {
         : Promise.resolve({ byVehicle: {}, complete: true }),
     enabled: !membership.isPending,
   });
-  const tasks = tasksQuery.data ?? [];
+  const tasks = tasksQuery.data?.rows ?? [];
   const odo = odoQuery.data?.byVehicle ?? {};
+  /*
+   * Dwa osobne znaczniki, bo to dwa różne kłamstwa i różnie wyglądają na ekranie.
+   *
+   * Urwany PLAN gubi całe wiersze — zadania po prostu nie ma na liście. Urwane
+   * PRZEBIEGI zostawiają wiersz na miejscu, tylko bez licznika jego pojazdu, więc
+   * `serviceStatus` odpowiada „w normie" na auto, o którego przebiegu nic nie wiemy.
+   * Zlanie ich w jeden komunikat kazałoby zgadywać, której z tych dwóch rzeczy nie ufać.
+   */
+  const tasksIncomplete = tasksQuery.data ? !tasksQuery.data.complete : false;
+  const odoIncomplete = odoQuery.data ? !odoQuery.data.complete : false;
+  const today = new Date().toISOString().slice(0, 10);
+  /*
+   * Sortowanie wg PILNOŚCI musi wyprzedzić okno renderowania — inaczej okno tnie listę
+   * od niewłaściwego końca.
+   *
+   * `listServiceTasksAll` oddaje plan w kolejności dopisywania (najstarsze pierwsze),
+   * a okno montuje pierwsze dwieście wierszy. Przy 300 zadaniach zadanie „wymiana
+   * rozrządu" dopisane pół roku temu i przekroczone o 8000 km miało indeks ~250 i po
+   * prostu nie trafiało do DOM — a jedynym śladem było neutralne „Pokaż kolejne".
+   * Ekran dedykowany serwisowi pokazywałby więc MNIEJ zaległych zadań niż przed
+   * zdjęciem sufitu pobrania. Ten sam wzorzec co `out.sort` na `/schedule`
+   * i `out.sort(rank(level))` przed `slice(MAX_SHOWN)` w AttentionPanel.
+   *
+   * W obrębie tego samego poziomu: NAJNOWSZE pierwsze. Kolejność dopisywania rosnąco
+   * odtwarzałaby tę samą pułapkę na drugim końcu — dyspozytor zapisuje pozycję, zapis
+   * się udaje, a nowa pozycja (poziom „ok", bo bez ostatniego serwisu) ląduje na końcu
+   * planu i poza oknem. Stąd nowe zadanie stoi na czele bloku „w normie".
+   */
+  const uporzadkowane = useMemo(
+    () =>
+      [...tasks].sort((a, b) => {
+        const pa = LEVEL_RANK[serviceUrgency(a, odo[a.vehicle_id] ?? null, today)];
+        const pb = LEVEL_RANK[serviceUrgency(b, odo[b.vehicle_id] ?? null, today)];
+        return pb - pa || b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+      }),
+    [tasks, odo, today],
+  );
+  /**
+   * Licznik z KOMPLETU, tak jak „po terminie" w nagłówku `/schedule`. Bez niego okno
+   * renderowania jest nieodróżnialne od uciętej listy: nic nie mówi, czy wśród ukrytych
+   * pozycji są zaległości, czy sam ogon planu.
+   */
+  const poTerminie = useMemo(
+    () =>
+      uporzadkowane.filter(
+        (tk) => serviceUrgency(tk, odo[tk.vehicle_id] ?? null, today) === "expired",
+      ).length,
+    [uporzadkowane, odo, today],
+  );
+  /*
+   * Komplet zostaje w pamięci, w DOM ląduje porcja. Pobranie stronami zdjęło sufit
+   * tysiąca wierszy, więc lista, która nigdy nie mogła urosnąć ponad ten tysiąc,
+   * potrafi teraz mieć ich kilkanaście tysięcy — a każde zadanie to wiersz z trzema
+   * przyciskami. Cichy sufit zamieniony na zawieszoną zakładkę byłby kiepskim
+   * interesem; licznik przy „Pokaż kolejne" mówi wprost, ile jeszcze czeka.
+   */
+  const okno = useRenderWindow(uporzadkowane);
   const loading = membership.isPending || tasksQuery.isPending || odoQuery.isPending;
   const loadErr = queryErrorMessage(
     membership.error ?? tasksQuery.error ?? odoQuery.error,
@@ -278,7 +360,25 @@ export default function ServicePage() {
         </div>
       )}
 
-      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 28 }}>{t("service.tasksHeading")}</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 28 }}>
+        {t("service.tasksHeading")}
+        {poTerminie > 0 && (
+          <span style={styles.overdue}>
+            {" "}
+            — {poTerminie} {t("service.overdueSuffix")}
+          </span>
+        )}
+      </h2>
+
+      {/* Nad listą, bo komunikat dotyczy tego, czego na liście NIE MA — ten sam wzorzec
+          co pas nad rejestrem kosztów. Pod danymi czytałby się jak przypis do nich. */}
+      {!loading && !loadErr && tasksIncomplete && (
+        <div style={styles.warn}>⚠️ {t("service.incompleteTasks")}</div>
+      )}
+      {!loading && !loadErr && odoIncomplete && (
+        <div style={styles.warn}>⚠️ {t("service.incompleteOdo")}</div>
+      )}
+
       <ListStatus
         loading={loading}
         error={loadErr}
@@ -288,10 +388,18 @@ export default function ServicePage() {
       />
       {!loading && !loadErr && tasks.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {tasks.map((tk) => {
+          {okno.visible.map((tk) => {
             const st = serviceStatus(odo[tk.vehicle_id] ?? null, tk.last_done_km, tk.interval_km);
-            const color =
-              st.level === "expired" ? palette.red : st.level === "soon" ? "#f59e0b" : "#22c55e";
+            const color = poziomKoloru(st.level);
+            /*
+             * Wymiar kalendarzowy pokazany TAK SAMO jak przebiegowy, a nie jako suchy
+             * napis „co 12 mies.". Lista układa się wg gorszego z dwóch wymiarów, więc
+             * pozycja czysto kalendarzowa (tacho, gaśnica, przegląd) potrafi stać na
+             * samej górze — z samym interwałem obok wyglądałaby na postawioną tam bez
+             * powodu, a to właśnie ona jest po terminie.
+             */
+            const dueDate = serviceDueDate(tk.last_done_date, tk.interval_months);
+            const dni = dueDate ? expiryStatus(dueDate, today) : null;
             return (
               <div key={tk.id} style={styles.row}>
                 <strong style={{ minWidth: 90 }}>{regOf(tk.vehicle_id)}</strong>
@@ -306,11 +414,13 @@ export default function ServicePage() {
                   </Badge>
                 )}
                 {tk.interval_months != null && (
-                  <span style={styles.dim}>
-                    {t("service.everyPrefix")}
-                    {tk.interval_months}
-                    {t("service.monthsSuffix")}
-                  </span>
+                  <Badge color={dni ? poziomKoloru(dni.level) : palette.smoke}>
+                    {dni == null
+                      ? `${t("service.everyPrefix")}${tk.interval_months}${t("service.monthsSuffix")}`
+                      : dni.daysLeft < 0
+                        ? `${t("service.overdueDaysPrefix")}${-dni.daysLeft}${t("service.daysSuffix")}`
+                        : `${t("service.leftPrefix")}${dni.daysLeft}${t("service.daysSuffix")}`}
+                  </Badge>
                 )}
                 {canManage && (
                   <>
@@ -328,6 +438,7 @@ export default function ServicePage() {
               </div>
             );
           })}
+          <ShowMore hidden={okno.hidden} onShowMore={okno.showMore} />
         </div>
       )}
     </div>
@@ -335,6 +446,17 @@ export default function ServicePage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  /** Ten sam pas ostrzegawczy co nad rejestrem kosztów (`/koszty`) i na `/monthly`. */
+  warn: {
+    marginTop: 20,
+    padding: "12px 14px",
+    borderRadius: 10,
+    border: "1px solid #6b4a00",
+    background: "#241c05",
+    color: "#f0d98a",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 16, maxWidth: 620 },
   grid: { display: "flex", gap: 12, flexWrap: "wrap" },
   field: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 200 },
@@ -348,5 +470,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${palette.graphite}`,
     fontSize: 14,
   },
-  dim: { color: palette.smoke, fontSize: 13 },
+  /** Licznik zaległości w nagłówku — ten sam czerwony akcent co w podtytule `/schedule`. */
+  overdue: { color: palette.red },
 };

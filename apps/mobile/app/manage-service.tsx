@@ -8,15 +8,22 @@ import {
   deleteServiceTask,
   getActiveMembership,
   latestOdometers,
-  listServiceTasks,
+  listServiceTasksAll,
   listVehicles,
   markServiceDone,
   type ServiceTask,
   saveServiceTask,
 } from "@e-logistic/api";
-import { type ExpiryLevel, expiryStatus, serviceStatus } from "@e-logistic/core";
+import {
+  type ExpiryLevel,
+  expiryStatus,
+  LEVEL_RANK,
+  serviceDueDate,
+  serviceStatus,
+  serviceUrgency,
+} from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Card, PrimaryButton, SectionTitle, wide } from "../components/ui";
 import { success, warn } from "../lib/haptics";
@@ -37,21 +44,20 @@ function optInt(v: string): number | null | "bad" {
   return Number(sfx);
 }
 
-/** Data następnego serwisu z interwału miesięcznego (ISO) lub null. */
-function nextServiceDate(
-  lastDoneDate: string | null,
-  intervalMonths: number | null,
-): string | null {
-  if (!lastDoneDate || intervalMonths == null || intervalMonths <= 0) return null;
-  const d = new Date(lastDoneDate);
-  if (Number.isNaN(d.getTime())) return null;
-  d.setMonth(d.getMonth() + intervalMonths);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-const LEVEL_RANK: Record<ExpiryLevel, number> = { expired: 2, soon: 1, ok: 0 };
 const levelColor = (l: ExpiryLevel) =>
   l === "expired" ? "#ef4444" : l === "soon" ? "#f59e0b" : palette.smoke;
+
+/**
+ * Ile kart montujemy naraz i o ile dokłada „Pokaż kolejne".
+ *
+ * Pobranie stronami zdjęło sufit tysiąca wierszy, więc lista, która wcześniej NIE MOGŁA
+ * urosnąć ponad ten tysiąc, potrafi teraz mieć ich kilkanaście tysięcy. Na telefonie
+ * `ScrollView` montuje wszystkie dzieci naraz (to nie `FlatList`) — bez tej porcji
+ * naprawa cichego gubienia zadań kończyłaby się zamrożonym ekranem, czyli zamianą
+ * jednej cichej awarii na drugą, głośniejszą. Setka kart to kilkanaście ekranów
+ * przewijania, znacznie więcej, niż ktokolwiek przegląda, zanim sięgnie po pojazd.
+ */
+const KROK_RENDEROWANIA = 100;
 
 const empty = {
   id: null as string | null,
@@ -67,12 +73,33 @@ const empty = {
 export default function ManageServiceScreen() {
   const t = useT();
   const [rows, setRows] = useState<ServiceTask[]>([]);
+  /*
+   * Dwa osobne znaczniki, a nie jedna flaga „coś jest niepełne" — bo to dwa różne
+   * kłamstwa i wnioski z nich są PRZECIWNE. Urwany PLAN gubi całe wiersze: zadania nie
+   * ma na liście, więc szukaj go w bazie. Urwane PRZEBIEGI zostawiają wiersz na miejscu,
+   * tylko liczą go z nieznanego licznika, więc zadanie JEST na liście i wygląda na
+   * mieszczące się w interwale. Zlane w jeden komunikat kazałyby zgadywać, której z tych
+   * dwóch rzeczy nie ufać — dokładnie ten sam podział co na web `/service`.
+   */
+  const [tasksIncomplete, setTasksIncomplete] = useState(false);
+  const [odoIncomplete, setOdoIncomplete] = useState(false);
+  /** Ile kart jest ZAMONTOWANYCH; licznik w nagłówku liczy się dalej z kompletu. */
+  const [limit, setLimit] = useState(KROK_RENDEROWANIA);
   const [vehicles, setVehicles] = useState<{ id: string; registration: string }[]>([]);
   const [odo, setOdo] = useState<Record<string, number>>({});
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [form, setForm] = useState<typeof empty | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  /**
+   * Potwierdzenie udanego zapisu — na telefonie jedynym sygnałem była wibracja.
+   *
+   * Haptyka nie zostaje na ekranie i nie działa przy wyłączonych wibracjach, więc
+   * użytkownik, który nie znalazł swojej pozycji wzrokiem, miał wszelkie powody sądzić,
+   * że zapis padł — i dodać zadanie drugi raz. Tekst zostaje, dopóki nie zacznie się
+   * kolejna edycja.
+   */
+  const [note, setNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!supabaseConfigured) return;
@@ -82,12 +109,31 @@ export default function ManageServiceScreen() {
       if (!m) return;
       setCompanyId(m.companyId);
       const [tasks, veh, odos] = await Promise.all([
-        listServiceTasks(sb, m.companyId),
+        // STRONAMI i bez zawężenia: to ekran, na którym plan się EDYTUJE, więc musi
+        // pokazać też pozycje czysto kalendarzowe („przegląd co 12 miesięcy") i te
+        // bez ostatniego serwisu. Wariant jednorazowy prosił o 5000 wierszy, a serwer
+        // oddawał 1000 — reszty planu nie dało się ani zobaczyć, ani poprawić.
+        listServiceTasksAll(sb, m.companyId),
         listVehicles(sb, m.companyId),
         latestOdometers(sb, m.companyId).catch(() => ({ byVehicle: {}, complete: false })),
       ]);
       setMsg(null);
-      setRows(tasks);
+      setRows(tasks.rows);
+      /*
+       * Okno renderowania NIE zwija się po pobraniu.
+       *
+       * Stało tu `setLimit(KROK_RENDEROWANIA)` „żeby lista nie montowała się od razu
+       * w rozmiarze rozwiniętym na innym zbiorze". Tyle że `load()` woła się po KAŻDEJ
+       * mutacji — zapisie, odhaczeniu, usunięciu — czyli okno zwijało się dokładnie
+       * w chwili, w której użytkownik pracował na pozycji z ogona listy: rozwinął widok
+       * do 150 kart, odhaczył „wykonano" i karta znikała mu z ekranu bez słowa. Zbiór
+       * jest przy tym ten sam co przed mutacją (jedno zadanie więcej albo mniej), więc
+       * broniło to przed problemem, którego tu nie ma. Rozmiar okna należy do
+       * przewijania użytkownika, nie do pobrania; przy wejściu na ekran i tak startuje
+       * od jednej porcji, bo komponent montuje się od nowa.
+       */
+      setTasksIncomplete(!tasks.complete);
+      setOdoIncomplete(!odos.complete);
       setVehicles(
         (veh as { id: string; registration: string }[]).map((v) => ({
           id: v.id,
@@ -106,6 +152,32 @@ export default function ManageServiceScreen() {
   const set = (patch: Partial<typeof empty>) => setForm((f) => (f ? { ...f, ...patch } : f));
   const regOf = (id: string) => vehicles.find((v) => v.id === id)?.registration ?? "—";
 
+  const dzis = localToday();
+  /*
+   * Kolejność WG PILNOŚCI, wyznaczona przed oknem renderowania — inaczej okno tnie
+   * listę od niewłaściwego końca.
+   *
+   * `listServiceTasksAll` oddaje plan w kolejności dopisywania (najstarsze pierwsze),
+   * a montuje się pierwsza setka. Przy 8 pojazdach × 15 pozycji zadanie przekroczone
+   * o kilka tysięcy kilometrów potrafiło mieć indeks 110 i nie istnieć w drzewie
+   * widoków — na ekranie, którego całym zadaniem jest pokazać, co wymaga serwisu.
+   *
+   * W obrębie tego samego poziomu NAJNOWSZE pierwsze, bo pułapka ma drugi koniec:
+   * świeżo dopisana pozycja nie ma jeszcze ostatniego serwisu, więc jej poziom to „ok",
+   * a przy kolejności dopisywania rosnąco lądowałaby na samym końcu planu — czyli
+   * dokładnie w scenariuszu „zapis się udał, pozycji nie widać, dodaję drugi raz",
+   * przed którym broni komentarz w `packages/api/src/data/service.ts`.
+   */
+  const uporzadkowane = useMemo(
+    () =>
+      [...rows].sort((a, b) => {
+        const pa = LEVEL_RANK[serviceUrgency(a, odo[a.vehicle_id] ?? null, dzis)];
+        const pb = LEVEL_RANK[serviceUrgency(b, odo[b.vehicle_id] ?? null, dzis)];
+        return pb - pa || b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+      }),
+    [rows, odo, dzis],
+  );
+
   const openNew = () => {
     if (vehicles.length === 0) {
       warn();
@@ -113,10 +185,12 @@ export default function ManageServiceScreen() {
       return;
     }
     setMsg(null);
+    setNote(null);
     setForm({ ...empty });
   };
   const openEdit = (r: ServiceTask) => {
     setMsg(null);
+    setNote(null);
     setForm({
       id: r.id,
       vehicleId: r.vehicle_id,
@@ -171,6 +245,7 @@ export default function ManageServiceScreen() {
       );
       success();
       closeForm();
+      setNote(t("m.msvc.saved"));
       await load();
     } catch (e) {
       warn();
@@ -341,19 +416,24 @@ export default function ManageServiceScreen() {
       </Pressable>
 
       {msg && <Text style={s.err}>{msg}</Text>}
+      {note && <Text style={s.ok}>{note}</Text>}
 
       <SectionTitle>
         {t("m.msvc.tasks")} ({rows.length})
       </SectionTitle>
+      {/* Nad listą, bo mówią o zadaniach, których na niej NIE MA (albo o liczniku,
+          z którego policzono te widoczne) — i nad „Brak zadań serwisowych", który bez
+          tego czytałby się jak potwierdzenie pustego planu. */}
+      {tasksIncomplete && <Text style={s.warn}>{t("m.msvc.incompleteTasks")}</Text>}
+      {odoIncomplete && <Text style={s.warn}>{t("m.msvc.incompleteOdo")}</Text>}
       {rows.length === 0 && <Text style={s.dim}>{t("m.msvc.empty")}</Text>}
-      {rows.map((r) => {
+      {uporzadkowane.slice(0, limit).map((r) => {
         const kmSt = serviceStatus(odo[r.vehicle_id] ?? null, r.last_done_km, r.interval_km);
-        const dueDate = nextServiceDate(r.last_done_date, r.interval_months);
-        const timeSt = dueDate ? expiryStatus(dueDate, localToday()) : null;
-        // Najpilniejszy z dwóch wymiarów (km / miesiące) wyznacza kolor.
-        const worst: ExpiryLevel =
-          timeSt && LEVEL_RANK[timeSt.level] > LEVEL_RANK[kmSt.level] ? timeSt.level : kmSt.level;
-        const stColor = levelColor(worst);
+        const dueDate = serviceDueDate(r.last_done_date, r.interval_months);
+        const timeSt = dueDate ? expiryStatus(dueDate, dzis) : null;
+        // Najpilniejszy z dwóch wymiarów (km / miesiące) wyznacza kolor — ta sama
+        // reguła, wg której lista jest posortowana.
+        const stColor = levelColor(serviceUrgency(r, odo[r.vehicle_id] ?? null, dzis));
         return (
           <Card key={r.id} style={{ gap: 6 }}>
             <View style={s.rowTop}>
@@ -398,6 +478,11 @@ export default function ManageServiceScreen() {
           </Card>
         );
       })}
+      {uporzadkowane.length > limit && (
+        <Pressable onPress={() => setLimit((l) => l + KROK_RENDEROWANIA)}>
+          <Text style={s.more}>{t("m.msvc.showMore", { v: uporzadkowane.length - limit })}</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -435,6 +520,10 @@ const s = StyleSheet.create({
   chipOn: { backgroundColor: palette.red, borderColor: palette.red },
   chipText: { color: palette.smoke, fontSize: 12.5, fontWeight: "600" },
   err: { color: palette.red, fontSize: 13 },
+  ok: { color: palette.success, fontSize: 13 },
+  // Ostrzeżenie, nie błąd: dane są, tylko niepełne — kolor jak na `fleet-status`.
+  warn: { color: palette.warning, fontSize: 12, lineHeight: 17 },
+  more: { color: palette.red, fontWeight: "700", textAlign: "center", paddingVertical: 12 },
   cancel: { color: palette.smoke, textAlign: "center", paddingVertical: 8 },
   rowTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   name: { color: palette.offWhite, fontSize: 14, fontWeight: "800", flexShrink: 1 },

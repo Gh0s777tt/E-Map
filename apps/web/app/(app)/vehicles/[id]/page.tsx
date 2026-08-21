@@ -9,7 +9,7 @@ import {
   listFuelLogsAll,
   listFxRates,
   listOrdersAll,
-  listServiceTasks,
+  listServiceTasksAll,
   listVehicleCostsAll,
   listVehicles,
   type Order,
@@ -114,6 +114,15 @@ export default function VehicleCardPage() {
    * Dlatego trzymamy osobny znacznik i piszemy o nim nad kafelkami.
    */
   const [incomplete, setIncomplete] = useState(false);
+  /**
+   * Osobny znacznik dla sekcji serwisowej — bo mówi o czymś innym niż pasek wyżej.
+   *
+   * Tamten dotyczy KWOT (P&L liczonego z uciętej historii), ten POZYCJI: zadania,
+   * którego nie było w pobranym planie, nie da się odróżnić od niezaplanowanego,
+   * a zaniżony licznik z tankowań pokazuje serwis po terminie jako mieszczący się
+   * w interwale. Wspólna flaga kazałaby zgadywać, do której listy odnosi się alarm.
+   */
+  const [serviceIncomplete, setServiceIncomplete] = useState(false);
   /** [#378] Kursy EBC — bez nich kwota w walucie innej niż euro nie ma jak wejść do sumy. */
   const [rates, setRates] = useState<FxRate[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -141,6 +150,7 @@ export default function VehicleCardPage() {
     setLoading(true);
     setLoadErr(null);
     setIncomplete(false);
+    setServiceIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
@@ -156,9 +166,14 @@ export default function VehicleCardPage() {
       const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 35, 1))
         .toISOString()
         .slice(0, 10);
-      const [vs, st, od, cd, fPaged, ordPaged, vcPaged, fxRows, comp] = await Promise.all([
+      const [vs, stPaged, od, cd, fPaged, ordPaged, vcPaged, fxRows, comp] = await Promise.all([
         listVehicles(sb, m.companyId),
-        listServiceTasks(sb, m.companyId),
+        // Plan STRONAMI i zawężony do TEGO auta w bazie: dotąd szło jedno zapytanie
+        // o plan całej firmy (sufit `api.max_rows`, czyli 1000 wierszy bez błędu),
+        // a wybór pozycji tego pojazdu robiła przeglądarka. Przy flocie powyżej
+        // ~60 aut karta któregoś z nich pokazywała pustą sekcję serwisu, choć plan
+        // dla niego istniał — po prostu nie zmieścił się w pobraniu.
+        listServiceTasksAll(sb, m.companyId, { vehicleId: id }),
         latestOdometers(sb, m.companyId),
         listFuelCardsByVehicle(sb, id),
         // Trzy zbiory, z których liczy się P&L, schodzą STRONAMI i są zawężone do tego
@@ -181,8 +196,9 @@ export default function VehicleCardPage() {
       setRates(toFxRates(fxRows));
       setCompanyCountry(comp?.country ?? null);
       setVehicle((vs as DbVehicle[]).find((v) => v.id === id) ?? null);
-      setTasks(st.filter((t) => t.vehicle_id === id));
+      setTasks(stPaged.rows);
       setOdo(od.byVehicle);
+      setServiceIncomplete(!stPaged.complete || !od.complete);
       setCards(cd as FuelCard[]);
       setFuel(fPaged.rows as FuelRaw[]);
       setOrders(ordPaged.rows);
@@ -514,6 +530,15 @@ export default function VehicleCardPage() {
           <h2 style={styles.h2}>
             Serwis {currentKm != null && <span style={styles.dim}>· przebieg {currentKm} km</span>}
           </h2>
+          {/* Nad listą, bo dotyczy zadań, których na niej NIE MA — i nad komunikatem
+              o pustej sekcji, który bez tego czytałby się jak „nic nie zaplanowano". */}
+          {/* Przez katalog, choć reszta tej karty jest twardo po polsku: to samo zdanie
+              stoi na `/service` i w harmonogramie, a ostrzeżenie, które w jednym miejscu
+              tłumaczy się na język dyspozytora, a w drugim nie, podważa oba. Resztę
+              napisów tego pliku przepnie osobna fala. */}
+          {serviceIncomplete && (
+            <div style={styles.rateWarn}>⚠️ {t("vehicles.serviceIncomplete")}</div>
+          )}
           {tasks.length === 0 ? (
             <p style={styles.dim}>Brak zaplanowanych zadań serwisowych.</p>
           ) : (

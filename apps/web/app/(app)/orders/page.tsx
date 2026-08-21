@@ -35,6 +35,7 @@ import {
   round2,
   rowAmountEur,
 } from "@e-logistic/core";
+import type { MessageKey } from "@e-logistic/i18n";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -112,6 +113,69 @@ const IMPORT_COLUMNS: ImportColumn[] = [
   { key: "notes", label: "Uwagi", aliases: ["komentarz", "notes", "notatki"] },
 ];
 
+/**
+ * Okno czasowe listy: etykieta i18n → liczba miesięcy wstecz (`null` = cała historia).
+ *
+ * Okno liczy się DATĄ ZAŁADUNKU (w jej braku — datą wpisu), bo po niej datuje zlecenie
+ * cały ten ekran: sortowanie, kurs waluty, kolumna w eksporcie. Filtr po dacie wpisu
+ * wyrzucałby z okresu fracht zabukowany z wyprzedzeniem i wpuszczał do niego historię
+ * wgraną importem — szczegóły przy `oknoDaty` w [warstwie danych](../../../../../packages/api/src/data/orders.ts).
+ *
+ * Ten ekran liczy z KOMPLETU — suma w euro, licznik „X z Y" i trzy eksporty muszą opisywać
+ * ten sam zbiór, więc pobranie idzie stronami [#417]. Komplet BEZ zakresu dat znaczy jednak
+ * przy firmie z kilkudziesięcioma tysiącami zleceń kilkadziesiąt sekwencyjnych zapytań przy
+ * każdym wejściu na ekran, a powrót do jednego uciętego zapytania byłby cofnięciem tamtej
+ * naprawy. Okno jest więc jawne: 12 miesięcy domyślnie (tyle obejmuje rozliczenie roczne),
+ * szersze zakresy na żądanie — koszt wybierany świadomie zamiast wynikającego z wielkości
+ * firmy. Ten sam wzorzec co w [historii formularzy](../forms/history/page.tsx).
+ */
+const PERIODS = [
+  { value: "m3", months: 3, labelKey: "orders.period.m3" },
+  { value: "m12", months: 12, labelKey: "orders.period.m12" },
+  { value: "m24", months: 24, labelKey: "orders.period.m24" },
+  { value: "all", months: null, labelKey: "orders.period.all" },
+] as const satisfies readonly { value: string; months: number | null; labelKey: MessageKey }[];
+
+type Period = (typeof PERIODS)[number]["value"];
+
+/** Początek okna (ISO) albo `undefined` dla „całej historii". */
+function periodFrom(period: Period): string | undefined {
+  const months = PERIODS.find((p) => p.value === period)?.months ?? null;
+  if (months == null) return undefined;
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, now.getUTCDate()),
+  ).toISOString();
+}
+
+function periodLabelKey(period: Period): MessageKey {
+  return PERIODS.find((p) => p.value === period)?.labelKey ?? "orders.period.all";
+}
+
+/**
+ * Początek okna KURSÓW wyznaczają dane, nie kalendarz.
+ *
+ * Stało tu sztywne „24 miesiące wstecz". Przy oknie listy ustawionym na całą historię
+ * starsze zlecenie w obcej walucie wpadałoby do licznika „brak kursu" nie dlatego, że EBC
+ * czegoś nie opublikowało, tylko dlatego, że o ten dzień nie zapytaliśmy — a ten licznik
+ * ma mówić o brakach w danych, nie o naszym zakresie pobrania. Sztywne okno myliło też
+ * w drugą stronę: tankowanie sprzed trzech lat (lista `fuel_logs` schodzi po `created_at`,
+ * nie po dacie zdarzenia) traciło kurs tak samo cicho.
+ *
+ * Zapas 10 dni, bo kurs bierzemy z DNIA zdarzenia, a EBC nie publikuje w weekendy
+ * i święta — zdarzenie z 1. dnia miesiąca sięga po notowanie sprzed kilku dni.
+ */
+function fxWindowFrom(dni: readonly (string | null | undefined)[]): string {
+  let najstarszy: string | undefined;
+  for (const d of dni) {
+    if (!d) continue;
+    const day = d.slice(0, 10);
+    if (najstarszy === undefined || day < najstarszy) najstarszy = day;
+  }
+  const base = najstarszy ?? new Date().toISOString().slice(0, 10);
+  return new Date(Date.parse(base) - 10 * 86_400_000).toISOString().slice(0, 10);
+}
+
 function orderNum(s: string | undefined): number | undefined {
   const raw = (s ?? "").trim().replace(/\s/g, "").replace(",", ".");
   if (!raw) return undefined;
@@ -186,10 +250,44 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<OrderSort>("date_desc");
+  /** Jedyny filtr tego ekranu, który schodzi do BAZY — reszta odsiewa to, co już pobrane. */
+  const [period, setPeriod] = useState<Period>("m12");
+  /**
+   * Granica okna policzona RAZ na wybór okresu, nie przy każdym użyciu.
+   *
+   * `periodFrom` liczy od „teraz", a eksport uruchamia się minuty albo godziny po pobraniu
+   * listy — z osobnym wyliczeniem plik dostawałby węższy zakres niż ekran i po cichu gubił
+   * zlecenia z granicy okna. Rozjazd między liczbą na ekranie a zawartością arkusza jest
+   * dokładnie tym, przed czym broni reszta tego ekranu, więc obie strony biorą ten sam napis.
+   */
+  const rangeFrom = useMemo(() => periodFrom(period), [period]);
+  /**
+   * Okres, z którego pochodzi ZAWARTOŚĆ `orders`; `null` = nie wróciło jeszcze żadne pobranie.
+   *
+   * `period` zmienia się w chwili kliknięcia, a `orders` dopiero kilkaset milisekund
+   * później — między jednym a drugim jest render, w którym te dwie wartości opisują dwa
+   * różne zbiory. Awaryjne poszerzenie okna po `?focus=<id>` czytało w tym renderze samo
+   * `period`, uznawało, że szukało już w całej historii, i podnosiło wartownika `focusDone`
+   * ZANIM właściwe pobranie wróciło. Link z faktury wykonywał więc drugie, pełne pobranie
+   * i nie otwierał niczego. Ten znacznik zmienia się razem z danymi, więc efekt widzi
+   * wyłącznie stany, które naprawdę wystąpiły.
+   */
+  const [loadedPeriod, setLoadedPeriod] = useState<Period | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [invByOrder, setInvByOrder] = useState<Record<string, { id: string; number: string }>>({});
   const focusDone = useRef(false);
+  /**
+   * Numer bieżącego pobrania — starsza odpowiedź nie ma prawa nadpisać nowszej.
+   *
+   * Zmiana okresu startuje kolejne `load()`, nie przerywając poprzedniego, a czasy
+   * odpowiedzi nie są uporządkowane: pobranie węższego okna potrafi wrócić PO pobraniu
+   * szerszego (każde kończy osobnym zapytaniem o kursy). Bez tego licznika ekran
+   * osiadał wtedy na zbiorze, którego nie wybrano — z podpisem „Okres: cała historia"
+   * nad kwotą policzoną z dwunastu miesięcy. Awaryjne poszerzenie okna po `?focus=`
+   * robi tę samą parę pobrań automatycznie, więc trafiałoby na to jako pierwsze.
+   */
+  const pobranie = useRef(0);
   const [referenceNo, setReferenceNo] = useState("");
   const [shipper, setShipper] = useState("");
   const [consignee, setConsignee] = useState("");
@@ -206,6 +304,8 @@ export default function OrdersPage() {
   const [notes, setNotes] = useState("");
 
   const load = useCallback(async () => {
+    pobranie.current += 1;
+    const moje = pobranie.current;
     setLoading(true);
     setLoadErr(null);
     try {
@@ -217,25 +317,20 @@ export default function OrdersPage() {
       }
       const manage = m.role === "owner" || m.role === "dispatcher";
       setCanManage(manage);
-      // [#378] Okno kursów. Ten ekran nie ma wyboru okresu — lista jest pełna
-      // (schodzi stronami, patrz `listOrdersAll` niżej), więc bierzemy 24 miesiące
-      // wstecz (tyle samo, co analityka we /stats), co pokrywa każde zlecenie,
-      // którym ktokolwiek jeszcze się zajmuje.
-      // Starsze zlecenie w obcej walucie nie zniknie po cichu: wpadnie do
-      // licznika „brak kursu" pod podsumowaniem.
-      const now = new Date();
-      const fxFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
-        .toISOString()
-        .slice(0, 10);
-      const [ordPaged, comp, mem, contr, legs, fuel, adblue, fxRows] = await Promise.all([
+      const [ordPaged, comp, mem, contr, legs, fuel, adblue] = await Promise.all([
         /*
-         * STRONAMI, a nie jednym zapytaniem. `listOrders` bez `limit` nie znaczyło
-         * „cała lista", tylko sufit `api.max_rows` PostgREST (1000) egzekwowany bez
-         * błędu — a z tego stanu liczą się kwoty w podsumowaniu, licznik nad listą
-         * i eksport giełdowy. Renderowanie zostaje ograniczone oknem (`okno` niżej):
-         * komplet jest potrzebny liczbom, nie drzewu DOM.
+         * STRONAMI, a nie jednym zapytaniem, ale w OKNIE wybranym przez użytkownika.
+         *
+         * `listOrders` bez `limit` nie znaczyło „cała lista", tylko sufit `api.max_rows`
+         * PostgREST (1000) egzekwowany bez błędu — a z tego stanu liczą się kwoty
+         * w podsumowaniu, licznik nad listą i trzy eksporty. Komplet bez okna czasowego
+         * był jednak wymianą jednego cichego kosztu na drugi: kilkadziesiąt sekwencyjnych
+         * zapytań przy każdym wejściu. Zakres idzie do BAZY (`from`), a nie do przeglądarki,
+         * więc „X z Y", suma i pliki opisują dokładnie ten sam zbiór.
+         * Renderowanie zostaje dodatkowo ograniczone oknem (`okno` niżej): komplet okresu
+         * jest potrzebny liczbom, nie drzewu DOM.
          */
-        listOrdersAll(sb, m.companyId),
+        listOrdersAll(sb, m.companyId, { from: rangeFrom }),
         getCompany(sb, m.companyId),
         manage ? listCompanyMembers(sb) : Promise.resolve([]),
         manage ? listContractors(sb, m.companyId) : Promise.resolve([]),
@@ -259,17 +354,73 @@ export default function OrdersPage() {
           .order("created_at", { ascending: false })
           .limit(2000)
           .then((r) => r.data ?? []),
-        // [#378] Zapas 10 dni wstecz: kurs bierzemy z DNIA zdarzenia, a EBC nie
-        // publikuje w weekendy i święta — zlecenie z 1. dnia miesiąca może
-        // potrzebować notowania sprzed kilku dni. Ten sam wzorzec co /stats.
-        listFxRates(sb, {
-          from: new Date(Date.parse(fxFrom) - 10 * 86_400_000).toISOString().slice(0, 10),
-        }),
       ]);
+      const fuelTyped = fuel as FuelRow[];
+      const adblueTyped = adblue as FuelRow[];
+      /*
+       * Kursy DOPIERO PO danych, a nie razem z nimi — jedno zapytanie sekwencyjnie
+       * więcej, za to okno kursów pokrywa dokładnie te dni, o które ktoś zapyta, i tylko
+       * te waluty, które realnie wystąpiły. Bez tego wybór „cała historia" musiałby albo
+       * zgadywać zakres (i podbijać licznik „brak kursu" o zlecenia, których po prostu nie
+       * objęliśmy zapytaniem), albo ciągnąć całą tabelę notowań — a ta ma własny sufit
+       * pobrania i obcina NAJSTARSZE wiersze, czyli dokładnie te potrzebne staremu zleceniu.
+       * Zawężenie do walut z ekranu utrzymuje zapytanie daleko od tego sufitu nawet przy
+       * wieloletniej historii.
+       */
+      const waluty = [
+        ...new Set(
+          [
+            ...ordPaged.rows.map((o) => o.currency),
+            ...fuelTyped.map((r) => r.currency),
+            ...adblueTyped.map((r) => r.currency),
+          ]
+            .map((c) => (c ?? "").trim().toUpperCase())
+            .filter((c) => c !== "" && c !== "EUR"),
+        ),
+      ];
+      // Sam euro na ekranie = nie ma czego przeliczać; zapytanie o kursy byłoby czystym
+      // transferem bez odbiorcy.
+      const kursy =
+        waluty.length === 0
+          ? []
+          : toFxRates(
+              await listFxRates(sb, {
+                from: fxWindowFrom([
+                  // Ta sama data, po której `priceEur` szuka notowania — dzień załadunku,
+                  // a nie utworzenia wpisu; zlecenie wpisane wstecz inaczej wypadłoby poza okno.
+                  ...ordPaged.rows.map((o) => o.load_date ?? o.created_at),
+                  ...fuelTyped.map((r) => r.occurred_at),
+                  ...adblueTyped.map((r) => r.occurred_at),
+                ]),
+                currencies: waluty,
+              }),
+            );
+      /*
+       * Stan podmieniamy DOPIERO TERAZ i w CAŁOŚCI — po ostatnim `await` tej funkcji.
+       *
+       * `await` przerywa wsad Reacta: aktualizacje wykonane przed nim trafiają na ekran,
+       * zanim wróci odpowiedź z kursami. Powstawał z tego render, w którym `orders` to już
+       * nowy zbiór, a `rates` jeszcze poprzedni (przy wejściu na ekran — pusta tablica).
+       * Podsumowanie nie jest bramkowane `loading`, więc firma z cenami w złotówkach
+       * widziała przez ~pół sekundy sumę 0,00 EUR i czerwony baner „1200 zleceń bez
+       * notowania", po czym jedno i drugie znikało bez żadnej przyczyny w danych — i tak
+       * przy każdej zmianie okresu oraz po każdym zapisie, usunięciu i imporcie.
+       * Wszystkie `setX` w jednym wsadzie znaczą jeden render i jeden spójny stan.
+       */
+      if (moje !== pobranie.current) return;
       setOrders(ordPaged.rows);
       setOrdersIncomplete(!ordPaged.complete);
-      setRates(toFxRates(fxRows));
-      // #268: mapa zlecenie→faktura (slim) — link 🧾 na wierszu zlecenia.
+      setRates(kursy);
+      setLoadedPeriod(period);
+      setCompany(comp);
+      setMembers(mem);
+      setContractors(contr);
+      setLegRows(legs as LegRow[]);
+      setFuelRows(fuelTyped);
+      setAdblueRows(adblueTyped);
+      // #268: mapa zlecenie→faktura (slim) — link 🧾 na wierszu zlecenia. Świadomie bez
+      // `await`: kolumna z ikoną 🧾 dorysowuje się sama, a wstrzymywanie dla niej całego
+      // ekranu kosztowałoby więcej, niż jest warta.
       sb.from("invoices")
         .select("id, number, order_id")
         .not("order_id", "is", null)
@@ -280,18 +431,19 @@ export default function OrdersPage() {
           }
           setInvByOrder(map);
         });
-      setCompany(comp);
-      setMembers(mem);
-      setContractors(contr);
-      setLegRows(legs as LegRow[]);
-      setFuelRows(fuel as FuelRow[]);
-      setAdblueRows(adblue as FuelRow[]);
     } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : t("orders.loadError"));
+      // Błąd wyprzedzonego pobrania też nie może wejść na ekran: nowsze zapytanie
+      // może właśnie kończyć się powodzeniem, a czerwony pas nad listą sugerowałby,
+      // że dane pod nim są nieaktualne.
+      if (moje === pobranie.current) {
+        setLoadErr(e instanceof Error ? e.message : t("orders.loadError"));
+      }
     } finally {
-      setLoading(false);
+      if (moje === pobranie.current) setLoading(false);
     }
-  }, [t]);
+    // `period` obok `rangeFrom` nie dokłada pobrań (granica jest z niego wyliczona),
+    // tylko trafia do `loadedPeriod` razem z danymi, których dotyczy.
+  }, [t, rangeFrom, period]);
 
   useEffect(() => {
     load();
@@ -300,19 +452,39 @@ export default function OrdersPage() {
   // #268: link kontekstowy z faktury — ?focus=<orderId> otwiera edycję zlecenia.
   // biome-ignore lint/correctness/useExhaustiveDependencies: jednorazowy focus po załadowaniu listy
   useEffect(() => {
-    if (focusDone.current || orders.length === 0) return;
+    // `loadedPeriod === null` = nie wróciło jeszcze ŻADNE pobranie. Bez tego warunku
+    // pierwszy render (pusta lista) od razu wyglądałby jak „nie znaleziono".
+    if (focusDone.current || loadedPeriod === null) return;
     const id = new URLSearchParams(window.location.search).get("focus");
     if (!id) return;
-    focusDone.current = true;
     const o = orders.find((x) => x.id === id);
     if (o) {
+      focusDone.current = true;
       startEdit(o);
       setTimeout(
         () => document.getElementById(`ord-${id}`)?.scrollIntoView({ block: "center" }),
         50,
       );
+      return;
     }
-  }, [orders]);
+    /*
+     * Zlecenie spoza okna czasowego. Link z faktury wskazuje KONKRETNY rekord, a nie
+     * „cokolwiek z ostatniego roku" — po zawężeniu domyślnego okna faktura sprzed dwóch
+     * lat otwierałaby ten ekran w stanie, w którym nic się nie dzieje i nic tego nie
+     * tłumaczy. Rozszerzamy więc okno i wracamy tu po ponownym pobraniu.
+     *
+     * Warunek zamknięcia próby czyta `loadedPeriod`, a NIE `period`: ten drugi jest już
+     * ustawiony na „całą historię" w renderze tuż po `setPeriod`, w którym lista to wciąż
+     * poprzedni zbiór — wartownik podnosił się wtedy przed właściwym pobraniem i powrót
+     * tutaj nigdy nie następował. Dopiero gdy dane pochodzą z całej historii,
+     * nieznalezione id znaczy rekord usunięty.
+     */
+    if (loadedPeriod === "all") {
+      focusDone.current = true;
+      return;
+    }
+    setPeriod("all");
+  }, [orders, loadedPeriod]);
 
   const regOf = (id: string | null) =>
     id ? (vehicles.find((v) => v.id === id)?.registration ?? "—") : "—";
@@ -665,9 +837,12 @@ export default function OrdersPage() {
    * `api.max_rows` (1000) egzekwowany bez błędu: dla firmy z większą historią
    * `orders` jest cichym wycinkiem. Na ekranie to strata kosmetyczna, w arkuszu
    * przekazanym księgowości — zaniżony przychód, którego po zapisaniu pliku nie da
-   * się już odróżnić od prawdziwego. Filtr statusu idzie przy okazji do BAZY,
-   * bo tylko on ma tam odpowiednik; tekst i sortowanie zostają w pamięci, na
-   * komplecie, który właśnie zszedł.
+   * się już odróżnić od prawdziwego. Okno czasowe i filtr statusu idą przy okazji
+   * do BAZY, bo tylko one mają tam odpowiednik; tekst i sortowanie zostają w pamięci,
+   * na komplecie, który właśnie zszedł.
+   *
+   * `rangeFrom` MUSI być ten sam napis, z którego powstała lista na ekranie — plik ma
+   * opisywać dokładnie ten zbiór, którego sumę użytkownik przed chwilą przeczytał.
    *
    * `null` = eksportu nie wolno zrobić; powód pokazał już toast.
    */
@@ -679,11 +854,10 @@ export default function OrdersPage() {
         toast(t("vehicles.noCompanyImport"), "error");
         return null;
       }
-      const paged = await listOrdersAll(
-        sb,
-        m.companyId,
-        filter === "all" ? undefined : { statuses: [filter] },
-      );
+      const paged = await listOrdersAll(sb, m.companyId, {
+        from: rangeFrom,
+        ...(filter === "all" ? {} : { statuses: [filter] }),
+      });
       if (!paged.complete) {
         toast(t("orders.exportIncomplete"), "error");
         return null;
@@ -693,7 +867,7 @@ export default function OrdersPage() {
       toast(e instanceof Error ? e.message : t("orders.exportFailed"), "error");
       return null;
     }
-  }, [filter, query, sort, t, toast]);
+  }, [filter, query, sort, rangeFrom, t, toast]);
 
   /**
    * Jeden zestaw nagłówków i komórek dla CSV i XLSX. Dwa osobne rozjechałyby się
@@ -1034,6 +1208,15 @@ export default function OrdersPage() {
             {t("orders.summaryToInvoice")} <strong>{summary.deliveredCount}</strong> (
             {summary.deliveredValueEur} EUR)
           </span>
+          {/* Podpis stoi W TYM SAMYM pudełku co kwoty, a nie przy selektorze okresu.
+              Kwota bez podpisu jest twierdzeniem o całej firmie: „💶 Wartość (EUR): 812 400"
+              przy domyślnym oknie to obrót z dwunastu miesięcy, a nie z historii — i nic na
+              ekranie nie mówiło inaczej. Selektor kilkanaście pikseli niżej tego nie
+              załatwia, bo czyta się go jako filtr listy, nie jako zakres podsumowania. */}
+          <span style={styles.summaryPeriod}>
+            📅 {t("orders.period")} <strong>{t(periodLabelKey(period))}</strong>
+            {period !== "all" && ` — ${t("orders.summaryPeriodNote")}`}
+          </span>
         </div>
       )}
 
@@ -1089,6 +1272,20 @@ export default function OrdersPage() {
           <option value="price_desc">{t("orders.sortPriceDesc")}</option>
           <option value="price_asc">{t("orders.sortPriceAsc")}</option>
         </select>
+        {/* Obok wyszukiwarki, a nie w rzędzie statusów: pozostałe filtry odsiewają to,
+            co już pobrane, a ten wyznacza, co w ogóle schodzi z bazy. */}
+        <select
+          style={styles.sortSel}
+          value={period}
+          onChange={(e) => setPeriod(e.target.value as Period)}
+          aria-label={t("orders.period")}
+        >
+          {PERIODS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {t(p.labelKey)}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div style={styles.filters}>
@@ -1136,7 +1333,10 @@ export default function OrdersPage() {
         loading={loading}
         error={loadErr}
         empty={orders.length === 0}
-        emptyText={t("orders.empty")}
+        /* Pusto w oknie ≠ pusto w bazie. „Dodaj pierwsze zlecenie" przy wybranych
+           3 miesiącach byłoby zaproszeniem do wpisania drugi raz czegoś, co już tam
+           jest — tyle że starsze niż okno. */
+        emptyText={t(period === "all" ? "orders.empty" : "orders.emptyPeriod")}
         emptyIcon="package"
         onRetry={load}
       />
@@ -1375,6 +1575,15 @@ const styles: Record<string, React.CSSProperties> = {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,
     fontSize: 14,
+  },
+  /** Cała szerokość pudełka (`flexBasis: "100%"`), żeby podpis okresu nie wylądował
+      w tym samym wierszu co kwoty i nie dał się przeczytać jako czwarta liczba. */
+  summaryPeriod: {
+    flexBasis: "100%",
+    color: palette.smoke,
+    fontSize: 13,
+    borderTop: `1px dashed ${palette.graphite}`,
+    paddingTop: 8,
   },
   /** [#378] Ostrzeżenie o niepełnej sumie — ten sam styl co na /stats. */
   rateWarn: {

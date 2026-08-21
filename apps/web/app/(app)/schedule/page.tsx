@@ -10,16 +10,18 @@ import {
   type DriverRow,
   latestOdometers,
   listDrivers,
-  listServiceTasks,
+  listServiceTasksAll,
   listVehiclesExpiry,
 } from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { ShowMore } from "@/components/ShowMore";
 import { PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useRenderWindow } from "@/lib/useRenderWindow";
 
 interface Deadline {
   key: string;
@@ -50,12 +52,22 @@ function isOverdue(d: Deadline): boolean {
 export default function SchedulePage() {
   const t = useT();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  /**
+   * Sekcja serwisowa nie zna kompletu — a jej brak wygląda jak brak terminu.
+   *
+   * Pozycja km-owa znika z tej osi na dwa sposoby: gdy zadania nie było w pobranym
+   * planie i gdy pojazd nie miał tankowania wśród pobranych przebiegów (`cur == null`).
+   * Oba wyglądają identycznie jak auto z terminem daleko w przyszłości, więc jedynym
+   * śladem jest ten znacznik.
+   */
+  const [incomplete, setIncomplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
@@ -111,12 +123,19 @@ export default function SchedulePage() {
 
       // Serwis wg przebiegu: km do następnego zadania.
       try {
+        // STRONAMI i z zawężeniem `kmTracked` w BAZIE: ta oś czasu czyta wyłącznie
+        // pozycje z interwałem km i ostatnim serwisem, a wariant jednorazowy ściągał
+        // cały plan firmy — sufit `api.max_rows` (1000) zajmowały więc także zadania
+        // czysto kalendarzowe, wypychając poza pobranie te, o które tu chodzi.
         const [tasks, odos] = await Promise.all([
-          listServiceTasks(sb, m.companyId),
+          listServiceTasksAll(sb, m.companyId, { kmTracked: true }),
           latestOdometers(sb, m.companyId),
         ]);
+        if (!tasks.complete || !odos.complete) setIncomplete(true);
         const reg = new Map(vehicles.map((v) => [v.id, v.registration]));
-        for (const task of tasks) {
+        for (const task of tasks.rows) {
+          // Zawężenie zrobiła już baza; tu zostaje wyłącznie zawężenie TYPU —
+          // arytmetyka niżej nie przyjmie `number | null`.
           if (task.interval_km && task.last_done_km != null) {
             const cur = odos.byVehicle[task.vehicle_id];
             if (cur != null) {
@@ -132,7 +151,13 @@ export default function SchedulePage() {
           }
         }
       } catch {
-        // brak zadań serwisowych — pomijamy sekcję
+        /*
+         * Nieudane pobranie planu NIE jest tym samym co brak zadań, choć na osi czasu
+         * wygląda identycznie — dlatego sekcja dalej się pomija, ale cicho już nie:
+         * ten sam znacznik co przy obcięciu. Bez tego awaria sieci dawała harmonogram
+         * bez ani jednego terminu serwisowego i ani jednego słowa wyjaśnienia.
+         */
+        setIncomplete(true);
       }
 
       out.sort((a, b) => {
@@ -152,6 +177,13 @@ export default function SchedulePage() {
   }, [load]);
 
   const overdue = useMemo(() => deadlines.filter(isOverdue).length, [deadlines]);
+  /*
+   * Licznik „po terminie" w nagłówku liczy się z KOMPLETU, a montuje się porcja.
+   * Zdjęcie sufitu pobrania z planu serwisowego podniosło górną granicę tej osi
+   * z ~tysiąca pozycji do kilkunastu tysięcy (300 aut × 15 zadań plus terminy
+   * pojazdów i kierowców) — a każda to wiersz z ramką i kolorowym paskiem.
+   */
+  const okno = useRenderWindow(deadlines);
 
   return (
     <div>
@@ -159,6 +191,9 @@ export default function SchedulePage() {
         title={t("schedule.title")}
         subtitle={`${t("schedule.subtitle")}${overdue ? ` — ${overdue} ${t("schedule.overdueSuffix")}` : ""}`}
       />
+
+      {/* Nad listą: komunikat mówi o terminach, których na niej NIE MA. */}
+      {!loading && !error && incomplete && <div style={s.warn}>⚠️ {t("schedule.incomplete")}</div>}
 
       <ListStatus
         loading={loading}
@@ -169,7 +204,7 @@ export default function SchedulePage() {
       />
 
       <div style={s.list}>
-        {deadlines.map((d) => {
+        {okno.visible.map((d) => {
           const days = daysLeft(d.date);
           const color = d.date
             ? urgencyColor(days)
@@ -198,6 +233,7 @@ export default function SchedulePage() {
             </div>
           );
         })}
+        <ShowMore hidden={okno.hidden} onShowMore={okno.showMore} />
       </div>
     </div>
   );
@@ -205,6 +241,17 @@ export default function SchedulePage() {
 
 const s: Record<string, React.CSSProperties> = {
   list: { display: "grid", gap: 8 },
+  /** Ten sam pas ostrzegawczy co nad rejestrem kosztów (`/koszty`) i na `/service`. */
+  warn: {
+    marginTop: 20,
+    padding: "12px 14px",
+    borderRadius: 10,
+    border: "1px solid #6b4a00",
+    background: "#241c05",
+    color: "#f0d98a",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
   row: {
     background: palette.nearBlack,
     border: `1px solid ${palette.graphite}`,

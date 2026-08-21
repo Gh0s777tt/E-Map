@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-422-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.249.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-425-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.250.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,72 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.250.0] — 🔧 Plan serwisowy przestaje gubić auta po terminie
+
+- `[#424]` 🔧 **Przebieg liczony w bazie, plan sortowany wg pilności**
+  ([0111_vehicle_odometers.sql](supabase/migrations/0111_vehicle_odometers.sql) · [service.ts](packages/api/src/data/service.ts))
+
+  `latestOdometers` ściągało całą historię tankowań i liczyło maksimum w przeglądarce.
+  Stronicowanie tego **nie naprawiło**, bo strony schodzą po `id`, czyli po
+  `gen_random_uuid()` — porządek pobierania nie ma nic wspólnego z czasem. Powyżej sufitu
+  wynikiem był `max` z próbki **jednolicie losowej**, razem z najświeższymi tankowaniami.
+  Przy tankowaniu co ~900 km auto realnie 500 km po terminie wymiany oleju raportowało
+  zapas +2000 km i **wypadało z panelu „Wymaga uwagi"**.
+
+  Agregat należy do bazy: `vehicle_odometers(p_company)` robi `max(odometer_km) group by
+  vehicle_id` — jeden wiersz na pojazd, odpowiedź o trzy rzędy wielkości mniejsza od zbioru,
+  z którego powstaje. `security invoker`, więc RLS zawęża tak samo jak przy odczycie tankowań.
+
+  **Okno renderowania obcinało listę od niewłaściwego końca.** Plan sortuje się po dacie
+  dopisania rosnąco, a okno montuje pierwsze 200 wierszy — użytkownik widział 200
+  **najstarszych** zadań zamiast najpilniejszych. Sortowanie wg pilności (gorszy z dwóch
+  wymiarów: przebieg i kalendarz) idzie teraz **przed** oknem, a `LEVEL_RANK` i liczenie
+  terminu, żyjące dotąd wyłącznie w ekranie mobilnym, wylądowały w `packages/core`.
+
+  `listServiceTasksAll` (keyset) plus przepięcie **wszystkich sześciu** konsumentów —
+  cztery web i dwa mobile. Karta pojazdu ściągała dotąd plan całej firmy i filtrowała
+  w przeglądarce; przy ponad ~66 autach potrafiła pokazać pustą sekcję serwisu mimo
+  istniejącego planu.
+
+  **Ścieżka awaryjna zamiast wymuszonej kolejności wdrożenia.** Migracja i kod klienta jadą
+  osobno — kod z deployem panelu, migracja ręcznie. Bez tego kolejność „panel przed bazą"
+  wywracała cztery ekrany naraz u **każdej** firmy. Brak RPC (`PGRST202`, rozpoznawany
+  wąsko po kodzie) cofa odczyt na starą ścieżkę i zwraca `complete`, więc niepewność jest
+  widoczna, a nie ukryta. Każdy inny błąd nadal leci wyjątkiem — awaria sieci ma zostać
+  awarią, nie cichym zejściem na wolniejszy tor. Obie własności pilnują testy.
+
+- `[#423]` 📅 **Okno czasowe na `/orders` — i data, która naprawdę opisuje zlecenie**
+  ([orders/page.tsx](apps/web/app/(app)/orders/page.tsx))
+
+  Ekran pobierał całą historię, żeby suma zgadzała się z eksportem; przy 50 tys. zleceń
+  to kilkadziesiąt zapytań przy wejściu. Selektor okresu (3/12/24 mies./cała historia,
+  domyślnie 12) schodzi do bazy, wzorem `/forms/history`.
+
+  Przy okazji wyszło coś poważniejszego: **okno filtrowało po `created_at`, a cały ekran
+  datuje zlecenie po `load_date`**. Zlecenie wpisane w styczniu z załadunkiem w marcu
+  trafiało do złego kubełka. Naprawa siedzi w jednym miejscu — `coalesce(load_date,
+  created_at)` w filtrze — więc obejmuje też `/monthly`, `/stats`, `/scoring`, `KpiStrip`
+  i `RevenueTrend`, które wszystkie kubełkują po dacie frachtu, a filtrowały po dacie wpisu.
+
+  Podpis przy sumie mówi wprost, jakiego okresu dotyczą liczby i eksporty — bez tego
+  właściciel odczytałby kwotę z dwunastu miesięcy jako obrót całej firmy. Okno kursów FX
+  przestało być sztywnymi 24 miesiącami i wynika **z danych**: najstarsza data, o którą
+  realnie zapyta przelicznik, minus zapas na weekendy EBC.
+
+- `[#425]` 🌍 **Długi mobile i katalog** — lista dokumentów kierowcy sygnalizuje ucięcie
+  (kierowca szukający dokumentu musi wiedzieć, że lista jest niepełna, a nie że dokumentu
+  nie ma), a `fleet-status` przestaje mieć polskie napisy wpisane na sztywno w JSX.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1283** ✓ (+15) · `next build` ✓ ·
+`docs:check` ✓ (113 migracji) · `pnpm check` 7/7 ✓
+**Weryfikacja:** 3 agentów implementujących, 3 adwersaryjnych recenzentów — **7 znalezisk,
+wszystkie potwierdzone, 5 wysokich.**
+
+> ⚠️ **Wdrożenie:** migracja `0111` nie jest jeszcze zastosowana na bazie. Kod działa bez
+> niej (ścieżka awaryjna), ale do czasu jej wgrania przebiegi liczą się starym, gorszym
+> sposobem. Patrz [BACKLOG](docs/BACKLOG.md).
 
 
 ## [1.249.0] — 📐 Komplet danych, a nie zawieszona przeglądarka

@@ -2,15 +2,16 @@
  * Okno danych dla ekranów miesięcznych — JEDNA definicja dla pulpitu i /monthly.
  *
  * Powód jest konkretny: oba ekrany pokazują wynik TEGO SAMEGO miesiąca, a przynależność
- * zlecenia do miesiąca rozstrzyga się dopiero w przeglądarce, po dacie ZAŁADUNKU
- * (`load_date ?? created_at`). Zapytanie umie filtrować tylko po `created_at`, więc
- * zlecenie wprowadzone w styczniu, a wiezione w marcu, wpada do marcowego wyniku tylko
- * wtedy, gdy w ogóle zostało pobrane. Dwa ekrany z dwoma różnymi oknami pobierania
- * dawały dla jednego miesiąca dwie różne kwoty — bez śladu, która z nich jest prawdziwa.
+ * zlecenia rozstrzyga data ZAŁADUNKU (`load_date ?? created_at`). Dwa ekrany z dwoma
+ * różnymi oknami pobierania dawały dla jednego miesiąca dwie różne kwoty — bez śladu,
+ * która z nich jest prawdziwa.
  *
- * Stąd wspólne okno: sześć miesięcy kończących się na wybranym. Jest szersze, niż wynika
- * z samego wyniku miesiąca, bo /monthly rysuje z niego jeszcze trend i różnicę m/m —
- * a jego szerokość jest tu drugorzędna: liczy się to, że dla obu ekranów jest IDENTYCZNA.
+ * Okno schodzi do bazy po tej samej dacie, po której miesiąc liczy przeglądarka (patrz
+ * `oknoDaty` w [warstwie danych](../../../packages/api/src/data/orders.ts)), więc zlecenie
+ * wprowadzone w styczniu, a wiezione w marcu, mieści się w marcowym oknie samo z siebie —
+ * kiedyś okno musiało być szersze właśnie po to, żeby je złapać. Sześć miesięcy zostaje
+ * z powodu, który tamten przeżył: /monthly rysuje z tego zbioru trend i różnicę m/m,
+ * a dla obu ekranów zakres musi być IDENTYCZNY.
  */
 import { monthsEndingAt } from "@e-logistic/core";
 

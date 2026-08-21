@@ -321,6 +321,21 @@ export const en: Record<MessageKey, string> = {
   "order.status.invoiced": "Invoiced",
   "order.status.cancelled": "Cancelled",
 
+  "fleet.title": "Fleet status",
+  "fleet.subtitle":
+    "What every vehicle is doing right now: on the road (active order), planned or idle — with its latest route event.",
+  "fleet.noVehicles": "Add a vehicle to see the fleet status.",
+  "fleet.empty": "No vehicles.",
+  "fleet.error": "Could not load the fleet status.",
+  "fleet.refresh": "Refresh",
+  "fleet.map": "Map",
+  "fleet.noOrder": "No active order.",
+  "fleet.loadShort": "load",
+  "fleet.unloadShort": "unload",
+  "fleet.lastEvent": "Last:",
+  "fleet.count.driving": "On the road",
+  "fleet.count.planned": "Planned",
+  "fleet.count.idle": "Idle",
   "fleet.state.driving": "On the road",
   "fleet.state.planned": "Planned",
   "fleet.state.idle": "Idle",
@@ -714,6 +729,8 @@ export const en: Record<MessageKey, string> = {
   "vehicles.detailTrailer": "Trailer",
   "vehicles.assignedCards": "Cards assigned to the vehicle:",
   "vehicles.noCardsAssigned": 'None — assign in the "Cards" tab.',
+  "vehicles.serviceIncomplete":
+    "This vehicle's service plan may be incomplete — the company plan or the odometer readings were truncated at the fetch ceiling. A task missing below has not necessarily gone unplanned, and “km to go” may then be computed without this vehicle's reading.",
   "vehicles.loadError": "Failed to load the fleet.",
   "vehicles.noCompanySave": "No company — create a company in the panel to save to the database.",
   "vehicles.saved": "Changes saved.",
@@ -753,6 +770,15 @@ export const en: Record<MessageKey, string> = {
   "orders.sortDateAsc": "Date ↑ (oldest)",
   "orders.sortPriceDesc": "Rate ↓",
   "orders.sortPriceAsc": "Rate ↑",
+  "orders.period": "Period:",
+  "orders.period.m3": "3 months",
+  "orders.period.m12": "12 months",
+  "orders.period.m24": "24 months",
+  "orders.period.all": "Full history",
+  "orders.summaryPeriodNote":
+    "the figures above and every export cover this period only — measured by LOAD DATE, the same column the list shows — not the company's full history.",
+  "orders.emptyPeriod":
+    "No orders in the selected period — widen the period or add one using the form above.",
   "orders.exportFreight": "📤 Freight exchange (CSV)",
   "orders.exportIncomplete":
     "Export halted — the full set of orders could not be fetched, so the sheet would be understated by an unknown amount. Narrow the list or report the problem.",
@@ -1046,12 +1072,15 @@ export const en: Record<MessageKey, string> = {
   "service.fieldLastDate": "Last service (date)",
   "service.addTask": "Add task",
   "service.tasksHeading": "Tasks",
+  "service.overdueSuffix": "overdue!",
   "service.empty": "No scheduled service tasks.",
   "service.everyPrefix": "every ",
   "service.kmSuffix": " km",
   "service.overduePrefix": "overdue by ",
   "service.leftPrefix": "in ",
   "service.monthsSuffix": " mo.",
+  "service.overdueDaysPrefix": "overdue by ",
+  "service.daysSuffix": " days",
   "service.markDone": "✓ Done",
   "service.loadError": "Failed to load the service plan.",
   "service.nameRequired": "Enter a vehicle and task name.",
@@ -1066,6 +1095,10 @@ export const en: Record<MessageKey, string> = {
   "service.deleteConfirm": "Delete this service task?",
   "service.deleted": "Task deleted.",
   "service.deleteError": "Delete error.",
+  "service.incompleteTasks":
+    "The plan is incomplete — the database holds more service tasks than this fetch could return. A task missing from this list has not necessarily gone unplanned.",
+  "service.incompleteOdo":
+    "Odometer data is incomplete — the readings response was truncated, so some vehicles are missing from it. A task on such a vehicle shows up as still within its interval even though its mileage is unknown.",
 
   "checklists.title": "Driver checklists",
   "checklists.subtitle":
@@ -1167,6 +1200,8 @@ export const en: Record<MessageKey, string> = {
   "schedule.empty": "No deadlines — fill in dates for vehicles and drivers.",
   "schedule.noCompany": "No active company.",
   "schedule.buildError": "Failed to build the schedule.",
+  "schedule.incomplete":
+    "Mileage-based service deadlines are incomplete — the service plan or the odometer readings exceeded the fetch ceiling. A deadline missing from the list may still be running out.",
   "schedule.vehicleInspection": "Technical inspection",
   "schedule.vehicleInsurance": "Liability insurance",
   "schedule.vehicleLeasingEnd": "Leasing end",
