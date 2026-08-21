@@ -145,6 +145,24 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
 
 ## 🟢 P4 — Infra / docelowy stack
 
+> **🔴 ZABLOKOWANE ROZLICZENIOWO (ustalone 2026-08-21, próba `db push`).**
+> Organizacja Supabase ma **nieopłacone faktury**, przez co **wszystkie cztery projekty**
+> (E-Logistic, E-Tacho, E-Bot, „Świat duchów") mają status `INACTIVE`, a wznowienie
+> odpowiada `PaymentRequiredException: This organization has unpaid invoices`. Baza jest
+> nieosiągalna (`connection timeout`), więc migracji nie da się wgrać żadną drogą — ani
+> `supabase db push`, ani przez MCP.
+>
+> To **ten sam korzeń**, co pozostałe blokery infrastruktury opisane niżej: GitLab bez
+> minut CI, GitHub bez przydzielanych runnerów. Trzy usługi, jedna klasa przyczyny —
+> rozliczenia, nie konfiguracja. Żadnej z nich nie da się odblokować zmianą w repo.
+>
+> **Kolejność odblokowania:** Supabase → `Organization → Billing → Invoices` (uregulowanie),
+> potem wznowienie projektu, potem dopiero `db push`.
+>
+> **Nic przez to nie jest zepsute** — `latestOdometers` rozpoznaje brak RPC (`PGRST202`)
+> i cofa się na starą ścieżkę (#424), więc panel działa bez migracji, tylko liczy przebiegi
+> gorszym sposobem i mówi o tym banerem.
+
 > **🟠 DO WGRANIA (#424): migracja `0111_vehicle_odometers.sql`.**
 > Kod działa bez niej — `latestOdometers` rozpoznaje brak RPC (`PGRST202`) i cofa się na
 > starą ścieżkę — ale do czasu wgrania przebiegi liczą się z próbki, czyli tak jak przed
