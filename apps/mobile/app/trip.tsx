@@ -12,6 +12,7 @@ import { CargoPhotosMobile } from "../components/CargoPhotosMobile";
 import { CountryField } from "../components/CountryField";
 import { VehiclePicker } from "../components/VehiclePicker";
 import { fillFromLocation, requiresPostcode } from "../lib/geoFill";
+import { success, warn } from "../lib/haptics";
 import { useT } from "../lib/i18n";
 import { enqueue, flushQueued, listOutbox, type OutboxItem } from "../lib/outbox";
 import { getSupabase, supabaseConfigured } from "../lib/supabase";
@@ -52,6 +53,13 @@ export default function TripScreen() {
   const [weight, setWeight] = useState("");
   const [comment, setComment] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  /**
+   * Czy `msg` to odrzucenie, czy potwierdzenie. Bez tego oba szły tym samym, wyblakłym
+   * kolorem `smoke` — a przy dłuższym formularzu (rozładunek z wybranym zleceniem dokłada
+   * sekcję zdjęć) komunikat ląduje pod krawędzią ekranu. Kierowca tapał „Zapisz", telefon
+   * nie drgał, nic widocznego się nie zmieniało i wyglądało to jak martwy przycisk.
+   */
+  const [msgError, setMsgError] = useState(false);
   const [items, setItems] = useState<OutboxItem[]>([]);
   const [busy, setBusy] = useState(false);
   // #245: powiązanie load/unload ze zleceniem → auto-zamknięcie po komplecie load+unload.
@@ -118,7 +126,10 @@ export default function TripScreen() {
   async function submit() {
     if (busy) return; // blokada podwójnego zapisu (każdy tap = osobny wpis w outboxie)
     setMsg(null);
+    setMsgError(false);
     if (!vehicleId) {
+      warn();
+      setMsgError(true);
       setMsg(t("m.fuel.pickVehicle"));
       return;
     }
@@ -149,12 +160,15 @@ export default function TripScreen() {
 
     const parsed = tripEventSchema.safeParse(candidate);
     if (!parsed.success) {
+      warn();
+      setMsgError(true);
       setMsg(firstZodError(parsed.error));
       return;
     }
     setBusy(true);
     try {
       const item = await enqueue("trip", parsed.data, new Date().toISOString());
+      success();
       const actionLabel = t(`m.trip.act.${parsed.data.action}`);
       setMsg(
         item.status === "synced"
@@ -173,6 +187,8 @@ export default function TripScreen() {
       await refresh();
     } catch (e) {
       // #355: błąd zapisu musi być widoczny (wcześniej ginął bez komunikatu).
+      warn();
+      setMsgError(true);
       setMsg(`⚠️ ${e instanceof Error ? e.message : t("m.manage.saveError")}`);
     } finally {
       setBusy(false);
@@ -357,7 +373,15 @@ export default function TripScreen() {
           <Text style={styles.btnText}>{busy ? t("m.fuel.saving") : t("m.manage.save")}</Text>
         </Pressable>
       )}
-      {msg && <Text style={styles.msg}>{msg}</Text>}
+      {msg && (
+        <Text
+          style={[styles.msg, msgError && styles.msgError]}
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+        >
+          {msg}
+        </Text>
+      )}
 
       {items.length > 0 && (
         <View style={styles.queue}>
@@ -373,6 +397,17 @@ export default function TripScreen() {
               </Text>
             );
           })}
+          {/*
+            Baner skanuje CALA kolejke, nie widoczna dziesiatke powyzej. Przy dluzej
+            niedostepnym backendzie bledny wpis wypada poza `slice(0, 10)` i znikal
+            z oczu — a to jedyne miejsce, w ktorym kierowca widzi powod odrzucenia
+            przez serwer.
+          */}
+          {items.some((it) => it.status === "error") && (
+            <Text style={styles.queueError}>
+              ⚠️ {items.find((it) => it.status === "error")?.error ?? t("m.trip.syncError")}
+            </Text>
+          )}
         </View>
       )}
     </ScrollView>
@@ -423,6 +458,8 @@ const styles = StyleSheet.create({
   },
   repeatText: { color: palette.offWhite, fontWeight: "600" },
   msg: { color: palette.smoke, marginTop: 10 },
+  msgError: { color: palette.warning },
+  queueError: { color: palette.warning, fontSize: 12, marginTop: 6 },
   viewOnly: { color: palette.smoke, marginTop: 14, fontSize: 13, textAlign: "center" },
   hint: { color: palette.smoke, fontSize: 13, marginTop: 6, lineHeight: 18 },
   queue: {
