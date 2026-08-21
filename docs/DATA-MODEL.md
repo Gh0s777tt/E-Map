@@ -1,19 +1,19 @@
 # 🧱 Model danych — E‑Logistic
 
-> Status: **wdrożone** · stan kodu **v1.248.0** (#419 — 112 plików migracji, numery 0001–0110; ostatnia: **0110** naczepy jako osobna encja) · 2026-08-20
+> Status: **wdrożone** · stan kodu **v1.250.0** (#423 — 113 plików migracji, numery 0001–0111; ostatnia: **0111** przebieg pojazdu liczony w bazie) · 2026-08-20
 > Baza: Supabase / **Postgres 17 + PostGIS + pgcrypto + Vault**. Wszystkie tabele multi-tenant chronione **RLS** (spójność weryfikowana automatycznie — [`scripts/audit-rls.mjs`](../scripts/audit-rls.mjs), patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 > Sekcja „Aktualny schemat" niżej jest źródłem prawdy; dalsze rozdziały to oryginalny projekt (kontekst historyczny).
 
 ---
 
-## 0. Aktualny schemat (migracje 0001–0110)
+## 0. Aktualny schemat (migracje 0001–0111)
 
 **62 tabele `public` — każda z włączonym RLS.** Liczba jest sprawdzalna wprost w plikach migracji:
 tyle samo `create table` co `alter table … enable row level security`, bez ani jednej tabeli poza tą
 parą; żywy schemat weryfikuje [`pnpm audit:rls`](../scripts/audit-rls.mjs) (patrz [SECURITY-RLS.md](SECURITY-RLS.md)).
 Stało tu wcześniej „~40 tabel" — prawdziwa liczba z v1.51.0, która przez następne sześćdziesiąt
 migracji nie drgnęła i zaniżała schemat o jedną trzecią. Poniżej **rdzeń** (v1.51.0, migracje
-0001–0052); sekcje 0.1–0.4 dokładają moduły dodawane kolejno, aż do 0110.
+0001–0052); sekcje 0.1–0.4 dokładają moduły dodawane kolejno, aż do 0111.
 
 **Tabele:**
 - `companies`, `memberships` (`role`, `status`, **`modules` text[]** — 0016), `profiles`, `driver_profiles`.
@@ -75,7 +75,7 @@ szyfruje platforma Supabase.
 - **`driver_payouts`** (0050) — rozliczenia kierowcy: `driver_name`, `type` (należność/zaliczka/potrącenie/wypłata), `amount`, `currency`, `entry_date`, notatka. Saldo do wypłaty per waluta liczone `settleDriverPayouts` w core (bez przeliczeń kursowych). RLS: członek czyta, owner/dispatcher zarządza.
 - **`damage_claims`** (0051) — rejestr szkód / OC: `vehicle_id`, kierowca, `claim_date`, rodzaj (kolizja/kradzież/szyby/żywioł/wandalizm/inne), status (zgłoszona/w likwidacji/naprawiona/zamknięta/odrzucona), koszt, ubezpieczyciel, `claim_number`, opis. Podsumowanie (`summarizeDamageClaims` w core) zasila panel „Co wymaga uwagi" (otwarte szkody). RLS: multi-tenant.
 
-### 0.4 Moduły dodane po v1.51 (migracje 0055–0110)
+### 0.4 Moduły dodane po v1.51 (migracje 0055–0111)
 
 Ta sekcja powstała, gdy dokument rozjechał się z kodem o dwadzieścia migracji —
 opisywał 82 migracje przy 102 faktycznych. Wszystkie kolumny poniżej **odczytane
@@ -141,7 +141,7 @@ opisywał stan rzeczywisty, a nie zamierzony. Gwiazdka `*` oznacza `NOT NULL`.
 - `vehicle_costs.currency` i `orders.currency` (0100): CHECK na format ISO 4217. Bez niego „zł" albo „PLN " ze spacją przechodziło, a potem nie dopasowało się do żadnego kursu.
 - Kolumny kraju w sześciu tabelach formularzy (0099): trigger `normalize_country` sprowadza wpis do kodu ISO 3166-1 alpha-2. **Normalizuje, nie odrzuca** — buildy mobile ze sklepów nie mają nowej walidacji, a kierowcy przy dystrybutorze nie można zablokować zapisu przez literówkę.
 
-**Migracje bez nowych tabel (0104–0108)** — wymienione tu dlatego, że inaczej czytelnik tego
+**Migracje bez nowych tabel (0104–0108, 0111)** — wymienione tu dlatego, że inaczej czytelnik tego
 dokumentu wnioskowałby z ostatniej opisanej migracji, że schemat kończy się na 0103. Żadna z nich
 nie dokłada tabeli ani kolumny — zmieniają RPC, grant, politykę albo indeks — więc **pełne
 uzasadnienia są w [SECURITY-RLS.md](SECURITY-RLS.md)**, a nie tutaj.
@@ -165,6 +165,17 @@ uzasadnienia są w [SECURITY-RLS.md](SECURITY-RLS.md)**, a nie tutaj.
   dla `anon`, które Supabase zakłada przez `alter default privileges`. Skutek trzeba sprawdzać
   `has_function_privilege('anon', …)`, nie obecnością instrukcji `revoke` w migracji. Najpoważniejsza
   z domkniętych tu pozycji to `driver_save` — zapisuje tożsamość i numery dokumentów kierowcy.
+- **0111** — `vehicle_odometers(p_company)` (SECURITY **INVOKER**, czyli pod RLS wywołującego):
+  `max(odometer_km)` z `fuel_logs` w rozbiciu na pojazd, plus indeks
+  `(company_id, vehicle_id, odometer_km desc)` pod ten agregat. Klient liczył to maksimum sam,
+  ściągając całą historię tankowań — a ta rośnie bez końca (300 ciągników × 3 lata ≈ 140 000
+  wierszy), więc pobranie musiało mieć sufit i powyżej niego wynik był maksimum z próbki
+  **losowej** (strony schodziły po `id`, czyli po `gen_random_uuid()`). Zaniżony przebieg nie
+  wygląda jak brak danych: `serviceStatus` odpowiada na niego „ok", więc auto po terminie
+  wypadało z panelu „Wymaga uwagi" i z pozycji przeterminowanych w harmonogramie. Agregat oddaje
+  jeden wiersz na pojazd, czyli zbiór o trzy rzędy wielkości mniejszy od źródła. Ten sam rachunek
+  robi bocznym złączeniem `generate_expiry_notifications` (0028/0031) — powiadomienia były więc
+  cały czas liczone z prawdziwego przebiegu, a ekrany z próbki.
 
 > **Analityka i wykresy bez własnych tabel:** trend przychodu/kosztów/paliwa (`monthlyFleetTrend`, `fuelByMonth`) oraz globalne wyszukiwanie (`searchEntities`) liczone w `packages/core` z danych istniejących tabel; wizualizacja (`BarChart`/`RevenueTrend`) po stronie web.
 

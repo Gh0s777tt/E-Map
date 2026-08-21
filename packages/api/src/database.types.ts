@@ -2692,6 +2692,14 @@ export interface Database {
         Returns: undefined;
       };
       delete_expo_push_token: { Args: { p_token: string }; Returns: undefined };
+      // [#423] Migracja 0111 — max(odometer_km) per pojazd, liczony w bazie.
+      // Dopisane ręcznie z tego samego powodu co dwie pozycje wyżej: `pnpm gen:types`
+      // wymaga poświadczeń do bazy, których nie ma w tym środowisku. Sygnatura
+      // odpowiada migracji 1:1 (`returns table (vehicle_id uuid, odometer_km integer)`).
+      vehicle_odometers: {
+        Args: { p_company: string | null };
+        Returns: { vehicle_id: string; odometer_km: number }[];
+      };
       dev_stats: { Args: Record<PropertyKey, never>; Returns: Json };
       driver_documents: { Args: { p_driver: string | null }; Returns: Json };
       driver_link_user: {

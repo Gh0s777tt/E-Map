@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.249.0 · #422 · 2026-08-21 -->
+<!-- SYNC: po v1.250.0 · #425 · 2026-08-21 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -144,6 +144,15 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
       daje pełną kontrolę nad projektem Supabase, więc to najpoważniejsze z otwartych ryzyk.
 
 ## 🟢 P4 — Infra / docelowy stack
+
+> **🟠 DO WGRANIA (#424): migracja `0111_vehicle_odometers.sql`.**
+> Kod działa bez niej — `latestOdometers` rozpoznaje brak RPC (`PGRST202`) i cofa się na
+> starą ścieżkę — ale do czasu wgrania przebiegi liczą się z próbki, czyli tak jak przed
+> naprawą. Po zastosowaniu migracji ścieżka awaryjna przestaje się wykonywać sama z siebie,
+> bez zmian w kodzie. Polecenie: `supabase db push` albo `node scripts/apply-migration.mjs`.
+> Po wgraniu warto przepuścić `pnpm gen:types` — typ RPC dopisano ręcznie (tak samo jak
+> przy `save_expo_push_token` z 0107), bo `gen:types` wymaga poświadczeń do bazy.
+
 
 > **🔴 BLOKER (#414, 2026-08-19) — CI nie ma gdzie się wykonać na ŻADNEJ z dwóch platform.**
 > Konfiguracja jest po obu stronach poprawna i zweryfikowana; blokada jest rozliczeniowa,

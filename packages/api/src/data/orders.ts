@@ -35,22 +35,49 @@ const COLS =
  * odporny na wstawki — patrz [`pagination.ts`](./pagination.ts).
  *
  * `to` jest granicą WYŁĄCZNĄ (`lt`). Wywołujący podają tu 1. dzień kolejnego miesiąca,
- * więc przy `lte` wiersz z `created_at` dokładnie o północy tego dnia należałby naraz
- * do dwóch sąsiednich okien. Tak samo liczy okna `listPerDiemTrips`.
+ * więc przy `lte` wiersz z datą dokładnie o północy tego dnia należałby naraz do dwóch
+ * sąsiednich okien. Tak samo liczy okna `listPerDiemTrips`.
  */
 function companyOrdersFilter(client: SupabaseClient, companyId: string, opts?: OrderFilter) {
   let query = client.from("orders").select(COLS).eq("company_id", companyId);
   if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
   if (opts?.assignedTo) query = query.eq("assigned_to", opts.assignedTo);
   if (opts?.statuses) query = query.in("status", opts.statuses);
-  if (opts?.from) query = query.gte("created_at", opts.from);
-  if (opts?.to) query = query.lt("created_at", opts.to);
+  if (opts?.from) query = query.or(oknoDaty("gte", opts.from));
+  if (opts?.to) query = query.or(oknoDaty("lt", opts.to));
   return query;
+}
+
+/**
+ * Warunek `coalesce(load_date, created_at) <op> granica` w składni PostgREST.
+ *
+ * Okno MUSI iść po dacie frachtu, bo po niej datuje zlecenie cała reszta aplikacji:
+ * `filterSortOrders` sortuje po `load_date ?? created_at` ([`orderFilter.ts`](../../../core/src/orderFilter.ts)),
+ * `rowAmountEur` bierze kurs z tego samego dnia, miesięczne kubełki na `/monthly`,
+ * `/stats`, KPI i trend przychodu — również. Filtr po samym `created_at` znaczył więc
+ * „data WPISU", i to bez żadnego śladu na ekranie: fracht zabukowany z wyprzedzeniem
+ * (wpis w lipcu, załadunek we wrześniu) wypadał z okna, którego środek zajmował, a po
+ * migracji historii importem CSV — odwrotnie: wszystkie wiersze dostawały `created_at`
+ * z dnia importu i „ostatnie 3 miesiące" pokazywały frachty sprzed pięciu lat. Rozjazd
+ * nie kończył się na liście: ta sama granica wyznacza zbiór trzech eksportów księgowych,
+ * więc zaniżony przychód trafiał do arkusza, w którym nie da się go już odróżnić od prawdy.
+ *
+ * `load_date` jest kolumną typu `date`, więc do jego gałęzi idzie sam dzień granicy;
+ * `created_at` to `timestamptz` i dostaje wartość w całości. Zapytanie zostaje zawężone
+ * `company_id` niezależnie od tego warunku, więc skan nigdy nie wychodzi poza jedną firmę.
+ */
+function oknoDaty(op: "gte" | "lt", granica: string): string {
+  const dzien = granica.slice(0, 10);
+  return `load_date.${op}.${dzien},and(load_date.is.null,created_at.${op}.${granica})`;
 }
 
 /** Filtry wspólne dla obu trybów pobrania (jednorazowego i stronami). */
 export interface OrderFilter {
-  /** Zakres `created_at`: `from` włącznie, `to` WYŁĄCZNIE. */
+  /**
+   * Zakres DATY FRACHTU (`load_date`, a w jej braku `created_at`): `from` włącznie,
+   * `to` WYŁĄCZNIE. To ta sama data, po której zlecenie datuje każdy ekran — patrz
+   * `oknoDaty` wyżej.
+   */
   from?: string;
   to?: string;
   /** Zawężenie po stronie BAZY — zamiast ściągania całej firmy i odsiewania w przeglądarce. */

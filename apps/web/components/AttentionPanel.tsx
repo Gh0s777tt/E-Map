@@ -8,7 +8,7 @@ import {
   listDrivers,
   listFuelCardsSafe,
   listInvoicesAll,
-  listServiceTasks,
+  listServiceTasksAll,
   listVehiclesExpiry,
 } from "@e-logistic/api";
 import {
@@ -114,7 +114,11 @@ export function AttentionPanel() {
         const [vehs, cards, tasks, odo, docs, invs, drvs, claims, defects] = await Promise.all([
           listVehiclesExpiry(sb, m.companyId).catch(() => null),
           listFuelCardsSafe(sb, m.companyId).catch(() => null),
-          listServiceTasks(sb, m.companyId).catch(() => null),
+          // STRONAMI i zawężone w BAZIE do zadań śledzonych przebiegiem: panel i tak
+          // odrzuca resztę (bez `interval_km` i `last_done_km` `serviceStatus` zwraca
+          // `kmLeft: null`), a to właśnie one wypełniały sufit `api.max_rows` zamiast
+          // zadań, które mają tu coś do powiedzenia.
+          listServiceTasksAll(sb, m.companyId, { kmTracked: true }).catch(() => null),
           latestOdometers(sb, m.companyId).catch(() => null),
           // Tylko dokumenty Z terminem — reszta sejfu (skany CMR, faktury) nie ma tu
           // czego wnieść, a stanowi jego większość.
@@ -132,8 +136,8 @@ export function AttentionPanel() {
         const niepelne: MessageKey[] = [];
         if (vehs === null) niepelne.push("attention.set.vehicles");
         if (cards === null) niepelne.push("attention.set.cards");
-        if (tasks === null) niepelne.push("attention.set.service");
-        // Przebiegi: zaniżony licznik nie daje pustego wiersza, tylko poziom „ok"
+        if (tasks === null || !tasks.complete) niepelne.push("attention.set.service");
+        // Przebiegi: brak licznika pojazdu nie daje pustego wiersza, tylko poziom „ok"
         // z `serviceStatus` — czyli przekroczony serwis znika bez śladu.
         if (odo === null || !odo.complete) niepelne.push("attention.set.odometers");
         if (docs === null || !docs.complete) niepelne.push("attention.set.documents");
@@ -185,7 +189,7 @@ export function AttentionPanel() {
         }
 
         // Uwaga: zmienna pętli to `task`, bo `t` to funkcja tłumacząca.
-        for (const task of tasks ?? []) {
+        for (const task of tasks?.rows ?? []) {
           const cur = odo?.byVehicle[task.vehicle_id] ?? null;
           const st = serviceStatus(cur, task.last_done_km, task.interval_km);
           if (st.level === "ok" || st.kmLeft == null) continue;

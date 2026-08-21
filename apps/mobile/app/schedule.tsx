@@ -9,7 +9,7 @@ import {
   getActiveMembership,
   latestOdometers,
   listDrivers,
-  listServiceTasks,
+  listServiceTasksAll,
   listVehiclesExpiry,
 } from "@e-logistic/api";
 import type { MobileMessageKey } from "@e-logistic/i18n";
@@ -54,12 +54,22 @@ function urgencyColor(u: number): string {
 export default function ScheduleScreen() {
   const t = useT();
   const [groups, setGroups] = useState<Group[]>([]);
+  /**
+   * Terminy serwisowe nie są kompletem — a ich brak wygląda jak brak terminu.
+   *
+   * Pozycja km-owa znika stąd na dwa sposoby: zadania nie było w pobranym planie
+   * albo pojazd nie miał tankowania wśród pobranych przebiegów (`cur == null`).
+   * Oba nie do odróżnienia od auta z terminem daleko przed sobą, więc jedynym
+   * śladem jest ten znacznik.
+   */
+  const [incomplete, setIncomplete] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setErr(null);
+    setIncomplete(false);
     if (!supabaseConfigured) {
       setLoading(false);
       return;
@@ -125,12 +135,18 @@ export default function ScheduleScreen() {
 
       // Serwis wg przebiegu.
       try {
+        // STRONAMI i z zawężeniem `kmTracked` w BAZIE: ten ekran czyta wyłącznie
+        // pozycje z interwałem km i ostatnim serwisem, a wariant jednorazowy ściągał
+        // cały plan firmy — sufit `api.max_rows` (1000) zajmowały więc także zadania
+        // czysto kalendarzowe, wypychając poza pobranie te, o które tu chodzi.
         const [tasks, odos] = await Promise.all([
-          listServiceTasks(sb, m.companyId),
+          listServiceTasksAll(sb, m.companyId, { kmTracked: true }),
           latestOdometers(sb, m.companyId),
         ]);
+        if (!tasks.complete || !odos.complete) setIncomplete(true);
         const reg = new Map(vehicles.map((v) => [v.id, v.registration]));
-        for (const task of tasks) {
+        for (const task of tasks.rows) {
+          // Zawężenie zrobiła już baza; tu zostaje wyłącznie zawężenie TYPU.
           if (task.interval_km && task.last_done_km != null) {
             const cur = odos.byVehicle[task.vehicle_id];
             if (cur != null) {
@@ -147,7 +163,11 @@ export default function ScheduleScreen() {
           }
         }
       } catch {
-        // brak zadań serwisowych
+        /*
+         * Nieudane pobranie planu NIE jest tym samym co brak zadań, choć na liście
+         * wygląda identycznie — sekcja dalej się pomija, ale już nie po cichu.
+         */
+        setIncomplete(true);
       }
 
       // Scalenie per auto/kierowca; grupy i pozycje wg pilności.
@@ -199,6 +219,8 @@ export default function ScheduleScreen() {
       }
     >
       {err && <Text style={s.err}>{err}</Text>}
+      {/* Nad listą, bo mówi o terminach, których na niej NIE MA. */}
+      {incomplete && !err && <Text style={s.warn}>{t("m.schedule.incomplete")}</Text>}
       {loading && groups.length === 0 && (
         <View style={{ gap: 10 }}>
           <Skeleton height={92} />
@@ -258,6 +280,8 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.black },
   content: { padding: 16, gap: 10, paddingBottom: 32 },
   err: { color: palette.red, fontSize: 13 },
+  // Ostrzeżenie, nie błąd: dane są, tylko niepełne — kolor jak na `fleet-status`.
+  warn: { color: palette.warning, fontSize: 12, lineHeight: 17 },
   dim: { color: palette.smoke, fontSize: 12 },
   head: { flexDirection: "row", alignItems: "center", gap: 10 },
   glyph: { fontSize: 18 },

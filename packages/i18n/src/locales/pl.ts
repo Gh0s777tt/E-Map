@@ -332,6 +332,31 @@ export const pl = {
   "order.status.invoiced": "Zafakturowane",
   "order.status.cancelled": "Anulowane",
 
+  /*
+   * Reszta ekranu /fleet-status. Do niedawna tylko baner o niepełnym zbiorze i podpis
+   * „brak zdarzeń" szły przez katalog, a cała warstwa czytelna — tytuł, liczniki,
+   * „Odśwież", stany pustej listy — była wpisana po polsku w JSX. Efekt był gorszy niż
+   * brak tłumaczenia: dyspozytor z ustawionym EN widział angielskie ostrzeżenie
+   * w polskim ekranie i nie miał powodu ufać żadnemu z tych dwóch języków.
+   */
+  "fleet.title": "Status floty",
+  "fleet.subtitle":
+    "Co robi każdy pojazd teraz: w trasie (aktywne zlecenie), zaplanowane czy wolny — z ostatnim zdarzeniem trasy.",
+  "fleet.noVehicles": "Dodaj pojazd, aby zobaczyć status floty.",
+  "fleet.empty": "Brak pojazdów.",
+  "fleet.error": "Nie udało się pobrać statusu floty.",
+  "fleet.refresh": "Odśwież",
+  "fleet.map": "Mapa",
+  "fleet.noOrder": "Brak aktywnego zlecenia.",
+  /* Skróty jak w liście zleceń — w wierszu obok daty liczy się każdy znak szerokości. */
+  "fleet.loadShort": "zał.",
+  "fleet.unloadShort": "rozł.",
+  "fleet.lastEvent": "Ostatnio:",
+  /* Liczniki podpisują ZBIÓR pojazdów, więc nie da się ich skleić z `fleet.state.*`,
+     które podpisuje jeden pojazd („Wolne: 5" kontra „Wolny"). */
+  "fleet.count.driving": "W trasie",
+  "fleet.count.planned": "Zaplanowane",
+  "fleet.count.idle": "Wolne",
   "fleet.state.driving": "W trasie",
   "fleet.state.planned": "Zaplanowane",
   "fleet.state.idle": "Wolny",
@@ -761,6 +786,15 @@ export const pl = {
   "vehicles.detailTrailer": "Naczepa",
   "vehicles.assignedCards": "Karty przypisane do pojazdu:",
   "vehicles.noCardsAssigned": 'Brak — przypisz w zakładce „Karty".',
+  /*
+   * Osobny klucz od `service.incomplete*`, mimo bliźniaczego sensu: tamte dwa opisują
+   * plan CAŁEJ firmy i rozdzielają zadania od przebiegów, bo ekran `/service` pokazuje
+   * je w dwóch niezależnych paskach. Tu jest jedna sekcja jednego auta, więc i jedno
+   * zdanie — rozdzielanie przyczyn kazałoby czytelnikowi wybierać między ostrzeżeniami,
+   * których i tak nie rozstrzygnie, a wniosek z obu jest ten sam.
+   */
+  "vehicles.serviceIncomplete":
+    'Plan serwisowy tego auta może być niepełny — plan firmy albo odczyt przebiegów został ucięty na sufircie pobrania. Brak zadania niżej nie znaczy, że go nie zaplanowano, a „za ile km" bywa wtedy liczone bez licznika tego pojazdu.',
   "vehicles.loadError": "Nie udało się pobrać floty.",
   "vehicles.noCompanySave": "Brak firmy — utwórz firmę w panelu, by zapisać w bazie.",
   "vehicles.saved": "Zmiany zapisane.",
@@ -800,6 +834,21 @@ export const pl = {
   "orders.sortDateAsc": "Data ↑ (najstarsze)",
   "orders.sortPriceDesc": "Stawka ↓",
   "orders.sortPriceAsc": "Stawka ↑",
+  /*
+   * Okno czasowe listy zleceń. Zakres schodzi do BAZY, więc obejmuje wszystko naraz:
+   * listę, sumę w euro, licznik „X z Y" i trzy eksporty. Podpis przy sumie jest tu
+   * ważniejszy niż sam selektor — bez niego kwota z dwunastu miesięcy czyta się jak
+   * obrót całej firmy i nic na ekranie temu nie przeczy.
+   */
+  "orders.period": "Okres:",
+  "orders.period.m3": "3 miesiące",
+  "orders.period.m12": "12 miesięcy",
+  "orders.period.m24": "24 miesiące",
+  "orders.period.all": "Cała historia",
+  "orders.summaryPeriodNote":
+    "liczby powyżej i wszystkie eksporty obejmują wyłącznie ten okres (liczony DATĄ ZAŁADUNKU, tak jak kolumna na liście), a nie całą historię firmy.",
+  "orders.emptyPeriod":
+    "Brak zleceń w wybranym okresie — poszerz okres albo dodaj zlecenie formularzem powyżej.",
   "orders.exportFreight": "📤 Giełda (CSV)",
   "orders.exportIncomplete":
     "Eksport wstrzymany — nie udało się pobrać kompletu zleceń, więc arkusz byłby zaniżony o nieznaną kwotę. Zawęź listę albo zgłoś problem.",
@@ -1106,12 +1155,15 @@ export const pl = {
   "service.fieldLastDate": "Ostatni serwis (data)",
   "service.addTask": "Dodaj zadanie",
   "service.tasksHeading": "Zadania",
+  "service.overdueSuffix": "po terminie!",
   "service.empty": "Brak zaplanowanych zadań serwisowych.",
   "service.everyPrefix": "co ",
   "service.kmSuffix": " km",
   "service.overduePrefix": "po przebiegu o ",
   "service.leftPrefix": "za ",
   "service.monthsSuffix": " mies.",
+  "service.overdueDaysPrefix": "po terminie o ",
+  "service.daysSuffix": " dni",
   "service.markDone": "✓ Wykonano",
   "service.loadError": "Nie udało się pobrać planu serwisowego.",
   "service.nameRequired": "Podaj pojazd i nazwę zadania.",
@@ -1126,6 +1178,10 @@ export const pl = {
   "service.deleteConfirm": "Usunąć zadanie serwisowe?",
   "service.deleted": "Zadanie usunięte.",
   "service.deleteError": "Błąd usuwania.",
+  "service.incompleteTasks":
+    "Plan niepełny — zadań serwisowych jest w bazie więcej, niż zmieściło się w pobraniu. Brak pozycji na tej liście nie znaczy, że nikt jej nie zaplanował.",
+  "service.incompleteOdo":
+    "Przebiegi niepełne — odpowiedź z licznikami została ucięta, więc części pojazdów w niej nie ma. Zadanie takiego pojazdu pokazuje się jako mieszczące się w interwale, choć przebieg jest nieznany.",
 
   "checklists.title": "Checklisty kierowców",
   "checklists.subtitle":
@@ -1227,6 +1283,8 @@ export const pl = {
   "schedule.empty": "Brak terminów — uzupełnij daty przy pojazdach i kierowcach.",
   "schedule.noCompany": "Brak aktywnej firmy.",
   "schedule.buildError": "Nie udało się zbudować harmonogramu.",
+  "schedule.incomplete":
+    "Terminy serwisowe wg przebiegu są niepełne — plan serwisowy albo przebiegi z tankowań przekroczyły sufit pobrania. Brak pozycji na liście nie znaczy, że termin nie mija.",
   "schedule.vehicleInspection": "Przegląd techniczny",
   "schedule.vehicleInsurance": "Ubezpieczenie OC",
   "schedule.vehicleLeasingEnd": "Koniec leasingu",
