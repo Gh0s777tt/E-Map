@@ -4,6 +4,7 @@
  */
 import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset, type PagedRows } from "./pagination";
 
 export const EXPENSE_CATEGORIES = ["toll", "parking", "repair", "wash", "other"] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
@@ -46,17 +47,72 @@ export interface DriverExpenseInput {
 const COLS =
   "id, company_id, user_id, vehicle_id, category, amount, currency, expense_date, note, photo_path, status, created_at";
 
-/** Wydatki (RLS: kierowca swoje, zarząd całą firmę). Filtr statusu opcjonalny. */
+/** Filtry wspólne dla obu trybów pobrania (jednorazowego i stronami). */
+export interface DriverExpenseFilter {
+  status?: ExpenseStatus;
+}
+
+/**
+ * Zawężenie zbioru wydatków — jedno miejsce na filtry, bez sortowania (patrz `orders.ts`).
+ *
+ * Zasięg firmy daje tu RLS, nie parametr: kierowca widzi swoje wpisy, zarząd całą
+ * firmę. Dlatego ani ta funkcja, ani warianty listy nie przyjmują `companyId` —
+ * dołożenie go sugerowałoby wybór firmy, którego wywołujący i tak nie ma.
+ */
+function expensesFilter(client: SupabaseClient, opts: DriverExpenseFilter) {
+  let q = client.from("driver_expenses").select(COLS);
+  if (opts.status) q = q.eq("status", opts.status);
+  return q;
+}
+
+/** Najnowsze pierwsze; `id` rozstrzyga remis przy paczce wpisów z jednej synchronizacji outboxu. */
+function najnowszePierwsze(a: DriverExpense, b: DriverExpense): number {
+  return b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+}
+
+/**
+ * Wydatki (RLS: kierowca swoje, zarząd całą firmę). Filtr statusu opcjonalny.
+ *
+ * Domyślne 200 to okno ostatnich zgłoszeń dla ekranu zatwierdzania, nie komplet —
+ * i nawet podanie większej liczby kompletu nie da, bo powyżej `api.max_rows`
+ * PostgREST przycina odpowiedź bez błędu. Gdzie z wydatków liczy się kwotę
+ * (rejestr kosztów, rozliczenie kierowcy) — `listDriverExpensesAll`.
+ */
 export async function listDriverExpenses(
   client: SupabaseClient,
-  opts: { status?: ExpenseStatus; limit?: number } = {},
+  opts: DriverExpenseFilter & { limit?: number } = {},
 ): Promise<DriverExpense[]> {
-  let q = client.from("driver_expenses").select(COLS).order("created_at", { ascending: false });
-  if (opts.status) q = q.eq("status", opts.status);
-  q = q.limit(opts.limit ?? 200);
-  const { data, error } = await q;
+  const { data, error } = await expensesFilter(client, opts)
+    .order("created_at", { ascending: false })
+    .limit(opts.limit ?? 200);
   if (error) throw error;
   return (data ?? []) as DriverExpense[];
+}
+
+/**
+ * Wydatki pobrane STRONAMI — komplet albo `complete: false`.
+ *
+ * Tu obcięcie jest szczególnie zdradliwe, bo domyślne okno jednorazowego wariantu
+ * (200 wierszy) wygląda jak świadoma decyzja, a nie jak brak danych: przy flocie
+ * dodającej kilkadziesiąt paragonów dziennie starczy na kilka dni. Suma opłat
+ * drogowych i parkingów policzona z takiego wycinka jest po prostu kwotą z innego
+ * okresu — i niczym się nie różni od poprawnej.
+ */
+export async function listDriverExpensesAll(
+  client: SupabaseClient,
+  opts: DriverExpenseFilter & { pageSize?: number; maxPages?: number } = {},
+): Promise<PagedRows<DriverExpense>> {
+  const paged = await fetchAllByKeyset<DriverExpense>(
+    async (afterId, pageSize) => {
+      let q = expensesFilter(client, opts);
+      if (afterId) q = q.gt("id", afterId);
+      const { data, error } = await q.order("id", { ascending: true }).limit(pageSize);
+      if (error) throw error;
+      return (data ?? []) as DriverExpense[];
+    },
+    { pageSize: opts.pageSize, maxPages: opts.maxPages },
+  );
+  return { ...paged, rows: [...paged.rows].sort(najnowszePierwsze) };
 }
 
 /** Dodaje wydatek we własnym imieniu (RLS wymusza user_id = auth.uid()). */

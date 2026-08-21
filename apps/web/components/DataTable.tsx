@@ -3,7 +3,9 @@
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useT } from "@/components/LocaleProvider";
+import { ShowMore } from "@/components/ShowMore";
 import { filterRows, type SortDir, sortRows } from "@/lib/dataTable";
+import { useRenderWindow } from "@/lib/useRenderWindow";
 
 /** Definicja kolumny. `sort` (wartość do porównań) czyni kolumnę sortowalną. */
 export type Column<T> = {
@@ -74,6 +76,14 @@ export function DataTable<T>({ columns, rows, rowKey, searchText, initialSort, u
     return sortRows(filtered, col.sort, sortDir);
   }, [rows, query, sortKey, sortDir, columns, searchText]);
 
+  /**
+   * Okno renderowania. Wyszukiwarka, sortowanie i licznik „X / Y" pracują na `view`,
+   * czyli na komplecie wierszy, a w DOM ląduje tylko oglądana porcja. Tabele karmione
+   * pobieraniem stronami (rejestr kosztów) dostają tu całą historię firmy, więc bez
+   * okna każde wejście montowało kilkadziesiąt tysięcy komórek naraz.
+   */
+  const okno = useRenderWindow(view);
+
   function toggleSort(col: Column<T>) {
     if (!col.sort) return;
     if (sortKey === col.key) {
@@ -143,7 +153,7 @@ export function DataTable<T>({ columns, rows, rowKey, searchText, initialSort, u
                 </td>
               </tr>
             ) : (
-              view.map((row) => (
+              okno.visible.map((row) => (
                 <tr key={rowKey(row)} style={styles.tr} className="el-table-row">
                   {columns.map((col) => (
                     <td key={col.key} style={{ ...styles.td, textAlign: col.align ?? "left" }}>
@@ -156,6 +166,7 @@ export function DataTable<T>({ columns, rows, rowKey, searchText, initialSort, u
           </tbody>
         </table>
       </div>
+      <ShowMore hidden={okno.hidden} onShowMore={okno.showMore} />
     </div>
   );
 }

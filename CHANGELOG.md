@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-419-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.248.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-422-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.249.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,76 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.249.0] — 📐 Komplet danych, a nie zawieszona przeglądarka
+
+Domknięcie tego, co `[#417]` zaczął na eksporcie księgowym. Przy okazji wyszło, że sama
+naprawa kompletności — zrobiona bez drugiej połowy — zamieniłaby cichą utratę danych
+na zawieszony ekran.
+
+- `[#422]` 🔴 **`latestOdometers` — komentarz obiecywał komplet, zapytanie go nie miało**
+  ([service.ts](packages/api/src/data/service.ts))
+
+  Zapytanie nie miało **ani `limit`, ani `order`**, a komentarz nad nim twierdził
+  „domyślnie skanujemy komplet". To nie był komplet, tylko sufit `api.max_rows`
+  w **kolejności nieokreślonej**. Skutek jest gorszy niż brak danych: `latestOdometers`
+  liczy najwyższy przebieg per pojazd, więc obcięcie **zaniża maksimum** — a od niego
+  zależy, czy zadanie serwisowe w ogóle się odpali. Auto z przekroczonym interwałem
+  po prostu nie pojawiało się na liście.
+
+  Karmiło to panel „Wymaga uwagi", `/service`, `/schedule`, `/vehicles/[id]` oraz dwa
+  ekrany mobilne. Przepięte na keyset po `id` z trzema wąskimi kolumnami; wariant
+  próbkujący **usunięty**, żeby nie został jako furtka.
+
+- `[#420]` 🧾 **Reszta cichych sufitów — siedem nowych wariantów stronicowanych**
+
+  `listPerDiemTripsAll`, `listDriverPayoutsAll`, `listInvoicesAll`, `listDriverExpensesAll`,
+  `listChecklistSubmissionsAll`, `listDocumentsAll`, `listDefectsAll` — wszystkie keysetem
+  po kluczu głównym, z filtrami **schodzącymi do bazy**. Przepięte ekrany: analytics,
+  koszty, stats, wyjazdy, settlements, monthly, scoring, orders, documents, expenses,
+  forms/history, forms/import, fleet-status (web i mobile), `KpiStrip`, `RevenueTrend`,
+  `AttentionPanel`.
+
+  **Detektor, który nie mógł zadziałać.** `/stats` i `/wyjazdy` miały ostrzeżenie
+  wyzwalane warunkiem `rows.length >= 5000`. Serwer tnie na 1000, więc warunek nie mógł
+  być prawdziwy **nigdy** — ekran miał wbudowaną kontrolę obcięcia, która wyłącznie
+  udawała, że chroni.
+
+  **Keyset zmienia znaczenie obcięcia — i to trzeba było powiedzieć inaczej.** Przy
+  `limit` i sortowaniu malejącym brakuje zawsze najstarszego ogona, więc dało się podać
+  datę graniczną: „komplet mają wyjazdy po tej dacie". Keyset schodzi po kluczu, nie po
+  dacie, więc braki są **rozsiane losowo** względem czasu. Stara treść komunikatu
+  po przepięciu stałaby się fałszywa — dlatego `/wyjazdy` nie podaje już daty, dopóki
+  **każdy** niepełny zbiór jej nie ma, a `/stats` mówi wprost, że zawężenie okresu
+  **chowa ostrzeżenie zamiast naprawiać liczby**.
+
+  W panelu „Wymaga uwagi" przepięcie objęło początkowo jeden zbiór z siedmiu. Baner
+  mówiący wyłącznie o fakturach **uwiarygadniał ciszę** o dokumentach i usterkach —
+  teraz wymienia zbiory z nazwy, a każde zapytanie ma własne `catch`, bo „nie wiemy"
+  musi wyglądać tak samo jak „niekompletne".
+
+- `[#421]` 🪟 **Rozdział pobrania od renderowania**
+  ([useRenderWindow.ts](apps/web/lib/useRenderWindow.ts) · [ShowMore.tsx](apps/web/components/ShowMore.tsx))
+
+  Sama kompletność to za mało: `/forms/history` po przepięciu pobierał trzy zbiory
+  **całej historii** i renderował je w całości, bez okna i bez wirtualizacji. Cicha
+  utrata danych zamieniłaby się w zawieszoną kartę przeglądarki — czyli w błąd, który
+  użytkownik odczuje mocniej niż ten naprawiany.
+
+  Sumy, filtry i eksport liczą się z **kompletu**; w DOM idzie porcja 200 z przyciskiem
+  „pokaż więcej". Okno zwija się **w trakcie renderu**, nie w efekcie — efekt zwinąłby
+  je dopiero po kosztownym montażu. Odciskiem zbioru jest długość plus tożsamość
+  pierwszego i ostatniego wiersza, **nie** tożsamość tablicy: porównywanie tablicy
+  zamieniało brak memoizacji u wywołującego w „Too many re-renders". Obie własności
+  pilnuje test.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1268** ✓ (+40) · `next build` ✓ ·
+`docs:check` ✓ · `pnpm check` 7/7 ✓
+**Weryfikacja:** 3 agentów implementujących, 3 adwersaryjnych recenzentów —
+**21 znalezisk, wszystkie 21 potwierdzone; 2 krytyczne, 8 wysokich.** Rekord sesji,
+i słusznie: połowa dotyczyła nie starego długu, tylko **problemów wprowadzonych przez
+samą naprawę**.
 
 
 ## [1.248.0] — 🧾 Eksport księgowy przestaje po cichu gubić wiersze

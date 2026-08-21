@@ -1,37 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mockSupabase } from "../test-utils";
+import { mockSupabase, mockSupabasePaged } from "../test-utils";
 import { listMyOrders, listOrderReferences, listOrders, listOrdersAll } from "./orders";
-
-/**
- * Mock z `test-utils` oddaje ten sam `result` na każde `await` — do sprawdzania
- * KSZTAŁTU zapytania to wystarcza, ale stronicowanie potrzebuje kolejnych ODPOWIEDZI.
- * Dokładamy je tutaj, na instancji (jak `mockZPelnymFiltrem` w `limits.test.ts`
- * i `auth.getUser` niżej w tym pliku), zamiast rozszerzać wspólny mock: reszta
- * pakietu tego nie potrzebuje, a zapisy nadal idą do tej samej listy `calls`.
- *
- * Podmieniamy `limit`, bo w wariantach stronicowanych to ono zamyka łańcuch
- * (`gt(id) → order(id) → limit(pageSize)`) — zwrócenie stąd gotowej obietnicy daje
- * kolejną stronę na każde wywołanie, bez dorabiania własnego thenable obok tego,
- * który mock już ma.
- */
-function mockZeStronami(strony: unknown[][]) {
-  const m = mockSupabase({ data: [], error: null });
-  const builder = m.client as unknown as Record<string, unknown>;
-  let i = 0;
-  builder.limit = (...args: unknown[]) => {
-    m.calls.push({ method: "limit", args });
-    const strona = strony[i] ?? [];
-    i += 1;
-    return Promise.resolve({ data: strona, error: null });
-  };
-  return {
-    ...m,
-    /** Kursory `gt("id", …)` wszystkich zapytań, w kolejności wywołania. */
-    kursory: () => m.calls.filter((c) => c.method === "gt").map((c) => c.args),
-    /** Ile stron faktycznie zamówiono (jedno `limit` = jedno zapytanie). */
-    stron: () => m.calls.filter((c) => c.method === "limit").length,
-  };
-}
 
 describe("listOrders (kształt zapytania)", () => {
   it("filtruje po company_id i sortuje malejąco po created_at", async () => {
@@ -95,12 +64,6 @@ describe("listMyOrders — sufit pobrania", () => {
 /**
  * Eksport księgowy stoi na TEJ funkcji. Brak `limit` nigdy nie znaczył „bez granicy" —
  * znaczył granicę PostgREST (`api.max_rows`, domyślnie 1000), egzekwowaną bez błędu
- * i bez śladu. Poniższe testy pilnują, że zbiór schodzi stronami do końca, że każde
- * pojedyncze zapytanie jest ograniczone i że przekroczenie sufitu widać w wyniku.
- */
-/**
- * Eksport księgowy stoi na TEJ funkcji. Brak `limit` nigdy nie znaczył „bez granicy" —
- * znaczył granicę PostgREST (`api.max_rows`, domyślnie 1000), egzekwowaną bez błędu
  * i bez śladu. Poniższe testy pilnują, że zbiór schodzi stronami do końca, że kursor
  * idzie po KLUCZU (a nie po pozycji, którą wstawka przesuwa), i że przekroczenie sufitu
  * widać w wyniku.
@@ -109,7 +72,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
   const wiersz = (id: string, created_at = "2026-01-01") => ({ id, created_at });
 
   it("dokładnie jedna strona: kolejne zapytanie potwierdza koniec zbioru", async () => {
-    const m = mockZeStronami([[wiersz("a"), wiersz("b")], []]);
+    const m = mockSupabasePaged([[wiersz("a"), wiersz("b")], []]);
     const wynik = await listOrdersAll(m.client, "c1", { pageSize: 2 });
     expect(wynik.rows).toHaveLength(2);
     expect(wynik.complete).toBe(true);
@@ -120,7 +83,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
     // Offset (`range`) po zbiorze sortowanym malejąco przesuwał się przy każdej wstawce:
     // wiersz z końca strony 1 wracał na początku strony 2 i doliczał swoją kwotę drugi
     // raz. Kursor po kluczu głównym nie ma jak tego zrobić.
-    const m = mockZeStronami([[wiersz("a"), wiersz("b")], [wiersz("c"), wiersz("d")], []]);
+    const m = mockSupabasePaged([[wiersz("a"), wiersz("b")], [wiersz("c"), wiersz("d")], []]);
     const wynik = await listOrdersAll(m.client, "c1", { pageSize: 2 });
     expect(wynik.rows.map((o) => o.id).sort()).toEqual(["a", "b", "c", "d"]);
     expect(wynik.complete).toBe(true);
@@ -131,7 +94,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
   });
 
   it("ostatnia strona niepełna: kończy na niej, bez zapytania na zapas", async () => {
-    const m = mockZeStronami([[wiersz("a"), wiersz("b")], [wiersz("c")]]);
+    const m = mockSupabasePaged([[wiersz("a"), wiersz("b")], [wiersz("c")]]);
     const wynik = await listOrdersAll(m.client, "c1", { pageSize: 2 });
     expect(wynik.rows.map((o) => o.id).sort()).toEqual(["a", "b", "c"]);
     expect(wynik.complete).toBe(true);
@@ -139,7 +102,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
   });
 
   it("zbiór pusty: jedno zapytanie bez kursora, wynik pusty i kompletny", async () => {
-    const m = mockZeStronami([[]]);
+    const m = mockSupabasePaged([[]]);
     const wynik = await listOrdersAll(m.client, "c1", { pageSize: 2 });
     expect(wynik.rows).toEqual([]);
     expect(wynik.complete).toBe(true);
@@ -149,7 +112,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
   it("po przekroczeniu twardego sufitu wynik jest oznaczony jako NIEPEŁNY", async () => {
     // Same wiersze wyglądają jak poprawny eksport — bez `complete` różnicy nie widać,
     // a arkusz z zaniżoną sumą trafiłby do księgowej nieodróżnialny od prawdziwego.
-    const m = mockZeStronami([
+    const m = mockSupabasePaged([
       [wiersz("a1"), wiersz("a2")],
       [wiersz("b1"), wiersz("b2")],
       [wiersz("c1"), wiersz("c2")],
@@ -165,7 +128,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
   it("porządek prezentacyjny (najnowsze pierwsze) wraca po złożeniu stron", async () => {
     // Baza oddaje strony po `id` rosnąco — to warunek stabilnego kursora, a nie
     // kolejność, w jakiej ktokolwiek chce oglądać zlecenia.
-    const m = mockZeStronami([
+    const m = mockSupabasePaged([
       [wiersz("a", "2026-01-05"), wiersz("b", "2026-03-01")],
       [wiersz("c", "2026-02-01")],
     ]);
@@ -176,7 +139,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
   it("zawęża zbiór PO STRONIE BAZY: firma, okno dat, pojazd, kierowca, status", async () => {
     // Filtr w przeglądarce znaczyłby ściąganie całej historii firmy po to, żeby
     // pokazać kilkanaście wierszy jednego pojazdu — i tyleż samo stron zapytań.
-    const m = mockZeStronami([[]]);
+    const m = mockSupabasePaged([[]]);
     await listOrdersAll(m.client, "c1", {
       from: "2026-01-01",
       to: "2026-02-01",
@@ -208,7 +171,7 @@ describe("listOrdersAll — pobieranie stronami", () => {
  */
 describe("listOrderReferences — komplet numerów referencyjnych", () => {
   it("pobiera dwie kolumny, stronami po kluczu, dla całej historii firmy", async () => {
-    const m = mockZeStronami([
+    const m = mockSupabasePaged([
       [
         { id: "1", reference_no: "A" },
         { id: "2", reference_no: "B" },
@@ -224,7 +187,10 @@ describe("listOrderReferences — komplet numerów referencyjnych", () => {
   });
 
   it("obcięcie na sufit stron zgłasza niekompletność — import musi móc odmówić", async () => {
-    const m = mockZeStronami([[{ id: "1", reference_no: "A" }], [{ id: "2", reference_no: "B" }]]);
+    const m = mockSupabasePaged([
+      [{ id: "1", reference_no: "A" }],
+      [{ id: "2", reference_no: "B" }],
+    ]);
     const wynik = await listOrderReferences(m.client, "c1", { pageSize: 1, maxPages: 2 });
     expect(wynik.complete).toBe(false);
   });

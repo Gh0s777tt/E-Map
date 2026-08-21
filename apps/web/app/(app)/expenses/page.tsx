@@ -6,10 +6,13 @@
  * do rozliczenia. Kierowca widzi tu wyłącznie własne wpisy (RLS).
  */
 import {
+  DEFAULT_PAGE_SIZE,
   type DriverExpense,
   EXPENSE_CATEGORY_LABELS,
   expensePhotoUrl,
   listDriverExpenses,
+  listDriverExpensesAll,
+  type PagedRows,
   setDriverExpenseStatus,
 } from "@e-logistic/api";
 import { cssPalette as palette } from "@e-logistic/ui";
@@ -17,12 +20,23 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { ShowMore } from "@/components/ShowMore";
 import { useToast } from "@/components/Toast";
 import { Button, PageHeader } from "@/components/ui";
 import { getCachedMembership } from "@/lib/membership";
 import { queryErrorMessage } from "@/lib/queryError";
 import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useRenderWindow } from "@/lib/useRenderWindow";
+
+/**
+ * Okno archiwum decyzji — RÓWNE sufitowi serwera i to jest cały sens tej liczby.
+ *
+ * Wyższa wartość nie da więcej wierszy (`api.max_rows` PostgREST przycina odpowiedź bez
+ * błędu), za to sprawi, że pełna strona przestanie znaczyć „było więcej" — czyli zabierze
+ * jedyny sygnał, po którym da się poznać, że archiwum jest ucięte.
+ */
+const HISTORY_LIMIT = DEFAULT_PAGE_SIZE;
 
 export default function ExpensesPage() {
   const t = useT();
@@ -48,29 +62,86 @@ export default function ExpensesPage() {
   // (zasięg wierszy daje RLS), więc pod gołym kluczem wpis cache przeżyłby zmianę
   // członkostwa i przez `staleTime` pokazywał zgłoszenia poprzedniej firmy.
   const expensesKey = queryKeys.driverExpenses(membership.data?.companyId ?? null);
-  const expensesQuery = useQuery({
-    queryKey: expensesKey,
-    queryFn: () => listDriverExpenses(getBrowserSupabase(), { limit: 300 }),
+  /**
+   * Zgłoszenia CZEKAJĄCE na decyzję — stronami, czyli w komplecie.
+   *
+   * Ten zbiór i tylko ten musi być pełny: z niego liczy się suma w nagłówku i on jest
+   * pracą do wykonania na tym ekranie. Dawne `limit: 300` bolało podwójnie — suma z okna
+   * 300 najnowszych wpisów jest po prostu inną kwotą, a najstarsze zgłoszenia to
+   * dokładnie te, które najdłużej czekają na decyzję: wypadały z listy zamiast trafić
+   * na jej górę. Zawężenie statusu idzie do BAZY, więc komplet znaczy „komplet
+   * nierozpatrzonych", a nie „cała historia wydatków firmy".
+   */
+  const pendingQuery = useQuery({
+    queryKey: [...expensesKey, "submitted"],
+    queryFn: () => listDriverExpensesAll(getBrowserSupabase(), { status: "submitted" }),
     // Dopiero po rozstrzygnięciu członkostwa — inaczej dane wylądowałyby pod kluczem `null`
     // i zaraz potem trzeba by je pobrać drugi raz pod właściwym.
     enabled: !membership.isPending,
   });
-  const rows = expensesQuery.data ?? [];
-  const loading = membership.isPending || expensesQuery.isPending;
+  /**
+   * Archiwum decyzji — świadome OKNO, nie komplet.
+   *
+   * Zatwierdzone i odrzucone wpisy nie wchodzą do żadnej sumy na tym ekranie i nikt na
+   * nie nie czeka; pobieranie stronami całej historii firmy oznaczałoby kilkadziesiąt
+   * sekwencyjnych zapytań i kilkadziesiąt tysięcy kart przy każdym wejściu. Limit równy
+   * sufitowi serwera (`api.max_rows`), bo tylko wtedy pełna strona naprawdę znaczy
+   * „było więcej" — i tylko wtedy da się to powiedzieć zamiast przemilczeć.
+   */
+  const historyQuery = useQuery({
+    queryKey: [...expensesKey, "decided"],
+    queryFn: () => listDriverExpenses(getBrowserSupabase(), { limit: HISTORY_LIMIT }),
+    enabled: !membership.isPending,
+  });
+  const pending = useMemo(() => pendingQuery.data?.rows ?? [], [pendingQuery.data]);
+  const historyRaw = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
+  /** Rozpatrzone wpisy z okna archiwum — `submitted` przychodzą z kompletnego zbioru wyżej. */
+  const decided = useMemo(() => historyRaw.filter((r) => r.status !== "submitted"), [historyRaw]);
+  /*
+   * Złączenie z odsianiem powtórzeń po `id`.
+   *
+   * Oba zapytania mają rozłączne statusy, ale tylko w spoczynku: między optymistyczną
+   * decyzją a odświeżeniem `pendingQuery` ten sam wiersz ma w cache status „approved",
+   * a w archiwum może już figurować z bazy. Bez odsiania React dostałby dwa węzły
+   * z tym samym kluczem, a suma policzyłaby wpis dwa razy.
+   */
+  const rows = useMemo(() => {
+    const byId = new Map(pending.map((r) => [r.id, r]));
+    for (const r of decided) if (!byId.has(r.id)) byId.set(r.id, r);
+    return [...byId.values()];
+  }, [pending, decided]);
+  /** Nierozpatrzone nie dojechały w komplecie — suma w nagłówku jest zaniżona. */
+  const incomplete = pendingQuery.data?.complete === false;
+  /** Archiwum dobiło do sufitu serwera — starsze decyzje są poza oknem tego ekranu. */
+  const historyTruncated = historyRaw.length >= HISTORY_LIMIT;
+  const loading = membership.isPending || pendingQuery.isPending || historyQuery.isPending;
   // Błąd odczytu członkostwa był tu dotąd POŁYKANY: `manage` schodziło cicho na false,
   // więc właściciel dostawał listę bez przycisków Zatwierdź/Odrzuć i żadnego komunikatu —
   // ekran wyglądał jak brak uprawnień, a był to błąd sieci. Łączymy oba błędy, jak
   // pozostałe ekrany fali 2. `queryErrorMessage` zamiast `??`, bo `??` nie łapie pustego
   // `message` (Error z pustym komunikatem dałby „⚠️ Błąd ładowania." bez zdania).
-  const error = queryErrorMessage(membership.error ?? expensesQuery.error, t("expenses.loadError"));
-  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy oba zapytania. */
+  const error = queryErrorMessage(
+    membership.error ?? pendingQuery.error ?? historyQuery.error,
+    t("expenses.loadError"),
+  );
+  /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy wszystkie zapytania. */
   const load = () => {
     void membership.refetch();
-    void expensesQuery.refetch();
+    void pendingQuery.refetch();
+    void historyQuery.refetch();
   };
-  /** Optymistyczna aktualizacja cache (ten sam kształt co dawne setRows). */
+  /**
+   * Optymistyczna aktualizacja cache — w zbiorze NIEROZPATRZONYCH.
+   *
+   * Decyzja zmienia status wiersza, a nie to, którym zapytaniem przyszedł, więc wiersz
+   * zostaje tam, gdzie był, tylko z nowym statusem — i „Cofnij" ma co przywrócić.
+   * Podmieniamy wyłącznie `rows`, zachowując `complete` i `pages`: zgubienie tego
+   * znacznika po pierwszej decyzji schowałoby ostrzeżenie o zaniżonej sumie.
+   */
   const setRows = (up: (list: DriverExpense[]) => DriverExpense[]) =>
-    qc.setQueryData<DriverExpense[]>(expensesKey, (old) => up(old ?? []));
+    qc.setQueryData<PagedRows<DriverExpense>>([...expensesKey, "submitted"], (old) =>
+      old ? { ...old, rows: up(old.rows) } : old,
+    );
 
   async function decide(row: DriverExpense, status: "approved" | "rejected") {
     const prev = row.status;
@@ -170,10 +241,17 @@ export default function ExpensesPage() {
     () => (filter === "all" ? rows : rows.filter((r) => r.status === filter)),
     [rows, filter],
   );
+  /**
+   * Okno renderowania. Filtry i suma liczą się z kompletu (`rows`), a w DOM ląduje tylko
+   * tyle kart, ile ktoś przegląda — każda niesie checkbox i przycisk paragonu, więc
+   * flota zgłaszająca kilkadziesiąt paragonów dziennie montowała ich tu dziesiątki tysięcy.
+   */
+  const okno = useRenderWindow(visible);
   const pendingSum = useMemo(() => {
-    const pending = rows.filter((r) => r.status === "submitted");
     const byCur = new Map<string, number>();
-    for (const r of pending) byCur.set(r.currency, (byCur.get(r.currency) ?? 0) + r.amount);
+    for (const r of rows.filter((x) => x.status === "submitted")) {
+      byCur.set(r.currency, (byCur.get(r.currency) ?? 0) + r.amount);
+    }
     return [...byCur.entries()].map(([c, v]) => `${v.toFixed(2)} ${c}`).join(" · ") || "0";
   }, [rows]);
 
@@ -183,6 +261,16 @@ export default function ExpensesPage() {
         title={t("nav.expenses")}
         subtitle={`${t("expenses.subtitlePrefix")}${pendingSum}`}
       />
+
+      {/* Pod nagłówkiem, bo unieważnia przede wszystkim kwotę, która w nim stoi. */}
+      {incomplete && <div style={s.incomplete}>⚠️ {t("expenses.incomplete")}</div>}
+      {/* Osobno od sumy: archiwum decyzji jest oknem świadomie, a nie awaryjnie —
+          ale okno przemilczane wygląda dokładnie jak komplet. */}
+      {historyTruncated && filter !== "submitted" && (
+        <div style={s.incomplete}>
+          ℹ️ {t("expenses.historyWindow").replace("{n}", String(HISTORY_LIMIT))}
+        </div>
+      )}
 
       <div style={s.filters}>
         {(["all", "submitted", "approved", "rejected"] as const).map((k) => (
@@ -210,7 +298,7 @@ export default function ExpensesPage() {
       />
 
       <div style={s.list}>
-        {visible.map((r) => {
+        {okno.visible.map((r) => {
           const st = STATUS_META[r.status];
           return (
             <div key={r.id} style={s.card}>
@@ -255,6 +343,7 @@ export default function ExpensesPage() {
             </div>
           );
         })}
+        <ShowMore hidden={okno.hidden} onShowMore={okno.showMore} />
       </div>
 
       {/* #297: pływający pasek akcji zbiorczych */}
@@ -285,6 +374,16 @@ export default function ExpensesPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
+  /** Ta sama ramka ostrzeżenia co na pozostałych ekranach z niepełnym zbiorem. */
+  incomplete: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginBottom: 12,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
   filters: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 },
   filterBtn: {
     background: "transparent",

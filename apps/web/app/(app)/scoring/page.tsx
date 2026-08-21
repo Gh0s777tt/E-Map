@@ -8,9 +8,9 @@
  */
 import {
   type CompanyMember,
-  listChecklistSubmissions,
+  listChecklistSubmissionsAll,
   listCompanyMembers,
-  listOrders,
+  listOrdersAll,
 } from "@e-logistic/api";
 import { computeDriverGamification } from "@e-logistic/core";
 import type { MessageKey } from "@e-logistic/i18n";
@@ -46,6 +46,19 @@ const RANK_LABEL: Record<string, MessageKey> = {
   legend: "scoring.rank.legend",
 };
 
+/**
+ * Wynik rankingu razem z informacją o kompletności zbiorów.
+ *
+ * Kompletność jedzie w tym samym obiekcie co wiersze, bo dotyczy dokładnie ich:
+ * osobny stan dałoby się przeoczyć przy renderowaniu tabeli, a tabela bez tej
+ * informacji wygląda jak ranking, nie jak szacunek.
+ */
+interface Ranking {
+  rows: Score[];
+  /** Zlecenia albo checklisty urwały się na sufit pobrania — patrz baner. */
+  incomplete: boolean;
+}
+
 function stars(n: number): string {
   const full = Math.round(Math.max(0, Math.min(5, n)));
   return "★".repeat(full) + "☆".repeat(5 - full);
@@ -60,7 +73,7 @@ export default function ScoringPage() {
   };
 
   // #310 (fala 2): ranking przez TanStack Query. To najdroższy odczyt w panelu —
-  // trzy zapytania (do 2000 zleceń i 1000 checklist z 90 dni) plus przeliczenie
+  // zlecenia z 90 dni i checklisty, oba pobierane stronami, plus przeliczenie
   // gamifikacji; bez cache płaci się je od nowa przy każdym wejściu na zakładkę.
   const membership = useQuery({
     queryKey: queryKeys.membership(),
@@ -70,16 +83,34 @@ export default function ScoringPage() {
 
   const scoringQuery = useQuery({
     queryKey: queryKeys.driverScoring(companyId),
-    queryFn: async (): Promise<Score[]> => {
+    queryFn: async (): Promise<Ranking> => {
       const sb = getBrowserSupabase();
       // Brak firmy to tutaj błąd, nie pusta lista — rankingu nie ma z czego policzyć.
       if (!companyId) throw new Error(t("scoring.noCompany"));
       const from = new Date(Date.now() - 90 * 86_400_000).toISOString();
-      const [members, orders, subs] = await Promise.all([
+      // Oba zbiory stronami. Dawne `limit: 2000` i `limit: 1000` nie chroniły przed
+      // niczym — powyżej `api.max_rows` (1000) PostgREST i tak przycinał odpowiedź
+      // bez błędu. Tu obcięcie psuje MIANOWNIK: terminowość i dyscyplina checklist to
+      // odsetki, a tysiąc najnowszych wpisów całej firmy należy głównie do kierowców
+      // jeżdżących najczęściej. Rzadziej jeżdżący dostawał ocenę z kilku przypadkowych
+      // zleceń — i wypadał w rankingu niżej z powodu sposobu pobrania danych.
+      /*
+       * Okno 90 dni idzie do BAZY dla OBU zbiorów — także dla checklist.
+       *
+       * Domknięcie go w przeglądarce kosztowało dwa razy. Raz transferem: zgłoszenie
+       * niesie kolumnę `answers` (JSON), więc firma z trzyletnią historią ściągała
+       * dziesiątki megabajtów po to, żeby odrzucić 97% wierszy. Drugi raz — i gorzej —
+       * znaczeniem `complete`: flaga opisywała CAŁĄ historię firmy, a nie okno, które
+       * ekran liczy, więc baner „ranking jest niepełny, nie opieraj na nim premii"
+       * zapalał się na stałe u firmy, której 90 dni mieści się w jednej stronie.
+       */
+      const [members, ordPaged, subsPaged] = await Promise.all([
         listCompanyMembers(sb),
-        listOrders(sb, companyId, { from, limit: 2000 }),
-        listChecklistSubmissions(sb, companyId, { limit: 1000 }),
+        listOrdersAll(sb, companyId, { from }),
+        listChecklistSubmissionsAll(sb, companyId, { from }),
       ]);
+      const orders = ordPaged.rows;
+      const subs = subsPaged.rows;
 
       const drivers = (members as CompanyMember[]).filter((x) => x.role === "driver");
       const pool = drivers.length > 0 ? drivers : (members as CompanyMember[]);
@@ -110,9 +141,19 @@ export default function ScoringPage() {
         const myChecklists = subs.filter((c) => c.driver_user_id === d.user_id).length;
 
         const cScore = Math.min(1, myChecklists / 20);
+
         const vScore = finished.length / maxDelivered;
         const base = (onTimePct ?? 0.7) * 0.6 + cScore * 0.3 + vScore * 0.1;
-        // #334: profil gamifikacji z tych samych statystyk (bez km/spalania tutaj).
+        /*
+         * #334: profil gamifikacji z tych samych statystyk (bez km/spalania tutaj).
+         *
+         * Wszystkie metryki tego ekranu są z okna 90 dni — dostawy były nim objęte od
+         * początku, checklisty dołączyły razem z zejściem filtra do bazy. Progi odznak
+         * w `gamification.ts` są skalibrowane pod licznik SKUMULOWANY, więc odznaka
+         * policzona tutaj mówi o formie z kwartału, a nie o dorobku kierowcy. To jest
+         * ta sama liczba, którą ekran deklaruje w podtytule i w nagłówku kolumny —
+         * i dlatego nagłówek mówi „(90 dni)" wprost, zamiast zostawiać domysł.
+         */
         const g = computeDriverGamification({
           deliveries: finished.length,
           onTimePct,
@@ -137,11 +178,11 @@ export default function ScoringPage() {
       });
 
       scored.sort((a, b) => b.points - a.points || b.stars - a.stars);
-      return scored;
+      return { rows: scored, incomplete: !ordPaged.complete || !subsPaged.complete };
     },
     enabled: !membership.isPending,
   });
-  const rows = scoringQuery.data ?? [];
+  const rows = scoringQuery.data?.rows ?? [];
   const loading = membership.isPending || scoringQuery.isPending;
   const error = queryErrorMessage(membership.error ?? scoringQuery.error, t("scoring.loadError"));
   /** „Ponów": błąd mógł pochodzić z odczytu członkostwa, więc ponawiamy oba zapytania. */
@@ -153,6 +194,10 @@ export default function ScoringPage() {
   return (
     <div>
       <PageHeader title={t("scoring.title")} subtitle={t("scoring.subtitle")} />
+
+      {/* Nad tabelą, bo unieważnia nie pojedynczy wiersz, tylko KOLEJNOŚĆ — a po niej
+          właśnie czyta się ten ekran. */}
+      {scoringQuery.data?.incomplete && <div style={s.warn}>⛔ {t("scoring.incomplete")}</div>}
 
       <ListStatus
         loading={loading}
@@ -220,6 +265,17 @@ export default function ScoringPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
+  /** Ostrzeżenie o niepełnym zbiorze — ten sam styl co na /monthly i /vehicles/[id]. */
+  warn: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginBottom: 12,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+    background: palette.nearBlack,
+  },
   tableWrap: { overflowX: "auto" },
   table: { width: "100%", borderCollapse: "collapse", fontSize: 14 },
   th: {

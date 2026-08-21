@@ -117,6 +117,9 @@ export const en: Record<MessageKey, string> = {
   "dashboard.customize.title": "Visible sections",
   "dashboard.sec.kpi": "KPIs",
   "dashboard.sec.trend": "Revenue trend",
+  "dashboard.kpi.incomplete": "data incomplete — total understated",
+  "dashboard.trend.incomplete":
+    "The chart is incomplete — this window holds more orders than the fetch could return. The bars are understated by an unknown amount; check the monthly report for the full figure.",
   "dashboard.sec.onboarding": "Getting started",
   "dashboard.sec.attention": "Needs attention",
   "dashboard.sec.shortcuts": "Shortcuts",
@@ -171,6 +174,17 @@ export const en: Record<MessageKey, string> = {
   "attention.svc.overBy": "exceeded by",
   "attention.svc.inKm": "in",
   "attention.inv.duePrefix": "due",
+  "attention.set.vehicles": "vehicle deadlines (inspection, insurance, leasing)",
+  "attention.set.cards": "fuel cards",
+  "attention.set.service": "the service plan",
+  "attention.set.drivers": "driver deadlines (medicals, Code 95, ADR)",
+  "attention.set.damages": "damage claims",
+  "attention.set.invoices": "invoices",
+  "attention.set.documents": "documents in the vault",
+  "attention.set.defects": "vehicle defects",
+  "attention.set.odometers": "odometer readings from refuellings (the basis of the service plan)",
+  "attention.incomplete":
+    "This panel is incomplete — these sets did not arrive in full: {sets}. Whatever is missing here will not raise its hand anywhere else: an overdue invoice, an expiring document and an open defect report only ever announce themselves from this list. Check them directly before concluding that nothing is outstanding.",
   "attention.status.open": "open",
   "attention.status.reported": "reported",
   "attention.status.inRepair": "in repair",
@@ -310,6 +324,9 @@ export const en: Record<MessageKey, string> = {
   "fleet.state.driving": "On the road",
   "fleet.state.planned": "Planned",
   "fleet.state.idle": "Idle",
+  "fleet.incomplete":
+    "⛔ This status is incomplete — there are more orders or route events than the fetch ceiling returns. Some vehicles may show as idle despite being on an active run. Report this before dispatching the fleet from this screen.",
+  "fleet.noEvents": "No route events in the last {days} days (older ones are in the history).",
 
   "links.title": "Company links",
   "links.subtitle":
@@ -370,6 +387,11 @@ export const en: Record<MessageKey, string> = {
   "history.noResults": "No results for the selected filters.",
   "history.allVehicles": "All vehicles",
   "history.allCountries": "All countries",
+  "history.period": "Period:",
+  "history.period.m3": "3 months",
+  "history.period.m12": "12 months",
+  "history.period.m24": "24 months",
+  "history.period.all": "Full history",
   "vat.title": "Fuel VAT refund",
   "vat.subtitle":
     "Per country of purchase, at the rate in force on the day of refuelling. Amounts converted to euro.",
@@ -408,6 +430,11 @@ export const en: Record<MessageKey, string> = {
     "Add vehicles to the Fleet first — there is nothing to attach a refuel to.",
   "history.importKind": "What are you importing",
   "history.importDone": "Import finished.",
+  "history.incomplete":
+    "The history is incomplete — the database holds more entries than the fetch ceiling returns. The list below omits an unknown number of refuels and trips, so both exports are halted: an understated sheet would reach the VAT return indistinguishable from a true one. Report this before relying on these figures.",
+  "history.exportBlocked": "History incomplete — export halted.",
+  "history.importDupsIncomplete":
+    "Import halted — the existing entries could not be fetched in full, so duplicates would go undetected. Reload the page or report the problem.",
   "history.full": "Full tank",
   "history.partial": "Partial",
   "history.kind.fuel": "Fuel",
@@ -484,7 +511,9 @@ export const en: Record<MessageKey, string> = {
   "stats.currency.aria": "Display currency",
   "stats.currency.asOf": "converted at the {date} rate — the books stay in EUR",
   "stats.truncated":
-    "The data range hit the query limit (5000 rows per table), so the oldest entries in the 24-month window did NOT reach the calculations. Consumption, costs and revenue are understated — treat these figures as indicative and narrow the period to see the full picture.",
+    'The data is incomplete — the 24-month window did not return every row, and the missing ones are the OLDEST. Consumption, costs and revenue are understated in a way that reads like a decline: "fewer refuellings than last year" here is an artefact of the fetch, not of what the fleet does. Treat these figures as indicative and narrow the period.',
+  "stats.truncated.pages":
+    "The data is incomplete — paged fetching hit its hard ceiling, and the missing entries are spread across the WHOLE 24-month window, not just its earliest months. Every month is understated, the most recent one included, so narrowing the period hides the warning without fixing the figures. Report this rather than acting on these numbers.",
   "stats.currency.noRate": "no {code} rate available — showing EUR",
 
   "stats.fleet.fuelTotal": "Fuel total",
@@ -725,6 +754,11 @@ export const en: Record<MessageKey, string> = {
   "orders.sortPriceDesc": "Rate ↓",
   "orders.sortPriceAsc": "Rate ↑",
   "orders.exportFreight": "📤 Freight exchange (CSV)",
+  "orders.exportIncomplete":
+    "Export halted — the full set of orders could not be fetched, so the sheet would be understated by an unknown amount. Narrow the list or report the problem.",
+  "orders.exportFailed": "Failed to fetch orders for export.",
+  "orders.incomplete":
+    "⛔ The list is incomplete — there are more orders in the database than the fetch ceiling returns. The value and counters below are understated by an unknown amount, and the exports are halted for the same reason. Report this before treating these totals as the value of your order book.",
   "orders.countOf": "of",
   "orders.importNote":
     'The "Vehicle" column = registration (mapped to a vehicle; unrecognized → saved without assignment). Set the driver and status after import. Dedup by order number.',
@@ -869,6 +903,11 @@ export const en: Record<MessageKey, string> = {
   "costs.fieldCurrency": "Currency",
   "costs.fieldDescription": "Description",
   "costs.descriptionPlaceholder": "e.g. timing belt replacement",
+  "costs.incomplete":
+    "The register is incomplete — the database holds more costs than the fetch could return. This screen has no date range, so the missing rows do not look like a gap: they look like costs that were never entered. CSV and XLSX export is on hold.",
+  "costs.exportBlocked": "Data incomplete — export on hold.",
+  "costs.importIncomplete":
+    "Import on hold: the full list of existing costs could not be fetched, so duplicate detection is not working. Uploading the file a second time would silently double the company's costs.",
   "costs.add": "Add cost",
   "costs.importNote":
     'The "Vehicle" column = registration. "Category": repair / leasing / insurance / tax / fine / parking / tyres / other (Polish labels also accepted). Duplicates (same vehicle+category+amount+date+description) are skipped.',
@@ -975,6 +1014,10 @@ export const en: Record<MessageKey, string> = {
   "expenses.restoredBulkSuffix": " to settle.",
   "expenses.photoError": "Failed to open the receipt.",
   "expenses.subtitlePrefix": "Driver submissions from the app — to settle: ",
+  "expenses.incomplete":
+    'The database holds more submissions than the fetch could return — the "pending" total in the header is understated, and the longest-waiting entries may not be shown at all. Report this before closing the period.',
+  "expenses.historyWindow":
+    "Approved and rejected entries are shown in a window of the {n} most recent ones — older decisions are outside this view. The “to settle” total in the header does not include them and is unaffected by this.",
   "expenses.empty": "No expenses in this view.",
   "expenses.selectAria": "Select submission",
   "expenses.receipt": "📷 Receipt",
@@ -1144,12 +1187,14 @@ export const en: Record<MessageKey, string> = {
   "scoring.empty": "No drivers to rate — invite your team and assign orders.",
   "scoring.noCompany": "No active company.",
   "scoring.loadError": "Failed to compute the ranking.",
+  "scoring.incomplete":
+    "The ranking is incomplete — this window holds more orders or checklists than the fetch ceiling returns. The figures below are percentages computed from a truncated denominator, so the driver order may be wrong. Do not base bonuses or appraisals on it.",
   "scoring.colDriver": "Driver",
   "scoring.colLevel": "Level",
   "scoring.colPoints": "Points",
   "scoring.colDeliveries": "Deliveries",
   "scoring.colOnTime": "On-time",
-  "scoring.colChecklists": "Checklists",
+  "scoring.colChecklists": "Checklists (90 days)",
   "scoring.colRating": "Rating",
   "scoring.rank.rookie": "Rookie",
   "scoring.rank.driver": "Driver",
@@ -1158,12 +1203,14 @@ export const en: Record<MessageKey, string> = {
   "scoring.rank.master": "Master",
   "scoring.rank.legend": "Legend",
   "scoring.note":
-    "Score = 60% on-time (delivered by the planned unloading date) + 30% checklist discipline + 10% number of deliveries. Drivers without measurable timeliness start at a neutral 70%.",
+    "Score = 60% on-time (delivered by the planned unloading date) + 30% checklist discipline + 10% number of deliveries. Drivers without measurable timeliness start at a neutral 70%. Points, level and badges come from the same 90-day window as the rest of the table — they describe form over the quarter, not a career record.",
 
   "analytics.title": "Fleet analytics",
   "analytics.subtitle":
     "Fuel cost trend and forecast, consumption outlier vehicles and a savings estimate — computed from your data.",
   "analytics.empty": "Not enough fuel data — add refuellings with amounts and mileage.",
+  "analytics.incomplete":
+    "The data is incomplete — this window holds more refuellings than the fetch could return. The trend, the next-month cost forecast and the outlier pricing are computed from part of the set, and the missing entries come from the oldest months — the very ones the regression rests on.",
   "analytics.noCompany": "No active company.",
   "analytics.loadError": "Failed to compute analytics.",
   "analytics.kpiTrend": "Fuel cost trend (window)",
@@ -1218,6 +1265,12 @@ export const en: Record<MessageKey, string> = {
   "settlements.revenue": "Revenue (rate × km)",
   "settlements.exportCsv": "⬇️ Export CSV",
   "settlements.print": "🖨️ Print / PDF",
+  "settlements.incomplete":
+    "This settlement is incomplete — the period holds more entries than the fetch could return. That is not a shorter list but a different settlement: missing refuellings understate the cost and overstate the profit, and missing odometer readings change the distance, the consumption and the cost per kilometre. Narrow the date range; CSV export is on hold.",
+  "settlements.exportBlocked": "Data incomplete — export on hold.",
+
+  "payoutDoc.incomplete":
+    "This settlement is incomplete — the database holds more entries or per diems for this driver than the fetch could return (or the fetch failed). The balance is a DIFFERENCE of dues, advances and deductions, so a missing row does not shorten the table, it changes the amount payable — in either direction. Do not pay out on this document; issue it again.",
   "settlements.items": "Items",
   "settlements.colType": "Type",
   "settlements.colOdometer": "Odometer",
@@ -1336,6 +1389,21 @@ export const en: Record<MessageKey, string> = {
   "journeys.empty":
     "No journeys. A driver starts a journey with the Start action and ends it with the End action (Trip form).",
   "journeys.loadError": "Failed to load journeys.",
+  "journeys.set.trips": "route events",
+  "journeys.set.fuel": "refuellings",
+  "journeys.set.adblue": "AdBlue",
+  "journeys.set.pauses": "stops and parking",
+  "journeys.set.routeCosts": "tolls and road charges",
+  "journeys.set.penalties": "penalties",
+  "journeys.incomplete.since": "{label} (we only have data from {date})",
+  "journeys.incomplete.spread":
+    "{label} (the gaps are spread across the WHOLE period, not just its earliest part)",
+  "journeys.incomplete":
+    "The list is incomplete — these sets did not arrive in full: {sets}. A journey may be assembled from halves (a start with no end, missing refuellings) or may not appear at all.",
+  "journeys.incomplete.after":
+    "Journeys started after the latest of the dates given above do have complete data.",
+  "journeys.incomplete.ops":
+    "This also covers costs paid along the way — older journeys will show in full, but with an understated cost and an overstated profit and margin.",
   "journeys.unassignedDriver": "Unassigned driver",
   "journeys.driverPrefix": "Driver",
   "journeys.tripSingular": "journey",
@@ -1356,6 +1424,8 @@ export const en: Record<MessageKey, string> = {
   "documents.title": "Document vault",
   "documents.subtitle":
     "A secure place for company and vehicle documents (insurance, inspections, leasing, contracts). Private — access only for your company; expiry date reminders.",
+  "documents.incomplete":
+    "This vault is incomplete — there are more documents in the database than the fetch ceiling returns. The “valid until” column and the export only show what arrived, and what drops out first are scans uploaded long ago with a deadline far in the future: a community licence, a driver certificate, a lease agreement. Report this before concluding that no deadline is approaching.",
   "documents.loadError": "Failed to load documents.",
   "documents.pickFile": "Choose a file.",
   "documents.fileTooBigPrefix": "File too large (max ",
@@ -1959,6 +2029,7 @@ export const en: Record<MessageKey, string> = {
   "common.language": "Language",
   "common.noNumber": "(no number)",
   "common.all": "All",
+  "common.showMore": "Show next ({n})",
   "common.active": "Active",
   "common.disabled": "Disabled",
   "common.loading": "Loading…",

@@ -132,7 +132,7 @@ export default function ScheduleScreen() {
         const reg = new Map(vehicles.map((v) => [v.id, v.registration]));
         for (const task of tasks) {
           if (task.interval_km && task.last_done_km != null) {
-            const cur = odos[task.vehicle_id];
+            const cur = odos.byVehicle[task.vehicle_id];
             if (cur != null) {
               out.push({
                 key: `srv-${task.id}`,

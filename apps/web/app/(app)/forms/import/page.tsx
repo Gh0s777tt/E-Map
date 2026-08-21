@@ -20,6 +20,9 @@
  *    import generuje nowe UUID-y, więc idempotencja po kluczu nie zadziała.
  *    Porównujemy trójkę pojazd + moment + litry i pokazujemy trafienia
  *    w podglądzie — użytkownik widzi je, zanim cokolwiek trafi do bazy.
+ *    Zbiór odniesienia musi być KOMPLETNY: przy uciętym nie wiadomo, czy wpisu
+ *    nie ma w bazie, czy tylko nie dojechał, więc niekompletność WSTRZYMUJE
+ *    import zamiast go ostrzec (patrz `loadExisting` i `onImport`).
  *
  * 3. **Kraj przechodzi przez `fuelLogSchema`**, więc „Deutschland" z niemieckiego
  *    zestawienia zapisze się jako `DE`, a wpis, którego nie da się rozpoznać,
@@ -32,7 +35,7 @@
  *    nie trzymamy w całości ([`cardMask.ts`](packages/core/src/cardMask.ts)).
  */
 
-import { insertFuelLog, listFuelLogs } from "@e-logistic/api";
+import { insertFuelLog, listFuelLogKeys } from "@e-logistic/api";
 import { newId } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
@@ -106,7 +109,12 @@ export default function FormsImportPage() {
   const { vehicles, cards, source } = useFleet();
   const [kind, setKind] = useState<Kind>("fuel");
   const [cardId, setCardId] = useState("");
-  const [existing, setExisting] = useState<Set<string>>(new Set());
+  /**
+   * Zbiór odniesienia do wykrywania duplikatów — razem z informacją, czy jest pełny.
+   * `null` = jeszcze nie pobrany; import stoi także w tym stanie, bo brak wiedzy
+   * o duplikatach i pewność ich braku to nie to samo.
+   */
+  const [existing, setExisting] = useState<{ keys: Set<string>; complete: boolean } | null>(null);
 
   /** Rejestracja → id. Porównanie bez spacji i wielkości liter: w arkuszach
       ta sama tablica bywa „WX 1234", „wx1234" i „WX-1234". */
@@ -117,20 +125,31 @@ export default function FormsImportPage() {
   }, [vehicles]);
 
   const loadExisting = useCallback(async () => {
+    setExisting(null);
     try {
       const sb = getBrowserSupabase();
-      const rows = (await listFuelLogs(sb, { table: TABLE[kind], limit: 1000 })) as {
-        vehicle_id: string;
-        occurred_at: string;
-        liters: number;
-      }[];
-      setExisting(
-        new Set(rows.map((r) => fuelImportDupKey(r.vehicle_id, r.occurred_at, Number(r.liters)))),
-      );
+      /*
+       * Stronami, nie `limit: 1000`. Ten limit był równy sufitowi `api.max_rows`, więc
+       * zbiór odniesienia kończył się na tysiącu NAJNOWSZYCH tankowań — a plik, który
+       * ktoś wgrywa drugi raz, jest zwykle sprzed miesięcy i nie trafiał w to okno ani
+       * jedną pozycją. Duplikat przechodził wtedy w komplecie.
+       *
+       * `listFuelLogKeys`, nie `listFuelLogsAll`: do klucza duplikatu wchodzą trzy pola,
+       * a `listFuelLogsAll` bierze `select("*")` — czyli import ściągał geolokalizację,
+       * komentarze i rozbicie VAT każdego tankowania sprzed lat po to, żeby policzyć
+       * z nich jeden ciąg znaków. Ten sam wzorzec, co `listOrderReferences` przy zleceniach.
+       */
+      const paged = await listFuelLogKeys(sb, { table: TABLE[kind] });
+      setExisting({
+        keys: new Set(
+          paged.rows.map((r) => fuelImportDupKey(r.vehicle_id, r.occurred_at, Number(r.liters))),
+        ),
+        complete: paged.complete,
+      });
     } catch {
-      // Brak sesji/offline — import i tak nie zadziała, a podgląd nie może się
-      // wywalić przez to, że nie udało się pobrać listy do porównania.
-      setExisting(new Set());
+      // Brak sesji/offline — podgląd nie może się wywalić przez nieudane pobranie
+      // listy do porównania. `complete: false` zatrzymuje sam import.
+      setExisting({ keys: new Set(), complete: false });
     }
   }, [kind]);
 
@@ -143,7 +162,7 @@ export default function FormsImportPage() {
       buildFuelImportRow(rec, {
         resolveVehicle: (reg) => byRegistration.get(normalizeRegistration(reg)),
         cardId,
-        existing,
+        existing: existing?.keys ?? new Set<string>(),
         messages: {
           vehicleUnknown: t("history.importVehicleUnknown"),
           pickCard: t("history.importPickCard"),
@@ -154,6 +173,15 @@ export default function FormsImportPage() {
 
   const onImport = useCallback(
     async (values: FuelImportRow[]): Promise<ImportResult> => {
+      /**
+       * Niepełny zbiór odniesienia = BRAK importu, nie import „na oko" — jak przy
+       * zleceniach (#417). Odmowa jest odwracalna: wystarczy odświeżyć i wgrać plik
+       * jeszcze raz. Podwojone tankowania nie są — po zapisie nikt już nie odróżni
+       * ich od prawdziwych, a wchodzą i do kosztu paliwa, i do zwrotu VAT.
+       */
+      if (!existing?.complete) {
+        return { inserted: 0, failed: values.length, errors: [t("history.importDupsIncomplete")] };
+      }
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) throw new Error(t("history.importNoCompany"));
@@ -179,7 +207,7 @@ export default function FormsImportPage() {
       await loadExisting();
       return { inserted, failed: errors.length, errors };
     },
-    [kind, loadExisting, t],
+    [existing, kind, loadExisting, t],
   );
 
   return (
@@ -234,6 +262,12 @@ export default function FormsImportPage() {
             </select>
           </div>
 
+          {/* Sygnał PRZED wyborem pliku — inaczej użytkownik dowiedziałby się
+              o wstrzymaniu dopiero po zmapowaniu kolumn i kliknięciu „Importuj". */}
+          {existing && !existing.complete && (
+            <div style={warnBox}>⛔ {t("history.importDupsIncomplete")}</div>
+          )}
+
           <DataImport
             key={`${kind}/${cardId}`}
             columns={COLUMNS}
@@ -252,6 +286,18 @@ export default function FormsImportPage() {
     </div>
   );
 }
+
+/** Ostrzeżenie o wstrzymanym imporcie — ten sam styl co banery niekompletności w panelu. */
+const warnBox: React.CSSProperties = {
+  border: `1px solid ${palette.warning}`,
+  borderRadius: 10,
+  padding: "10px 14px",
+  marginBottom: 14,
+  color: palette.offWhite,
+  fontSize: 13,
+  lineHeight: 1.5,
+  background: palette.nearBlack,
+};
 
 const chip: React.CSSProperties = {
   background: "transparent",

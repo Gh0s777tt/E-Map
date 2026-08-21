@@ -2,8 +2,8 @@
 
 import {
   type DriverPayoutRecord,
-  listDriverPayouts,
-  listPerDiemTrips,
+  listDriverPayoutsAll,
+  listPerDiemTripsAll,
   type PerDiemTrip,
 } from "@e-logistic/api";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@e-logistic/core";
 import { palette } from "@e-logistic/ui";
 import { useEffect, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { Button } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 
@@ -39,36 +40,52 @@ export function PayoutDoc({
   company: string;
   onBack: () => void;
 }) {
+  const t = useT();
   const [payouts, setPayouts] = useState<DriverPayoutRecord[]>([]);
   const [diets, setDiets] = useState<PerDiemTrip[]>([]);
+  /**
+   * Któryś ze zbiorów nie dojechał w komplecie — saldo niżej jest INNĄ liczbą.
+   *
+   * To dokument, który idzie do kierowcy i do księgowości, a jego wynik jest RÓŻNICĄ
+   * pozycji o przeciwnych znakach: brak wypłaconej zaliczki sprzed roku nie skraca
+   * tabeli, tylko podnosi „do wypłaty" o jej kwotę. Nie da się tego zauważyć po samym
+   * dokumencie, bo brakujący wiersz nie zostawia w nim śladu.
+   */
+  const [niepelne, setNiepelne] = useState(false);
 
   useEffect(() => {
     (async () => {
-      try {
-        const sb = getBrowserSupabase();
-        const [p, d] = await Promise.all([
-          listDriverPayouts(sb, companyId, { driverName }).catch(() => []),
-          listPerDiemTrips(sb, companyId, { driverName }).catch(() => []),
-        ]);
-        setPayouts(p);
-        setDiets(d);
-      } catch {
-        // brak danych / dostępu — dokument pokaże zera
-      }
+      const sb = getBrowserSupabase();
+      // Błąd odczytu schodzi do `complete: false`, a nie do pustej listy udającej
+      // brak pozycji: dokument wystawiony po nieudanym pobraniu pokazywałby saldo
+      // policzone z zera i wyglądałby dokładnie jak rozliczenie kierowcy, który nic
+      // nie ma do odebrania. Oba przypadki — ucięcie i awaria — znaczą tu to samo:
+      // liczby na dole nie są kompletne.
+      const pusty = { rows: [], complete: false, pages: 0 };
+      const [p, d] = await Promise.all([
+        listDriverPayoutsAll(sb, companyId, { driverName }).catch(() => pusty),
+        listPerDiemTripsAll(sb, companyId, { driverName }).catch(() => pusty),
+      ]);
+      setPayouts(p.rows);
+      setDiets(d.rows);
+      setNiepelne(!p.complete || !d.complete);
     })();
   }, [companyId, driverName]);
 
   const balances = settleDriverPayouts(
     payouts.map((r) => ({ kind: r.kind, amount: r.amount, currency: r.currency })),
   );
+  // Zmienna pętli to `trip`, a nie `t` — `t` to funkcja tłumacząca (ta sama zasada
+  // co w `AttentionPanel`). Przesłonięcie działałoby, ale czytelnik następnej zmiany
+  // w tym bloku nie miałby jak zgadnąć, którego `t` dotyczy.
   const dietTotals = sumPerDiem(
-    diets.map((t) =>
+    diets.map((trip) =>
       computePerDiem({
-        destination: t.destination ?? "",
-        mode: t.mode,
-        hours: t.hours,
-        dailyRate: t.daily_rate,
-        currency: t.currency,
+        destination: trip.destination ?? "",
+        mode: trip.mode,
+        hours: trip.hours,
+        dailyRate: trip.daily_rate,
+        currency: trip.currency,
       }),
     ),
   );
@@ -86,6 +103,12 @@ export function PayoutDoc({
       </div>
 
       <div style={pd.doc}>
+        {/* WEWNĄTRZ dokumentu i bez `no-print`: wydruk jest tym, co dostaje kierowca
+            i księgowość, więc zastrzeżenie musi pojechać razem z kwotami, których
+            dotyczy. Ostrzeżenie widoczne tylko na ekranie dałoby PDF nie do odróżnienia
+            od rozliczenia policzonego z kompletu. Nad nagłówkiem, bo unieważnia
+            wszystko poniżej — łącznie z ramką „do wypłaty". */}
+        {niepelne && <div style={pd.warn}>⚠️ {t("payoutDoc.incomplete")}</div>}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 800 }}>ROZLICZENIE KIEROWCY</div>
@@ -217,6 +240,19 @@ const pd: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 14,
+  },
+  /**
+   * Ostrzeżenie na BIAŁYM tle dokumentu, nie w palecie panelu: ta ramka jest częścią
+   * kartki, która wyjdzie na drukarkę, a czerwień na czerni wyszłaby z niej szarą plamą.
+   */
+  warn: {
+    border: "2px solid #a35a00",
+    background: "#fff4e0",
+    color: "#5a3200",
+    borderRadius: 6,
+    padding: "10px 12px",
+    fontSize: 12,
+    lineHeight: 1.55,
   },
   muted: { color: "#555", fontSize: 12 },
   section: {

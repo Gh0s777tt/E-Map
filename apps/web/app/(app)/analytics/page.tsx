@@ -5,7 +5,7 @@
  * (bez zewnętrznego AI): trend i prognoza kosztu paliwa, pojazdy odstające
  * spalaniem i szacunek możliwych oszczędności. Silnik `buildFleetInsights`.
  */
-import { listFuelLogs, listFxRates, listVehicles, toFxRates } from "@e-logistic/api";
+import { listFuelLogsAll, listFxRates, listVehicles, toFxRates } from "@e-logistic/api";
 import {
   buildFleetInsights,
   consumptionFullToFull,
@@ -70,19 +70,37 @@ export default function AnalyticsPage() {
   const [series, setSeries] = useState<MonthlyPoint[]>([]);
   /** [#378] Ile tankowań nie weszło do liczb na ekranie — mówimy to wprost. */
   const [fxGap, setFxGap] = useState<FxGap>({ missingRate: 0, missingAmount: 0 });
+  /**
+   * Zbiór tankowań urwał się na sufit pobrania — wszystkie liczby niżej są policzone
+   * z jego części.
+   *
+   * Osobny znacznik od `fxGap`, bo to inna klasa braku i inne działanie użytkownika:
+   * tam wiadomo, ile pozycji wypadło i dlaczego (da się je uzupełnić), tu nie wiadomo
+   * nawet ile. Skutek jest tu zresztą groźniejszy niż zaniżona suma: brakujące
+   * tankowania z najstarszych miesięcy okna spłaszczają trend, więc prognoza kosztu
+   * na kolejny miesiąc wychodzi zaniżona, a „potencjalne oszczędności" — policzone
+   * z niepełnego mianownika.
+   */
+  const [incomplete, setIncomplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (!m) throw new Error(t("analytics.noCompany"));
       const from = new Date(Date.now() - 190 * 86_400_000).toISOString();
-      const [logs, vehicles, fxRows] = await Promise.all([
-        listFuelLogs(sb, { from, limit: 5000 }) as Promise<FuelRow[]>,
+      const [logsPaged, vehicles, fxRows] = await Promise.all([
+        // STRONAMI, nie jednym zapytaniem: `limit: 5000` nigdy nie działał, bo sufit
+        // `api.max_rows` PostgREST (domyślnie 1000) jest niższy i przycina odpowiedź
+        // bez błędu. Zapytanie sortuje malejąco po dacie, więc ucięcie zabierało
+        // NAJSTARSZE miesiące okna — czyli dokładnie te, na których stoi trend
+        // i regresja liczące prognozę.
+        listFuelLogsAll(sb, { from }),
         listVehicles(sb, m.companyId) as Promise<{ id: string; registration: string }[]>,
         // Zapas 10 dni wstecz: kurs bierzemy z dnia tankowania, a EBC nie publikuje
         // w weekendy i święta — bez zapasu tankowanie z 1. dnia okna zostałoby bez
@@ -92,6 +110,8 @@ export default function AnalyticsPage() {
         }),
       ]);
       const rates = toFxRates(fxRows);
+      const logs = logsPaged.rows as FuelRow[];
+      setIncomplete(!logsPaged.complete);
 
       /**
        * [#378] Miesięczny koszt paliwa (ostatnie 6 miesięcy z danymi) — w EURO.
@@ -204,6 +224,13 @@ export default function AnalyticsPage() {
   return (
     <div style={{ maxWidth: 860 }}>
       <PageHeader title={t("analytics.title")} subtitle={t("analytics.subtitle")} />
+
+      {/* Sufit pobrania unieważnia KAŻDĄ liczbę niżej, więc komunikat idzie nad
+          pozostałe — i nad status listy, bo ekran z obciętym zbiorem potrafi wyglądać
+          na pusty i doradzać „dodaj tankowania", których w bazie są tysiące. */}
+      {!loading && !error && incomplete && (
+        <div style={s.rateWarn}>⚠️ {t("analytics.incomplete")}</div>
+      )}
 
       {/* [#378] „Brak kwoty" i „brak kursu" to dwie różne rzeczy i nie wolno ich
           zlewać w jeden komunikat. Ekran w skrajnym przypadku (same tankowania

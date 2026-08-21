@@ -1,7 +1,7 @@
 import type { FuelLogInput } from "@e-logistic/core";
 import { describe, expect, it } from "vitest";
-import { mockSupabase } from "../test-utils";
-import { fuelLogToRow, insertFuelLog, listFuelLogs } from "./fuelLogs";
+import { mockSupabase, mockSupabasePaged } from "../test-utils";
+import { fuelLogToRow, insertFuelLog, listFuelLogKeys, listFuelLogs } from "./fuelLogs";
 
 const baseInput: FuelLogInput = {
   vehicleId: "veh-1",
@@ -153,5 +153,45 @@ describe("fuelLogToRow — data zdarzenia i waluta [#373]", () => {
     const row = fuelLogToRow({ ...base, priceTotal: 500 }, ctx);
     expect(row.price_net).toBeNull();
     expect(row.vat_amount).toBeNull();
+  });
+});
+
+describe("listFuelLogKeys — zbiór odniesienia importu", () => {
+  it("pobiera CZTERY kolumny, nie cały wiersz", async () => {
+    /*
+     * Do klucza duplikatu wchodzą pojazd, moment i litry. `fuelLogsFilter` bierze
+     * `select("*")`, więc import ściągał do przeglądarki także geolokalizację,
+     * komentarze i rozbicie VAT każdego tankowania sprzed lat — po to, żeby policzyć
+     * z nich jeden ciąg znaków. Ten sam wzorzec, co `listOrderReferences`.
+     */
+    const paged = mockSupabasePaged([[]]);
+    await listFuelLogKeys(paged.client, { table: "adblue_logs" });
+    expect(paged.called("from", "adblue_logs")).toBe(true);
+    expect(paged.argsOf("select")).toEqual(["id, vehicle_id, occurred_at, liters"]);
+    expect(paged.argsOf("order")).toEqual(["id", { ascending: true }]);
+  });
+
+  it("sufit stron jest wyższy niż domyślny, bo odmowa importu byłaby trwała", async () => {
+    /*
+     * `onImport` przy `complete: false` ODMAWIA importu. Przy domyślnych 50 stronach
+     * firma, której `fuel_logs` przekroczy 50 tys. wierszy, traciłaby funkcję na stałe:
+     * odświeżenie strony (do którego zachęca komunikat) pobiera dokładnie to samo.
+     */
+    const strona = Array.from({ length: 1000 }, (_, i) => ({
+      id: `id-${String(i).padStart(4, "0")}`,
+      vehicle_id: "v1",
+      occurred_at: "2026-01-01T00:00:00Z",
+      liters: 10,
+    }));
+    // 51 pełnych stron: przy domyślnym suficie pobranie stanęłoby na pięćdziesiątej.
+    const paged = mockSupabasePaged([
+      ...Array.from({ length: 51 }, (_, s) =>
+        strona.map((r) => ({ ...r, id: `s${String(s).padStart(3, "0")}-${r.id}` })),
+      ),
+      [],
+    ]);
+    const wynik = await listFuelLogKeys(paged.client);
+    expect(wynik.complete).toBe(true);
+    expect(wynik.pages).toBe(52);
   });
 });

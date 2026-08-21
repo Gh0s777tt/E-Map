@@ -187,3 +187,54 @@ export async function listFuelLogsAll(
     ),
   };
 }
+
+/** Tyle wiersza tankowania, ile składa się na klucz duplikatu przy imporcie. */
+export interface FuelLogKey {
+  id: string;
+  vehicle_id: string;
+  occurred_at: string;
+  liters: number;
+}
+
+/**
+ * Sufit stron dla zbioru odniesienia importu — świadomie wyższy niż `DEFAULT_MAX_PAGES`.
+ *
+ * Domyślne 50 stron jest skalibrowane pod PEŁNE wiersze; tutaj z wiersza schodzą cztery
+ * wąskie kolumny, więc ta sama liczba wierszy waży rząd wielkości mniej. A cena
+ * przestrzelenia sufitu jest tu inna niż gdzie indziej: `onImport` przy `complete: false`
+ * ODMAWIA importu, więc firma, której `fuel_logs` przekroczy próg, straciłaby funkcję
+ * na stałe — i to bez ścieżki wyjścia, bo odświeżenie strony pobiera dokładnie to samo.
+ * 200 stron to 200 tys. tankowań jednej firmy: nadal próg absurdu, ale absurdu dalszego
+ * niż moment, w którym duża flota przestaje móc importować paliwo.
+ */
+const IMPORT_KEYS_MAX_PAGES = 200;
+
+/**
+ * KOMPLETNY zbiór kluczy duplikatu (pojazd + moment + litry) — do importu paliwa/AdBlue.
+ *
+ * Osobna funkcja, a nie `listFuelLogsAll` z odrzuceniem reszty kolumn, dokładnie z tego
+ * samego powodu co `listOrderReferences` w `orders.ts`: potrzebny jest KAŻDY wiersz
+ * historii, ale wyłącznie trzema polami. `fuelLogsFilter` bierze `select("*")`, więc
+ * import ściągał do przeglądarki także geolokalizację, komentarze i rozbicie VAT
+ * każdego tankowania sprzed lat — po to, żeby policzyć z nich jeden ciąg znaków.
+ */
+export async function listFuelLogKeys(
+  client: SupabaseClient,
+  opts?: FuelLogFilter & { pageSize?: number; maxPages?: number },
+): Promise<PagedRows<FuelLogKey>> {
+  return fetchAllByKeyset<FuelLogKey>(
+    async (afterId, pageSize) => {
+      let query = client
+        .from(opts?.table ?? "fuel_logs")
+        .select("id, vehicle_id, occurred_at, liters");
+      if (opts?.vehicleId) query = query.eq("vehicle_id", opts.vehicleId);
+      if (opts?.from) query = query.gte("occurred_at", opts.from);
+      if (opts?.to) query = query.lte("occurred_at", opts.to);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+      if (error) throw error;
+      return (data ?? []) as FuelLogKey[];
+    },
+    { pageSize: opts?.pageSize, maxPages: opts?.maxPages ?? IMPORT_KEYS_MAX_PAGES },
+  );
+}

@@ -6,7 +6,8 @@ import {
   deleteDocument,
   getDocumentUrl,
   listCompanyMembers,
-  listDocuments,
+  listDocumentsAll,
+  type PagedRows,
   setDocumentVisibility,
   uploadDocument,
 } from "@e-logistic/api";
@@ -18,6 +19,7 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
+import { ShowMore } from "@/components/ShowMore";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -26,6 +28,7 @@ import { queryErrorMessage } from "@/lib/queryError";
 import { queryKeys } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
+import { useRenderWindow } from "@/lib/useRenderWindow";
 
 const EXPIRY_COLOR: Record<ExpiryLevel, string> = {
   expired: palette.red,
@@ -72,12 +75,23 @@ export default function DocumentsPage() {
 
   const docsQuery = useQuery({
     queryKey: queryKeys.documents(companyId),
+    /*
+     * STRONAMI: brak `limit` nie znaczył „cała kartoteka", tylko sufit `api.max_rows`
+     * PostgREST (1000) egzekwowany bez błędu — a z tej listy czyta się TERMINY (kolumna
+     * „ważne do" z `expiryStatus`) i z niej wychodzi eksport CSV. Obcięcie działa po
+     * `created_at`, więc wypadały z niej skany wgrane dawno, z terminem daleko
+     * w przyszłości: licencja wspólnotowa, świadectwo kierowcy, umowa leasingu.
+     */
     // Bez firmy pusta kartoteka, a nie błąd — tak zachowywał się dawny `load()`.
-    queryFn: (): Promise<DocumentMeta[]> =>
-      companyId ? listDocuments(getBrowserSupabase(), companyId) : Promise.resolve([]),
+    queryFn: (): Promise<PagedRows<DocumentMeta>> =>
+      companyId
+        ? listDocumentsAll(getBrowserSupabase(), companyId)
+        : Promise.resolve({ rows: [], complete: true, pages: 0 }),
     enabled: !membership.isPending,
   });
-  const docs = docsQuery.data ?? [];
+  const docs = useMemo(() => docsQuery.data?.rows ?? [], [docsQuery.data]);
+  /** Kartoteka nie dojechała w komplecie — terminy poniżej nie są pełną listą. */
+  const incomplete = docsQuery.data?.complete === false;
   const loading = membership.isPending || docsQuery.isPending;
   const loadErr = queryErrorMessage(membership.error ?? docsQuery.error, t("documents.loadError"));
 
@@ -118,6 +132,8 @@ export default function DocumentsPage() {
     () => (filter === "all" ? docs : docs.filter((d) => d.category === filter)),
     [docs, filter],
   );
+  /** Okno renderowania — eksport i filtry biorą komplet, w DOM ląduje oglądana porcja. */
+  const okno = useRenderWindow(filtered);
 
   function pickFile(f: File | null) {
     setFile(f);
@@ -368,6 +384,12 @@ export default function DocumentsPage() {
         </div>
       )}
 
+      {/* Nad listą, bo dotyczy tego, czego na niej NIE MA — a brakujące dokumenty
+          wyglądają dokładnie jak dokumenty, których nigdy nie wgrano. */}
+      {!loading && !loadErr && incomplete && (
+        <div style={styles.warn}>⚠️ {t("documents.incomplete")}</div>
+      )}
+
       <ListStatus
         loading={loading}
         error={loadErr}
@@ -377,7 +399,7 @@ export default function DocumentsPage() {
       />
       {!loading && !loadErr && filtered.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {filtered.map((d) => {
+          {okno.visible.map((d) => {
             const exp = d.expiry_date ? expiryStatus(d.expiry_date, today) : null;
             return (
               <div key={d.id} style={styles.card}>
@@ -444,6 +466,7 @@ export default function DocumentsPage() {
               </div>
             );
           })}
+          <ShowMore hidden={okno.hidden} onShowMore={okno.showMore} />
         </div>
       )}
     </div>
@@ -451,6 +474,17 @@ export default function DocumentsPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  /** Ta sama ramka ostrzeżenia co na pozostałych ekranach z niepełnym zbiorem. */
+  warn: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginTop: 12,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+    background: palette.nearBlack,
+  },
   form: { display: "flex", flexDirection: "column", gap: 12, marginTop: 16, maxWidth: 720 },
   grid: { display: "flex", gap: 12, flexWrap: "wrap" },
   field: { display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 160 },

@@ -3,11 +3,11 @@
 import {
   type CompanyMember,
   listCompanyMembers,
-  listOrders,
-  listTripEvents,
+  listOrdersAll,
+  listTripEventsAll,
   listVehicles,
 } from "@e-logistic/api";
-import { buildFleetStatus, type FleetVehicleState } from "@e-logistic/core";
+import { buildFleetStatus, type FleetVehicleState, type OrderStatus } from "@e-logistic/core";
 import { cssPalette as palette } from "@e-logistic/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -43,6 +43,25 @@ const STATE_COLOR: Record<FleetVehicleState, string> = {
   idle: palette.smoke,
 };
 
+/**
+ * Stan pojazdu bierze się WYŁĄCZNIE z tych dwóch statusów (`buildFleetStatus`),
+ * więc zawężenie idzie do bazy: zamiast całej historii firmy schodzi tyle zleceń,
+ * ile jest w tej chwili w robocie. Bez tego pobranie kompletu znaczyłoby ściąganie
+ * kilkunastu tysięcy zamkniętych zleceń, żeby odczytać z nich zero informacji.
+ */
+const ACTIVE_STATUSES: OrderStatus[] = ["in_progress", "assigned"];
+
+/**
+ * Okno, z którego bierzemy „ostatnie zdarzenie" pojazdu.
+ *
+ * Dotąd stało tu `limit: 1000` — czyli okno czasowe, tylko niejawne i o długości
+ * zależnej od wielkości floty: przy 20 ciągnikach obejmowało tygodnie, przy 300
+ * kilka godzin, i to bez żadnego sygnału. Jawne 14 dni jest krótsze dla małej firmy,
+ * ale przewidywalne dla każdej, a ekran odpowiada na pytanie „co się dzieje TERAZ";
+ * zdarzenie sprzed miesiąca i tak nie opisuje bieżącego stanu pojazdu.
+ */
+const EVENTS_WINDOW_DAYS = 14;
+
 export default function FleetStatusPage() {
   const t = useT();
   const { source } = useFleet();
@@ -53,10 +72,13 @@ export default function FleetStatusPage() {
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  /** Któryś ze zbiorów urwał się na sufit pobrania — patrz baner niżej. */
+  const [incomplete, setIncomplete] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadErr(null);
+    setIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
@@ -65,20 +87,25 @@ export default function FleetStatusPage() {
         return;
       }
       const manage = m.role === "owner" || m.role === "dispatcher";
-      const [vs, ord, tr, mem] = await Promise.all([
+      const eventsFrom = new Date(Date.now() - EVENTS_WINDOW_DAYS * 86_400_000).toISOString();
+      const [vs, ordPaged, trPaged, mem] = await Promise.all([
         listVehicles(sb, m.companyId),
-        listOrders(sb, m.companyId),
-        listTripEvents(sb, { limit: 1000 }),
+        listOrdersAll(sb, m.companyId, { statuses: ACTIVE_STATUSES }),
+        listTripEventsAll(sb, { from: eventsFrom }),
         manage ? listCompanyMembers(sb) : Promise.resolve([]),
       ]);
+      // Ucięte zlecenia to nie kosmetyka: pojazd z aktywną trasą, której zlecenie
+      // nie dojechało, pokazuje się jako WOLNY — czyli ekran kłamie o operacyjnym
+      // fakcie, a nie tylko gubi ozdobnik.
+      setIncomplete(!ordPaged.complete || !trPaged.complete);
       setVehicles(
         (vs as { id: string; registration: string }[]).map((v) => ({
           id: v.id,
           registration: v.registration,
         })),
       );
-      setOrders(ord as OrderRaw[]);
-      setTrips(tr as TripRaw[]);
+      setOrders(ordPaged.rows as OrderRaw[]);
+      setTrips(trPaged.rows as TripRaw[]);
       setMembers(mem);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Nie udało się pobrać statusu floty.");
@@ -151,6 +178,12 @@ export default function FleetStatusPage() {
         </Button>
       </div>
 
+      {/* Baner nad listą, bo unieważnia stan KAŻDEGO wiersza naraz — nie da się
+          wskazać, którym pojazdom zabrakło danych. Przez katalog, nie na sztywno:
+          podpis, którego dyspozytor nie czyta w swoim języku, przed niczym nie ostrzega
+          — a to jedyne zdanie mające go powstrzymać przed rozdysponowaniem floty. */}
+      {!loading && !loadErr && incomplete && <div style={styles.warn}>{t("fleet.incomplete")}</div>}
+
       <ListStatus
         loading={loading}
         error={loadErr}
@@ -193,12 +226,19 @@ export default function FleetStatusPage() {
                 <div style={{ ...styles.dim, fontSize: 13 }}>Brak aktywnego zlecenia.</div>
               )}
 
-              {r.lastEvent && (
+              {r.lastEvent ? (
                 <div style={{ ...styles.dim, fontSize: 12 }}>
                   Ostatnio: {tripActionLabel(t, r.lastEvent.action)}
                   {r.lastEvent.location ? ` · ${r.lastEvent.location}` : ""}
                   {r.lastEvent.country ? ` (${r.lastEvent.country})` : ""} ·{" "}
                   {r.lastEvent.createdAt.slice(0, 16).replace("T", " ")}
+                </div>
+              ) : (
+                /* Pojazd wracający z trzytygodniowego postoju serwisowego wygląda inaczej
+                   niż taki, który nigdy nie raportował — a bez tego podpisu wiersz po
+                   prostu milczał i okno pobrania czytało się jak brak danych w bazie. */
+                <div style={{ ...styles.dim, fontSize: 12 }}>
+                  {t("fleet.noEvents").replace("{days}", String(EVENTS_WINDOW_DAYS))}
                 </div>
               )}
             </div>
@@ -210,6 +250,17 @@ export default function FleetStatusPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  /** Ostrzeżenie o niepełnym zbiorze — ten sam styl co na /monthly i /vehicles/[id]. */
+  warn: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginTop: 12,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+    background: palette.nearBlack,
+  },
   controls: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 16 },
   card: {
     borderRadius: 10,

@@ -11,7 +11,7 @@ import {
   listContractors,
   listFxRates,
   listOrderReferences,
-  listOrders,
+  listOrdersAll,
   type Order,
   saveOrder,
   setOrderStatus,
@@ -48,6 +48,7 @@ import * as f from "@/components/formStyles";
 import { ListStatus } from "@/components/ListStatus";
 import { useT } from "@/components/LocaleProvider";
 import { PodDoc } from "@/components/PodDoc";
+import { ShowMore } from "@/components/ShowMore";
 import { useToast } from "@/components/Toast";
 import { Badge, Button, PageHeader, SetupNotice } from "@/components/ui";
 import { csvDateStamp, downloadCsv } from "@/lib/csv";
@@ -56,6 +57,7 @@ import { getCachedMembership } from "@/lib/membership";
 import { queryKeyPrefixes } from "@/lib/queryKeys";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { useFleet } from "@/lib/useFleet";
+import { useRenderWindow } from "@/lib/useRenderWindow";
 import { downloadXlsx } from "@/lib/xlsx";
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
@@ -156,6 +158,15 @@ export default function OrdersPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [orders, setOrders] = useState<Order[]>([]);
+  /**
+   * Lista nie dojechała w komplecie — podsumowanie NAD nią jest wtedy zaniżone.
+   *
+   * Ten ekran pokazuje wartość zleceń w euro i licznik „X z Y". Obie liczby po
+   * uciętym pobraniu wyglądają dokładnie tak samo jak prawdziwe, a sąsiedni eksport
+   * pobiera komplet osobno — więc arkusz i ekran podawały z tego samego filtra
+   * dwie różne liczby wierszy, bez żadnego wyjaśnienia.
+   */
+  const [ordersIncomplete, setOrdersIncomplete] = useState(false);
   // #246: surowe dane do kosztu transportu per zlecenie (trasy z order_id + tankowania).
   const [legRows, setLegRows] = useState<LegRow[]>([]);
   const [fuelRows, setFuelRows] = useState<FuelRow[]>([]);
@@ -206,17 +217,25 @@ export default function OrdersPage() {
       }
       const manage = m.role === "owner" || m.role === "dispatcher";
       setCanManage(manage);
-      // [#378] Okno kursów. Ten ekran nie ma wyboru okresu — lista jest pełna,
-      // więc bierzemy 24 miesiące wstecz (tyle samo, co analityka we /stats),
-      // co pokrywa każde zlecenie, którym ktokolwiek jeszcze się zajmuje.
+      // [#378] Okno kursów. Ten ekran nie ma wyboru okresu — lista jest pełna
+      // (schodzi stronami, patrz `listOrdersAll` niżej), więc bierzemy 24 miesiące
+      // wstecz (tyle samo, co analityka we /stats), co pokrywa każde zlecenie,
+      // którym ktokolwiek jeszcze się zajmuje.
       // Starsze zlecenie w obcej walucie nie zniknie po cichu: wpadnie do
       // licznika „brak kursu" pod podsumowaniem.
       const now = new Date();
       const fxFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
         .toISOString()
         .slice(0, 10);
-      const [ord, comp, mem, contr, legs, fuel, adblue, fxRows] = await Promise.all([
-        listOrders(sb, m.companyId),
+      const [ordPaged, comp, mem, contr, legs, fuel, adblue, fxRows] = await Promise.all([
+        /*
+         * STRONAMI, a nie jednym zapytaniem. `listOrders` bez `limit` nie znaczyło
+         * „cała lista", tylko sufit `api.max_rows` PostgREST (1000) egzekwowany bez
+         * błędu — a z tego stanu liczą się kwoty w podsumowaniu, licznik nad listą
+         * i eksport giełdowy. Renderowanie zostaje ograniczone oknem (`okno` niżej):
+         * komplet jest potrzebny liczbom, nie drzewu DOM.
+         */
+        listOrdersAll(sb, m.companyId),
         getCompany(sb, m.companyId),
         manage ? listCompanyMembers(sb) : Promise.resolve([]),
         manage ? listContractors(sb, m.companyId) : Promise.resolve([]),
@@ -247,7 +266,8 @@ export default function OrdersPage() {
           from: new Date(Date.parse(fxFrom) - 10 * 86_400_000).toISOString().slice(0, 10),
         }),
       ]);
-      setOrders(ord);
+      setOrders(ordPaged.rows);
+      setOrdersIncomplete(!ordPaged.complete);
       setRates(toFxRates(fxRows));
       // #268: mapa zlecenie→faktura (slim) — link 🧾 na wierszu zlecenia.
       sb.from("invoices")
@@ -316,6 +336,12 @@ export default function OrdersPage() {
     () => filterSortOrders(orders, { text: query, status: filter, sort }),
     [orders, filter, query, sort],
   );
+  /**
+   * Okno renderowania. Sumy, licznik i eksport liczą się z `filtered` (czyli z kompletu),
+   * a w DOM ląduje tylko tyle kart, ile ktoś realnie przegląda — firma z kilkoma tysiącami
+   * zleceń inaczej montowałaby je wszystkie naraz, razem z checkboxem i galerią zdjęć.
+   */
+  const okno = useRenderWindow(filtered);
 
   /**
    * [#378] Cena zlecenia przeliczona na euro po kursie z dnia ZAŁADUNKU.
@@ -632,7 +658,49 @@ export default function OrdersPage() {
     }
   }
 
-  function exportCsv() {
+  /**
+   * Zbiór do eksportu pobierany OSOBNO i stronami — nie ze stanu `orders`.
+   *
+   * Lista na ekranie powstaje z jednego zapytania, więc obowiązuje ją sufit
+   * `api.max_rows` (1000) egzekwowany bez błędu: dla firmy z większą historią
+   * `orders` jest cichym wycinkiem. Na ekranie to strata kosmetyczna, w arkuszu
+   * przekazanym księgowości — zaniżony przychód, którego po zapisaniu pliku nie da
+   * się już odróżnić od prawdziwego. Filtr statusu idzie przy okazji do BAZY,
+   * bo tylko on ma tam odpowiednik; tekst i sortowanie zostają w pamięci, na
+   * komplecie, który właśnie zszedł.
+   *
+   * `null` = eksportu nie wolno zrobić; powód pokazał już toast.
+   */
+  const collectExportOrders = useCallback(async (): Promise<Order[] | null> => {
+    try {
+      const sb = getBrowserSupabase();
+      const m = await getCachedMembership(sb);
+      if (!m) {
+        toast(t("vehicles.noCompanyImport"), "error");
+        return null;
+      }
+      const paged = await listOrdersAll(
+        sb,
+        m.companyId,
+        filter === "all" ? undefined : { statuses: [filter] },
+      );
+      if (!paged.complete) {
+        toast(t("orders.exportIncomplete"), "error");
+        return null;
+      }
+      return filterSortOrders(paged.rows, { text: query, status: filter, sort });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t("orders.exportFailed"), "error");
+      return null;
+    }
+  }, [filter, query, sort, t, toast]);
+
+  /**
+   * Jeden zestaw nagłówków i komórek dla CSV i XLSX. Dwa osobne rozjechałyby się
+   * przy pierwszej dołożonej kolumnie — a rozjazd między arkuszami tej samej listy
+   * zauważa się dopiero u odbiorcy.
+   */
+  function exportTable(list: Order[]) {
     const headers = [
       t("orders.csv.number"),
       t("common.status"),
@@ -648,7 +716,7 @@ export default function OrdersPage() {
       t("orders.csv.loadDate"),
       t("orders.csv.unloadDate"),
     ];
-    const rows = filtered.map((o) => [
+    const rows = list.map((o) => [
       o.reference_no ?? "",
       orderStatusLabel(t, o.status),
       o.shipper ?? "",
@@ -663,40 +731,20 @@ export default function OrdersPage() {
       o.load_date ?? "",
       o.unload_date ?? "",
     ]);
+    return { headers, rows };
+  }
+
+  async function exportCsv() {
+    const list = await collectExportOrders();
+    if (!list) return;
+    const { headers, rows } = exportTable(list);
     downloadCsv(`zlecenia_${csvDateStamp()}.csv`, headers, rows);
   }
 
   async function exportXlsx() {
-    const headers = [
-      t("orders.csv.number"),
-      t("common.status"),
-      t("orders.csv.shipper"),
-      t("orders.csv.consignee"),
-      t("orders.csv.from"),
-      t("orders.csv.to"),
-      t("orders.csv.cargo"),
-      t("orders.csv.weight"),
-      t("orders.csv.rate"),
-      t("orders.csv.currency"),
-      t("common.vehicle"),
-      t("orders.csv.loadDate"),
-      t("orders.csv.unloadDate"),
-    ];
-    const rows = filtered.map((o) => [
-      o.reference_no ?? "",
-      orderStatusLabel(t, o.status),
-      o.shipper ?? "",
-      o.consignee ?? "",
-      o.origin ?? "",
-      o.destination ?? "",
-      o.cargo ?? "",
-      o.weight_kg ?? "",
-      o.price ?? "",
-      o.currency,
-      regOf(o.vehicle_id),
-      o.load_date ?? "",
-      o.unload_date ?? "",
-    ]);
+    const list = await collectExportOrders();
+    if (!list) return;
+    const { headers, rows } = exportTable(list);
     await downloadXlsx(`zlecenia_${csvDateStamp()}.xlsx`, headers, rows);
   }
 
@@ -769,10 +817,21 @@ export default function OrdersPage() {
     [vehicles, t],
   );
 
-  /** Eksport zleceń do publikacji na giełdzie transportowej (uniwersalny CSV frachtu). */
-  function exportFreight() {
+  /**
+   * Eksport zleceń na giełdę transportową (uniwersalny CSV frachtu).
+   *
+   * Zbiór z `collectExportOrders`, a nie ze stanu `orders`, i ta sama bramka co przy
+   * CSV/XLSX: przycisk stoi w tym samym rzędzie, więc gdyby jeden z trzech eksportów
+   * był niepilnowany, użytkownik, któremu przed chwilą odmówiono, dostawałby z sąsiada
+   * dokładnie ten niepełny plik, przed którym go chroniono. Plik po zapisaniu nie niesie
+   * już informacji, że czegoś w nim brakuje — a niesprzedany fracht, który nie trafił
+   * na giełdę, nie upomina się nigdzie.
+   */
+  async function exportFreight() {
+    const list = await collectExportOrders();
+    if (!list) return;
     const rows = freightExportRows(
-      filtered.map((o) => ({
+      list.map((o) => ({
         referenceNo: o.reference_no,
         origin: o.origin,
         destination: o.destination,
@@ -956,6 +1015,12 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* Nad podsumowaniem, bo unieważnia dokładnie te liczby, które w nim stoją —
+          i nie da się wskazać, którego wiersza brakuje. */}
+      {!loading && !loadErr && ordersIncomplete && (
+        <div style={styles.rateWarn}>{t("orders.incomplete")}</div>
+      )}
+
       {orders.length > 0 && (
         <div style={styles.summary}>
           <span>
@@ -1077,7 +1142,7 @@ export default function OrdersPage() {
       />
       {!loading && !loadErr && filtered.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-          {filtered.map((o) => (
+          {okno.visible.map((o) => (
             <div key={o.id} style={styles.card}>
               <div style={styles.cardHead}>
                 {canManage && (
@@ -1181,6 +1246,7 @@ export default function OrdersPage() {
               <CargoPhotos orderId={o.id} />
             </div>
           ))}
+          <ShowMore hidden={okno.hidden} onShowMore={okno.showMore} />
         </div>
       )}
 

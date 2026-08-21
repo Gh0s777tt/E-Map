@@ -1,5 +1,6 @@
 /** Warstwa danych: plan serwisowy pojazdu (interwały km/miesiące). */
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset } from "./pagination";
 
 export interface ServiceTask {
   id: string;
@@ -61,44 +62,62 @@ export async function listServiceTasks(
   return ((data ?? []) as ServiceTask[]).reverse();
 }
 
+/** Przebiegi pojazdów razem z informacją, czy policzono je z KOMPLETU tankowań. */
+export interface OdometerReadout {
+  /** `vehicle_id` → najwyższy stan licznika, jaki wystąpił w pobranych tankowaniach. */
+  byVehicle: Record<string, number>;
+  /**
+   * `false` = pobieranie przerwał sufit stron, więc przebiegi mogą być ZANIŻONE.
+   *
+   * Flaga jest w typie z tego samego powodu co `complete` w `PagedRows`: zaniżony
+   * przebieg nie wygląda jak brak danych, tylko jak niższy przebieg, a `serviceStatus`
+   * odpowiada na niego poziomem „ok". Wywołujący musi obok tego pola przejść.
+   */
+  complete: boolean;
+}
+
+/** Wiersz `fuel_logs` w zakresie potrzebnym do agregacji — `id` niesie kursor stronicowania. */
+interface OdometerRow {
+  id: string;
+  vehicle_id: string;
+  odometer_km: number | null;
+}
+
 /**
- * Bieżący przebieg per pojazd = max licznika z tankowań. RLS zawęża do firmy.
+ * Bieżący przebieg per pojazd = max licznika z tankowań, liczony ze STRON. RLS zawęża do firmy.
  *
- * TA funkcja jako jedyna w module świadomie NIE MA domyślnego sufitu i to jest decyzja,
- * nie przeoczenie. `fuel_logs` rośnie najszybciej z tabel modułu (kilka wierszy dziennie
- * NA AUTO), a wynik nie trafia na listę — zasila `serviceStatus`, panel „Wymaga uwagi"
- * i harmonogram. Globalny sufit z sortowaniem malejącym po liczniku jest tu
- * DETERMINISTYCZNIE STRONNICZY: pułap wypełniają wiersze aut o najwyższym przebiegu,
- * więc z wyniku wypadają CAŁE pojazdy o najniższym — czyli te nowe. A brak przebiegu nie
- * daje pustego ekranu: `serviceStatus(null, …)` zwraca poziom „ok", więc panel uwagi
- * pomija taki pojazd MILCZĄCO. Przekroczony o 15 tys. km olej na nowym ciągniku wyglądał
- * wtedy identycznie jak flota w normie — a to jest gorsze niż wolne zapytanie.
+ * Brak `limit` nie znaczył tu „komplet", tylko granicę CUDZĄ: sufit `api.max_rows`
+ * PostgREST (u Supabase 1000), egzekwowany bez błędu i bez sortowania, czyli w kolejności
+ * nieokreślonej — w praktyce od najstarszych wierszy sterty. Firma z dwoma latami tankowań
+ * dostawała maksimum z tankowań sprzed dwóch lat i żadnego sygnału, że tak jest.
+ * A zaniżony przebieg nie daje pustego ekranu: `serviceStatus(zaniżony, …)` zwraca „ok",
+ * więc panel „Wymaga uwagi" milczy dokładnie tak samo jak przy flocie w normie.
  *
- * `opts.limit` zostaje dla wywołującego, który świadomie próbkuje (sortowanie malejące
- * włącza się wtedy razem z nim, żeby obcięcie mogło co najwyżej usunąć pojazd, a nie
- * zaniżyć jego przebieg). Domyślnie skanujemy komplet: dwie wąskie kolumny w zasięgu
- * jednej firmy.
+ * Trzy wąskie kolumny zamiast wiersza tankowania — jak `listOrderReferences`: tu naprawdę
+ * potrzebna jest każda pozycja historii, ale wyłącznie po to, żeby wziąć z niej maksimum.
+ * Sortowania prezentacyjnego nie ma, bo wynikiem jest mapa, a nie lista.
  */
 export async function latestOdometers(
   client: SupabaseClient,
   companyId: string,
-  opts?: { limit?: number },
-): Promise<Record<string, number>> {
-  let query = client
-    .from("fuel_logs")
-    .select("vehicle_id, odometer_km")
-    .eq("company_id", companyId);
-  if (opts?.limit !== undefined) {
-    query = query.order("odometer_km", { ascending: false }).limit(opts.limit);
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  const map: Record<string, number> = {};
-  for (const r of data ?? []) {
+  opts?: { pageSize?: number; maxPages?: number },
+): Promise<OdometerReadout> {
+  const paged = await fetchAllByKeyset<OdometerRow>(async (afterId, pageSize) => {
+    let query = client
+      .from("fuel_logs")
+      .select("id, vehicle_id, odometer_km")
+      .eq("company_id", companyId);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+    if (error) throw error;
+    return (data ?? []) as OdometerRow[];
+  }, opts);
+  const byVehicle: Record<string, number> = {};
+  for (const r of paged.rows) {
     const km = r.odometer_km ?? 0;
-    if (km > (map[r.vehicle_id] ?? 0)) map[r.vehicle_id] = km;
+    if (km > (byVehicle[r.vehicle_id] ?? 0)) byVehicle[r.vehicle_id] = km;
   }
-  return map;
+  return { byVehicle, complete: paged.complete };
 }
 
 export async function saveServiceTask(

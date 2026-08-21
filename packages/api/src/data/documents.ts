@@ -1,6 +1,7 @@
 /** Warstwa danych: sejf dokumentów (Supabase Storage + metadane). */
 import { newId } from "@e-logistic/core";
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset, type PagedRows } from "./pagination";
 
 export const DOCUMENTS_BUCKET = "documents";
 
@@ -33,17 +34,13 @@ const COLS =
   "id, vehicle_id, name, path, size_bytes, mime, category, expiry_date, uploaded_by, created_at, visibility, allowed_user_ids";
 
 /**
- * Sejf dokumentów. Świadomie BEZ domyślnego sufitu.
+ * Sejf dokumentów — JEDNO zapytanie, więc obowiązuje sufit serwera.
  *
- * Ta lista nie jest tylko listą: `components/AttentionPanel.tsx` przelatuje ją po
- * `expiry_date` i z niej bierze ostrzeżenia o wygasających terminach. Obcięcie działałoby
- * po `created_at`, a sprawdzenie po `expiry_date` — a te dwie daty w tej domenie prawie
- * nie korelują. Wypis z licencji wspólnotowej (10 lat), świadectwo kierowcy (5 lat) czy
- * umowa leasingu to skany wgrane dawno, z terminem daleko w przyszłości: przy flocie po
- * kilku latach wypadałyby poza pierwszy tysiąc NAJNOWSZYCH wpisów i termin ustawowy
- * mijałby po cichu, bo ani panel uwagi, ani ekran sejfu nie mają jak pokazać, że lista
- * jest ucięta. Sufit wróci tu razem ze stronicowaniem albo z osobnym zapytaniem
- * o wygasające dokumenty — nie wcześniej.
+ * Brak `limit` NIE znaczy „bez granicy", tylko granicę CUDZĄ: `api.max_rows` PostgREST
+ * (u Supabase 1000), egzekwowany bez błędu. Nadaje się więc wyłącznie tam, gdzie lista
+ * jest listą — mobilny sejf pokazuje najnowsze wpisy i nic z nich nie liczy. Tam, gdzie
+ * z dokumentów czyta się TERMINY albo eksportuje je dalej, wołaj `listDocumentsAll`
+ * (z `withExpiry`, jeśli wystarczą wiersze mające termin).
  *
  * `opts.limit` zostaje dla wywołującego, który chce podglądu (np. kilku ostatnich wpisów).
  */
@@ -61,6 +58,43 @@ export async function listDocuments(
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as DocumentMeta[];
+}
+
+/**
+ * Dokumenty pobrane STRONAMI — komplet albo jawne `complete: false`.
+ *
+ * Powstało dla dwóch wywołujących, którzy czytają z tej listy TERMINY: panelu „Wymaga
+ * uwagi" i ekranu sejfu z kolumną „ważne do". Obcięcie działa po `created_at`,
+ * a sprawdzenie po `expiry_date` — a te dwie daty w tej domenie prawie nie korelują.
+ * Wypis z licencji wspólnotowej (10 lat), świadectwo kierowcy (5 lat) czy umowa leasingu
+ * to skany wgrane dawno, z terminem daleko w przyszłości: przy flocie po kilku latach
+ * wypadały poza pierwszy tysiąc NAJNOWSZYCH wpisów i termin ustawowy mijał po cichu.
+ *
+ * `withExpiry` jest dla panelu, któremu wiersze bez terminu nie mają czego wnieść:
+ * skany CMR i faktur stanowią gros sejfu, więc bez tego zawężenia panel ściągałby całą
+ * historię załączników po to, żeby ją natychmiast odrzucić. Ekran sejfu, który pokazuje
+ * WSZYSTKIE dokumenty, woła to samo bez tej opcji.
+ */
+export async function listDocumentsAll(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: { withExpiry?: boolean; pageSize?: number; maxPages?: number },
+): Promise<PagedRows<DocumentMeta>> {
+  const paged = await fetchAllByKeyset<DocumentMeta>(async (afterId, pageSize) => {
+    let query = client.from("documents").select(COLS).eq("company_id", companyId);
+    if (opts?.withExpiry) query = query.not("expiry_date", "is", null);
+    if (afterId) query = query.gt("id", afterId);
+    const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+    if (error) throw error;
+    return (data ?? []) as DocumentMeta[];
+  }, opts);
+  // Porządek prezentacyjny wraca dopiero po złożeniu stron — patrz `pagination.ts`.
+  return {
+    ...paged,
+    rows: [...paged.rows].sort(
+      (a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id),
+    ),
+  };
 }
 
 /** Bezpieczna nazwa pliku w ścieżce (ASCII, bez spacji) — oryginał trzymamy w `name`. */

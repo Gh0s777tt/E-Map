@@ -84,7 +84,7 @@ export default function ManageServiceScreen() {
       const [tasks, veh, odos] = await Promise.all([
         listServiceTasks(sb, m.companyId),
         listVehicles(sb, m.companyId),
-        latestOdometers(sb, m.companyId).catch(() => ({}) as Record<string, number>),
+        latestOdometers(sb, m.companyId).catch(() => ({ byVehicle: {}, complete: false })),
       ]);
       setMsg(null);
       setRows(tasks);
@@ -94,7 +94,7 @@ export default function ManageServiceScreen() {
           registration: v.registration,
         })),
       );
-      setOdo(odos);
+      setOdo(odos.byVehicle);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : t("m.msvc.loadError"));
     }

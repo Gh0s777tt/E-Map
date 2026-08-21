@@ -1,14 +1,15 @@
 "use client";
 
 import {
+  DEFAULT_PAGE_SIZE,
   listDrivers,
-  listFuelLogs,
+  listFuelLogsAll,
   listFxRates,
   listPauseEvents,
   listPenalties,
   listRates,
   listRouteExtraCosts,
-  listTripEvents,
+  listTripEventsAll,
   toFxRates,
 } from "@e-logistic/api";
 import {
@@ -103,6 +104,20 @@ interface OpsCostRow {
   status: string | null;
 }
 
+/**
+ * Zbiór, który nie dojechał w komplecie — razem z KSZTAŁTEM swojego obcięcia.
+ *
+ * `oldest` jest datą tylko tam, gdzie obcięcie ma najstarszy ogon (limit + sort malejący
+ * po dacie). Przy pobieraniu stronami po `id` żadna data granicy nie opisuje, więc pole
+ * jest `null` i baner mówi wprost, że braki są rozsiane po całym okresie.
+ */
+interface Truncation {
+  label: string;
+  oldest: string | null;
+  /** `true` = koszt operacyjny: wyjazd pokaże się w całości, tylko tańszy niż był. */
+  ops: boolean;
+}
+
 /** Karta wyjazdu wraz z liczbami, których `buildJourneys` nie może policzyć sam. */
 interface JourneyView {
   j: Journey;
@@ -125,18 +140,23 @@ interface JourneyView {
 }
 
 /**
- * [#378] Górny pułap wierszy na zapytanie.
+ * Granica wierszy dla tabel bez wariantu stronicowanego (postoje, opłaty drogowe,
+ * kary) — RÓWNA sufitowi serwera, i to jest cały sens tej liczby.
  *
- * Wcześniej cztery zapytania szły bez limitu i bez zakresu dat, więc przy
- * dłuższej historii PostgREST obcinał odpowiedź na swoim domyślnym progu — bez
- * błędu i bez śladu w interfejsie. Skutek nie był „mniej danych", tylko DANE
- * ZMYŚLONE: zapytanie sortuje malejąco po `occurred_at`, więc ucinany był
- * najstarszy koniec, a `buildJourneys` składał wyjazdy z połówek — start bez
- * zakończenia (wyjazd „w toku" sprzed roku), zakończenie bez startu (wyjazd
- * znikał w całości) i tankowania przypisane do złego okna. Limit podany wprost
- * pozwala wykryć obcięcie i powiedzieć o nim użytkownikowi.
+ * [#378] opisało skutek trafnie: zapytanie sortuje malejąco po `occurred_at`, więc
+ * obcięcie zabiera najstarszy koniec, a `buildJourneys` składa wtedy wyjazdy z połówek
+ * — start bez zakończenia, zakończenie bez startu (wyjazd znika w całości), tankowania
+ * w złym oknie. To nie jest „mniej danych", to są dane ZMYŚLONE. Postawiony wtedy limit
+ * 5000 miał to obcięcie wykrywać (`length >= ROW_LIMIT`) i nie wykrywał NIGDY: PostgREST
+ * tnie na `api.max_rows` (u Supabase 1000) bez błędu, więc odpowiedź nie miała jak dobić
+ * do pięciu tysięcy. Dopiero limit równy sufitowi serwera sprawia, że pełna strona
+ * naprawdę znaczy „było więcej".
+ *
+ * Świadomy koszt: zbiór liczący DOKŁADNIE `ROW_LIMIT` wierszy zgłosi obcięcie, którego
+ * nie było. Fałszywy alarm jest tu wielokrotnie tańszy niż wyjazd poskładany z połówek,
+ * pokazany bez jednego zastrzeżenia.
  */
-const ROW_LIMIT = 5000;
+const ROW_LIMIT = DEFAULT_PAGE_SIZE;
 
 /** Ile miesięcy wstecz ma być pokazane w komplecie. */
 const MONTHS_BACK = 12;
@@ -214,7 +234,7 @@ export default function JourneysPage() {
    * wyjazdu, obcięte koszty operacyjne psują tylko jego KWOTĘ — wyjazd pokaże
    * się normalnie, po prostu tańszy niż był.
    */
-  const [truncated, setTruncated] = useState<{ label: string; oldest: string; ops: boolean }[]>([]);
+  const [truncated, setTruncated] = useState<Truncation[]>([]);
   /** Data, od której faktycznie pobrano wpisy (z zapasem) — do pokazania wprost. */
   const [fetchedFrom, setFetchedFrom] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -242,55 +262,72 @@ export default function JourneysPage() {
       // Granicy nie da się usunąć całkowicie — dlatego niżej mierzymy, ile
       // wpisów zostało za nią odciętych, i mówimy o tym wprost.
       const from = monthStartBack(MONTHS_BACK - 1 + LEAD_MONTHS);
-      const [tripsRes, f, a, d, r, fxRows, pauses, routeCosts, penalties] = await Promise.all([
-        listTripEvents(sb, { from, limit: ROW_LIMIT }),
-        listFuelLogs(sb, { table: "fuel_logs", from, limit: ROW_LIMIT }),
-        listFuelLogs(sb, { table: "adblue_logs", from, limit: ROW_LIMIT }),
-        listDrivers(sb, m.companyId).catch(() => []),
-        listRates(sb, m.companyId).catch(() => []),
-        // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
-        // publikuje w weekendy i święta — ten sam wzorzec co w /stats i /monthly.
-        listFxRates(sb, {
-          from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
-        }),
-        // [#382] Koszty operacyjne — DOKŁADNIE ten sam zakres dat co reszta,
-        // bo mają być przypisane do tych samych wyjazdów: węższy zakres
-        // odjąłby koszty najstarszym wyjazdom, szerszy dokładałby pozycje
-        // z tras, których ekran w ogóle nie pokazuje. Limit podany wprost, bo
-        // domyślne 500 z warstwy danych ucięłoby zbiór bez słowa — a przy
-        // kilkunastu miesiącach parkingi i bramki potrafią być najliczniejszą
-        // tabelą z tu pobieranych.
-        listPauseEvents(sb, { from, limit: ROW_LIMIT }),
-        listRouteExtraCosts(sb, { from, limit: ROW_LIMIT }),
-        listPenalties(sb, { from, limit: ROW_LIMIT }),
-      ]);
-      // Wynik dokładnie na limicie znaczy „prawie na pewno było więcej".
-      // Milczenie w tym miejscu było najgorszą częścią błędu: ekran wyglądał
-      // normalnie, a pokazywał wyjazdy poskładane z niepełnego zbioru.
-      // Zapytania sortują malejąco po `occurred_at`, więc ostatni wiersz zbioru
-      // to najstarsze, co dojechało — czyli data, od której dane są kompletne.
-      const cut = (rows: { occurred_at: string }[], label: string, isOps = false) =>
-        rows.length >= ROW_LIMIT
-          ? {
-              label,
-              oldest: (rows[rows.length - 1]?.occurred_at ?? from).slice(0, 10),
-              ops: isOps,
-            }
-          : null;
+      const [tripsPaged, fPaged, aPaged, d, r, fxRows, pauses, routeCosts, penalties] =
+        await Promise.all([
+          // Trzy zbiory, z których składa się SKŁAD wyjazdu, schodzą stronami: dla nich
+          // niepełny zbiór nie daje krótszej listy, tylko listę nieprawdziwą (patrz
+          // `ROW_LIMIT`). Komplet albo jawne `complete: false` — nic pomiędzy.
+          listTripEventsAll(sb, { from }),
+          listFuelLogsAll(sb, { table: "fuel_logs", from }),
+          listFuelLogsAll(sb, { table: "adblue_logs", from }),
+          listDrivers(sb, m.companyId).catch(() => []),
+          listRates(sb, m.companyId).catch(() => []),
+          // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
+          // publikuje w weekendy i święta — ten sam wzorzec co w /stats i /monthly.
+          listFxRates(sb, {
+            from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+          }),
+          // [#382] Koszty operacyjne — DOKŁADNIE ten sam zakres dat co reszta,
+          // bo mają być przypisane do tych samych wyjazdów: węższy zakres
+          // odjąłby koszty najstarszym wyjazdom, szerszy dokładałby pozycje
+          // z tras, których ekran w ogóle nie pokazuje. Limit podany wprost, bo
+          // domyślne 500 z warstwy danych ucięłoby zbiór bez słowa — a przy
+          // kilkunastu miesiącach parkingi i bramki potrafią być najliczniejszą
+          // tabelą z tu pobieranych.
+          listPauseEvents(sb, { from, limit: ROW_LIMIT }),
+          listRouteExtraCosts(sb, { from, limit: ROW_LIMIT }),
+          listPenalties(sb, { from, limit: ROW_LIMIT }),
+        ]);
+      /*
+       * Dwa dowody obcięcia — i, co ważniejsze, dwa RÓŻNE jego kształty.
+       *
+       * Zbiory stronicowane mówią o sobie same (`complete: false` = zadziałał twardy
+       * sufit stron); przy tabelach kosztów operacyjnych, które wariantu stronicowanego
+       * jeszcze nie mają, zostaje przesłanka — strona pełna co do wiersza znaczy
+       * „prawie na pewno było więcej".
+       *
+       * Data graniczna ma sens WYŁĄCZNIE w tym drugim przypadku. Zapytanie z `limit`
+       * sortuje malejąco po `occurred_at`, więc obcięcie zabiera najstarszy ogon i ostatni
+       * pobrany wiersz naprawdę wyznacza moment, od którego dane są kompletne.
+       * `fetchAllByKeyset` schodzi natomiast po `id` (losowy UUID): po zadziałaniu sufitu
+       * w wyniku zostaje podzbiór LOSOWY względem daty, rozłożony po całym oknie, a
+       * najstarszy pobrany `occurred_at` leży praktycznie na jego początku. Podanie wtedy
+       * daty granicznej mówiłoby dyspozytorowi coś odwrotnego do prawdy: że wyjazdy
+       * z ostatnich miesięcy są pewne, podczas gdy dziury są także we wczorajszych.
+       *
+       * Milczenie tutaj było najgorszą częścią błędu, ale ostrzeżenie wskazujące zły
+       * kierunek jest od milczenia gorsze.
+       */
+      const granica = (rows: { occurred_at: string }[]) =>
+        (rows[rows.length - 1]?.occurred_at ?? from).slice(0, 10);
+      const ucietoStronami = (paged: { complete: boolean }, label: string): Truncation | null =>
+        paged.complete ? null : { label, oldest: null, ops: false };
+      const ucietoLimitem = (rows: { occurred_at: string }[], label: string): Truncation | null =>
+        rows.length >= ROW_LIMIT ? { label, oldest: granica(rows), ops: true } : null;
       setTruncated(
         [
-          cut(tripsRes, "zdarzenia tras"),
-          cut(f, "tankowania"),
-          cut(a, "AdBlue"),
-          cut(pauses, "postoje i parkingi", true),
-          cut(routeCosts, "opłaty drogowe i przejazdy", true),
-          cut(penalties, "kary", true),
-        ].filter((x): x is { label: string; oldest: string; ops: boolean } => x != null),
+          ucietoStronami(tripsPaged, t("journeys.set.trips")),
+          ucietoStronami(fPaged, t("journeys.set.fuel")),
+          ucietoStronami(aPaged, t("journeys.set.adblue")),
+          ucietoLimitem(pauses, t("journeys.set.pauses")),
+          ucietoLimitem(routeCosts, t("journeys.set.routeCosts")),
+          ucietoLimitem(penalties, t("journeys.set.penalties")),
+        ].filter((x): x is Truncation => x != null),
       );
       setFetchedFrom(from);
-      setTrips(tripsRes);
-      setFuel(f);
-      setAdblue(a);
+      setTrips(tripsPaged.rows);
+      setFuel(fPaged.rows);
+      setAdblue(aPaged.rows);
       setDrivers(d);
       setRates(r);
       setFx(toFxRates(fxRows));
@@ -667,22 +704,27 @@ export default function JourneysPage() {
           zgadywać, czy patrzy na niepełną listę, czy na niepełną sumę. */}
       {ready && truncated.length > 0 && (
         <div style={warn}>
-          ⚠️ Lista niepełna — z tych zbiorów wróciła maksymalna liczba wierszy ({ROW_LIMIT}), więc
-          starsze wpisy nie dojechały:{" "}
-          {truncated.map((x) => `${x.label} (mamy dopiero od ${x.oldest})`).join(", ")}. Wyjazd
-          rozpoczęty przed tymi datami może być poskładany z połówek (start bez zakończenia,
-          brakujące tankowania) albo nie pojawić się wcale. Komplet danych mają dopiero wyjazdy
-          rozpoczęte po najpóźniejszej z podanych dat.
+          ⚠️{" "}
+          {t("journeys.incomplete").replace(
+            "{sets}",
+            truncated
+              .map((x) =>
+                x.oldest == null
+                  ? t("journeys.incomplete.spread").replace("{label}", x.label)
+                  : t("journeys.incomplete.since")
+                      .replace("{label}", x.label)
+                      .replace("{date}", x.oldest),
+              )
+              .join(", "),
+          )}
+          {/* Zdanie „komplet mają wyjazdy po tej dacie" dopisujemy tylko wtedy, gdy KAŻDY
+              niepełny zbiór ma datę granicy. Wystarczy jeden zbiór ucięty stronami, żeby
+              stało się nieprawdą dla całego ekranu. */}
+          {truncated.every((x) => x.oldest != null) && <> {t("journeys.incomplete.after")}</>}
           {/* [#382] Obcięcie kosztów operacyjnych daje inny objaw niż obcięcie
               zdarzeń trasy: wyjazd pokaże się normalnie, tylko tańszy — a to
               wygląda dokładnie jak wyjazd, który był tani naprawdę. */}
-          {truncated.some((x) => x.ops) && (
-            <>
-              {" "}
-              Obcięcie dotyczy też kosztów płaconych po drodze — starsze wyjazdy pokażą się w
-              komplecie, ale z zaniżonym kosztem, zawyżonym zyskiem i marżą.
-            </>
-          )}
+          {truncated.some((x) => x.ops) && <> {t("journeys.incomplete.ops")}</>}
         </div>
       )}
 

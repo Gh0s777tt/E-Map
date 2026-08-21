@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mockSupabase } from "../test-utils";
+import { mockSupabase, mockSupabasePaged } from "../test-utils";
 import { latestOdometers, listServiceTasks } from "./service";
 
 describe("listServiceTasks (kształt zapytania)", () => {
@@ -34,24 +34,22 @@ describe("listServiceTasks (kształt zapytania)", () => {
 
 describe("latestOdometers (agregacja max licznika per pojazd)", () => {
   it("zwraca najwyższy licznik dla każdego pojazdu", async () => {
-    const { client } = mockSupabase({
-      data: [
-        { vehicle_id: "v1", odometer_km: 100 },
-        { vehicle_id: "v1", odometer_km: 250 },
-        { vehicle_id: "v2", odometer_km: 50 },
-        { vehicle_id: "v1", odometer_km: 200 },
+    const { client } = mockSupabasePaged([
+      [
+        { id: "a", vehicle_id: "v1", odometer_km: 100 },
+        { id: "b", vehicle_id: "v1", odometer_km: 250 },
+        { id: "c", vehicle_id: "v2", odometer_km: 50 },
+        { id: "d", vehicle_id: "v1", odometer_km: 200 },
       ],
-      error: null,
-    });
-    expect(await latestOdometers(client, "c1")).toEqual({ v1: 250, v2: 50 });
+    ]);
+    const odo = await latestOdometers(client, "c1");
+    expect(odo.byVehicle).toEqual({ v1: 250, v2: 50 });
+    expect(odo.complete).toBe(true);
   });
 
   it("pomija pojazd z samym zerowym/null licznikiem (km nie > 0)", async () => {
-    const { client } = mockSupabase({
-      data: [{ vehicle_id: "v1", odometer_km: null }],
-      error: null,
-    });
-    expect(await latestOdometers(client, "c1")).toEqual({});
+    const { client } = mockSupabasePaged([[{ id: "a", vehicle_id: "v1", odometer_km: null }]]);
+    expect((await latestOdometers(client, "c1")).byVehicle).toEqual({});
   });
 });
 
@@ -66,27 +64,43 @@ describe("sufity pobrania w module serwisowym", () => {
     expect(wlasne.argsOf("limit")?.[0]).toBe(25);
   });
 
-  it("KRYTYCZNE: latestOdometers domyślnie NIE ucina wyniku", async () => {
+  it("KRYTYCZNE: latestOdometers schodzi STRONAMI, a nie jednym zapytaniem bez limitu", async () => {
     /*
-     * Sufit z sortowaniem malejącym po liczniku wypycha z wyniku CAŁE pojazdy
-     * o najniższym przebiegu — czyli te nowe. A brak przebiegu nie kończy się pustym
-     * ekranem: `serviceStatus(null, …)` daje poziom „ok", więc panel „Wymaga uwagi"
-     * pomija taki pojazd milcząco i przekroczony przegląd nigdy nie zapala się na czerwono.
-     * Dlatego domyślnie nie ma tu ani `limit`, ani sortowania — jest komplet.
+     * Zapytanie bez `limit` nie było kompletem, tylko sufitem `api.max_rows` (1000)
+     * egzekwowanym bez błędu — i bez sortowania, czyli w kolejności nieokreślonej.
+     * Firma z dwoma latami tankowań dostawała maksimum z przypadkowego tysiąca wierszy,
+     * a `serviceStatus(zaniżony, …)` odpowiadał na to poziomem „ok": panel „Wymaga uwagi"
+     * milczał identycznie jak przy flocie w normie. Stąd kursor po `id` i trzy kolumny.
      */
-    const { client, argsOf } = mockSupabase({ data: [], error: null });
-    await latestOdometers(client, "c1");
-    expect(argsOf("limit")).toBeUndefined();
-    expect(argsOf("order")).toBeUndefined();
+    const strona = (od: number) =>
+      Array.from({ length: 1000 }, (_, i) => ({
+        id: `id-${String(od + i).padStart(5, "0")}`,
+        vehicle_id: "v1",
+        odometer_km: od + i,
+      }));
+    const paged = mockSupabasePaged([strona(0), strona(1000), []]);
+    const odo = await latestOdometers(paged.client, "c1");
+    expect(paged.stron()).toBe(3);
+    expect(paged.kursory()).toEqual([
+      ["id", "id-00999"],
+      ["id", "id-01999"],
+    ]);
+    expect(paged.argsOf("order")).toEqual(["id", { ascending: true }]);
+    // Bez stronicowania maksimum kończyłoby się na 999 — czyli tysiąc kilometrów
+    // za nisko dla planu serwisowego, który liczy interwał od tej liczby.
+    expect(odo.byVehicle.v1).toBe(1999);
   });
 
-  it("latestOdometers: jawny opts.limit tnie dopiero po sortowaniu malejącym", async () => {
-    // Skoro wywołujący świadomie próbkuje, obcięcie ma co najwyżej usunąć pojazd
-    // z wyniku, a nie zwrócić dla niego przebiegu ZANIŻONEGO — liczby nieodróżnialnej
-    // od prawdziwej, z której plan serwisowy wyliczy termin przeglądu.
-    const { client, argsOf } = mockSupabase({ data: [], error: null });
-    await latestOdometers(client, "c1", { limit: 10 });
-    expect(argsOf("order")).toEqual(["odometer_km", { ascending: false }]);
-    expect(argsOf("limit")?.[0]).toBe(10);
+  it("latestOdometers: sufit stron zgłasza się jako complete: false", async () => {
+    // Zaniżony przebieg wygląda dokładnie jak niższy przebieg, więc jedynym śladem
+    // po obcięciu jest ta flaga — a wywołujący nie ma jak jej ominąć.
+    const strona = Array.from({ length: 1000 }, (_, i) => ({
+      id: `id-${String(i).padStart(4, "0")}`,
+      vehicle_id: "v1",
+      odometer_km: i,
+    }));
+    const paged = mockSupabasePaged([strona, strona.map((r) => ({ ...r, id: `x${r.id}` }))]);
+    const odo = await latestOdometers(paged.client, "c1", { maxPages: 2 });
+    expect(odo.complete).toBe(false);
   });
 });

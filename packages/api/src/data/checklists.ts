@@ -1,6 +1,7 @@
 /** Warstwa danych: checklisty kierowców (#273). */
 import { type ChecklistAnswers, type ChecklistItem, newId } from "@e-logistic/core";
 import type { Json, TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset, type PagedRows } from "./pagination";
 
 export interface ChecklistTemplate {
   id: string;
@@ -160,35 +161,110 @@ export async function insertChecklistSubmission(
   return data?.id ?? id ?? "";
 }
 
-/** Zgłoszenia firmy (zarząd) lub własne (kierowca — RLS zawęża). Filtry + sort. */
-export async function listChecklistSubmissions(
+const SUBMISSION_COLS =
+  "id, template_name, driver_id, driver_user_id, driver_label, vehicle_id, answers, created_at";
+
+/** Filtry wspólne dla obu trybów pobrania (jednorazowego i stronami). */
+export interface ChecklistSubmissionFilter {
+  vehicleId?: string;
+  driverUserId?: string;
+  templateName?: string;
+  /**
+   * Zakres `created_at`: `from` włącznie, `to` WYŁĄCZNIE — ta sama konwencja co
+   * w `orders.ts`, żeby wiersz z północy granicznego dnia nie należał do dwóch okien.
+   *
+   * Zakres jest tu ważniejszy niż wygoda: scoring liczy okno 90 dni, a `answers`
+   * to kolumna JSON, więc odsianie okna dopiero w przeglądarce znaczy ściągnięcie
+   * kilkudziesięciu megabajtów po to, żeby odrzucić 97% z nich. Do tego `complete`
+   * mówiłoby wtedy o CAŁEJ historii firmy, a nie o oknie, które ekran naprawdę liczy —
+   * czyli baner „ranking jest niepełny" zapalałby się przy komplecie danych.
+   */
+  from?: string;
+  to?: string;
+}
+
+/** Zawężenie zbioru zgłoszeń — jedno miejsce na filtry, bez sortowania (patrz `orders.ts`). */
+function companySubmissionsFilter(
   client: SupabaseClient,
   companyId: string,
-  opts: { vehicleId?: string; driverUserId?: string; templateName?: string; limit?: number } = {},
-): Promise<ChecklistSubmission[]> {
-  let q = client
-    .from("checklist_submissions")
-    .select(
-      "id, template_name, driver_id, driver_user_id, driver_label, vehicle_id, answers, created_at",
-    )
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false })
-    .limit(opts.limit ?? 200);
+  opts: ChecklistSubmissionFilter,
+) {
+  let q = client.from("checklist_submissions").select(SUBMISSION_COLS).eq("company_id", companyId);
   if (opts.vehicleId) q = q.eq("vehicle_id", opts.vehicleId);
   if (opts.driverUserId) q = q.eq("driver_user_id", opts.driverUserId);
   if (opts.templateName) q = q.eq("template_name", opts.templateName);
-  const { data, error } = await q;
+  if (opts.from) q = q.gte("created_at", opts.from);
+  if (opts.to) q = q.lt("created_at", opts.to);
+  return q;
+}
+
+/** Wiersz `checklist_submissions` w kształcie z `SUBMISSION_COLS` — przed mapowaniem `answers`. */
+interface ChecklistSubmissionRow {
+  id: string;
+  template_name: string;
+  driver_id: string | null;
+  driver_user_id: string | null;
+  driver_label: string;
+  vehicle_id: string | null;
+  answers: Json;
+  created_at: string;
+}
+
+/** `answers` przychodzi z bazy jako `Json` — kształt odpowiedzi znamy dopiero tutaj. */
+function toChecklistSubmission(r: ChecklistSubmissionRow): ChecklistSubmission {
+  return { ...r, answers: (r.answers as unknown as ChecklistAnswers) ?? {} };
+}
+
+/** Najnowsze pierwsze; `id` rozstrzyga remis przy paczce zgłoszeń z jednej synchronizacji. */
+function najnowszePierwsze(a: ChecklistSubmission, b: ChecklistSubmission): number {
+  return b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+}
+
+/**
+ * Zgłoszenia firmy (zarząd) lub własne (kierowca — RLS zawęża). Filtry + sort.
+ *
+ * Domyślne 200 to okno ostatnich zgłoszeń dla listy na ekranie. Większy `limit`
+ * kompletu nie daje: powyżej `api.max_rows` PostgREST przycina odpowiedź bez błędu,
+ * więc `limit: 1000` na ekranie scoringu jest dokładnie sufitem serwera, nie ochroną.
+ * Gdzie ze zgłoszeń liczy się WSKAŹNIK — `listChecklistSubmissionsAll`.
+ */
+export async function listChecklistSubmissions(
+  client: SupabaseClient,
+  companyId: string,
+  opts: ChecklistSubmissionFilter & { limit?: number } = {},
+): Promise<ChecklistSubmission[]> {
+  const { data, error } = await companySubmissionsFilter(client, companyId, opts)
+    .order("created_at", { ascending: false })
+    .limit(opts.limit ?? 200);
   if (error) throw error;
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    template_name: r.template_name,
-    driver_id: r.driver_id,
-    driver_user_id: r.driver_user_id,
-    driver_label: r.driver_label,
-    vehicle_id: r.vehicle_id,
-    answers: (r.answers as unknown as ChecklistAnswers) ?? {},
-    created_at: r.created_at,
-  }));
+  return (data ?? []).map(toChecklistSubmission);
+}
+
+/**
+ * Zgłoszenia pobrane STRONAMI — komplet albo `complete: false`.
+ *
+ * Scoring kierowców liczy ODSETEK: ile checklist wypełnionych, ile pozycji zgłoszonych
+ * jako usterka. Obcięty zbiór psuje tu MIANOWNIK, a nie tylko licznik — i psuje go
+ * nierówno, bo tysiąc najnowszych zgłoszeń całej firmy to głównie wpisy kierowców
+ * jeżdżących najczęściej. Kierowca, który wypełnia checklisty rzadziej, wypada ze
+ * zbioru prawie w całości i dostaje wynik policzony z kilku przypadkowych zgłoszeń.
+ */
+export async function listChecklistSubmissionsAll(
+  client: SupabaseClient,
+  companyId: string,
+  opts: ChecklistSubmissionFilter & { pageSize?: number; maxPages?: number } = {},
+): Promise<PagedRows<ChecklistSubmission>> {
+  const paged = await fetchAllByKeyset<ChecklistSubmission>(
+    async (afterId, pageSize) => {
+      let q = companySubmissionsFilter(client, companyId, opts);
+      if (afterId) q = q.gt("id", afterId);
+      const { data, error } = await q.order("id", { ascending: true }).limit(pageSize);
+      if (error) throw error;
+      return (data ?? []).map(toChecklistSubmission);
+    },
+    { pageSize: opts.pageSize, maxPages: opts.maxPages },
+  );
+  return { ...paged, rows: [...paged.rows].sort(najnowszePierwsze) };
 }
 
 const BUCKET = "cargo-photos";
