@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-426-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.251.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-427-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.252.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,69 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.252.0] — 📏 Reguła bez bramki gnije
+
+Rozbudowa [`CLAUDE.md`](CLAUDE.md) i [`SECURITY.md`](SECURITY.md) o rytm pracy „na bieżąco".
+Przy pisaniu wyszło, że problemem nie jest brak reguł — tylko to, że **istniejące reguły
+nikogo nie obowiązywały**, bo nic ich nie sprawdzało.
+
+- `[#427]` 📏 **Każda reguła dostaje wskazaną bramkę — albo etykietę `[dyscyplina]`**
+  ([CLAUDE.md](CLAUDE.md))
+
+  Dokument mówił „bramki muszą być zielone przed PR", a job `quality` miał w historii
+  projektu **12 uruchomień i 12 porażek, ani jednego sukcesu**. Mówił „dokumenty zawsze
+  zgodne z kodem", a `ARCHITECTURE.md` odsyłał do plików, których w repo nie ma. Reguły były
+  prawdziwe jako intencja i fałszywe jako opis rzeczywistości — więc ich czytanie
+  **wprowadzało w błąd**.
+
+  Nowa zasada nadrzędna: reguła bez egzekucji jest jawnie oznaczona jako `[dyscyplina]`.
+  Tabela „Rytm pracy" wymienia przy każdej pozycji konkretną bramkę: dokumentacja, README,
+  changelog, roadmapa, commity, push, release, gałąź, audyty, numeracja, podpisy, sekrety.
+  Doszła też sekcja **„Reguły wykute na błędach"** — dziewięć zasad, z których każda
+  kosztowała osobne śledztwo w tej serii audytów.
+
+- `[#427]` 🔢 **Bramka ciągłości numeracji `[#NNN]` — i zgubiony wpis, który znalazła**
+  ([docs-check.mjs](scripts/docs-check.mjs))
+
+  CLAUDE.md od pierwszego dnia wymagał numerów „kolejnych, bez luk". **Pierwsze uruchomienie
+  kontroli znalazło dwie luki.**
+
+  `#376` okazał się **zgubionym wpisem**: trzy commity z 2026‑08‑09 (`aff3cb7`, `9ad6a7d`,
+  `d0dbf1a`) opisujące realną pracę — fałszywy sukces przy znikaniu wiadomości na kanale
+  ogólnym, zdjęcie przekazane z kanału firmowego do rozmowy prywatnej pozostające czytelne
+  dla całej firmy, całkowicie niesprawny cron czatu (414 na 195‑kilobajtowym URL-u) oraz
+  waluta zapisywana, ale nigdzie nieprzeliczana (1200 PLN liczone jako 1200 EUR). Wpis
+  odtworzony z treści commitów i dopisany do wydania `1.217.0`.
+
+  `#336` to numer faktycznie przeskoczony — bez commita, bez zmiany. Trafił na listę
+  wyjątków, która **sama się dezaktualizuje**: gdy numer się kiedyś pojawi, bramka zażąda
+  usunięcia zbędnego zwolnienia.
+
+  Luka w numeracji jest tanim wskaźnikiem zgubionego wpisu — dlatego jest błędem,
+  nie ostrzeżeniem.
+
+- `[#427]` ✋ **Strażnik gałęzi w `pre-commit`** ([lefthook.yml](lefthook.yml))
+
+  Zakaz commitowania wprost na `main` istniał w regułach i nikt go nie pilnował — a commit
+  na gałęzi domyślnej omija MR, czyli **jedyne miejsce, w którym w tym repo uruchamiają się
+  bramki i przegląd**. Świadome obejście zostaje (`--no-verify`), bo commit ratunkowy przy
+  zepsutym CI musi być możliwy.
+
+- `[#427]` 🔐 **SECURITY.md z inwariantami zamiast samej polityki zgłoszeń**
+  ([SECURITY.md](SECURITY.md))
+
+  Doszły: **inwarianty** (RLS 62/62 · `search_path` na 91/91 funkcjach `SECURITY DEFINER` ·
+  rate-limit 16/16 tras · `service_role` za `server-only`) z podanym sposobem weryfikacji
+  przy każdym; **klasyfikacja sekretów** — bo klucz `anon` nie jest sekretem i mylenie go
+  z `service_role` generuje najwięcej fałszywych alarmów; **bramki bezpieczeństwa** wraz
+  z pułapką płytkiego klonu (bez `GIT_DEPTH: 0` skan sekretów widzi ~20 commitów);
+  oraz **kolejność postępowania przy wycieku** — najpierw rotacja, dopiero potem historia,
+  bo usunięcie sekretu z gita go **nie unieważnia**.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1283** ✓ · `next build` ✓ · `docs:check` ✓
+(9 kontroli) · nowa kontrola przetestowana negatywnie — sztuczna luka wywala bramkę z kodem 1
 
 
 ## [1.251.0] — 📳 „Nic się nie dzieje" przestaje być możliwym stanem przycisku
@@ -1924,6 +1987,36 @@ kary, usuwanie wpisów, ekspres i parking strzeżony.
 - `[#375]` **Ekspres i parking strzeżony** przy załadunku/rozładunku — schemat, maper, kolumny i checkboxy.
 
 **Bramki:** biome ✓ · `tsc` core/maps/api/web/mobile 0 ✓ · testy core 489 · api 77 · web 78 · i18n 5 ✓ · `next build` ✓.
+
+- `[#376]` 🧾 **Wpis odtworzony w `[#427]` z treści commitów** — oryginał nigdy nie powstał,
+  a lukę wykryła dopiero nowa bramka ciągłości numeracji. Trzy commity z 2026‑08‑09
+  (`aff3cb7`, `9ad6a7d`, `d0dbf1a`), wszystkie z rundy przeglądowej:
+
+  **Znikanie wiadomości na kanale ogólnym — fałszywy sukces.** Panel czytał ustawienie
+  z aktywnego WĄTKU, a kanał ogólny wątku nie ma, więc zawsze pokazywał „wyłączone".
+  Gorzej: ustawienie kanału ogólnego zapisuje się w `companies`, gdzie polityka dopuszcza
+  wyłącznie właściciela — RLS nie zwraca błędu, żaden wiersz nie pasuje, PostgREST
+  odpowiada 204 i `error` jest `null`. Dyspozytor wychodził przekonany, że włączył
+  znikanie wiadomości całej firmy. Teraz rozstrzyga `count`.
+
+  **Reakcje na żywo.** `message_reactions` trafiła do publikacji realtime w migracji 0094,
+  ale żaden klient jej nie subskrybował — publikacja bez subskrypcji nie robi nic.
+
+  **Przekazywanie zdjęć — dwa złe skutki naraz.** Polityka Storage bramkuje dostęp po wątku
+  zapisanym w nazwie pliku, a przekazanie zachowywało ścieżkę źródłową: odbiorca widział
+  wieczne „ładowanie" (błąd połykany pustym `catch`), a zdjęcie przekazane z kanału ogólnego
+  do rozmowy prywatnej **zostawało czytelne dla całej firmy**. Załącznik jest teraz kopiowany
+  tokenem użytkownika, więc skopiować da się tylko to, co wywołujący i tak może odczytać.
+
+  **Cron czatu był całkowicie niesprawny.** `in()` buduje się jako parametr URL — 5000 UUID
+  dawało adres ~195 KB i bramę odpowiadającą 414. Cron wywracał się przy każdym przebiegu
+  i nic nigdy nie zostało usunięte, odwrotnie niż obiecywał nagłówek pliku. Do tego
+  `storage.remove` wykonywało się PRZED `delete`, więc zdjęcia znikały, a wiersze zostawały.
+
+  **Waluta była zapisywana, ale nigdzie nie przeliczana.** Żaden odczyt nie patrzył na
+  kolumnę `currency` — 1200 PLN wchodziło do sumy jako 1200 EUR zamiast ~279 EUR, a moduł
+  `fx.ts` nie miał ani jednego wywołania produkcyjnego. Sprawdzone przed naprawą: w bazie
+  było 0 wierszy nie-EUR, więc żadne dane nie zostały zepsute.
 
 ## [1.216.0] — 💬 Czat: model wiadomości + załatana dziura cross-tenant
 

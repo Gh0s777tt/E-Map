@@ -5,6 +5,19 @@
 pre-commit:
   parallel: true
   commands:
+    # Zakaz commitowania bezpośrednio na gałąź domyślną (CLAUDE.md → „Git").
+    # Reguła istniała od początku i nikt jej nie pilnował — a commit na `main` omija MR,
+    # czyli jedyne miejsce, w którym w tym repo uruchamiają się bramki i przegląd.
+    # Świadomy wyjątek: `git commit --no-verify` (np. commit ratunkowy przy zepsutym CI).
+    galaz:
+      priority: 1
+      run: |
+        galaz="$(git rev-parse --abbrev-ref HEAD)"
+        if [ "$galaz" = "main" ]; then
+          echo "✋ Commit na 'main' zablokowany — załóż gałąź (feat/…, fix/…, docs/…) i otwórz MR."
+          echo "   Świadome obejście: git commit --no-verify"
+          exit 1
+        fi
     biome:
       glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
       run: pnpm exec biome check --write --no-errors-on-unmatched {staged_files}
