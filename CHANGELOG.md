@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-425-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.250.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-426-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.251.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,47 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.251.0] — 📳 „Nic się nie dzieje" przestaje być możliwym stanem przycisku
+
+Zgłoszenie od kierowcy: *nie da się zapisać trasy po wybraniu rozładunku, przycisk nie
+reaguje*. Śledztwo dało wynik, którego się nie spodziewałem.
+
+- `[#426]` 📳 **Ekran Trasa dostaje sygnały zwrotne, które formularz Paliwo ma od `[#294]`**
+  ([trip.tsx](apps/mobile/app/trip.tsx))
+
+  **W kodzie nie ma ŻADNEJ różnicy między załadunkiem a rozładunkiem.** Sprawdzone kolejno:
+  `tripEventSchema` to `discriminatedUnion`, w którym obie gałęzie mają identyczny zestaw
+  pól; `needsWeight` obejmuje obie akcje tak samo; `tripEventToRow` nie ma gałęzi zależnej
+  od akcji; wszystkie 7 akcji × 4 języki są w katalogu; `firstZodError` ma fallback, więc
+  walidacja nie może odrzucić po cichu; `apps/mobile/app/trip.tsx` nie zmienił się od
+  wersji 1.95.0, więc to nie kwestia starego artefaktu.
+
+  Różnica jest gdzie indziej — **między ekranem Trasa a formularzem Paliwo/AdBlue**.
+  `LiquidForm` daje trzy sygnały: wibrację (`success()`/`warn()`), komunikat i osobny baner
+  błędu synchronizacji. Trasa nie miała **żadnego z nich** poza tekstem w wyblakłym kolorze
+  `smoke`, renderowanym **pod przyciskiem**. Przy dłuższym formularzu — a rozładunek
+  z wybranym zleceniem dokłada sekcję zdjęć ładunku — ten tekst ląduje poniżej krawędzi
+  ekranu. Kierowca tapie „Zapisz", telefon nie drga, nic widocznego się nie zmienia.
+  **To nie jest przycisk, który nie działa. To przycisk, który nie odpowiada.**
+
+  Naprawione: haptyka na każdej ścieżce (`warn()` przy odrzuceniu, `success()` przy zapisie),
+  odrzucenie w kolorze ostrzeżenia zamiast wyblakłego, `accessibilityLiveRegion` +
+  `accessibilityRole="alert"`, oraz zbiorczy baner błędu synchronizacji.
+
+  Baner skanuje **całą kolejkę**, nie widoczną dziesiątkę: lista pokazuje `slice(0, 10)`,
+  więc przy dłużej niedostępnym backendzie błędny wpis wypadał poza nią i znikał z oczu —
+  a to jedyne miejsce, w którym kierowca widzi powód odrzucenia przez serwer.
+
+  **Czego to NIE naprawia:** jeśli rozładunek jest odrzucany przez bazę, ta zmiana sprawia,
+  że kierowca zobaczy powód — nie usuwa powodu. Jedyna asymetria load/unload w całym
+  systemie siedzi w wyzwalaczu `auto_close_order_on_delivery` ([0052](supabase/migrations/0052_trip_order_link.sql)),
+  który robi `update orders` dopiero gdy istnieją OBA zdarzenia, czyli w praktyce przy
+  rozładunku. Weryfikacja wymaga żywej bazy — dziś wstrzymanej (patrz [BACKLOG](docs/BACKLOG.md)).
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1283** ✓ · `next build` ✓ · `docs:check` ✓ ·
+parytet i18n PL/EN/DE/UK ✓
 
 
 ## [1.250.0] — 🔧 Plan serwisowy przestaje gubić auta po terminie

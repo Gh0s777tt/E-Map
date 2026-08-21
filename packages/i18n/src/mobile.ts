@@ -1137,6 +1137,7 @@ const pl = {
   "m.trip.photoHintNoOrders":
     "📷 Zdjęcia towaru / CMR dodasz po przypisaniu Ci otwartego zlecenia (ekran „Moje zlecenia”).",
   "m.trip.recent": "Ostatnie zdarzenia",
+  "m.trip.syncError": "Błąd synchronizacji",
   "m.trip.savedSynced": "✅ Zapisano i zsynchronizowano: {a}.",
   "m.trip.savedLocal": "📥 Zapisano lokalnie: {a} — sync w tle.",
   "m.trip.act.load": "Załadunek",
@@ -2296,6 +2297,7 @@ const en: Record<MobileMessageKey, string> = {
   "m.trip.photoHintNoOrders":
     "📷 You can add cargo / CMR photos once an open order is assigned to you (see My orders).",
   "m.trip.recent": "Recent events",
+  "m.trip.syncError": "Sync error",
   "m.trip.savedSynced": "✅ Saved and synced: {a}.",
   "m.trip.savedLocal": "📥 Saved locally: {a} — syncing in the background.",
   "m.trip.act.load": "Loading",
@@ -3460,6 +3462,7 @@ const de: Record<MobileMessageKey, string> = {
   "m.trip.photoHintNoOrders":
     "📷 Fracht-/CMR-Fotos kannst du hinzufügen, sobald dir ein offener Auftrag zugewiesen ist (Bildschirm „Meine Aufträge”).",
   "m.trip.recent": "Letzte Ereignisse",
+  "m.trip.syncError": "Synchronisierungsfehler",
   "m.trip.savedSynced": "✅ Gespeichert und synchronisiert: {a}.",
   "m.trip.savedLocal": "📥 Lokal gespeichert: {a} — Synchronisierung im Hintergrund.",
   "m.trip.act.load": "Beladung",
@@ -4615,6 +4618,7 @@ const uk: Record<MobileMessageKey, string> = {
   "m.trip.photoHintNoOrders":
     "📷 Фото вантажу / CMR можна додати після призначення відкритого замовлення (екран «Мої замовлення»).",
   "m.trip.recent": "Останні події",
+  "m.trip.syncError": "Помилка синхронізації",
   "m.trip.savedSynced": "✅ Збережено та синхронізовано: {a}.",
   "m.trip.savedLocal": "📥 Збережено локально: {a} — синхронізація у фоні.",
   "m.trip.act.load": "Завантаження",
