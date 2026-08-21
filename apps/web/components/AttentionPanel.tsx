@@ -3,15 +3,16 @@
 import {
   latestOdometers,
   listDamageClaims,
-  listDefects,
-  listDocuments,
+  listDefectsAll,
+  listDocumentsAll,
   listDrivers,
   listFuelCardsSafe,
-  listInvoices,
+  listInvoicesAll,
   listServiceTasks,
   listVehiclesExpiry,
 } from "@e-logistic/api";
 import {
+  type DefectStatus,
   type ExpiryLevel,
   expiryStatus,
   invoicePaymentStatus,
@@ -64,6 +65,9 @@ function isCriticalDefect(severity: string, dashboardLight: boolean): boolean {
   return severity === "high" || dashboardLight;
 }
 
+/** Statusy usterki, które wciąż czekają na reakcję — zawężenie idzie do BAZY. */
+const OPEN_DEFECT_STATUSES: DefectStatus[] = ["open", "in_progress"];
+
 /**
  * Zbiorczy panel „Co wymaga uwagi" — liczony na żywo (niezależnie od crona).
  * Agreguje terminy: dokumenty pojazdów (przegląd/OC/leasing), karty paliwowe,
@@ -74,6 +78,20 @@ function isCriticalDefect(severity: string, dashboardLight: boolean): boolean {
 export function AttentionPanel() {
   const [items, setItems] = useState<Item[]>([]);
   const [ready, setReady] = useState(false);
+  /**
+   * Zbiory, których nie udało się pobrać w KOMPLECIE — brak pozycji z nich NIE jest
+   * tu potwierdzony.
+   *
+   * Ten panel jest jedynym miejscem, gdzie zaległa faktura, mijający termin dokumentu
+   * i otwarta usterka same się zgłaszają; nikt nie wchodzi na /invoices, żeby sprawdzić,
+   * czy czegoś nie przeoczył. Milczenie panelu wygląda wtedy dokładnie tak samo jak
+   * milczenie przy firmie, u której naprawdę nic nie zalega — i to milczenie było jedyną
+   * informacją, jaką dawał.
+   *
+   * Lista, a nie flaga „faktury", bo baner nazywający po imieniu JEDEN zbiór z trzech
+   * zamienia ciszę o pozostałych w pozorne potwierdzenie ich kompletności.
+   */
+  const [incompleteSets, setIncompleteSets] = useState<MessageKey[]>([]);
   const t = useT();
 
   useEffect(() => {
@@ -83,22 +101,52 @@ export function AttentionPanel() {
         const m = await getCachedMembership(sb);
         // Panel zarządczy (terminy floty/faktur) — tylko owner/dispatcher.
         if (!m || (m.role !== "owner" && m.role !== "dispatcher")) return;
+        /*
+         * KAŻDE zapytanie ma własny `.catch(() => null)`, a `null` mówi „nie wiemy".
+         *
+         * Bez tego odrzucenie jednego zapytania przewracało całe `Promise.all` do bloku
+         * `catch` na dole, a ten ukrywa panel w CAŁOŚCI — czyli awaria sieci na czwartej
+         * stronie faktur dawała pulpit wyglądający jak u firmy, u której nic nie zalega.
+         * Milczenie tego panelu jest jego jedyną „dobrą" odpowiedzią, więc nie wolno go
+         * wydać z powodu, którego użytkownik nie zobaczy: nieudany zbiór wchodzi do
+         * `incompleteSets` dokładnie na tych samych prawach co zbiór obcięty.
+         */
         const [vehs, cards, tasks, odo, docs, invs, drvs, claims, defects] = await Promise.all([
-          listVehiclesExpiry(sb, m.companyId),
-          listFuelCardsSafe(sb, m.companyId),
-          listServiceTasks(sb, m.companyId),
-          latestOdometers(sb, m.companyId),
-          listDocuments(sb, m.companyId),
-          listInvoices(sb, m.companyId),
-          listDrivers(sb, m.companyId).catch(() => []),
-          listDamageClaims(sb, m.companyId).catch(() => []),
-          listDefects(sb, { limit: 200 }).catch(() => []),
+          listVehiclesExpiry(sb, m.companyId).catch(() => null),
+          listFuelCardsSafe(sb, m.companyId).catch(() => null),
+          listServiceTasks(sb, m.companyId).catch(() => null),
+          latestOdometers(sb, m.companyId).catch(() => null),
+          // Tylko dokumenty Z terminem — reszta sejfu (skany CMR, faktury) nie ma tu
+          // czego wnieść, a stanowi jego większość.
+          listDocumentsAll(sb, m.companyId, { withExpiry: true }).catch(() => null),
+          listInvoicesAll(sb, m.companyId).catch(() => null),
+          listDrivers(sb, m.companyId).catch(() => null),
+          listDamageClaims(sb, m.companyId).catch(() => null),
+          listDefectsAll(sb, { statuses: OPEN_DEFECT_STATUSES }).catch(() => null),
         ]);
+        /*
+         * Znacznik ustawiany OD RAZU po pobraniu, przed pętlami budującymi pozycje.
+         * Dotąd stał w ich środku: wyjątek przy dowolnej z nich (a przelatujemy tu
+         * pojazdy, karty, plan serwisowy i dokumenty) gubił flagę razem z panelem.
+         */
+        const niepelne: MessageKey[] = [];
+        if (vehs === null) niepelne.push("attention.set.vehicles");
+        if (cards === null) niepelne.push("attention.set.cards");
+        if (tasks === null) niepelne.push("attention.set.service");
+        // Przebiegi: zaniżony licznik nie daje pustego wiersza, tylko poziom „ok"
+        // z `serviceStatus` — czyli przekroczony serwis znika bez śladu.
+        if (odo === null || !odo.complete) niepelne.push("attention.set.odometers");
+        if (docs === null || !docs.complete) niepelne.push("attention.set.documents");
+        if (invs === null || !invs.complete) niepelne.push("attention.set.invoices");
+        if (drvs === null) niepelne.push("attention.set.drivers");
+        if (claims === null) niepelne.push("attention.set.damages");
+        if (defects === null || !defects.complete) niepelne.push("attention.set.defects");
+        setIncompleteSets(niepelne);
         const today = new Date().toISOString().slice(0, 10);
-        const regOf = new Map(vehs.map((v) => [v.id, v.registration]));
+        const regOf = new Map((vehs ?? []).map((v) => [v.id, v.registration]));
         const out: Item[] = [];
 
-        for (const v of vehs) {
+        for (const v of vehs ?? []) {
           for (const f of VEH_FIELDS) {
             const date = v[f.col];
             if (!date) continue;
@@ -117,7 +165,7 @@ export function AttentionPanel() {
           }
         }
 
-        for (const c of cards) {
+        for (const c of cards ?? []) {
           if (!c.valid_until) continue;
           const st = expiryStatus(c.valid_until, today);
           if (st.level === "ok") continue;
@@ -137,8 +185,8 @@ export function AttentionPanel() {
         }
 
         // Uwaga: zmienna pętli to `task`, bo `t` to funkcja tłumacząca.
-        for (const task of tasks) {
-          const cur = odo[task.vehicle_id] ?? null;
+        for (const task of tasks ?? []) {
+          const cur = odo?.byVehicle[task.vehicle_id] ?? null;
           const st = serviceStatus(cur, task.last_done_km, task.interval_km);
           if (st.level === "ok" || st.kmLeft == null) continue;
           out.push({
@@ -156,7 +204,7 @@ export function AttentionPanel() {
           });
         }
 
-        for (const d of docs) {
+        for (const d of docs?.rows ?? []) {
           if (!d.expiry_date) continue;
           const st = expiryStatus(d.expiry_date, today);
           if (st.level === "ok") continue;
@@ -172,7 +220,7 @@ export function AttentionPanel() {
           });
         }
 
-        for (const inv of invs) {
+        for (const inv of invs?.rows ?? []) {
           const pay = invoicePaymentStatus({
             paidAt: inv.paid_at,
             dueDate: inv.due_date,
@@ -195,7 +243,7 @@ export function AttentionPanel() {
           });
         }
 
-        for (const c of claims) {
+        for (const c of claims ?? []) {
           if (c.status !== "reported" && c.status !== "in_progress") continue;
           const daysSince = Math.round((Date.parse(today) - Date.parse(c.claim_date)) / 86_400_000);
           out.push({
@@ -214,8 +262,8 @@ export function AttentionPanel() {
         }
 
         // #368: usterki zgłoszone z telefonu — widoczne od razu, bez wchodzenia w Raporty.
-        for (const d of defects) {
-          if (d.status !== "open" && d.status !== "in_progress") continue;
+        // Statusy odsiane już w zapytaniu, więc tu nie ma czego filtrować powtórnie.
+        for (const d of defects?.rows ?? []) {
           const critical = isCriticalDefect(d.severity, d.dashboard_light);
           const daysSince = Math.round(
             (Date.parse(today) - Date.parse(d.created_at.slice(0, 10))) / 86_400_000,
@@ -235,7 +283,7 @@ export function AttentionPanel() {
           });
         }
 
-        for (const d of drvs) {
+        for (const d of drvs ?? []) {
           const name = `${d.last_name} ${d.first_name}`.trim() || t("attention.cat.driver");
           for (const fld of DRV_FIELDS) {
             const date = d[fld.col];
@@ -266,7 +314,10 @@ export function AttentionPanel() {
     // `t` w zależnościach: zmiana języka przebudowuje etykiety pozycji.
   }, [t]);
 
-  if (!ready || items.length === 0) return null;
+  // Panel znika przy pustej liście, ale NIE wtedy, gdy któregoś zbioru nie udało się
+  // pobrać w komplecie: schowanie go w tym stanie jest równoznaczne z zapewnieniem „nic
+  // nie wymaga uwagi", którego akurat nie mamy podstaw dawać.
+  if (!ready || (items.length === 0 && incompleteSets.length === 0)) return null;
 
   const expired = items.filter((i) => i.level === "expired").length;
   const soon = items.length - expired;
@@ -281,6 +332,15 @@ export function AttentionPanel() {
         )}
         {soon > 0 && <span style={styles.pillWarn}>{`${soon} ${t("attention.soon")}`}</span>}
       </div>
+      {incompleteSets.length > 0 && (
+        <div style={styles.incomplete}>
+          ⚠️{" "}
+          {t("attention.incomplete").replace(
+            "{sets}",
+            incompleteSets.map((key) => t(key)).join(", "),
+          )}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {shown.map((it) => {
           const color = it.level === "expired" ? palette.red : palette.warning;
@@ -316,6 +376,16 @@ function rank(l: Level): number {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  /** Nad listą pozycji, bo dotyczy tego, czego na liście NIE MA. */
+  incomplete: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 8,
+    padding: "8px 10px",
+    marginBottom: 8,
+    color: palette.offWhite,
+    fontSize: 12,
+    lineHeight: 1.5,
+  },
   card: {
     marginBottom: 20,
     padding: 16,

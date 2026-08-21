@@ -5,7 +5,7 @@ import {
   listFuelLogsAll,
   listFxRates,
   listOrdersAll,
-  listPerDiemTrips,
+  listPerDiemTripsAll,
   listVehicleCostsAll,
   type PerDiemTrip,
   toFxRates,
@@ -76,11 +76,11 @@ export default function MonthlyPage() {
    */
   const [ordersIncomplete, setOrdersIncomplete] = useState(false);
   /**
-   * To samo dla zbiorów kosztowych (paliwo, AdBlue, koszty pojazdu).
+   * To samo dla zbiorów kosztowych (paliwo, AdBlue, koszty pojazdu, diety).
    *
    * Osobny znacznik, a nie wspólny ze zleceniami, bo unieważnia inny dokument:
    * przychód i wynik zależą od zleceń, a rejestr kosztów dla księgowości — wyłącznie
-   * od tych trzech tabel. Dawny `limit: 5000` niczego nie chronił: sufit `api.max_rows`
+   * od tych czterech tabel. Dawny `limit: 5000` niczego nie chronił: sufit `api.max_rows`
    * jest niższy i przycina odpowiedź bez błędu, a przy sortowaniu malejącym zabiera
    * wiersze NAJSTARSZE — czyli, przy oknie „od 1. dnia miesiąca", dokładnie te,
    * o które w rejestrze chodzi. Efektem był plik z pustą sekcją kosztów, nie do
@@ -112,7 +112,7 @@ export default function MonthlyPage() {
       // Ta sama definicja co na pulpicie (`lib/monthWindow.ts`), żeby oba ekrany
       // liczyły ten sam miesiąc z tego samego zbioru.
       const { from, to } = monthWindow(month, TREND_MONTHS);
-      const [ordPaged, fPaged, aPaged, vcPaged, pd, comp, fxRows] = await Promise.all([
+      const [ordPaged, fPaged, aPaged, vcPaged, pdPaged, comp, fxRows] = await Promise.all([
         // Stronami: sam zakres dat nie jest ograniczeniem: sześć miesięcy pracy firmy
         // spokojnie przekracza sufit `api.max_rows` PostgREST (domyślnie 1000), a ten
         // ucina odpowiedź bez błędu — przychód na tym ekranie po prostu byłby mniejszy.
@@ -125,9 +125,14 @@ export default function MonthlyPage() {
         listFuelLogsAll(sb, { table: "adblue_logs", from, to }),
         listVehicleCostsAll(sb, m.companyId, { from, to }),
         // [#390] Zakres dat przekazany do bazy — wcześniej szła tu cała historia
-        // firmy, a filtr po miesiącu działał dopiero w przeglądarce, więc przy
-        // limicie 5000 najstarsze miesiące po prostu nie dojeżdżały.
-        listPerDiemTrips(sb, m.companyId, { from, to, limit: 5000 }),
+        // firmy, a filtr po miesiącu działał dopiero w przeglądarce.
+        // Stronami, jak trzy zbiory wyżej: dawne `limit: 5000` niczego nie dawało,
+        // bo powyżej `api.max_rows` (1000) PostgREST i tak przycinał odpowiedź bez
+        // błędu. Diety wchodzą do rejestru kosztów tym samym wejściem co koszty
+        // pojazdu, więc zbiór urwany zaniżał koszt miesiąca dokładnie tak samo —
+        // tyle że jako jedyny na tym ekranie robił to po cichu, obok trzech
+        // pozostałych już pilnowanych.
+        listPerDiemTripsAll(sb, m.companyId, { from, to }),
         getCompany(sb, m.companyId),
         // Zapas wstecz: kurs z dnia zdarzenia, a EBC nie publikuje w weekendy.
         listFxRates(sb, {
@@ -140,7 +145,12 @@ export default function MonthlyPage() {
       const ord = ordPaged.rows;
       const vc = vcPaged.rows;
       setOrdersIncomplete(!ordPaged.complete);
-      setCostsIncomplete(!fPaged.complete || !aPaged.complete || !vcPaged.complete);
+      // Diety dołączają do tego samego znacznika co paliwo i koszty pojazdu, bo
+      // trafiają do tego samego rejestru i do tej samej sumy — osobny baner mówiłby
+      // o osobnym dokumencie, a tu chodzi o jedną zaniżoną kwotę.
+      setCostsIncomplete(
+        !fPaged.complete || !aPaged.complete || !vcPaged.complete || !pdPaged.complete,
+      );
       setCompanyName(comp?.name ?? "");
       // [#378] Koszt pojazdu przeliczony na euro po kursie z dnia poniesienia.
       // Kwota surowa zostaje w wierszu — rejestr kosztów pokazuje ją w uwadze,
@@ -151,7 +161,7 @@ export default function MonthlyPage() {
           amountEur: rowAmountEur(Number(c.amount), c.currency, c.cost_date, rates),
         })),
       );
-      setPerDiems(pd);
+      setPerDiems(pdPaged.rows);
       // [#378] Zlecenia normalizowane do euro TU, na granicy odczytu. Dalej liczy
       // `monthlyFleetSummary`, który odsiewa wszystko, co nie jest EUR — więc
       // zlecenie wystawione w złotówkach po cichu wypadało z przychodu, a wynik
@@ -501,9 +511,10 @@ export default function MonthlyPage() {
           jak potwierdzenie, że akurat koszty są kompletne. */}
       {!loading && !loadErr && costsIncomplete && (
         <div style={styles.warn}>
-          <strong>Koszty są niepełne.</strong> Tankowań, AdBlue albo kosztów pojazdu z tego okna
-          jest więcej, niż zmieściło się w sufit pobrania — koszt paliwa, wynik i rejestr kosztów są
-          zaniżone o nieznaną kwotę. Eksport rejestru jest wstrzymany; zawęź okno albo zgłoś to.
+          <strong>Koszty są niepełne.</strong> Tankowań, AdBlue, kosztów pojazdu albo diet z tego
+          okna jest więcej, niż zmieściło się w sufit pobrania — koszt paliwa, diety, wynik i
+          rejestr kosztów są zaniżone o nieznaną kwotę. Eksport rejestru jest wstrzymany; zawęź okno
+          albo zgłoś to.
         </div>
       )}
 

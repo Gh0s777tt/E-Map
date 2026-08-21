@@ -41,6 +41,7 @@ const CHAINABLE = [
   "lt",
   "lte",
   "in",
+  "not",
   "or",
   "order",
   "limit",
@@ -76,5 +77,44 @@ export function mockSupabase(result: MockResult = { data: [], error: null }): Mo
     called: (method, arg0) =>
       calls.some((c) => c.method === method && (arg0 === undefined || c.args[0] === arg0)),
     argsOf: (method) => calls.find((c) => c.method === method)?.args,
+  };
+}
+
+/** Mock stronicujący — `mockSupabase` wzbogacony o odczyty kursora i licznik zapytań. */
+export interface MockSupabasePaged extends MockSupabase {
+  /** Argumenty `gt("id", …)` wszystkich zapytań, w kolejności wywołania. */
+  kursory: () => unknown[][];
+  /** Ile stron faktycznie zamówiono (jedno `limit` = jedno zapytanie). */
+  stron: () => number;
+}
+
+/**
+ * Mock oddający KOLEJNE STRONY — dla wariantów `list…All` (patrz `data/pagination.ts`).
+ *
+ * `mockSupabase` oddaje ten sam `result` na każde `await`, co do sprawdzania kształtu
+ * zapytania wystarcza, ale stronicowanie potrzebuje kolejnych ODPOWIEDZI: pętla
+ * kończy się na stronie krótszej niż żądana, więc mock zwracający w kółko to samo
+ * albo kręciłby się do sufitu, albo kończył na pierwszej stronie.
+ *
+ * Podmieniamy `limit`, bo to ono zamyka łańcuch wariantu stronicowanego
+ * (`gt(id) → order(id) → limit(pageSize)`) — zwrócenie stąd gotowej obietnicy daje
+ * kolejną stronę na każde wywołanie, bez dorabiania własnego thenable obok tego,
+ * który mock już ma. Wywołania nadal trafiają do wspólnej listy `calls`, więc asercje
+ * o filtrach działają tak samo jak przy zwykłym mocku.
+ */
+export function mockSupabasePaged(strony: unknown[][]): MockSupabasePaged {
+  const m = mockSupabase({ data: [], error: null });
+  const builder = m.client as unknown as Record<string, unknown>;
+  let i = 0;
+  builder.limit = (...args: unknown[]) => {
+    m.calls.push({ method: "limit", args });
+    const strona = strony[i] ?? [];
+    i += 1;
+    return Promise.resolve({ data: strona, error: null });
+  };
+  return {
+    ...m,
+    kursory: () => m.calls.filter((c) => c.method === "gt").map((c) => c.args),
+    stron: () => m.calls.filter((c) => c.method === "limit").length,
   };
 }

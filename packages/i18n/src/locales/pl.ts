@@ -114,6 +114,15 @@ export const pl = {
   "dashboard.customize.title": "Widoczne sekcje",
   "dashboard.sec.kpi": "Wskaźniki (KPI)",
   "dashboard.sec.trend": "Trend przychodów",
+  /*
+   * Ostrzeżenia o niepełnych danych na pulpicie. Reszta podpisów w `KpiStrip`
+   * i `RevenueTrend` jest po polsku na sztywno — te dwa idą przez katalog, bo
+   * etykietę kafelka da się odgadnąć z kwoty obok, a zdanie „ta kwota jest
+   * nieprawdziwa" nie da się odgadnąć z niczego.
+   */
+  "dashboard.kpi.incomplete": "dane niepełne — suma zaniżona",
+  "dashboard.trend.incomplete":
+    "Wykres jest niepełny — zleceń z tego okna jest więcej, niż zmieściło się w pobraniu. Słupki są zaniżone o nieznaną kwotę; pełną kwotę miesiąca sprawdź w zestawieniu miesięcznym.",
   "dashboard.sec.onboarding": "Pierwsze kroki",
   "dashboard.sec.attention": "Wymaga uwagi",
   "dashboard.sec.shortcuts": "Skróty",
@@ -168,6 +177,26 @@ export const pl = {
   "attention.svc.overBy": "przekroczono o",
   "attention.svc.inKm": "za",
   "attention.inv.duePrefix": "termin",
+  /*
+   * Panel „Co wymaga uwagi" po nieudanym albo uciętym pobraniu któregokolwiek zbioru.
+   * Osobny komunikat od pozostałych ostrzeżeń o niepełnych danych, bo tu problemem nie
+   * jest zaniżona kwota, tylko BRAK POZYCJI na liście, która ma ostrzegać.
+   *
+   * Zbiory wymieniamy z nazwy, zamiast pisać ogólnie „dane niepełne". Baner nazywający
+   * po imieniu jeden zbiór z trzech zamienia milczenie o pozostałych w pozorne
+   * potwierdzenie ich kompletności — a to jest ten sam błąd, przed którym ostrzega.
+   */
+  "attention.set.vehicles": "terminy pojazdów (przegląd, OC, leasing)",
+  "attention.set.cards": "karty paliwowe",
+  "attention.set.service": "plan serwisowy",
+  "attention.set.drivers": "terminy kierowców (badania, kod 95, ADR)",
+  "attention.set.damages": "szkody",
+  "attention.set.invoices": "faktury",
+  "attention.set.documents": "dokumenty z sejfu",
+  "attention.set.defects": "usterki pojazdów",
+  "attention.set.odometers": "przebiegi z tankowań (podstawa planu serwisowego)",
+  "attention.incomplete":
+    "Panel jest niepełny — te zbiory nie dojechały w komplecie: {sets}. To, czego tu nie ma, nie upomni się nigdzie indziej: przeterminowana faktura, mijający termin dokumentu i otwarta usterka zgłaszają się wyłącznie z tej listy. Sprawdź je bezpośrednio, zanim uznasz, że nic nie zalega.",
   "attention.status.open": "otwarta",
   "attention.status.reported": "zgłoszona",
   "attention.status.inRepair": "w naprawie",
@@ -306,6 +335,20 @@ export const pl = {
   "fleet.state.driving": "W trasie",
   "fleet.state.planned": "Zaplanowane",
   "fleet.state.idle": "Wolny",
+  /*
+   * Baner statusu floty. Wersja mobilna tego samego ekranu miała komunikat w katalogu
+   * (`m.fleet.incomplete`) od początku — web trzymał go po polsku w JSX, więc jedyne
+   * zdanie mające powstrzymać dyspozytora przed rozdysponowaniem floty było nieczytelne
+   * dokładnie dla tego, kto pracuje w innym języku niż reszta zespołu.
+   */
+  "fleet.incomplete":
+    "⛔ Status jest niepełny — zleceń albo zdarzeń trasy jest więcej, niż zmieściło się w sufit pobrania. Część pojazdów może być pokazana jako wolna mimo aktywnego zlecenia. Zgłoś to, zanim rozdysponujesz flotę na podstawie tego ekranu.",
+  /*
+   * „Brak zdarzeń" i „zdarzenia poza oknem" to dwa różne stany i pojazd, który wrócił
+   * z trzytygodniowego postoju, wygląda inaczej niż taki, który nigdy nie raportował.
+   * Bez tego podpisu wiersz po prostu milczał, a zdarzenie dalej było w bazie.
+   */
+  "fleet.noEvents": "Brak zdarzeń trasy z ostatnich {days} dni (starsze są w historii).",
 
   "links.title": "Linki firmowe",
   "links.subtitle":
@@ -367,6 +410,18 @@ export const pl = {
   "history.noResults": "Brak wyników dla wybranych filtrów.",
   "history.allVehicles": "Wszystkie pojazdy",
   "history.allCountries": "Wszystkie kraje",
+  /*
+   * Okno czasowe historii. Ekran pobiera swoje trzy zbiory w komplecie (stronami), bo
+   * z nich liczy się zwrot VAT — a komplet CAŁEJ historii firmy to przy dużej flocie
+   * kilkadziesiąt sekwencyjnych zapytań i dziesiątki tysięcy wierszy. Domyślne 12
+   * miesięcy pokrywa rozliczenie roczne; szersze zakresy zostają dostępne wprost,
+   * zamiast być niejawnym skutkiem wielkości floty.
+   */
+  "history.period": "Okres:",
+  "history.period.m3": "3 miesiące",
+  "history.period.m12": "12 miesięcy",
+  "history.period.m24": "24 miesiące",
+  "history.period.all": "Cała historia",
   "vat.title": "Zwrot VAT za paliwo",
   "vat.subtitle":
     "Per kraj tankowania, po stawce obowiązującej w dniu tankowania. Kwoty przeliczone na euro.",
@@ -406,6 +461,11 @@ export const pl = {
     "Najpierw dodaj pojazdy we Flocie — bez nich nie ma do czego przypisać tankowania.",
   "history.importKind": "Co importujesz",
   "history.importDone": "Import zakończony.",
+  "history.incomplete":
+    "Historia jest niepełna — wpisów w bazie jest więcej, niż zmieściło się w sufit pobrania. Lista poniżej pomija nieznaną liczbę tankowań i tras, więc oba eksporty są wstrzymane: zaniżony arkusz trafiłby do zwrotu VAT nie do odróżnienia od prawdziwego. Zgłoś to, zanim oprzesz na tych danych rozliczenie.",
+  "history.exportBlocked": "Historia niepełna — eksport wstrzymany.",
+  "history.importDupsIncomplete":
+    "Import wstrzymany — nie udało się pobrać kompletu dotychczasowych wpisów, więc duplikaty nie zostałyby wykryte. Odśwież stronę albo zgłoś problem.",
   "history.full": "Do pełna",
   "history.partial": "Częściowe",
   "history.kind.fuel": "Paliwo",
@@ -486,8 +546,17 @@ export const pl = {
   "stats.currency.show": "Pokazuj kwoty w:",
   "stats.currency.aria": "Waluta prezentacji",
   "stats.currency.asOf": "przeliczone po kursie z {date} — rachunek prowadzony w EUR",
+  /*
+   * Dwa kształty obcięcia = dwa komunikaty. Zbiór ucięty limitem gubi swój najstarszy
+   * ogon (sort malejący po dacie), zbiór ucięty na suficie stron gubi wiersze rozsiane
+   * po całym oknie (kursor po losowym UUID). Rada „zawęź okres" pomaga tylko w pierwszym
+   * przypadku; w drugim zawężenie sprawia, że baner znika, a liczby dalej są zaniżone —
+   * i użytkownik odczytuje zniknięcie banera jako potwierdzenie, że wcześniejsze też były dobre.
+   */
   "stats.truncated":
-    "Zakres danych sięgnął limitu zapytania (5000 wierszy na tabelę), więc najstarsze wpisy z okna 24 miesięcy NIE weszły do wyliczeń. Spalanie, koszty i przychód są zaniżone — potraktuj te liczby jako orientacyjne i zawęź okres, żeby zobaczyć komplet.",
+    "Dane są niepełne — z okna 24 miesięcy nie dojechał komplet wierszy, a brakuje wpisów NAJSTARSZYCH. Spalanie, koszty i przychód są przez to zaniżone, i to w sposób, który czyta się jak spadek: „mniej tankowań niż rok temu” jest tu skutkiem pobrania, nie tego, co robi flota. Potraktuj te liczby jako orientacyjne i zawęź okres.",
+  "stats.truncated.pages":
+    "Dane są niepełne — pobieranie stronami zatrzymało się na twardym suficie, a brakujące wpisy są rozsiane po CAŁYM oknie 24 miesięcy, nie tylko w jego najstarszych miesiącach. Zaniżony jest każdy miesiąc, także ostatni, więc zawężenie okresu ukryje ostrzeżenie, nie naprawi liczb. Zgłoś to, zamiast opierać na tych liczbach decyzje.",
   "stats.currency.noRate": "brak notowania {code} — pokazuję w EUR",
 
   "stats.fleet.fuelTotal": "Paliwo łącznie",
@@ -732,6 +801,16 @@ export const pl = {
   "orders.sortPriceDesc": "Stawka ↓",
   "orders.sortPriceAsc": "Stawka ↑",
   "orders.exportFreight": "📤 Giełda (CSV)",
+  "orders.exportIncomplete":
+    "Eksport wstrzymany — nie udało się pobrać kompletu zleceń, więc arkusz byłby zaniżony o nieznaną kwotę. Zawęź listę albo zgłoś problem.",
+  "orders.exportFailed": "Nie udało się pobrać zleceń do eksportu.",
+  /*
+   * Podsumowanie nad listą pokazuje WARTOŚĆ zleceń w euro i licznik „X z Y". Obie liczby
+   * są bez znaczenia, jeśli lista nie dojechała w komplecie — i obie wyglądają wtedy
+   * dokładnie tak samo jak prawdziwe. Baner musi stać przy nich, a nie w eksporcie.
+   */
+  "orders.incomplete":
+    "⛔ Lista jest niepełna — zleceń w bazie jest więcej, niż zmieściło się w sufit pobrania. Wartość i liczniki poniżej są zaniżone o nieznaną kwotę, a eksporty są z tego samego powodu wstrzymane. Zgłoś to, zanim potraktujesz te sumy jako wartość portfela zleceń.",
   "orders.countOf": "z",
   "orders.importNote":
     'Kolumna „Pojazd" = rejestracja (mapowana na pojazd; nierozpoznana → zapis bez przypisania). Kierowcę i status ustawisz po imporcie. Dedup po numerze zlecenia.',
@@ -872,6 +951,11 @@ export const pl = {
   "costs.deleteError": "Błąd usuwania.",
   "costs.importVehicleUnknown": "pojazd nierozpoznany (pominięto)",
   "costs.importDuplicate": "duplikat (pominięto)",
+  "costs.incomplete":
+    "Rejestr jest niepełny — kosztów w bazie jest więcej, niż zmieściło się w pobraniu. Ekran nie ma zakresu dat, więc brakujących pozycji nie widać jako braku: wyglądają jak koszty, których nigdy nie wprowadzono. Eksport CSV i XLSX jest wstrzymany.",
+  "costs.exportBlocked": "Dane niepełne — eksport wstrzymany.",
+  "costs.importIncomplete":
+    "Import wstrzymany: nie udało się pobrać kompletu istniejących kosztów, więc wykrywanie duplikatów nie działa. Wgranie pliku drugi raz podwoiłoby koszty firmy bez śladu.",
   "costs.fieldCategory": "Kategoria",
   "costs.fieldCurrency": "Waluta",
   "costs.fieldDescription": "Opis",
@@ -984,6 +1068,16 @@ export const pl = {
   "expenses.restoredBulkSuffix": " do rozliczenia.",
   "expenses.photoError": "Nie udało się otworzyć paragonu.",
   "expenses.subtitlePrefix": "Zgłoszenia kierowców z aplikacji — do rozliczenia: ",
+  "expenses.incomplete":
+    "Zgłoszeń jest w bazie więcej, niż zmieściło się w pobraniu — suma „do rozliczenia” w nagłówku jest zaniżona, a najdłużej czekające wpisy mogą nie być pokazane wcale. Zgłoś to, zanim zamkniesz rozliczenie okresu.",
+  /*
+   * Archiwum rozpatrzonych wpisów jest oknem ŚWIADOMIE: nie wchodzi do żadnej sumy na
+   * tym ekranie i nikt na nie nie czeka, a komplet znaczyłby kilkadziesiąt sekwencyjnych
+   * zapytań przy każdym wejściu. Okno przemilczane wygląda jednak dokładnie jak komplet,
+   * więc mówimy o nim wprost — i osobno od ostrzeżenia o zaniżonej sumie.
+   */
+  "expenses.historyWindow":
+    "Zatwierdzone i odrzucone wpisy pokazujemy w oknie {n} najnowszych — starsze decyzje są poza tym widokiem. Suma „do rozliczenia” w nagłówku ich nie obejmuje i jest od tego niezależna.",
   "expenses.empty": "Brak wydatków w tym widoku.",
   "expenses.selectAria": "Zaznacz zgłoszenie",
   "expenses.receipt": "📷 Paragon",
@@ -1153,12 +1247,14 @@ export const pl = {
   "scoring.empty": "Brak kierowców do oceny — zaproś zespół i przypisuj zlecenia.",
   "scoring.noCompany": "Brak aktywnej firmy.",
   "scoring.loadError": "Nie udało się policzyć rankingu.",
+  "scoring.incomplete":
+    "Ranking jest niepełny — zleceń lub checklist z tego okna jest więcej, niż zmieściło się w sufit pobrania. Wskaźniki poniżej to odsetki policzone z uciętego mianownika, więc kolejność kierowców może być nieprawdziwa. Nie opieraj na niej premii ani rozmowy oceniającej.",
   "scoring.colDriver": "Kierowca",
   "scoring.colLevel": "Poziom",
   "scoring.colPoints": "Punkty",
   "scoring.colDeliveries": "Dostawy",
   "scoring.colOnTime": "Terminowość",
-  "scoring.colChecklists": "Checklisty",
+  "scoring.colChecklists": "Checklisty (90 dni)",
   "scoring.colRating": "Ocena",
   "scoring.rank.rookie": "Nowicjusz",
   "scoring.rank.driver": "Kierowca",
@@ -1167,12 +1263,14 @@ export const pl = {
   "scoring.rank.master": "Mistrz",
   "scoring.rank.legend": "Legenda",
   "scoring.note":
-    "Wynik = 60% terminowość (dostarczone do planowanej daty rozładunku) + 30% dyscyplina checklist + 10% liczba dostaw. Kierowcy bez mierzalnej terminowości startują z neutralnym 70%.",
+    "Wynik = 60% terminowość (dostarczone do planowanej daty rozładunku) + 30% dyscyplina checklist + 10% liczba dostaw. Kierowcy bez mierzalnej terminowości startują z neutralnym 70%. Punkty, poziom i odznaki liczą się z tego samego okna 90 dni co reszta tabeli — opisują formę z kwartału, nie dorobek kierowcy.",
 
   "analytics.title": "Analityka floty",
   "analytics.subtitle":
     "Trend i prognoza kosztu paliwa, pojazdy odstające spalaniem i szacunek oszczędności — liczone z Twoich danych.",
   "analytics.empty": "Za mało danych paliwowych — dodaj tankowania z kwotami i przebiegiem.",
+  "analytics.incomplete":
+    "Dane są niepełne — tankowań z tego okna jest więcej, niż zmieściło się w pobraniu. Trend, prognoza kosztu na kolejny miesiąc i wycena pojazdów odstających są policzone z części zbioru, a brakujące wpisy pochodzą z miesięcy najstarszych — czyli z tych, na których stoi cała regresja.",
   "analytics.noCompany": "Brak aktywnej firmy.",
   "analytics.loadError": "Nie udało się policzyć analityki.",
   "analytics.kpiTrend": "Trend kosztu paliwa (okno)",
@@ -1227,6 +1325,18 @@ export const pl = {
   "settlements.revenue": "Przychód (stawka × km)",
   "settlements.exportCsv": "⬇️ Eksport CSV",
   "settlements.print": "🖨️ Drukuj / PDF",
+  "settlements.incomplete":
+    "Rachunek jest niepełny — pozycji z tego okresu jest więcej, niż zmieściło się w pobraniu. To nie jest krótsza lista, tylko inny rachunek: brakujące tankowania zaniżają koszt i zawyżają zysk, a brakujące odczyty licznika zmieniają dystans, spalanie i koszt na kilometr. Zawęź zakres dat; eksport CSV jest wstrzymany.",
+  "settlements.exportBlocked": "Dane niepełne — eksport wstrzymany.",
+
+  /*
+   * Ostrzeżenie na drukowanym „Rozliczeniu kierowcy" (`PayoutDoc`). Reszta napisów
+   * w tym dokumencie jest po polsku na sztywno — ten idzie przez katalog z tego
+   * samego powodu co ostrzeżenia na pulpicie: nagłówek tabeli da się odczytać
+   * z kwot obok, a zdania „to saldo może być nieprawdziwe” nie da się odgadnąć.
+   */
+  "payoutDoc.incomplete":
+    "Rozliczenie jest niepełne — pozycji albo diet tego kierowcy jest w bazie więcej, niż zmieściło się w pobraniu (albo pobranie się nie udało). Saldo jest RÓŻNICĄ należności, zaliczek i potrąceń, więc brakujący wiersz nie skraca tabeli, tylko zmienia kwotę „do wypłaty” — w dowolną stronę. Nie wypłacaj na podstawie tego dokumentu; wystaw go ponownie.",
   "settlements.items": "Pozycje",
   "settlements.colType": "Typ",
   "settlements.colOdometer": "Licznik",
@@ -1345,6 +1455,31 @@ export const pl = {
   "journeys.empty":
     "Brak wyjazdów. Kierowca zaczyna wyjazd akcją Rozpoczęcie, a kończy Zakończenie (formularz Trasa).",
   "journeys.loadError": "Nie udało się pobrać wyjazdów.",
+  "journeys.set.trips": "zdarzenia tras",
+  "journeys.set.fuel": "tankowania",
+  "journeys.set.adblue": "AdBlue",
+  "journeys.set.pauses": "postoje i parkingi",
+  "journeys.set.routeCosts": "opłaty drogowe i przejazdy",
+  "journeys.set.penalties": "kary",
+  "journeys.incomplete.since": "{label} (mamy dopiero od {date})",
+  /*
+   * Dwa kształty obcięcia, dwa różne zdania — i to nie jest kosmetyka.
+   *
+   * Zbiór ucięty LIMITEM schodzi posortowany malejąco po dacie, więc brakuje jego
+   * najstarszego ogona i data graniczna coś znaczy. Zbiór ucięty na suficie STRON
+   * schodzi kursorem po `id` (losowy UUID), więc brakujące wiersze są rozsiane
+   * równomiernie po całym oknie, a najstarszy pobrany wiersz leży praktycznie na
+   * jego początku. Podanie wtedy daty granicznej mówi dyspozytorowi coś odwrotnego
+   * do prawdy: że wyjazdy z ostatnich miesięcy są pewne.
+   */
+  "journeys.incomplete.spread":
+    "{label} (braki są rozsiane po CAŁYM okresie, nie tylko w jego początku)",
+  "journeys.incomplete":
+    "Lista jest niepełna — te zbiory nie dojechały w komplecie: {sets}. Wyjazd może być poskładany z połówek (start bez zakończenia, brakujące tankowania) albo nie pojawić się wcale.",
+  "journeys.incomplete.after":
+    "Komplet danych mają wyjazdy rozpoczęte po najpóźniejszej z podanych dat.",
+  "journeys.incomplete.ops":
+    "Dotyczy to też kosztów płaconych po drodze — starsze wyjazdy pokażą się w komplecie, ale z zaniżonym kosztem, zawyżonym zyskiem i marżą.",
   "journeys.unassignedDriver": "Nieprzypisany kierowca",
   "journeys.driverPrefix": "Kierowca",
   "journeys.tripSingular": "wyjazd",
@@ -1365,6 +1500,8 @@ export const pl = {
   "documents.title": "Sejf dokumentów",
   "documents.subtitle":
     "Bezpieczne miejsce na dokumenty firmy i pojazdów (OC, przeglądy, leasing, umowy). Prywatne — dostęp tylko dla Twojej firmy; przypomnienia o terminach ważności.",
+  "documents.incomplete":
+    "Kartoteka jest niepełna — dokumentów w bazie jest więcej, niż zmieściło się w sufit pobrania. Kolumna „ważne do” i eksport pokazują tylko to, co dojechało, a wypadają z tego przede wszystkim skany wgrane dawno, z terminem daleko w przyszłości: licencja wspólnotowa, świadectwo kierowcy, umowa leasingu. Zgłoś to, zanim uznasz, że żaden termin nie mija.",
   "documents.loadError": "Nie udało się pobrać dokumentów.",
   "documents.pickFile": "Wybierz plik.",
   "documents.fileTooBigPrefix": "Plik za duży (max ",
@@ -1969,6 +2106,12 @@ export const pl = {
   "common.language": "Język",
   "common.noNumber": "(bez numeru)",
   "common.all": "Wszystkie",
+  /*
+   * Przycisk dorenderowania kolejnej porcji wierszy. Listy bez okna czasowego potrafią
+   * mieć dziesiątki tysięcy pozycji: pobranie kompletu jest warunkiem poprawności sum,
+   * ale zamontowanie kompletu w DOM zawiesza zakładkę na kilkadziesiąt sekund.
+   */
+  "common.showMore": "Pokaż kolejne ({n})",
   "common.active": "Aktywne",
   "common.disabled": "Wyłączone",
   "common.loading": "Ładowanie…",

@@ -3,8 +3,8 @@
 import {
   deleteFuelLog,
   deleteTripEvent,
-  listFuelLogs,
-  listTripEvents,
+  listFuelLogsAll,
+  listTripEventsAll,
   listVehicles,
 } from "@e-logistic/api";
 import { type FuelLogInput, type TripEventInput, toCsv } from "@e-logistic/core";
@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { useT } from "@/components/LocaleProvider";
+import { ShowMore } from "@/components/ShowMore";
 import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui";
 import { vehicleLabel } from "@/lib/demo";
@@ -21,6 +22,7 @@ import { tripActionLabel } from "@/lib/labels";
 import { getCachedMembership } from "@/lib/membership";
 import { listOutbox, type OutboxItem, removeOutbox, trySync } from "@/lib/outbox";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { useRenderWindow } from "@/lib/useRenderWindow";
 
 type T = (key: MessageKey) => string;
 type Kind = "fuel" | "adblue" | "trip";
@@ -127,30 +129,78 @@ function localRow(item: OutboxItem, labelOf: (id: string) => string, t: T): Row 
   };
 }
 
+/**
+ * Okno czasowe historii: etykieta i16n → liczba miesięcy wstecz (`null` = cała historia).
+ *
+ * Ekran pobiera swoje trzy zbiory w KOMPLECIE (stronami), bo z nich liczy się zwrot VAT —
+ * a komplet bez zakresu dat znaczy przy dużej flocie kilkadziesiąt sekwencyjnych zapytań
+ * i dziesiątki tysięcy wierszy przy każdym wejściu. Dotychczasowe `limit: 1000` też było
+ * oknem, tylko niejawnym i tym krótszym, im więcej firma tankuje. Jawne 12 miesięcy
+ * pokrywa rozliczenie roczne, a szersze zakresy zostają dostępne wprost — z ceną, którą
+ * użytkownik wybiera świadomie, zamiast dostawać ją w zależności od wielkości floty.
+ */
+const PERIODS = [
+  { value: "m3", months: 3, labelKey: "history.period.m3" },
+  { value: "m12", months: 12, labelKey: "history.period.m12" },
+  { value: "m24", months: 24, labelKey: "history.period.m24" },
+  { value: "all", months: null, labelKey: "history.period.all" },
+] as const satisfies readonly { value: string; months: number | null; labelKey: MessageKey }[];
+
+type Period = (typeof PERIODS)[number]["value"];
+
+/** Początek okna (ISO) albo `undefined` dla „cała historia". */
+function periodFrom(period: Period): string | undefined {
+  const months = PERIODS.find((p) => p.value === period)?.months ?? null;
+  if (months == null) return undefined;
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, now.getUTCDate()),
+  ).toISOString();
+}
+
 export default function FormsHistoryPage() {
   const t = useT();
   const toast = useToast();
   const confirm = useConfirm();
   const [rows, setRows] = useState<Row[]>([]);
   const [source, setSource] = useState<"baza" | "lokalne">("lokalne");
+  /**
+   * Któryś ze zbiorów urwał się na sufit pobrania. Trzymane osobno od `rows`, bo
+   * z samej listy nie da się tego odczytać — niepełna wygląda identycznie jak pełna.
+   */
+  const [incomplete, setIncomplete] = useState(false);
   const [kindFilter, setKindFilter] = useState<Kind | "all">("all");
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
   // [#375] Filtr po kraju — kierowca jeżdżący po pół Europie inaczej nie znajdzie
   // tankowań z jednego kraju, a od nich zależy zwrot VAT.
   const [countryFilter, setCountryFilter] = useState<string>("all");
+  /** Okno czasowe pobrania — jedyny filtr tego ekranu, który schodzi do BAZY. */
+  const [period, setPeriod] = useState<Period>("m12");
 
   const load = useCallback(async () => {
     const outbox = listOutbox();
+    setIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
       if (m) {
-        const [fuel, adblue, trips, vehicles] = await Promise.all([
-          listFuelLogs(sb, { limit: 1000 }),
-          listFuelLogs(sb, { table: "adblue_logs", limit: 1000 }),
-          listTripEvents(sb, { limit: 1000 }),
+        // Trzy zbiory pobierane STRONAMI, ale w OKNIE wybranym przez użytkownika.
+        // Dawne `limit: 1000` było równe sufitowi `api.max_rows`, więc nie chroniło
+        // przed niczym — wyznaczało go, i to niejawnie: kierowca z dwoma tysiącami
+        // tankowań widział tu ostatni tysiąc i eksportował go do zwrotu VAT jako
+        // komplet. Komplet bez okna byłby jednak wymianą jednego cichego kosztu na
+        // drugi: kilkadziesiąt sekwencyjnych zapytań przy każdym wejściu na zakładkę.
+        const from = periodFrom(period);
+        const [fuelPaged, adbluePaged, tripsPaged, vehicles] = await Promise.all([
+          listFuelLogsAll(sb, { from }),
+          listFuelLogsAll(sb, { table: "adblue_logs", from }),
+          listTripEventsAll(sb, { from }),
           listVehicles(sb, m.companyId),
         ]);
+        setIncomplete(!fuelPaged.complete || !adbluePaged.complete || !tripsPaged.complete);
+        const fuel = fuelPaged.rows;
+        const adblue = adbluePaged.rows;
+        const trips = tripsPaged.rows;
         const map = new Map(
           (vehicles as { id: string; registration: string }[]).map((v) => [v.id, v.registration]),
         );
@@ -242,7 +292,7 @@ export default function FormsHistoryPage() {
     }
     setRows(outbox.map((i) => localRow(i, vehicleLabel, t)));
     setSource("lokalne");
-  }, [t]);
+  }, [t, period]);
 
   useEffect(() => {
     load();
@@ -306,6 +356,13 @@ export default function FormsHistoryPage() {
       ),
     [rows, kindFilter, vehicleFilter, countryFilter],
   );
+  /**
+   * Okno renderowania. Eksport i licznik „X z Y" biorą `filtered`, czyli komplet z okna
+   * czasowego; w DOM ląduje tylko tyle wierszy, ile ktoś realnie przegląda. Bez tego
+   * kierowca z trzyletnią historią montował ich naraz kilkadziesiąt tysięcy — zakładka,
+   * która otwierała się w sekundę, przestawała się otwierać w ogóle.
+   */
+  const okno = useRenderWindow(filtered);
 
   const KIND_FILTERS: { value: Kind | "all"; label: string }[] = [
     { value: "all", label: t("common.all") },
@@ -393,6 +450,10 @@ export default function FormsHistoryPage() {
         <strong>{t(source === "baza" ? "history.source.db" : "history.source.local")}</strong>
       </p>
 
+      {/* Nad listą i nad filtrami, bo unieważnia każdą liczbę niżej — także licznik
+          „X z Y", który przy uciętym zbiorze podaje dwie nieprawdziwe wartości. */}
+      {incomplete && <div style={styles.warn}>⛔ {t("history.incomplete")}</div>}
+
       {rows.length === 0 ? (
         <p style={{ color: palette.smoke, marginTop: 24 }}>{t("history.empty")}</p>
       ) : (
@@ -410,6 +471,18 @@ export default function FormsHistoryPage() {
                 </button>
               ))}
             </div>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as Period)}
+              style={styles.select}
+              aria-label={t("history.period")}
+            >
+              {PERIODS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {t(p.labelKey)}
+                </option>
+              ))}
+            </select>
             {countryOptions.length > 1 && (
               <select
                 value={countryFilter}
@@ -440,10 +513,24 @@ export default function FormsHistoryPage() {
               </select>
             )}
             <span style={{ flex: 1 }} />
-            <Button variant="ghost" onClick={exportCsv}>
+            {/* Oba eksporty zablokowane przy niepełnym zbiorze: arkusz po zapisaniu
+                nie niesie już informacji, że czegoś w nim brakuje, a to z niego liczy
+                się zwrot VAT. Filtry na ekranie niczego tu nie ratują — odsiewają
+                z tego, co dojechało. */}
+            <Button
+              variant="ghost"
+              onClick={exportCsv}
+              disabled={incomplete}
+              title={incomplete ? t("history.exportBlocked") : undefined}
+            >
               ⬇️ CSV
             </Button>
-            <Button variant="ghost" onClick={exportExcel}>
+            <Button
+              variant="ghost"
+              onClick={exportExcel}
+              disabled={incomplete}
+              title={incomplete ? t("history.exportBlocked") : undefined}
+            >
               ⬇️ Excel
             </Button>
             <Link href="/forms/import" style={{ textDecoration: "none" }}>
@@ -457,7 +544,7 @@ export default function FormsHistoryPage() {
             <p style={{ color: palette.smoke, marginTop: 20 }}>{t("history.noResults")}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
-              {filtered.map((r) => {
+              {okno.visible.map((r) => {
                 const color = STATUS_COLOR[r.status];
                 return (
                   <div key={r.key} style={styles.row}>
@@ -514,6 +601,7 @@ export default function FormsHistoryPage() {
                   </div>
                 );
               })}
+              <ShowMore hidden={okno.hidden} onShowMore={okno.showMore} />
             </div>
           )}
         </>
@@ -523,6 +611,17 @@ export default function FormsHistoryPage() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  /** Ostrzeżenie o niepełnym zbiorze — ten sam styl co na /monthly i /vehicles/[id]. */
+  warn: {
+    border: `1px solid ${palette.warning}`,
+    borderRadius: 10,
+    padding: "10px 14px",
+    marginTop: 16,
+    color: palette.offWhite,
+    fontSize: 13,
+    lineHeight: 1.5,
+    background: palette.nearBlack,
+  },
   tag: {
     fontSize: 11,
     color: palette.smoke,

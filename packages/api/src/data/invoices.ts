@@ -1,5 +1,6 @@
 /** Warstwa danych: faktury (generowane ze zleceń). */
 import type { TypedSupabaseClient as SupabaseClient } from "../client";
+import { fetchAllByKeyset, type PagedRows } from "./pagination";
 import { rpcJson } from "./rpcJson";
 
 export interface Invoice {
@@ -30,26 +31,81 @@ export interface Invoice {
 const COLS =
   "id, order_id, number, issue_date, due_date, paid_at, seller_name, seller_tax_id, seller_address, seller_bank, seller_account, buyer_name, buyer_tax_id, buyer_address, description, net, vat_rate, vat_amount, gross, currency, status, created_at";
 
+/** Filtry wspólne dla obu trybów pobrania. Zakres po `created_at`, `to` WŁĄCZNIE. */
+export interface InvoiceFilter {
+  from?: string;
+  to?: string;
+}
+
 /**
- * Faktury firmy (najnowsze pierwsze). `opts` ogranicza zakres: `from`/`to` po
- * `created_at`, `limit` zabezpiecza przed pobraniem całej historii.
+ * Zawężenie zbioru faktur — jedno miejsce na filtry, bez sortowania (patrz `orders.ts`).
+ *
+ * Granica górna jest tu WŁĄCZNA (`lte`), inaczej niż przy zleceniach i kosztach.
+ * To nie niedopatrzenie do wyrównania „przy okazji": wywołujący (pulpit właściciela)
+ * podaje dziś samo `from`, a zmiana progu przesunęłaby przynależność faktur z północy
+ * granicznego dnia — czyli kwoty w już wystawionych zestawieniach. Zmiana semantyki
+ * należy do wywołujących, nie do wariantu stronicowanego.
+ */
+function companyInvoicesFilter(client: SupabaseClient, companyId: string, opts?: InvoiceFilter) {
+  let query = client.from("invoices").select(COLS).eq("company_id", companyId);
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  if (opts?.to) query = query.lte("created_at", opts.to);
+  return query;
+}
+
+/** Najnowsze pierwsze; `id` rozstrzyga remis, bo faktury wystawiane hurtem mają ten sam `created_at`. */
+function najnowszePierwsze(a: Invoice, b: Invoice): number {
+  return b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id);
+}
+
+/**
+ * Faktury firmy (najnowsze pierwsze) — JEDNO zapytanie, więc obowiązuje sufit serwera.
+ *
+ * Brak `limit` NIE znaczy „cała historia": znaczy `api.max_rows` PostgREST (domyślnie
+ * 1000), egzekwowany bez błędu. Do wyszukiwarki, listy na ekranie i podglądu ostatnich
+ * faktur to wystarcza. Tam, gdzie z faktur liczy się kwoty albo szuka zaległości
+ * w całej historii — `listInvoicesAll`.
  */
 export async function listInvoices(
   client: SupabaseClient,
   companyId: string,
-  opts?: { from?: string; to?: string; limit?: number },
+  opts?: InvoiceFilter & { limit?: number },
 ): Promise<Invoice[]> {
-  let query = client
-    .from("invoices")
-    .select(COLS)
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false });
-  if (opts?.from) query = query.gte("created_at", opts.from);
-  if (opts?.to) query = query.lte("created_at", opts.to);
+  let query = companyInvoicesFilter(client, companyId, opts).order("created_at", {
+    ascending: false,
+  });
   if (opts?.limit) query = query.limit(opts.limit);
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as Invoice[];
+}
+
+/**
+ * Faktury pobrane STRONAMI — komplet albo `complete: false`.
+ *
+ * Faktura jest dokumentem księgowym, więc każdy jej brak w zestawieniu jest błędem
+ * kwoty, nie brakiem wiersza. Dwa miejsca bolą najbardziej: sprzedaż liczona
+ * z faktur (przy sortowaniu malejącym ucięcie zabiera te NAJSTARSZE z okna,
+ * czyli dokładnie te, o które pyta zamknięty miesiąc) oraz szukanie przeterminowanych
+ * płatności — zaległość sprzed roku leży na końcu zbioru i wypada z niego pierwsza,
+ * a panel „Wymaga uwagi" milczy tym samym milczeniem, co przy braku zaległości.
+ */
+export async function listInvoicesAll(
+  client: SupabaseClient,
+  companyId: string,
+  opts?: InvoiceFilter & { pageSize?: number; maxPages?: number },
+): Promise<PagedRows<Invoice>> {
+  const paged = await fetchAllByKeyset<Invoice>(
+    async (afterId, pageSize) => {
+      let query = companyInvoicesFilter(client, companyId, opts);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query.order("id", { ascending: true }).limit(pageSize);
+      if (error) throw error;
+      return (data ?? []) as Invoice[];
+    },
+    { pageSize: opts?.pageSize, maxPages: opts?.maxPages },
+  );
+  return { ...paged, rows: [...paged.rows].sort(najnowszePierwsze) };
 }
 
 /**

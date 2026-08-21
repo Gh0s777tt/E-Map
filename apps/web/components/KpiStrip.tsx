@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  listDriverPayouts,
-  listFuelLogs,
+  listDriverPayoutsAll,
+  listFuelLogsAll,
   listFxRates,
   listOrdersAll,
-  listPerDiemTrips,
+  listPerDiemTripsAll,
   toFxRates,
 } from "@e-logistic/api";
 import {
@@ -19,6 +19,7 @@ import {
 import { cssPalette as palette } from "@e-logistic/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useT } from "@/components/LocaleProvider";
 import { getCachedMembership } from "@/lib/membership";
 import { monthWindow } from "@/lib/monthWindow";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -38,12 +39,23 @@ interface Kpi {
    */
   noRate: number;
   /**
-   * Zbiór zleceń urwał się na sufit pobrania — kwoty na pasku są zaniżone o nieznaną
-   * wartość. To inna klasa braku niż `noRate`: tam wiadomo, ilu pozycji brakuje i
-   * dlaczego, tu nie wiadomo nawet tego. Milczenie nie wchodzi w grę, bo obcięta suma
-   * wygląda dokładnie tak samo jak pełna.
+   * Zbiory, z których liczy się wynik miesiąca (zlecenia, paliwo, AdBlue), urwały się
+   * na sufit pobrania — przychód i wynik są zaniżone o nieznaną wartość. To inna klasa
+   * braku niż `noRate`: tam wiadomo, ilu pozycji brakuje i dlaczego, tu nie wiadomo
+   * nawet tego. Milczenie nie wchodzi w grę, bo obcięta suma wygląda dokładnie tak
+   * samo jak pełna.
    */
   incomplete: boolean;
+  /**
+   * Osobne znaczniki dla diet i sald wypłat — każdy stoi przy SWOIM kafelku.
+   *
+   * Wspólna flaga kazałaby podpisać jako niepełne wszystkie trzy liczby naraz albo
+   * żadnej: diety liczą się z `per_diem_trips`, saldo z `driver_payouts`, a wynik
+   * miesiąca z trzech zupełnie innych tabel. Obcięcie jednej z nich nie mówi nic
+   * o pozostałych, a fałszywe ostrzeżenie przy prawdziwej kwocie uczy je ignorować.
+   */
+  perDiemIncomplete: boolean;
+  payoutIncomplete: boolean;
 }
 
 /**
@@ -53,6 +65,15 @@ interface Kpi {
  */
 const OPEN: OrderStatus[] = ["new", "assigned", "in_progress"];
 const OPEN_SET = new Set<string>(OPEN);
+
+/**
+ * Statusy wchodzące do przychodu — filtr jedzie DO BAZY.
+ *
+ * `monthlyFleetSummary` i tak odsiewa resztę w pamięci, więc oferty i zlecenia
+ * anulowane nie zmieniały ani jednej kwoty na pasku — tylko zbliżały zbiór do sufitu
+ * pobrania i wypychały z niego zlecenia, które przychód tworzą.
+ */
+const COUNTED: OrderStatus[] = ["delivered", "invoiced"];
 
 type CostRow = {
   vehicle_id: string;
@@ -71,6 +92,7 @@ type CostRow = {
  * dla tego samego miesiąca tę samą liczbę.
  */
 export function KpiStrip() {
+  const t = useT();
   const [kpi, setKpi] = useState<Kpi | null>(null);
 
   useEffect(() => {
@@ -87,27 +109,44 @@ export function KpiStrip() {
         // zlecenia wprowadzone wcześniej, a wiezione teraz.
         const okno = monthWindow(month);
         const to = okno.to;
-        const [ordersPaged, otwartePaged, fuel, adblue, pds, pays, fxRows] = await Promise.all([
-          // STRONAMI, nie jednym zapytaniem: bez tego obowiązywał sufit `api.max_rows`
-          // PostgREST (domyślnie 1000, bez błędu i bez śladu), a z tych wierszy liczy się
-          // przychód i wynik miesiąca. Kafelek pokazywałby kwotę zaniżoną o nieznaną
-          // wartość — i inną niż /monthly dla tego samego miesiąca.
-          listOrdersAll(sb, m.companyId, { from: okno.from, to: okno.to }),
-          // Liczniki operacyjne biorą CAŁĄ historię, ale tylko interesujące statusy:
-          // zlecenie otwarte od roku dalej jest otwarte, a zawężenie po statusie
-          // trzyma zbiór przy jednej stronie, zamiast ściągać archiwum firmy.
-          listOrdersAll(sb, m.companyId, { statuses: [...OPEN, "delivered"] }),
-          listFuelLogs(sb, { from, to, limit: 5000 }),
-          listFuelLogs(sb, { table: "adblue_logs", from, to, limit: 5000 }),
-          listPerDiemTrips(sb, m.companyId, { limit: 5000 }),
-          listDriverPayouts(sb, m.companyId, { limit: 5000 }),
-          // Kursy z zapasem wstecz: kurs bierzemy z DNIA zdarzenia, a EBC nie
-          // publikuje w weekendy, więc wpis z 1. dnia miesiąca może potrzebować
-          // notowania sprzed kilku dni.
-          listFxRates(sb, {
-            from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
-          }),
-        ]);
+        // Okno JEDNOMIESIĘCZNE dla diet: ich przynależność rozstrzyga `trip_date`, więc
+        // zapytanie umie zawęzić je dokładnie do pokazywanego miesiąca — w odróżnieniu
+        // od zleceń, które trzeba brać z szerszego okna, bo filtrują się po `created_at`.
+        const oknoDiet = monthWindow(month, 1);
+        const [ordersPaged, otwartePaged, fPaged, aPaged, pdPaged, payPaged, fxRows] =
+          await Promise.all([
+            // STRONAMI, nie jednym zapytaniem: bez tego obowiązywał sufit `api.max_rows`
+            // PostgREST (domyślnie 1000, bez błędu i bez śladu), a z tych wierszy liczy się
+            // przychód i wynik miesiąca. Kafelek pokazywałby kwotę zaniżoną o nieznaną
+            // wartość — i inną niż /monthly dla tego samego miesiąca.
+            listOrdersAll(sb, m.companyId, { from: okno.from, to: okno.to, statuses: COUNTED }),
+            // Liczniki operacyjne biorą CAŁĄ historię, ale tylko interesujące statusy:
+            // zlecenie otwarte od roku dalej jest otwarte, a zawężenie po statusie
+            // trzyma zbiór przy jednej stronie, zamiast ściągać archiwum firmy.
+            listOrdersAll(sb, m.companyId, { statuses: [...OPEN, "delivered"] }),
+            // Paliwo i AdBlue też stronami: `limit: 5000` był liczbą, która nigdy nie
+            // działała — sufit `api.max_rows` (domyślnie 1000) jest niższy i przycina
+            // odpowiedź bez błędu, a sortowanie malejące zabiera wtedy wiersze najstarsze
+            // z okna. Wynik miesiąca wychodził z tego ZAWYŻONY (mniej kosztu), czyli
+            // pomyłka w najbardziej mylącą stronę.
+            listFuelLogsAll(sb, { from, to }),
+            listFuelLogsAll(sb, { table: "adblue_logs", from, to }),
+            // Diety: zakres dat jedzie DO BAZY. Dotąd szła tu cała historia firmy
+            // z `limit: 5000`, a miesiąc odsiewała przeglądarka — więc po przekroczeniu
+            // sufitu kafelek pokazywał kwotę zaniżoną albo pustą, nie do odróżnienia
+            // od miesiąca, w którym nikt nie jeździł.
+            listPerDiemTripsAll(sb, m.companyId, { from: oknoDiet.from, to: oknoDiet.to }),
+            // Saldo wypłat to CAŁA historia wpłat i wypłat — okna czasowego mieć nie może,
+            // bo saldo policzone z wycinka nie jest saldem. Tym bardziej musi schodzić
+            // stronami: obcięcie zbioru zmienia tu kwotę „do wypłaty" w dowolną liczbę.
+            listDriverPayoutsAll(sb, m.companyId),
+            // Kursy z zapasem wstecz: kurs bierzemy z DNIA zdarzenia, a EBC nie
+            // publikuje w weekendy, więc wpis z 1. dnia miesiąca może potrzebować
+            // notowania sprzed kilku dni.
+            listFxRates(sb, {
+              from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+            }),
+          ]);
         const rates = toFxRates(fxRows);
         const orders = ordersPaged.rows;
         const inMonth = (d: string) => d.slice(0, 7) === month;
@@ -139,8 +178,8 @@ export function KpiStrip() {
           // Data ZAŁADUNKU (fallback: utworzenie) — kurs ma odpowiadać zdarzeniu.
           const date = o.load_date ?? o.created_at.slice(0, 10);
           const price = rowAmountEur(o.price, o.currency, date, rates);
-          const counted = o.status === "delivered" || o.status === "invoiced";
-          if (counted && o.price != null && price == null && inMonth(date)) noRate++;
+          // Bez sprawdzania statusu: zapytanie oddaje wyłącznie `COUNTED`.
+          if (o.price != null && price == null && inMonth(date)) noRate++;
           return {
             vehicleId: o.vehicle_id,
             priceEur: price,
@@ -151,11 +190,14 @@ export function KpiStrip() {
         const summary = monthlyFleetSummary({
           month,
           orders: orderEntries,
-          fuel: (fuel as CostRow[]).map(toCost),
-          adblue: (adblue as CostRow[]).map(toCost),
+          fuel: (fPaged.rows as CostRow[]).map(toCost),
+          adblue: (aPaged.rows as CostRow[]).map(toCost),
         });
         const pdTotals = sumPerDiem(
-          pds
+          pdPaged.rows
+            // Filtr zostaje mimo zawężenia w zapytaniu: warstwa danych CELOWO przepuszcza
+            // podróże bez `trip_date` (nie da się ich umiejscowić w czasie, więc zakres
+            // ich nie ukrywa), a do kwoty miesiąca wchodzić nie mogą.
             .filter((p) => p.trip_date?.startsWith(month))
             .map((p) =>
               computePerDiem({
@@ -168,7 +210,7 @@ export function KpiStrip() {
             ),
         );
         const payBalances = settleDriverPayouts(
-          pays.map((p) => ({ kind: p.kind, amount: p.amount, currency: p.currency })),
+          payPaged.rows.map((p) => ({ kind: p.kind, amount: p.amount, currency: p.currency })),
         ).filter((b) => b.balance !== 0);
         setKpi({
           inProgress: otwartePaged.rows.filter((o) => OPEN_SET.has(o.status)).length,
@@ -182,7 +224,10 @@ export function KpiStrip() {
             ? payBalances.map((b) => `${b.balance} ${b.currency}`).join(" · ")
             : "—",
           noRate,
-          incomplete: !ordersPaged.complete || !otwartePaged.complete,
+          incomplete:
+            !ordersPaged.complete || !otwartePaged.complete || !fPaged.complete || !aPaged.complete,
+          perDiemIncomplete: !pdPaged.complete,
+          payoutIncomplete: !payPaged.complete,
         });
       } catch {
         // offline / brak dostępu → ukryj pasek
@@ -192,6 +237,13 @@ export function KpiStrip() {
 
   if (!kpi) return null;
   const month = new Date().toISOString().slice(0, 7);
+  /**
+   * Ostrzeżenie idzie przez katalog komunikatów, choć etykiety kafelków są w tym pliku
+   * po polsku na sztywno. Rozjazd jest świadomy: „Diety (mies.)" da się odgadnąć z kwoty
+   * obok, a zdanie „ta kwota jest nieprawdziwa" — nie. Podpis, którego użytkownik nie
+   * czyta w swoim języku, nie ostrzega przed niczym.
+   */
+  const niepelne = `⚠️ ${t("dashboard.kpi.incomplete")}`;
 
   return (
     <div style={styles.strip}>
@@ -209,13 +261,25 @@ export function KpiStrip() {
           kpi.noRate > 0 ? `${kpi.noRate} poz. bez kursu (nie wliczono)` : "",
           // Sufit pobrania unieważnia liczbę nad tym podpisem, więc mówi o tym
           // wprost, zamiast pozwolić jej wyglądać na kompletną.
-          kpi.incomplete ? "⚠️ dane niepełne — suma zaniżona" : "",
+          kpi.incomplete ? niepelne : "",
         ]
           .filter(Boolean)
           .join(" · ")}
       />
-      <Card href="/per-diem" label="Diety (mies.)" value={kpi.perDiem} small />
-      <Card href="/payouts" label="Saldo do wypłaty" value={kpi.payout} small />
+      <Card
+        href="/per-diem"
+        label="Diety (mies.)"
+        value={kpi.perDiem}
+        small
+        sub={kpi.perDiemIncomplete ? niepelne : undefined}
+      />
+      <Card
+        href="/payouts"
+        label="Saldo do wypłaty"
+        value={kpi.payout}
+        small
+        sub={kpi.payoutIncomplete ? niepelne : undefined}
+      />
     </div>
   );
 }

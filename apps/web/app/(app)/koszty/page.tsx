@@ -3,7 +3,7 @@
 import {
   deleteVehicleCost,
   insertVehicleCost,
-  listVehicleCosts,
+  listVehicleCostsAll,
   type VehicleCost,
 } from "@e-logistic/api";
 import {
@@ -102,6 +102,15 @@ export default function CostsPage() {
   const t = useT();
   const { vehicles } = useFleet();
   const [costs, setCosts] = useState<VehicleCost[]>([]);
+  /**
+   * Rejestr urwał się na sufit pobrania — lista niżej jest krótsza niż zawartość bazy.
+   *
+   * Ekran nie ma pola „od–do": pokazuje CAŁĄ historię kosztów firmy, więc obcięcia nie
+   * da się zauważyć po samej liście — brakujące pozycje wyglądają jak pozycje, których
+   * nigdy nie wprowadzono. Znacznik rządzi dwiema rzeczami naraz: pasem nad tabelą
+   * i bramką eksportu.
+   */
+  const [incomplete, setIncomplete] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -116,6 +125,7 @@ export default function CostsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadErr(null);
+    setIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       const m = await getCachedMembership(sb);
@@ -124,7 +134,13 @@ export default function CostsPage() {
         return;
       }
       setCanManage(m.role === "owner" || m.role === "dispatcher");
-      setCosts(await listVehicleCosts(sb, m.companyId));
+      // STRONAMI: wariant jednorazowy ma domyślny `limit` 1000, czyli dokładnie sufit
+      // `api.max_rows` — firma z dłuższą historią dostawała 1000 NAJNOWSZYCH kosztów
+      // i ani jednego sygnału, że reszta istnieje. Stąd też szło potem CSV i XLSX
+      // do księgowości.
+      const paged = await listVehicleCostsAll(sb, m.companyId);
+      setCosts(paged.rows);
+      setIncomplete(!paged.complete);
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : t("costs.loadError"));
     } finally {
@@ -199,7 +215,21 @@ export default function CostsPage() {
     }
   }
 
+  /**
+   * Bramka wspólna dla obu eksportów, obok wyłączonych przycisków.
+   *
+   * Sam `disabled` chroni jedno miejsce w drzewie; funkcje eksportu są zwykłymi
+   * funkcjami modułu i wystarczy, że kiedyś wywoła je inny przycisk albo skrót.
+   * Arkusz, który wyszedł z aplikacji, nie ma już jak powiedzieć, że jest niepełny.
+   */
+  function eksportWstrzymany(): boolean {
+    if (!incomplete) return false;
+    toast(t("costs.exportBlocked"), "error");
+    return true;
+  }
+
   function exportCsv() {
+    if (eksportWstrzymany()) return;
     const headers = ["Pojazd", "Kategoria", "Kwota", "Waluta", "Data", "Opis"];
     const rows = costs.map((c) => [
       regOf(c.vehicle_id),
@@ -213,6 +243,7 @@ export default function CostsPage() {
   }
 
   async function exportXlsx() {
+    if (eksportWstrzymany()) return;
     const headers = ["Pojazd", "Kategoria", "Kwota", "Waluta", "Data", "Opis"];
     const rows = costs.map((c) => [
       regOf(c.vehicle_id),
@@ -239,8 +270,22 @@ export default function CostsPage() {
       const regMap = new Map(vehicles.map((v) => [v.registration.toUpperCase(), v.id]));
       const keyOf = (vid: string, cat: string, amt: number, date: string, desc: string) =>
         `${vid}|${cat}|${amt}|${date}|${desc}`;
+      /*
+       * Wykrywanie duplikatów wymaga KOMPLETU istniejących kosztów, a nie próbki.
+       *
+       * Wariant jednorazowy oddawał 1000 najnowszych wierszy, więc ponownie wgrany plik
+       * sprzed kwartału nie trafiał w to okno ani jedną pozycją — każda wjeżdżała do bazy
+       * drugi raz i drugi raz do rejestru kosztów. Gdy nawet stronicowanie nie dowiozło
+       * kompletu, import jest ODMAWIANY w całości: import bez działającej ochrony przed
+       * duplikatem podwaja koszty firmy po cichu, a cofnąć to trzeba ręcznie, wiersz
+       * po wierszu.
+       */
+      const istniejace = await listVehicleCostsAll(sb, m.companyId);
+      if (!istniejace.complete) {
+        return { inserted: 0, failed: rows.length, errors: [t("costs.importIncomplete")] };
+      }
       const existing = new Set(
-        (await listVehicleCosts(sb, m.companyId)).map((c) =>
+        istniejace.rows.map((c) =>
           keyOf(c.vehicle_id, c.category, c.amount, c.cost_date, c.description ?? ""),
         ),
       );
@@ -425,17 +470,37 @@ export default function CostsPage() {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 32 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{t("costs.registryHeading")}</h2>
         <span style={{ flex: 1 }} />
+        {/* Oba eksporty zablokowane przy niepełnym rejestrze — ten sam wzorzec co na
+            /monthly. Plik wychodzi z aplikacji i po zapisaniu nie da się już odróżnić
+            listy kompletnej od uciętej: brakujące koszty nie zostawiają w arkuszu
+            żadnego śladu, a suma z niego wyliczona zaniża podstawę. */}
         {costs.length > 0 && (
           <>
-            <Button variant="ghost" onClick={exportCsv}>
+            <Button
+              variant="ghost"
+              onClick={exportCsv}
+              disabled={incomplete}
+              title={incomplete ? t("costs.exportBlocked") : undefined}
+            >
               ⬇️ CSV
             </Button>
-            <Button variant="ghost" onClick={exportXlsx}>
+            <Button
+              variant="ghost"
+              onClick={exportXlsx}
+              disabled={incomplete}
+              title={incomplete ? t("costs.exportBlocked") : undefined}
+            >
               ⬇️ XLSX
             </Button>
           </>
         )}
       </div>
+
+      {/* Nad statusem listy i nad tabelą: komunikat unieważnia wszystko, co niżej,
+          więc nie może stać pod danymi, które podważa. */}
+      {!loading && !loadErr && incomplete && (
+        <div style={styles.warn}>⚠️ {t("costs.incomplete")}</div>
+      )}
 
       <ListStatus
         loading={loading}
@@ -464,4 +529,15 @@ const styles: Record<string, React.CSSProperties> = {
   field: f.field,
   label: f.label,
   input: f.input,
+  /** Ta sama ramka ostrzeżenia co na /monthly — jeden wygląd dla jednej klasy problemu. */
+  warn: {
+    marginTop: 20,
+    padding: "12px 14px",
+    borderRadius: 10,
+    border: "1px solid #6b4a00",
+    background: "#241c05",
+    color: "#f0d98a",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
 };

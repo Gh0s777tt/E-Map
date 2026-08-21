@@ -5,6 +5,7 @@ import {
   latestOdometers,
   listServiceTasks,
   markServiceDone,
+  type OdometerReadout,
   type ServiceTask,
   saveServiceTask,
 } from "@e-logistic/api";
@@ -65,12 +66,14 @@ export default function ServicePage() {
   });
   const odoQuery = useQuery({
     queryKey: queryKeys.odometers(companyId),
-    queryFn: (): Promise<Record<string, number>> =>
-      companyId ? latestOdometers(getBrowserSupabase(), companyId) : Promise.resolve({}),
+    queryFn: (): Promise<OdometerReadout> =>
+      companyId
+        ? latestOdometers(getBrowserSupabase(), companyId)
+        : Promise.resolve({ byVehicle: {}, complete: true }),
     enabled: !membership.isPending,
   });
   const tasks = tasksQuery.data ?? [];
-  const odo = odoQuery.data ?? {};
+  const odo = odoQuery.data?.byVehicle ?? {};
   const loading = membership.isPending || tasksQuery.isPending || odoQuery.isPending;
   const loadErr = queryErrorMessage(
     membership.error ?? tasksQuery.error ?? odoQuery.error,

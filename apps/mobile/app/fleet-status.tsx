@@ -4,8 +4,18 @@
  * (zlecenie in_progress → w trasie, assigned → zaplanowany, inaczej wolny)
  * + ostatnie zdarzenie Trip pojazdu.
  */
-import { getActiveMembership, listOrders, listTripEvents, listVehicles } from "@e-logistic/api";
-import { buildFleetStatus, type FleetStatusRow, type FleetVehicleState } from "@e-logistic/core";
+import {
+  getActiveMembership,
+  listOrdersAll,
+  listTripEventsAll,
+  listVehicles,
+} from "@e-logistic/api";
+import {
+  buildFleetStatus,
+  type FleetStatusRow,
+  type FleetVehicleState,
+  type OrderStatus,
+} from "@e-logistic/core";
 import type { MobileMessageKey } from "@e-logistic/i18n";
 import { palette } from "@e-logistic/ui";
 import { useCallback, useEffect, useState } from "react";
@@ -25,14 +35,26 @@ const STATE_COLOR: Record<FleetVehicleState, string> = {
   idle: "#6b7280",
 };
 
+/** Stan pojazdu daje wyłącznie te dwa statusy — reszta historii nie ma tu czego wnieść. */
+const ACTIVE_STATUSES: OrderStatus[] = ["in_progress", "assigned"];
+
+/**
+ * Okno „ostatniego zdarzenia". Jawne 14 dni zamiast dawnego `limit: 1000`, które było
+ * oknem niejawnym i tym krótszym, im większa flota (patrz web `/fleet-status`).
+ */
+const EVENTS_WINDOW_DAYS = 14;
+
 export default function FleetStatusScreen() {
   const t = useT();
   const [rows, setRows] = useState<FleetStatusRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  /** Zbiór urwany na sufit pobrania — pojazd z aktywną trasą pokazałby się jako wolny. */
+  const [incomplete, setIncomplete] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
+    setIncomplete(false);
     if (!supabaseConfigured) {
       setLoading(false);
       return;
@@ -41,11 +63,15 @@ export default function FleetStatusScreen() {
       const sb = getSupabase();
       const m = await getActiveMembership(sb);
       if (!m) return;
-      const [vehicles, orders, trips] = await Promise.all([
+      const eventsFrom = new Date(Date.now() - EVENTS_WINDOW_DAYS * 86_400_000).toISOString();
+      const [vehicles, ordPaged, tripPaged] = await Promise.all([
         listVehicles(sb, m.companyId),
-        listOrders(sb, m.companyId),
-        listTripEvents(sb, { limit: 1000 }),
+        listOrdersAll(sb, m.companyId, { statuses: ACTIVE_STATUSES }),
+        listTripEventsAll(sb, { from: eventsFrom }),
       ]);
+      setIncomplete(!ordPaged.complete || !tripPaged.complete);
+      const orders = ordPaged.rows;
+      const trips = tripPaged.rows;
       setRows(
         buildFleetStatus({
           vehicles: (vehicles as { id: string; registration: string }[]).map((v) => ({
@@ -112,6 +138,7 @@ export default function FleetStatusScreen() {
       }
     >
       {err && <Text style={s.err}>{err}</Text>}
+      {incomplete && !err && <Text style={s.warn}>{t("m.fleet.incomplete")}</Text>}
 
       <View style={s.kpiRow}>
         {(["driving", "planned", "idle"] as const).map((st) => (
@@ -139,7 +166,7 @@ export default function FleetStatusScreen() {
                 .join(" · ")}
             </Text>
           )}
-          {r.lastEvent && (
+          {r.lastEvent ? (
             <Text style={s.dim} numberOfLines={1}>
               {[
                 r.lastEvent.action,
@@ -148,6 +175,12 @@ export default function FleetStatusScreen() {
               ]
                 .filter(Boolean)
                 .join(" · ")}
+            </Text>
+          ) : (
+            /* „Brak zdarzeń" i „zdarzenia sprzed okna" to dwa różne stany — pojazd po
+               dłuższym postoju musi wyglądać inaczej niż taki, który nigdy nie raportował. */
+            <Text style={s.dim} numberOfLines={1}>
+              {t("m.fleet.noEvents").replace("{days}", String(EVENTS_WINDOW_DAYS))}
             </Text>
           )}
         </Card>
@@ -160,6 +193,8 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.black },
   content: { padding: 16, gap: 10, paddingBottom: 32 },
   err: { color: palette.red, fontSize: 13 },
+  /** Ostrzeżenie, nie błąd — dane są, tylko niepełne; kolor odróżnia je od awarii pobrania. */
+  warn: { color: palette.warning, fontSize: 12, lineHeight: 17 },
   dim: { color: palette.smoke, fontSize: 12 },
   kpiRow: { flexDirection: "row", gap: 10 },
   kpi: { flex: 1, alignItems: "center" },

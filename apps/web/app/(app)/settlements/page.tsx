@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  listFuelLogs,
+  listFuelLogsAll,
   listFxRates,
   listRates,
-  listTripEvents,
+  listTripEventsAll,
   type Rate,
   saveDefaultRate,
   toFxRates,
@@ -115,6 +115,17 @@ export default function SettlementsPage() {
   const [fxRates, setFxRates] = useState<FxRate[]>([]);
   /** Ile pozycji MA kwotę, ale nie dało się jej wycenić (brak notowania na ten dzień). */
   const [missingRate, setMissingRate] = useState(0);
+  /**
+   * Któryś ze zbiorów rachunku urwał się na sufit pobrania.
+   *
+   * Rachunek wyjazdu to dokument, który wychodzi z aplikacji do kierowcy i do
+   * księgowości — a niekompletny zbiór nie daje tu krótszej listy pozycji, tylko INNY
+   * rachunek: brakujące tankowanie zaniża koszt i zawyża zysk, brakujące zdarzenie
+   * licznika zmienia dystans, a więc i spalanie, i koszt na kilometr. Wszystkie te
+   * liczby dalej wyglądają jak liczby prawdziwe, więc jedynym sygnałem może być pasek
+   * nad nimi i zablokowany eksport.
+   */
+  const [incomplete, setIncomplete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
@@ -186,15 +197,22 @@ export default function SettlementsPage() {
     if (!vehicleId) return;
     setBusy(true);
     setLoadErr(null);
+    setIncomplete(false);
     try {
       const sb = getBrowserSupabase();
       // Zakres dat filtrowany po stronie bazy (mniej danych w transferze) — `to` do końca dnia.
       const toEnd = `${to}T23:59:59.999Z`;
       const range = { from, to: toEnd };
-      const [f, a, tripEv, fxRows] = await Promise.all([
-        listFuelLogs(sb, { vehicleId, ...range }),
-        listFuelLogs(sb, { vehicleId, table: "adblue_logs", ...range }),
-        listTripEvents(sb, { vehicleId, ...range }),
+      const [fPaged, aPaged, tripPaged, fxRows] = await Promise.all([
+        // STRONAMI, mimo że zapytanie jest już zawężone pojazdem i zakresem dat:
+        // te trzy wywołania szły dotąd BEZ `limit`, co nie znaczyło „bez granicy",
+        // tylko granicę cudzą — sufit `api.max_rows` PostgREST (domyślnie 1000)
+        // przycinał odpowiedź bez błędu. Kwartał pracy jednego ciągnika mieści się
+        // w tysiącu wierszy, rok z opłatami drogowymi już niekoniecznie, a rachunek
+        // za zbyt szeroki zakres wychodził wtedy tańszy, niż był naprawdę.
+        listFuelLogsAll(sb, { vehicleId, ...range }),
+        listFuelLogsAll(sb, { vehicleId, table: "adblue_logs", ...range }),
+        listTripEventsAll(sb, { vehicleId, ...range }),
         // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie publikuje
         // w weekendy i święta — ten sam wzorzec co w /stats, /monthly i /wyjazdy.
         listFxRates(sb, {
@@ -203,10 +221,11 @@ export default function SettlementsPage() {
       ]);
       const fx = toFxRates(fxRows);
       setFxRates(fx);
+      setIncomplete(!fPaged.complete || !aPaged.complete || !tripPaged.complete);
       // Zakres dat już zastosowany w zapytaniu (gte/lte na occurred_at) — bez ponownego filtra w JS.
-      const fFilt = f as FuelRow[];
-      const aFilt = a as FuelRow[];
-      const tFilt = tripEv as TripRow[];
+      const fFilt = fPaged.rows as FuelRow[];
+      const aFilt = aPaged.rows as FuelRow[];
+      const tFilt = tripPaged.rows as TripRow[];
       setFuel(fFilt);
       setAdblue(aFilt);
       setTrips(tFilt);
@@ -267,6 +286,14 @@ export default function SettlementsPage() {
 
   function exportCsv() {
     if (!settlement) return;
+    // Druga bramka, obok wyłączonego przycisku: `exportCsv` jest zwykłą funkcją modułu
+    // i wystarczy, że kiedyś wywoła ją inny przycisk albo skrót. Liczba w pliku, który
+    // wyszedł z aplikacji, jest nieodróżnialna od prawdziwej — koszt tej linijki jest
+    // żaden, a koszt jej braku ponosi ktoś, kto rozliczy kierowcę z zaniżonego kosztu.
+    if (incomplete) {
+      toast(t("settlements.exportBlocked"), "error");
+      return;
+    }
     /*
      * [#389] Kolumna „Kwota" nie mówiła, w JAKIEJ walucie — a wiersze bywają
      * w różnych. Arkusz wyeksportowany do księgowości dawał się zsumować
@@ -435,6 +462,14 @@ export default function SettlementsPage() {
       )}
 
       {loadErr && <p style={{ color: palette.red, marginTop: 12 }}>⚠️ {loadErr}</p>}
+      {/* BEZ klasy `no-print`: rachunek drukuje się do PDF i idzie dalej jako dokument,
+          więc ostrzeżenie musi pojechać razem z liczbami, których dotyczy. Wydruk bez
+          niego byłby wersją tego samego rachunku, ale bez zastrzeżenia. */}
+      {incomplete && (
+        <p style={{ color: palette.warning, marginTop: 12, lineHeight: 1.6 }}>
+          ⚠️ {t("settlements.incomplete")}
+        </p>
+      )}
       {/* [#389] Pozycje z kwotą, których nie dało się wycenić — bo na dzień
           zdarzenia nie ma notowania waluty. Wchodzą do rachunku jako brak,
           nie jako zero, więc suma jest NIEPEŁNA i trzeba to powiedzieć.
@@ -493,7 +528,12 @@ export default function SettlementsPage() {
           </table>
 
           <div style={{ display: "flex", gap: 8, marginTop: 16 }} className="no-print">
-            <Button variant="ghost" onClick={exportCsv}>
+            <Button
+              variant="ghost"
+              onClick={exportCsv}
+              disabled={incomplete}
+              title={incomplete ? t("settlements.exportBlocked") : undefined}
+            >
               {t("settlements.exportCsv")}
             </Button>
             <Button variant="ghost" onClick={() => window.print()}>

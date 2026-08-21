@@ -182,7 +182,7 @@ export default function VehicleCardPage() {
       setCompanyCountry(comp?.country ?? null);
       setVehicle((vs as DbVehicle[]).find((v) => v.id === id) ?? null);
       setTasks(st.filter((t) => t.vehicle_id === id));
-      setOdo(od);
+      setOdo(od.byVehicle);
       setCards(cd as FuelCard[]);
       setFuel(fPaged.rows as FuelRaw[]);
       setOrders(ordPaged.rows);

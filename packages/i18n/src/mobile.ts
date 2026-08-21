@@ -849,6 +849,14 @@ const pl = {
   "m.fleet.idle": "Wolny",
   "m.fleet.empty": "Brak pojazdów.",
   "m.fleet.error": "Nie udało się pobrać statusu floty.",
+  "m.fleet.incomplete":
+    "Status niepełny — zleceń lub zdarzeń jest więcej, niż zmieściło się w sufit pobrania. Część pojazdów może być pokazana jako wolna mimo aktywnej trasy.",
+  /*
+   * „Brak zdarzeń" i „zdarzenia sprzed okna" to dwa różne stany. Pojazd wracający
+   * z trzytygodniowego postoju musi wyglądać inaczej niż taki, który nigdy nie
+   * raportował — inaczej okno pobrania czyta się jak brak danych w bazie.
+   */
+  "m.fleet.noEvents": "Brak zdarzeń trasy z ostatnich {days} dni.",
   "m.invoices.monthSum": "Ten miesiąc (brutto)",
   "m.invoices.list": "Faktury",
   "m.invoices.paid": "Opłacona",
@@ -1998,6 +2006,9 @@ const en: Record<MobileMessageKey, string> = {
   "m.fleet.idle": "Idle",
   "m.fleet.empty": "No vehicles.",
   "m.fleet.error": "Could not load fleet status.",
+  "m.fleet.incomplete":
+    "Status incomplete — there are more orders or events than the fetch ceiling returns. Some vehicles may show as idle despite being on a run.",
+  "m.fleet.noEvents": "No route events in the last {days} days.",
   "m.invoices.monthSum": "This month (gross)",
   "m.invoices.list": "Invoices",
   "m.invoices.paid": "Paid",
@@ -3147,6 +3158,9 @@ const de: Record<MobileMessageKey, string> = {
   "m.fleet.idle": "Frei",
   "m.fleet.empty": "Keine Fahrzeuge.",
   "m.fleet.error": "Flottenstatus konnte nicht geladen werden.",
+  "m.fleet.incomplete":
+    "Status unvollständig — es gibt mehr Aufträge oder Ereignisse, als das Abruflimit zurückgibt. Manche Fahrzeuge erscheinen als frei, obwohl sie unterwegs sind.",
+  "m.fleet.noEvents": "Keine Streckenereignisse in den letzten {days} Tagen.",
   "m.invoices.monthSum": "Dieser Monat (brutto)",
   "m.invoices.list": "Rechnungen",
   "m.invoices.paid": "Bezahlt",
@@ -4291,6 +4305,9 @@ const uk: Record<MobileMessageKey, string> = {
   "m.fleet.idle": "Вільний",
   "m.fleet.empty": "Немає транспорту.",
   "m.fleet.error": "Не вдалося завантажити статус автопарку.",
+  "m.fleet.incomplete":
+    "Статус неповний — замовлень або подій більше, ніж повертає ліміт вибірки. Частина транспорту може показуватися як вільна, хоча вона в рейсі.",
+  "m.fleet.noEvents": "Немає подій маршруту за останні {days} днів.",
   "m.invoices.monthSum": "Цей місяць (брутто)",
   "m.invoices.list": "Рахунки",
   "m.invoices.paid": "Оплачено",

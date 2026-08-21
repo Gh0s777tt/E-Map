@@ -1,16 +1,17 @@
 "use client";
 
 import {
+  DEFAULT_PAGE_SIZE,
   listFuelCardsSafe,
-  listFuelLogs,
+  listFuelLogsAll,
   listFxRates,
-  listOrders,
+  listOrdersAll,
   listPauseEvents,
   listPenalties,
   listRouteExtraCosts,
-  listTripEvents,
+  listTripEventsAll,
   listVatRates,
-  listVehicleCosts,
+  listVehicleCostsAll,
   listVehicles,
   toFxRates,
   toVatRates,
@@ -71,11 +72,21 @@ import { VehicleDetail } from "./VehicleDetail";
 
 /** Waluty do wyboru w prezentacji — te, w których ta flota realnie rozlicza trasy. */
 /**
- * [#392] Górna granica wierszy na zapytanie. Zabezpiecza przeglądarkę przed
- * wciągnięciem całej historii firmy, ale sama w sobie jest półśrodkiem:
- * po jej przekroczeniu liczby są niepełne, więc ekran MUSI o tym powiedzieć.
+ * Granica wierszy dla tabel, które nie mają jeszcze wariantu stronicowanego
+ * (postoje, opłaty drogowe, kary) — RÓWNA sufitowi serwera, i to jest cały sens.
+ *
+ * [#392] postawiło tu 5000 i dołożyło wykrywanie obcięcia po `length >= ROW_LIMIT`.
+ * Detektor nigdy nie zadziałał: PostgREST tnie odpowiedź na `api.max_rows`
+ * (u Supabase 1000) bez błędu, więc do przeglądarki wracał tysiąc wierszy, który
+ * nigdy nie dobijał do pięciu tysięcy — limit „chronił" przed progiem leżącym pięć
+ * razy wyżej niż próg realny. Dopiero limit równy sufitowi serwera sprawia, że
+ * pełna strona naprawdę znaczy „było więcej".
+ *
+ * Świadomy koszt: zbiór liczący DOKŁADNIE `ROW_LIMIT` wierszy zgłosi obcięcie,
+ * którego nie było. Fałszywy alarm raz na jakiś czas jest tańszy niż cicha strata
+ * w liczbach, na których stoją decyzje o flocie.
  */
-const ROW_LIMIT = 5000;
+const ROW_LIMIT = DEFAULT_PAGE_SIZE;
 
 const DISPLAY_CURRENCIES = ["EUR", "PLN", "CZK", "GBP", "SEK", "NOK", "DKK", "HUF", "RON", "CHF"];
 
@@ -119,7 +130,16 @@ export default function StatsPage() {
   /** [#378] Kursy EBC — bez nich kwota w innej walucie niż euro nie ma jak wejść do sumy. */
   const [rates, setRates] = useState<FxRate[]>([]);
   /** [#392] Czy któryś zbiór dobił do limitu — czyli czy liczby są NIEPEŁNE. */
-  const [truncated, setTruncated] = useState(false);
+  /**
+   * Obcięcie rozdzielone na dwa KSZTAŁTY, bo prowadzą do przeciwnych wniosków.
+   *
+   * `oldest` = zbiór z `limit` posortowany malejąco po dacie: brakuje najstarszego ogona,
+   * więc zawężenie okresu naprawdę pomaga. `pages` = pobieranie stronami po `id` zatrzymane
+   * na twardym suficie: brakujące wiersze są rozsiane po całym oknie, więc zawężenie okresu
+   * sprawia tylko, że baner znika — a użytkownik odczytuje to jako potwierdzenie, że liczby
+   * z węższego zakresu były poprawne od początku.
+   */
+  const [truncated, setTruncated] = useState({ oldest: false, pages: false });
   /** [#379] Stawki VAT per kraj — tabela wspólna dla wszystkich firm. */
   const [vatRates, setVatRates] = useState<VatRate[]>([]);
   /**
@@ -146,18 +166,18 @@ export default function StatsPage() {
         setCanManage(m.role === "owner" || m.role === "dispatcher");
         /*
          * Okno analizy: ostatnie 24 miesiące (pokrywa trend 6 mies., alerty m/m
-         * i wykresy) zamiast pobierania całej historii — z limitem bezpieczeństwa.
+         * i wykresy) zamiast pobierania całej historii.
          *
-         * [#392] Limit jest potrzebny, ale jego CICHE zadziałanie już nie.
-         * Przewoźnik z 45 ciągnikami generuje w dwa lata więcej niż 5000 zdarzeń
-         * trasy; nadwyżka po prostu nie dojeżdżała, a ekran pokazywał zaniżone
-         * spalanie, koszty i przychód jako liczby pewne. Najgorsze, że wygląda
-         * to jak spadek: właściciel widzi „mniej tankowań niż rok temu" i szuka
-         * przyczyny w firmie, a nie w limicie zapytania.
-         *
-         * Nie podnosimy limitu — po jego przekroczeniu i tak trzeba by liczyć
-         * po stronie bazy. Wykrywamy OBCIĘCIE i mówimy o nim wprost, tak samo
-         * jak robi to ekran /wyjazdy.
+         * [#392] rozpoznało problem trafnie — przewoźnik z 45 ciągnikami generuje
+         * w dwa lata więcej zdarzeń, niż mieści się w jednej odpowiedzi, a ekran
+         * pokazywał zaniżone spalanie, koszty i przychód jako liczby pewne. Zła była
+         * tylko odpowiedź: podniesienie limitu do 5000 nic nie dało, bo sufit serwera
+         * leży niżej i działa bez błędu. Pięć głównych zbiorów schodzi więc teraz
+         * STRONAMI (komplet albo jawne `complete: false`), a trzy tabele kosztów
+         * operacyjnych, które wariantu stronicowanego jeszcze nie mają, pobieramy
+         * z limitem równym sufitowi serwera — tylko tak pełna strona znaczy
+         * „było więcej". Skutek dla użytkownika jest w obu przypadkach ten sam:
+         * ekran mówi wprost, że liczby są niepełne, zamiast milczeć.
          */
         const now = new Date();
         const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 23, 1))
@@ -166,39 +186,56 @@ export default function StatsPage() {
         listFuelCardsSafe(sb, m.companyId)
           .then((cs) => setCards(cs as unknown as CardOpt[]))
           .catch(() => {});
-        const [f, a, tr, vs, ord, vc, fxRows, vatRows, pauses, routeCosts, penalties] =
-          await Promise.all([
-            listFuelLogs(sb, { from, limit: ROW_LIMIT }),
-            listFuelLogs(sb, { table: "adblue_logs", from, limit: ROW_LIMIT }),
-            listTripEvents(sb, { from, limit: ROW_LIMIT }),
-            listVehicles(sb, m.companyId),
-            listOrders(sb, m.companyId, { from, limit: ROW_LIMIT }),
-            listVehicleCosts(sb, m.companyId, { from, limit: ROW_LIMIT }),
-            // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
-            // publikuje w weekendy i święta — ten sam wzorzec co w /monthly.
-            listFxRates(sb, {
-              from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
-            }),
-            // Zbiór jest mały (kilkadziesiąt wierszy) i wspólny dla firm, więc bez filtrów.
-            listVatRates(sb),
-            // [#380] Koszty operacyjne. Limity jawne — ekran obejmuje 24 miesiące,
-            // a domyślne 500 z warstwy danych ucięłoby dane bez słowa.
-            listPauseEvents(sb, { from, limit: ROW_LIMIT }),
-            listRouteExtraCosts(sb, { from, limit: ROW_LIMIT }),
-            listPenalties(sb, { from, limit: ROW_LIMIT }),
-          ]);
+        const [
+          fPaged,
+          aPaged,
+          trPaged,
+          vs,
+          ordPaged,
+          vcPaged,
+          fxRows,
+          vatRows,
+          pauses,
+          routeCosts,
+          penalties,
+        ] = await Promise.all([
+          listFuelLogsAll(sb, { from }),
+          listFuelLogsAll(sb, { table: "adblue_logs", from }),
+          listTripEventsAll(sb, { from }),
+          listVehicles(sb, m.companyId),
+          listOrdersAll(sb, m.companyId, { from }),
+          listVehicleCostsAll(sb, m.companyId, { from }),
+          // Zapas 10 dni wstecz: kurs bierzemy z dnia zdarzenia, a EBC nie
+          // publikuje w weekendy i święta — ten sam wzorzec co w /monthly.
+          listFxRates(sb, {
+            from: new Date(Date.parse(from) - 10 * 86_400_000).toISOString().slice(0, 10),
+          }),
+          // Zbiór jest mały (kilkadziesiąt wierszy) i wspólny dla firm, więc bez filtrów.
+          listVatRates(sb),
+          // [#380] Koszty operacyjne. Limit jawny — domyślne 500 z warstwy danych
+          // ucięłoby zbiór 24 miesięcy bez słowa. Te trzy tabele nie mają jeszcze
+          // wariantu stronicowanego, więc zamiast kompletu mamy tu wykrywanie
+          // obcięcia (patrz `ROW_LIMIT`).
+          listPauseEvents(sb, { from, limit: ROW_LIMIT }),
+          listRouteExtraCosts(sb, { from, limit: ROW_LIMIT }),
+          listPenalties(sb, { from, limit: ROW_LIMIT }),
+        ]);
         /*
-         * [#392] Zbiór dobity do limitu = najpewniej ucięty. Rozróżnienie
-         * „dokładnie 5000 wierszy" od „ucięte na 5000" jest niemożliwe bez
-         * dodatkowego zapytania, więc świadomie zgłaszamy oba przypadki:
-         * fałszywe ostrzeżenie raz na jakiś czas jest tanie, a cicha strata
-         * danych w liczbach, na których stoją decyzje o flocie — nie.
+         * Dwa różne dowody niekompletności — i dwie różne RADY dla użytkownika.
+         *
+         * Zbiory stronicowane mówią o sobie same (`complete: false` = zadziałał twardy
+         * sufit stron), a przy trzech tabelach kosztów operacyjnych zostaje przesłanka:
+         * pełna strona znaczy „najpewniej było więcej". Unieważniają liczby tak samo,
+         * ale nie tak samo się je ratuje: przy obcięciu po dacie brakuje najstarszych
+         * miesięcy i zawężenie okresu pomaga, przy obcięciu keysetowym braki są rozsiane
+         * po całym oknie i zawężenie chowa wyłącznie ostrzeżenie.
          */
-        setTruncated(
-          [f, a, tr, ord, vc, pauses, routeCosts, penalties].some(
+        setTruncated({
+          oldest: [pauses, routeCosts, penalties].some(
             (rows) => (rows as unknown[]).length >= ROW_LIMIT,
           ),
-        );
+          pages: [fPaged, aPaged, trPaged, ordPaged, vcPaged].some((paged) => !paged.complete),
+        });
         setRates(toFxRates(fxRows));
         setVatRates(toVatRates(vatRows));
         // Trzy tabele + kwoty przy zdarzeniach Trip sprowadzone do jednego kształtu,
@@ -260,7 +297,7 @@ export default function StatsPage() {
           ),
           // Kwoty przy zdarzeniach Trip (serwis, inne) — `trip_events.currency`
           // istnieje od migracji 0100; wcześniej to była liczba bez jednostki.
-          ...(tr as TripRaw[])
+          ...(trPaged.rows as TripRaw[])
             .filter((r) => r.amount != null)
             .map(
               (r): OperatingCostEntry => ({
@@ -273,12 +310,12 @@ export default function StatsPage() {
               }),
             ),
         ]);
-        setFuel(f as FuelRaw[]);
-        setAdblue(a as FuelRaw[]);
-        setTrips(tr as TripRaw[]);
-        setCosts(vc);
+        setFuel(fPaged.rows as FuelRaw[]);
+        setAdblue(aPaged.rows as FuelRaw[]);
+        setTrips(trPaged.rows as TripRaw[]);
+        setCosts(vcPaged.rows);
         setOrders(
-          ord.map((o) => ({
+          ordPaged.rows.map((o) => ({
             status: o.status,
             price: o.price,
             currency: o.currency,
@@ -716,7 +753,7 @@ export default function StatsPage() {
           powiedzieć na górze, zanim ktokolwiek je odczyta. Milczenie tutaj było
           groźniejsze niż samo obcięcie: brakujące tankowania wyglądają jak spadek
           zużycia, a brakujące zlecenia jak spadek przychodu. */}
-      {truncated && (
+      {(truncated.oldest || truncated.pages) && (
         <p
           style={{
             color: palette.warning,
@@ -728,7 +765,9 @@ export default function StatsPage() {
             marginTop: 12,
           }}
         >
-          ⚠️ {t("stats.truncated")}
+          {truncated.pages && <>⚠️ {t("stats.truncated.pages")}</>}
+          {truncated.oldest && truncated.pages && " "}
+          {truncated.oldest && <>⚠️ {t("stats.truncated")}</>}
         </p>
       )}
 
