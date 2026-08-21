@@ -11,6 +11,7 @@
  *  6) Dokumentacja nie wymienia nieistniejących katalogów-duchów (np. packages/config).
  *  7) Sekcja „Stack" w CLAUDE.md nie trzyma w kolumnie 🔜 czegoś, co leży już w zależnościach.
  *  8) Linki markdown do ścieżek w repo wskazują istniejące pliki (bez martwych odwołań).
+ *  9) Numeracja updatów `[#NNN]` jest ciągła — bez luk między 1 a najwyższym numerem.
  *
  * Kod wyjścia: 0 = spójne, 1 = wykryto rozjazd. Bez zależności (czysty Node).
  */
@@ -356,6 +357,63 @@ const dupNums = [...new Set(migNums.filter((n, i) => migNums.indexOf(n) !== i))]
 );
 if (dupNums.length > 0) {
   errors.push(`supabase/migrations: zdublowane numery migracji: ${dupNums.join(", ")}.`);
+}
+
+// 9) Ciągłość numeracji updatów `[#NNN]`.
+//
+// CLAUDE.md wymaga numerów „kolejnych, bez luk" od pierwszego wydania. Reguła istniała
+// od początku i nie była egzekwowana — pierwsze uruchomienie tej kontroli znalazło DWIE
+// luki, w tym `#376`: trzy commity realnej pracy (kanał ogólny, przekazywanie zdjęć,
+// przeliczanie walut), dla których wpis w changelogu nigdy nie powstał. Luka w numeracji
+// jest tanim wskaźnikiem zgubionego wpisu — dlatego jest błędem, nie ostrzeżeniem.
+//
+// Skanujemy CHANGELOG razem z archiwum: po podziale (#407) starsze wydania mieszkają
+// w `docs/changelog/`, więc sam główny plik pokazałby lukę na wszystkim, co przeniesione.
+const zrodlaNumeracji = ["CHANGELOG.md"];
+const archiwumDir = join(root, "docs/changelog");
+if (existsSync(archiwumDir)) {
+  for (const f of readdirSync(archiwumDir)
+    .filter(bezSidecarow)
+    .filter((f) => f.endsWith(".md"))) {
+    zrodlaNumeracji.push(`docs/changelog/${f}`);
+  }
+}
+
+/**
+ * Numery świadomie pominięte — nigdy nie opisywały żadnej zmiany (brak commita).
+ * Wpis MUSI się dezaktualizować: gdy numer się pojawi, bramka zażąda usunięcia wyjątku,
+ * inaczej lista rośnie i cicho zjada sens kontroli.
+ */
+const POMINIETE_NUMERY = new Map([
+  ["336", "numer przeskoczony przy wydaniu — brak commita i brak zmiany, nic nie zaginęło"],
+]);
+
+const numeryUpdatow = new Set();
+for (const plik of zrodlaNumeracji) {
+  const tresc = read(plik) ?? "";
+  for (const m of tresc.matchAll(/\[#(\d{1,4})\]/g)) numeryUpdatow.add(Number(m[1]));
+}
+if (numeryUpdatow.size > 0) {
+  const najwyzszy = Math.max(...numeryUpdatow);
+  const luki = [];
+  for (let n = 1; n <= najwyzszy; n++) {
+    if (numeryUpdatow.has(n)) continue;
+    if (POMINIETE_NUMERY.has(String(n))) continue;
+    luki.push(`#${String(n).padStart(3, "0")}`);
+  }
+  if (luki.length > 0) {
+    errors.push(
+      `CHANGELOG: luki w numeracji updatów: ${luki.join(", ")} — ` +
+        "wpis zaginął albo numer przeskoczono; w drugim przypadku dopisz go do POMINIETE_NUMERY z powodem.",
+    );
+  }
+  for (const [n, powod] of POMINIETE_NUMERY) {
+    if (numeryUpdatow.has(Number(n))) {
+      errors.push(
+        `scripts/docs-check.mjs: #${n} jest już w changelogu — usuń zbędny wyjątek z POMINIETE_NUMERY (${powod}).`,
+      );
+    }
+  }
 }
 
 if (warnings.length > 0) {
