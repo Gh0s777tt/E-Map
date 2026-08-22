@@ -2,8 +2,8 @@
 
 # 📜 CHANGELOG &nbsp;·&nbsp; E‑LOGISTIC
 
-![Updaty](https://img.shields.io/badge/updaty-427-E50914?style=for-the-badge&labelColor=0a0a0a)
-![Wersja](https://img.shields.io/badge/wersja-1.252.0-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Updaty](https://img.shields.io/badge/updaty-428-E50914?style=for-the-badge&labelColor=0a0a0a)
+![Wersja](https://img.shields.io/badge/wersja-1.253.0-E50914?style=for-the-badge&labelColor=0a0a0a)
 
 </div>
 
@@ -13,6 +13,51 @@ Wersjonowanie: [SemVer](https://semver.org). Najnowsze na górze.
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+
+## [1.253.0] — 🔒 Gałąź domyślna zamknięta, martwa konfiguracja usunięta
+
+Domknięcie listy z `[#427]`: co dało się wymusić poza repo, wymuszone; czego nie dało —
+sprawdzone i **udokumentowane wraz z powodem**, zamiast przemilczane.
+
+- `[#428]` 🔒 **`main` na GitLabie: push — nikt**
+
+  Gałąź była chroniona już wcześniej (push i merge: Maintainers), ale Maintainer mógł
+  pushować wprost, omijając MR — czyli jedyne miejsce, w którym w tym repo uruchamiają się
+  bramki i przegląd. Teraz **push: No one**, merge: Maintainers, force push wyłączony.
+  Lokalny strażnik z `[#427]` pilnuje tego samego po stronie klienta; ten wpis domyka
+  to po stronie serwera, gdzie nie da się go ominąć przez `--no-verify`.
+
+- `[#428]` 🚫 **Czego nie da się włączyć na planie free — sprawdzone, nie założone**
+
+  - **Push rules** (w tym „reject unsigned commits"): `projects/:id/push_rule` → **404**.
+    Funkcja Premium. Podpisywanie commitów zostaje `[dyscyplina]` — z tą różnicą, że
+    teraz wiadomo **dlaczego**, a nie „bo tak wyszło".
+  - **`reset_approvals_on_push`**: API przyjmuje żądanie, zwraca `200` i **po cichu ignoruje
+    wartość**. To ten sam wzorzec, który tępimy w kodzie — sukces bez skutku.
+  - **Wymagane zatwierdzenia MR**: projekt ma **jednego członka**, a autor nie może
+    zatwierdzić własnego MR-a. `approvals_before_merge: 1` **zablokowałoby każdy merge
+    na zawsze**. Świadomie nie włączone.
+
+- `[#428]` 🧹 **`renovate.json` usunięty — konfiguracja bez bota**
+
+  Renovate **nie otworzył ani jednego MR-a** w historii projektu; aplikacja nigdy nie została
+  zainstalowana. Dependabot działa naprawdę (workflow „Dependabot Updates" próbuje przy każdym
+  cyklu, wisi wyłącznie na blokadzie runnerów z `[#425]`). Dwie konfiguracje na ten sam
+  ekosystem, z których jedna jest martwa, to obietnica, że ktoś pilnuje wersji zależności.
+
+- `[#428]` 🔍 **Bramka martwych linków miała ślepą plamę — znalezioną przez jej użycie**
+
+  Kontrola 8 z `[#427]` skanowała `README.md`, `CLAUDE.md` i `docs/*.md`. Usunięcie
+  `renovate.json` **przeszło przez nią bez słowa**, bo odsyłał do niego `SECURITY.md`,
+  leżący w korzeniu i wypadający z zakresu. Skan `docs/` jest katalogowy i dopisuje się sam;
+  korzeń trzeba wymienić jawnie. Dołożone: `SECURITY.md`, `CONTRIBUTING.md`, `DEPLOY.md`.
+  Po poprawce ten sam usunięty plik jest wykrywany natychmiast.
+
+  Bramka, której nigdy nie sprawdzono na realnym przypadku, jest hipotezą — nie zabezpieczeniem.
+
+**Bramki:** `biome` ✓ · `tsc` 7/7 ✓ · testy **1283** ✓ · `next build` ✓ · `docs:check` ✓
+(9 kontroli, zasięg linków poszerzony) · ochrona gałęzi zweryfikowana odczytem z API
 
 
 ## [1.252.0] — 📏 Reguła bez bramki gnije

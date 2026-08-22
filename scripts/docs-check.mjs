@@ -264,7 +264,24 @@ if (!stackSekcja) {
 //    (`readdirSync` bez rekurencji), więc archiwum wypada z zakresu samo. Gdyby ktoś kiedyś
 //    zmienił ten skan na rekurencyjny, musi jawnie wykluczyć `docs/changelog/`, inaczej
 //    bramka zacznie żądać poprawiania linków w zapisie przeszłości.
-const LINKI_ZRODLA = ["README.md", "CLAUDE.md", ...dokumentacjaBiezaca()];
+/**
+ * Dokumenty z KORZENIA repo objęte kontrolą linków. Pierwsza wersja tej kontroli wymieniała
+ * tylko README i CLAUDE.md, więc `SECURITY.md`, `CONTRIBUTING.md` i `DEPLOY.md` wypadały
+ * z zakresu — wyszło to przy usuwaniu `renovate.json`, do którego SECURITY.md odsyłał:
+ * bramka przepuściła martwy link, bo pliku nie miała w spisie. Skan `docs/` jest katalogowy
+ * i dopisuje się sam; korzeń trzeba wymienić jawnie, więc lista MUSI rosnąć razem z repo.
+ *
+ * Poza listą świadomie: CHANGELOG (zapis historyczny), raporty `*_REPORT.md` i `AUDIT*`
+ * (migawki stanu z konkretnej daty — wolno im wymieniać pliki dziś nieistniejące).
+ */
+const DOKUMENTY_KORZENIA = [
+  "README.md",
+  "CLAUDE.md",
+  "SECURITY.md",
+  "CONTRIBUTING.md",
+  "DEPLOY.md",
+];
+const LINKI_ZRODLA = [...DOKUMENTY_KORZENIA, ...dokumentacjaBiezaca()];
 
 /**
  * Martwe linki w plikach, których ta bramka nie może naprawić sama (cudzy zakres edycji),
