@@ -59,11 +59,16 @@ Docelowo w zmiennych EAS, nie w `eas.json`.
 | `semgrep-sast` | statyczna analiza (szablon GitLab SAST) | [`.gitlab-ci.yml`](.gitlab-ci.yml) |
 | `audit:rls` | izolacja multi-tenant na żywej bazie | [`scripts/audit-rls.mjs`](scripts/audit-rls.mjs) |
 | `pnpm audit` | podatności zależności (doradczy) | [`.gitlab-ci.yml`](.gitlab-ci.yml) |
-| Dependabot / Renovate | podbicia zależności i akcji | [`dependabot.yml`](.github/dependabot.yml) · [`renovate.json`](renovate.json) |
+| Dependabot | podbicia zależności i akcji GitHub | [`dependabot.yml`](.github/dependabot.yml) |
 
 **Płytki klon fałszuje skan sekretów.** Domyślny klon GitLaba to ~20 commitów; `gitleaks`
 skanuje historię, więc bez `GIT_DEPTH: 0` sekret sprzed trzydziestu commitów przechodzi
 gładko, a job świeci na zielono.
+
+**Dependabot jest jedynym mechanizmem podbić** — konfiguracja Renovate została usunięta
+w `[#428]`, bo aplikacja nigdy nie była zainstalowana i nie otworzyła ani jednego MR-a.
+Konfiguracja bez działającego bota jest gorsza niż jej brak: sugeruje, że ktoś pilnuje
+wersji zależności.
 
 Konfiguracja allowlisty: [`.gitleaks.toml`](.gitleaks.toml). **Nie dodawaj tam prawdziwych
 sekretów** — allowlista jest na szablony i wartości publiczne z założenia.

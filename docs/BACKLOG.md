@@ -1,4 +1,4 @@
-<!-- SYNC: po v1.252.0 · #427 · 2026-08-21 -->
+<!-- SYNC: po v1.253.0 · #428 · 2026-08-21 -->
 
 # 📋 BACKLOG — E‑Logistic
 
@@ -144,6 +144,20 @@ Autorytatywny stan dostarczenia: [CHANGELOG.md](../CHANGELOG.md).
       daje pełną kontrolę nad projektem Supabase, więc to najpoważniejsze z otwartych ryzyk.
 
 ## 🟢 P4 — Infra / docelowy stack
+
+> **🔒 OCHRONA GAŁĘZI — stan po `[#428]`.** Na `main` (GitLab): **push — nikt**,
+> merge — Maintainers, force push wyłączony. Gałąź domyślna zmienia się wyłącznie przez MR.
+>
+> **Czego NIE da się włączyć na planie free** (sprawdzone przez API, nie założone):
+> - **Push rules** (m.in. „reject unsigned commits") — endpoint `projects/:id/push_rule`
+>   odpowiada **404**. Funkcja Premium. Podpisywanie commitów zostaje `[dyscyplina]`.
+> - **`reset_approvals_on_push`** — API przyjmuje żądanie, zwraca `200` i **po cichu ignoruje
+>   wartość**. Też Premium, tylko bez uczciwego błędu.
+> - **Wymagane zatwierdzenia MR** — technicznie dostępne, ale projekt ma **jednego członka**,
+>   a `merge_requests_author_approval: false` znaczy, że autor nie może zatwierdzić własnego
+>   MR-a. Ustawienie `approvals_before_merge: 1` **zablokowałoby każdy merge na zawsze**.
+>   Do włączenia dopiero, gdy w projekcie pojawi się druga osoba.
+
 
 > **🔴 ZABLOKOWANE ROZLICZENIOWO (ustalone 2026-08-21, próba `db push`).**
 > Organizacja Supabase ma **nieopłacone faktury**, przez co **wszystkie cztery projekty**
